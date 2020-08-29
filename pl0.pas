@@ -69,6 +69,96 @@ end;
 
 (* Table *)
 
+type
+  TSymbolClass = (scConst, scVar, scProc, scScope);
+
+  PSymbol = ^TSymbol;
+  TSymbol = record
+    Name: String;
+    Kind: TSymbolClass;
+    Next: PSymbol;
+  end;
+
+var
+  SymbolTable: PSymbol;
+
+procedure OpenScope();
+var
+  Sym: PSymbol;
+begin
+  New(Sym);
+  Sym^.Kind := scScope;
+  Sym^.Next := SymbolTable;
+  SymbolTable := Sym;
+end;
+
+procedure CloseScope();
+var
+  Sym: PSymbol;
+  Kind: TSymbolClass;
+begin
+  repeat
+    Kind := SymbolTable^.Kind;
+    Sym := SymbolTable^.Next;
+    Dispose(SymbolTable);
+    SymbolTable := Sym;
+  until Kind = scScope;
+end;
+
+function LookupLocal(Name: String): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Name := UpperStr(Name);
+  Sym := SymbolTable;
+  while Sym^.Kind <> scScope do
+  begin
+    if UpperStr(Sym^.Name) = Name then
+    begin
+      LookupLocal := Sym;
+      Exit;
+    end;
+    Sym := Sym^.Next;
+  end;
+
+  LookupLocal := nil;
+end;
+
+function LookupGlobal(Name: String): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Name := UpperStr(Name);
+  Sym := SymbolTable;
+  while Sym <> nil do
+  begin
+    if UpperStr(Sym^.Name) = Name then
+    begin
+      LookupGlobal := Sym;
+      Exit;
+    end;
+    Sym := Sym^.Next;
+  end;
+
+  LookupGlobal := nil;
+end;
+
+procedure CreateSymbol(Kind: TSymbolClass; Name: String);
+var
+  Sym: PSymbol;
+begin
+  if LookupLocal(Name) <> nil then
+  begin
+    Error('Duplicate symbol "' + Name + '".');
+  end;
+
+  New(Sym);
+  Sym^.Kind := Kind;
+  Sym^.Name := Name;
+  Sym^.Next := SymbolTable;
+  SymbolTable := Sym;
+end;
+
 (* --- Scanner --------------------------------------------------------- *)
 
 type
@@ -291,9 +381,14 @@ end;
 procedure ParseExpression; forward;
 
 procedure ParseFactor;
+var
+  Sym: PSymbol;
 begin
   if Scanner.Token = toIdent then
   begin
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    if (Sym^.Kind <> scVar) and (Sym^.Kind <> scConst) then Error('"' + Scanner.StrValue + '" neither var nor const.');
     NextToken;
   end
   else if Scanner.Token = toNumber then
@@ -356,6 +451,8 @@ begin
 end;
 
 procedure ParseStatement;
+var
+  Sym: PSymbol;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -363,7 +460,11 @@ begin
   end
   else if Scanner.Token = toCall then
   begin
-    NextToken; Require(toIdent); NextToken;
+    NextToken; Require(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    if Sym^.Kind <> scProc then Error('"' + Scanner.StrValue + '" not a proc.');
+    NextToken;
   end
   else if Scanner.Token = toAsk then
   begin
@@ -396,6 +497,7 @@ end;
 procedure ParseConst;
 begin
   Require(toIdent);
+  CreateSymbol(scConst, Scanner.StrValue);
   NextToken;
   Require(toEq);
   NextToken;
@@ -406,6 +508,7 @@ end;
 procedure ParseVar;
 begin
   Require(toIdent);
+  CreateSymbol(scVar, Scanner.StrValue);
   NextToken;
 end;
 
@@ -436,8 +539,11 @@ begin
   while Scanner.Token = toProcedure do
   begin
     NextToken; Require(toIdent);
+    CreateSymbol(scProc, Scanner.StrValue);
+    OpenScope;
     NextToken; Require(toSemicolon);
     NextToken; ParseBlock;
+    CloseScope;
     Require(toSemicolon);
     NextToken;
   end;
@@ -464,6 +570,8 @@ begin
   RegisterKeyword(toWhile, 'while');
   RegisterKeyword(toDo, 'do');
   RegisterKeyword(toOdd, 'odd');
+
+  OpenScope;
 
   OpenInput(ParamStr(1));
   NextToken;
