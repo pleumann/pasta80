@@ -456,6 +456,9 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
     NextToken; Require(toBecomes); NextToken; ParseExpression;
   end
   else if Scanner.Token = toCall then
@@ -468,7 +471,11 @@ begin
   end
   else if Scanner.Token = toAsk then
   begin
-    NextToken; Require(toIdent); NextToken;
+    NextToken; Require(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
+    NextToken;
   end
   else if Scanner.Token = toSay then
   begin
