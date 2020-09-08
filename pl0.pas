@@ -10,6 +10,66 @@ begin
   UpperStr := S;  
 end;
 
+function Replace(S: String; C, D: Char): String;
+var
+  I: Integer;
+begin
+  for I := 1 to Length(S) do
+    if S[I] = C then
+      S[I] := D;
+  Replace := S;
+end;
+
+function Int2Str(I: Integer (*); N: Integer*) ): String;
+const
+  N = 0;
+var
+  S: String;
+begin
+  Str(I:Abs(N), S);
+  if N < 0 then
+    S := Replace(S, ' ', '0');
+  Int2Str := S;
+end;
+
+function HexStr(Value: Integer; Digits: Integer): String;
+const
+  Hex = '0123456789ABCDEF';
+var
+  S: String;
+begin
+  S := '';
+
+  while (Value <> 0) or (Digits <> 0) do
+  begin
+    S := Hex[1 + Value mod 16] + S;
+    Value := Value div 16;
+    Digits := Digits - 1;
+  end;
+
+  HexStr := S;
+end;
+
+function AlignStr(S: String; N: Integer): String;
+const
+  Spaces = '                ';
+begin
+  if Length(S) >= Abs(N) then
+    AlignStr := S
+  else if N > 0 then
+  begin
+    while Length(S) < N do
+      S := S + Spaces;
+    AlignStr := Copy(S, 1, N);  
+  end
+  else begin
+    N := -N;
+    while Length(S) < N do
+      S := Spaces + S;
+    AlignStr := Copy(S, Length(S) - N + 1, N);
+  end
+end;
+
 // Debug / Warning / Error
 
 procedure Error(Message: String);
@@ -76,11 +136,15 @@ type
   TSymbol = record
     Name: String;
     Kind: TSymbolClass;
+    Level: Integer;
+    Value: Integer;
+    Tag: String;
     Next: PSymbol;
   end;
 
 var
   SymbolTable: PSymbol;
+  Level: Integer;
 
 procedure OpenScope();
 var
@@ -90,6 +154,8 @@ begin
   Sym^.Kind := scScope;
   Sym^.Next := SymbolTable;
   SymbolTable := Sym;
+
+  Level := Level + 1;
 end;
 
 procedure CloseScope();
@@ -103,6 +169,8 @@ begin
     Dispose(SymbolTable);
     SymbolTable := Sym;
   until Kind = scScope;
+
+  Level := Level - 1;
 end;
 
 function LookupLocal(Name: String): PSymbol;
@@ -143,7 +211,7 @@ begin
   LookupGlobal := nil;
 end;
 
-procedure CreateSymbol(Kind: TSymbolClass; Name: String);
+function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
@@ -155,8 +223,11 @@ begin
   New(Sym);
   Sym^.Kind := Kind;
   Sym^.Name := Name;
+  Sym^.Level := Level;
   Sym^.Next := SymbolTable;
   SymbolTable := Sym;
+
+  CreateSymbol := Sym;
 end;
 
 (* --- Scanner --------------------------------------------------------- *)
@@ -376,6 +447,250 @@ end;
 
 (* Emitter *)
 
+var
+  Target: Text;
+  NextLabel: Integer;
+
+procedure OpenTarget(Filename: String);
+begin
+  Assign(Target, Filename);
+  Rewrite(Target);
+end;
+
+function GetLabel: String;
+begin
+  GetLabel := 'l' + Int2Str(NextLabel);
+  NextLabel := NextLabel + 1;
+end;
+
+procedure Emit(Tag, Instruction, Comment: String);
+var
+  T, I, C: Boolean;
+begin
+  T := Length(Tag) <> 0;
+  I := Length(Instruction) <> 0;
+  C := Length(Comment) <> 0;
+
+  if T or I then
+  begin
+    if I or C then
+      Write(Target, AlignStr(Tag, 8))
+    else  
+      Write(Target, Tag);
+  end;
+
+  if C then
+    Write(Target, AlignStr(Instruction, 24))
+  else
+    Write(Target, Instruction);
+
+  if C then
+    WriteLn(Target, '; ' + Comment)
+  else
+    WriteLn(Target);
+end;
+
+procedure EmitL(S: String);
+begin
+  Emit(S, '', '');
+end;
+
+procedure EmitI(S: String);
+begin
+  Emit('', S, '');
+end;
+
+procedure EmitC(S: String);
+begin
+  Emit('', '', S);
+end;
+
+procedure EmitPrologue(Sym: PSymbol);
+begin
+  Emit(Sym^.Tag, 'push ix', 'Prologue');
+  EmitI('push iy');
+end;
+
+procedure EmitEpilogue();
+begin
+  Emit('', 'pop ix', 'Epilogue');
+  EmitI('pop iy');
+  EmitI('ret');
+end;
+
+procedure EmitGetVar(Sym: PSymbol);
+var
+  L: Integer;
+  S: String;
+begin
+  L := Level - Sym^.Level;
+
+  if L = 0 then
+  begin
+    Emit('', 'ld d,(ix+' + Int2Str(Sym^.Value+1) + ')', 'Get ' + Sym^.Name);
+    EmitI('ld e,(ix+' + Int2Str(Sym^.Value+0) + ')');
+    EmitI('push de');
+  end
+  else if L = 1 then
+  begin
+    Emit('', 'ld d,(iy+' + Int2Str(Sym^.Value+1) + ')', 'Get ' + Sym^.Name);
+    EmitI('ld e,(iy+' + Int2Str(Sym^.Value+0) + ')');
+    EmitI('push de');
+  end
+  else
+  begin
+    Emit('', 'ld h,(iy-1)', 'Get ' + Sym^.Name);
+    EmitI('ld l,(iy-2)');
+    if L > 2 then
+    begin
+      S := GetLabel;
+      EmitI('ld b,' + Int2Str(L-2));
+      EmitI('dec hl');
+      Emit(S, 'ld d,(hl)', '');
+      EmitI('dec hl');
+      EmitI('ld e,(hl)');
+      EmitI('ex hl,de');
+      EmitI('djnz ' + S);
+    end;
+    EmitI('ld de,' + Int2Str(Sym^.Value));
+    EmitI('add hl,de');
+    EmitI('ld e,(hl)');
+    EmitI('inc hl');
+    EmitI('ld d,(hl)');
+    EmitI('push de'); 
+  end;
+end;
+
+procedure EmitSetVar(Sym: PSymbol);
+var
+  L: Integer;
+  S: String;
+begin
+  L := Level - Sym^.Level;
+
+  if L = 0 then
+  begin
+    Emit('', 'pop de', 'Set ' + Sym^.Name);
+    EmitI('ld (ix+' + Int2Str(Sym^.Value+1) + '),d');
+    EmitI('ld (ix+' + Int2Str(Sym^.Value+0) + '),e');
+  end
+  else if L = 1 then
+  begin
+    Emit('', 'pop de', 'Set ' + Sym^.Name);
+    EmitI('ld (iy+' + Int2Str(Sym^.Value+1) + '),d');
+    EmitI('ld (iy+' + Int2Str(Sym^.Value+0) + '),e');
+  end
+  else
+  begin
+    Emit('', 'ld h,(iy-1)', 'Set ' + Sym^.Name);
+    EmitI('ld l,(iy-2)');
+    if L > 2 then
+    begin
+      S := GetLabel;
+      EmitI('ld b,' + Int2Str(L-2));
+      EmitI('dec hl');
+      Emit(S, 'ld d,(hl)', '');
+      EmitI('dec hl');
+      EmitI('ld e,(hl)');
+      EmitI('ex hl,de');
+      EmitI('djnz ' + S);
+    end;
+    EmitI('ld de,' + Int2Str(Sym^.Value));
+    EmitI('add hl,de');
+    EmitI('pop de');
+    EmitI('ld (hl),e');
+    EmitI('inc hl');
+    EmitI('ld (hl),e');
+  end;
+end;
+
+procedure EmitLiteral(Value: Integer);
+begin
+  Emit('', 'ld de,' + Int2Str(Value), 'Literal ' + Int2Str(Value));
+  EmitI('push de');
+end;
+
+procedure EmitOdd();
+var
+  S: String;
+begin
+  Emit('', 'pop hl', 'Odd');
+  EmitI('bit 0,l');
+  EmitI('ld de,0');
+
+  S := GetLabel();
+
+  EmitI('jr z,' + S);
+  EmitI('ld de,255');
+  Emit(S, 'push de', '');
+end;
+
+procedure EmitCompare(Op: TToken);
+var
+  S: String;
+begin
+  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
+  EmitI('pop hl');
+
+  if (Op = toGt) or (Op = toGeq) then EmitI('ex hl,de');
+
+  EmitI('xor a');
+  EmitI('sbc hl,de');
+
+  S := GetLabel;
+
+  case Op of
+    toEq: begin
+            EmitI('jr z,' + S);
+          end;
+    toNeq: begin
+            EmitI('jr nz,' + S);
+          end;
+    toLt, toGt: begin
+            EmitI('jr c,' + S);
+          end;
+    toLeq, toGeq: begin
+            EmitI('jr c,' + S);
+            EmitI('jr z,' + S);
+          end;
+  end;
+
+  Emit(S, 'ld a,255', '');
+  EmitI('push af');
+end;
+
+procedure EmitMul();
+begin
+  Emit('', ' ', 'Mul');
+end;
+
+procedure EmitDiv();
+begin
+  Emit('', ' ', 'Div');
+end;
+
+procedure EmitAdd();
+begin
+  Emit('', 'pop de', 'Add');
+  EmitI('pop hl');
+  EmitI('add hl,de');
+  EmitI('push hl');
+end;
+
+procedure EmitSub();
+begin
+  Emit('', 'pop de', 'Sub');
+  EmitI('pop hl');
+  EmitI('xor a');
+  EmitI('sbc hl,de');
+  EmitI('push hl');
+end;
+
+procedure CloseTarget();
+begin
+  Close(Target);
+end;
+
 (* Parser *)
 
 procedure ParseExpression; forward;
@@ -389,10 +704,18 @@ begin
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if (Sym^.Kind <> scVar) and (Sym^.Kind <> scConst) then Error('"' + Scanner.StrValue + '" neither var nor const.');
+
+    if Sym^.Kind = scVar then
+      EmitGetVar(Sym)
+    else
+      EmitLiteral(Sym^.Value);
+
     NextToken;
   end
   else if Scanner.Token = toNumber then
   begin
+    EmitLiteral(Scanner.NumValue);
+
     NextToken;
   end
   else if Scanner.Token = toLParen then
@@ -403,56 +726,76 @@ begin
 end;
 
 procedure ParseTerm;
+var
+  Op: TToken;
 begin
   ParseFactor;
   while (Scanner.Token = toMul) or (Scanner.Token = toDiv) do
   begin
+    Op := Scanner.Token;
     NextToken;
     ParseFactor;
+
+    if Op = toMul then EmitMul() else EmitDiv();
   end;
 end;
 
 procedure ParseExpression;
+var
+  Op: TToken;
 begin
   if (Scanner.Token = toAdd) or (Scanner.Token = toSub) then
   begin
+    Op := Scanner.Token;
     NextToken;
   end;
 
+  if Op = toSub then EmitLiteral(0);
+
   ParseTerm;
+
+  if Op = toSub then EmitSub();
 
   while (Scanner.Token = toAdd) or (Scanner.Token = toSub) do
   begin
+    Op := Scanner.Token;
     NextToken;
     ParseTerm;
+
+    if Op = toAdd then EmitAdd() else EmitSub();
   end;
 end;
 
 procedure ParseCondition;
+var
+  Op: TToken; 
+  L: String;
 begin
   if Scanner.Token = toOdd then
   begin
     NextToken; ParseExpression;
+
+    EmitOdd();
   end 
   else
   begin
     ParseExpression;
-    case Scanner.Token of
-      toEq:  begin NextToken; end;
-      toNeq: begin NextToken; end;
-      toLt:  begin NextToken; end;
-      toLeq: begin NextToken; end;
-      toGt:  begin NextToken; end;
-      toGeq: begin NextToken; end;
-      else Error('RelOp expected');
-    end;
+    if (Scanner.Token >= toEq) and (Scanner.Token <= toGeq) then
+    begin
+      Op := Scanner.Token;
+      NextToken;
+    end
+    else Error('RelOp expected');
     ParseExpression;
+
+    EmitCompare(Op);
   end;
 end;
 
 procedure ParseStatement;
 var
   Sym: PSymbol;
+  Tag, Tag2: String;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -460,6 +803,8 @@ begin
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
     NextToken; Require(toBecomes); NextToken; ParseExpression;
+
+    EmitSetVar(Sym);
   end
   else if Scanner.Token = toCall then
   begin
@@ -468,6 +813,8 @@ begin
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scProc then Error('"' + Scanner.StrValue + '" not a proc.');
     NextToken;
+
+    EmitI('call ' + Sym^.Tag);
   end
   else if Scanner.Token = toAsk then
   begin
@@ -476,10 +823,14 @@ begin
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
     NextToken;
+
+    EmitC('Ask');
   end
   else if Scanner.Token = toSay then
   begin
     NextToken; ParseExpression;
+
+    EmitC('Say');
   end
   else if Scanner.Token = toBegin then
   begin
@@ -493,22 +844,51 @@ begin
   end
   else if Scanner.Token = toIf then
   begin
-    NextToken; ParseCondition; Require(toThen); NextToken; ParseStatement;
+    NextToken; ParseCondition; Require(toThen); NextToken;
+    
+    Tag := GetLabel();
+
+    EmitI('pop af');
+    EmitI('and a');
+    EmitI('jp z,' + Tag);    
+
+    ParseStatement;
+
+    Emit(Tag, '', '');
   end
   else if Scanner.Token = toWhile then
   begin
-    NextToken; ParseCondition; Require(toDo); NextToken; ParseStatement;
+    Tag := GetLabel();
+    Tag2 := GetLabel();
+
+    Emit(Tag, '', '');
+
+    NextToken; ParseCondition; Require(toDo); NextToken;
+
+    EmitI('pop af');
+    EmitI('and a');
+    EmitI('jp z,' + Tag2);    
+
+    ParseStatement;
+
+    EmitI('jp ' + Tag);    
+    Emit(Tag2, '', '');
   end
 end;
 
 procedure ParseConst;
+var
+  Sym: PSymbol;
 begin
   Require(toIdent);
-  CreateSymbol(scConst, Scanner.StrValue);
+  Sym := CreateSymbol(scConst, Scanner.StrValue);
   NextToken;
   Require(toEq);
   NextToken;
   Require(toNumber);
+
+  Sym^.Value := Scanner.NumValue;
+
   NextToken;
 end;
 
@@ -516,10 +896,16 @@ procedure ParseVar;
 begin
   Require(toIdent);
   CreateSymbol(scVar, Scanner.StrValue);
+
+  (* TODO: Put address into symbol. *)
+
   NextToken;
 end;
 
-procedure ParseBlock;
+procedure ParseBlock(Sym: PSymbol);
+var
+  S: String;
+  NewSym: PSymbol;
 begin
   if Scanner.Token = toConst then
   begin
@@ -535,33 +921,55 @@ begin
   if Scanner.Token = toVar then
   begin
     NextToken; ParseVar;
+    S := 'var ' + SymbolTable^.Name;
     while Scanner.Token = toComma do
     begin
       NextToken; ParseVar;
+      S := S + ', ' + SymbolTable^.Name;
     end;
     require(toSemicolon);
     NextToken;
+
+    EmitC(S);
+    EmitC('');
   end;
 
   while Scanner.Token = toProcedure do
   begin
     NextToken; Require(toIdent);
-    CreateSymbol(scProc, Scanner.StrValue);
+    NewSym := CreateSymbol(scProc, Scanner.StrValue);
+    NewSym^.Tag := GetLabel();
+
+    EmitC('procedure ' + Scanner.StrValue);
+    EmitC('');
+
     OpenScope;
     NextToken; Require(toSemicolon);
-    NextToken; ParseBlock;
+    NextToken; ParseBlock(NewSym);
     CloseScope;
     Require(toSemicolon);
     NextToken;
+
+    EmitC('');
   end;
 
+  if Sym <> Nil then EmitPrologue(Sym);
   parseStatement();
+  if Sym <> Nil then EmitEpilogue();
 end;
 
 procedure ParseProgram;
 begin
-  parseBlock;
-  require(toPeriod);  
+  EmitC('program ' + ParamStr(1));
+  EmitC('');
+
+  EmitI('org 32768');
+
+  parseBlock(Nil);
+  require(toPeriod);
+
+  EmitC('end');
+  EmitC('');
 end;
 
 begin
@@ -581,7 +989,9 @@ begin
   OpenScope;
 
   OpenInput(ParamStr(1));
+  OpenTarget('output.asm');
   NextToken;
   ParseProgram;
+  CloseTarget();
   CloseInput();
 end.
