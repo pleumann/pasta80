@@ -144,7 +144,7 @@ type
 
 var
   SymbolTable: PSymbol;
-  Level: Integer;
+  Level, Offset: Integer;
 
 procedure OpenScope();
 var
@@ -153,9 +153,11 @@ begin
   New(Sym);
   Sym^.Kind := scScope;
   Sym^.Next := SymbolTable;
+  Sym^.Value := Offset;
   SymbolTable := Sym;
 
   Level := Level + 1;
+  Offset := 0;
 end;
 
 procedure CloseScope();
@@ -166,6 +168,7 @@ begin
   repeat
     Kind := SymbolTable^.Kind;
     Sym := SymbolTable^.Next;
+    Offset := Sym^.Value;
     Dispose(SymbolTable);
     SymbolTable := Sym;
   until Kind = scScope;
@@ -226,6 +229,12 @@ begin
   Sym^.Level := Level;
   Sym^.Next := SymbolTable;
   SymbolTable := Sym;
+
+  if Kind = scVar then
+  begin
+    Sym^.Value := Offset;
+    Offset := Offset + 2;
+  end;
 
   CreateSymbol := Sym;
 end;
@@ -457,37 +466,27 @@ begin
   Rewrite(Target);
 end;
 
-function GetLabel: String;
+function GetLabel(Prefix: String): String;
 begin
-  GetLabel := 'l' + Int2Str(NextLabel);
+  GetLabel := Prefix + Int2Str(NextLabel);
   NextLabel := NextLabel + 1;
 end;
 
 procedure Emit(Tag, Instruction, Comment: String);
-var
-  T, I, C: Boolean;
 begin
-  T := Length(Tag) <> 0;
-  I := Length(Instruction) <> 0;
-  C := Length(Comment) <> 0;
+  if Tag <> '' then WriteLn(Target, Tag, ':');
 
-  if T or I then
+  if Instruction <> '' then
   begin
-    if I or C then
-      Write(Target, AlignStr(Tag, 8))
-    else  
-      Write(Target, Tag);
+    Write(Target, '            ');
+    if Comment <> '' then 
+      Write(Target, AlignStr(Instruction, 20))
+    else
+      WriteLn(Target, Instruction);
   end;
 
-  if C then
-    Write(Target, AlignStr(Instruction, 24))
-  else
-    Write(Target, Instruction);
-
-  if C then
-    WriteLn(Target, '; ' + Comment)
-  else
-    WriteLn(Target);
+  if (Comment <> '') or (Tag = '') and (Instruction = '') then
+    WriteLn(Target, '; ' + Comment);
 end;
 
 procedure EmitL(S: String);
@@ -505,16 +504,54 @@ begin
   Emit('', '', S);
 end;
 
-procedure EmitPrologue(Sym: PSymbol);
+procedure EmitCall(Sym: PSymbol);
 begin
+  (*
+  if Sym.Level > Level then
+  begin
+    Emit('', 'push iy', 'Call nested');
+    Emit('', 'call ' + Sym.Tag, '');
+    Emit('', 'pop ix', '');
+  end
+  else if Sym.Level = Level then
+  begin
+    Emit('', 'call ' + Sym.Tag, 'Call same');
+  end
+  else
+  begin
+    Emit('', 'push iy', '');
+    Emit('', 'ld h,(iy-1)', 'Call nested');
+    Emit('', 'ld l,(iy-2)');
+    Emit('', 'pushl hl', '');
+
+    Emit('', 'push ix', 'Call nested');
+    Emit('', 'push ix', 'Call nested');
+    Emit('', 'call ' + Sym.Tag, '');
+    Emit('', 'pop ix', '');
+  end
+
+  EmitL(Sym^.Tag);    EmitI('push ix');    EmitC('Prologue');
+
   Emit(Sym^.Tag, 'push ix', 'Prologue');
   EmitI('push iy');
+  *)
+end;
+
+procedure EmitPrologue(Sym: PSymbol);
+begin
+  EmitL(Sym^.Tag);
+  (*
+  Emit(Sym^.Tag, 'push ix', 'Prologue');
+  EmitI('push iy');
+  *)
 end;
 
 procedure EmitEpilogue();
 begin
+  (*
   Emit('', 'pop ix', 'Epilogue');
   EmitI('pop iy');
+  *)
   EmitI('ret');
 end;
 
@@ -543,7 +580,7 @@ begin
     EmitI('ld l,(iy-2)');
     if L > 2 then
     begin
-      S := GetLabel;
+      S := GetLabel('loop');
       EmitI('ld b,' + Int2Str(L-2));
       EmitI('dec hl');
       Emit(S, 'ld d,(hl)', '');
@@ -586,7 +623,7 @@ begin
     EmitI('ld l,(iy-2)');
     if L > 2 then
     begin
-      S := GetLabel;
+      S := GetLabel('loop');
       EmitI('ld b,' + Int2Str(L-2));
       EmitI('dec hl');
       Emit(S, 'ld d,(hl)', '');
@@ -618,7 +655,7 @@ begin
   EmitI('bit 0,l');
   EmitI('ld de,0');
 
-  S := GetLabel();
+  S := GetLabel('false');
 
   EmitI('jr z,' + S);
   EmitI('ld de,255');
@@ -637,7 +674,7 @@ begin
   EmitI('xor a');
   EmitI('sbc hl,de');
 
-  S := GetLabel;
+  S := GetLabel('false');
 
   case Op of
     toEq: begin
@@ -828,7 +865,9 @@ begin
   end
   else if Scanner.Token = toSay then
   begin
-    NextToken; ParseExpression;
+    NextToken;
+    
+    ParseExpression;
 
     EmitC('Say');
   end
@@ -846,7 +885,7 @@ begin
   begin
     NextToken; ParseCondition; Require(toThen); NextToken;
     
-    Tag := GetLabel();
+    Tag := GetLabel('false');
 
     EmitI('pop af');
     EmitI('and a');
@@ -858,8 +897,8 @@ begin
   end
   else if Scanner.Token = toWhile then
   begin
-    Tag := GetLabel();
-    Tag2 := GetLabel();
+    Tag := GetLabel('while');
+    Tag2 := GetLabel('false');
 
     Emit(Tag, '', '');
 
@@ -938,7 +977,7 @@ begin
   begin
     NextToken; Require(toIdent);
     NewSym := CreateSymbol(scProc, Scanner.StrValue);
-    NewSym^.Tag := GetLabel();
+    NewSym^.Tag := GetLabel('proc');
 
     EmitC('procedure ' + Scanner.StrValue);
     EmitC('');
@@ -963,7 +1002,7 @@ begin
   EmitC('program ' + ParamStr(1));
   EmitC('');
 
-  EmitI('org 32768');
+  EmitI('org 256');
 
   parseBlock(Nil);
   require(toPeriod);
