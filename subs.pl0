@@ -1,0 +1,24 @@
+procedure A;
+! "I am procedure A";
+
+procedure B;
+
+    procedure C;
+    begin
+    ! "I am nested procedure C ";
+    call A;
+    ! "I am nested procedure C";
+    end;
+
+begin
+  ! "I am procedure B";
+  call A;
+  call C;
+  ! "I am procedure B";
+end;
+
+begin
+  ! "Hello, brave new world!";
+  call B;
+  ! "Goodbye, cruel world!"
+end.

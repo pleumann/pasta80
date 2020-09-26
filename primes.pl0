@@ -1,4 +1,4 @@
-const max = 100;
+const max = 32767;
 var arg, ret;
 
 procedure isprime;

@@ -1,0 +1,25 @@
+procedure Fact;
+var
+  Index, Result;
+
+  procedure Recurse;
+  begin
+    if Index > 1 then
+    begin
+      Index := Index - 1;
+      call Recurse;
+      Index := Index + 1;
+      Result := Result * Index;
+    end;
+
+    if Index = 1 then Result := 1;
+  end;
+
+begin
+  ! "fact(n) for which n?";
+  ? Index;
+  call Recurse;
+  ! Result;
+end;
+
+call Fact.

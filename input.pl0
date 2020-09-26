@@ -1,0 +1,14 @@
+var
+  x;
+
+begin
+  x := 1;
+
+  while x#0 do
+  begin
+    ! "Enter a number (0=exit)."
+    ? x;
+    ! "The number your entered was:"
+    ! x;
+  end;
+end.

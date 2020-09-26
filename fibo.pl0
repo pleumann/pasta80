@@ -1,0 +1,25 @@
+var
+  A, B, I;
+
+procedure fibonacci;
+var
+  C;
+begin
+  ! A;
+
+  C := A + B;
+  A := B;
+  B := C;
+end;
+
+begin
+  A := 0;
+  B := 1;
+  I := 1;
+
+  while I < 25 do
+  begin
+    call fibonacci;
+    I := I + 1;
+  end;
+end.
