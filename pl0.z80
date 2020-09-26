@@ -1,0 +1,508 @@
+; ----------------------------------------------------------------------------
+; PL0 built-in assembler functions
+; ----------------------------------------------------------------------------
+
+__COMP16:
+            ld      a,h
+            and     128
+            jr      nz,__NEGM1
+            bit     7,d
+            ret     nz
+            ld      a,h
+            cp      d
+            ret     nz
+            ld      a,l
+            cp      e
+            ret
+__NEGM1:
+            xor     d
+            rla
+            ret     c
+            ld      a,h
+            cp      d
+            ret     nz
+            ld      a,l
+            cp      e
+            ret
+;
+; MUL10
+;
+
+__MUL16:
+            ld      c,l
+            ld      b,h
+            ld      hl,0
+            ld      a,15
+__MUL16A:
+            sla     e
+            rl      d
+            jr      nc,__MUL16B
+            add     hl,bc
+__MUL16B:
+            add     hl,hl
+            dec     a
+            jr      nz,__MUL16A
+            or      d
+            ret     p
+            add     hl,bc
+            ret
+
+__SDIV16:
+            ld      a,h
+            ld      (__SREM),a
+            xor     d
+            ld      (__SQUOT),a
+
+            ld      a,d
+            or      a
+            jp      p,__CHKDE
+            sub     a
+            sub     e
+            ld      e,a
+            sbc     a,a
+            sub     d
+            ld      d,a
+__CHKDE:
+            ld      a,h
+            or      a
+            jp      p,__DODIV
+            sub     a
+            sub     l
+            ld      l,a
+            sbc     a,a
+            sub     h
+            ld      h,a
+__DODIV:
+            call    __UDIV16
+            ret     c
+
+            ld      a,(__SQUOT)
+            or      a
+            jp      p,__DOREM
+            sub     a
+            sub     l
+            ld      l,a
+            sbc     a,a
+            sub     h
+            ld      h,a
+__DOREM:
+            ld      a,(__SREM)
+            or      a
+            ret     p
+            sub     a
+            sub     e
+            ld      e,a
+            sbc     a,a
+            sub     d
+            ld      d,a
+            ret
+
+__UDIV16:
+            ld      a,e
+            or      d
+            jr      nz,__DIVIDE
+            ld      hl,0
+            ld      d,h
+            ld      e,l
+            scf
+            ret
+__DIVIDE:
+            ld      c,l
+            ld      a,h
+            ld      hl,0
+            ld      b,16
+            or      a
+__DVLOOP:
+            rl      c
+            rla
+            rl      l
+            rl      h
+            push    hl
+            sbc     hl,de
+            ccf
+            jr      c,__DROP
+            ex      (sp),hl
+__DROP:
+            inc     sp
+            inc     sp
+            djnz    __DVLOOP
+
+            ex      de,hl
+            rl      c
+            ld      l,c
+            rla
+            ld      h,a
+            or      a
+            ret
+
+__SQUOT:    ds      1
+__SREM:     ds      1
+__COUNT:    ds      1
+
+
+
+
+
+__MUL10:    
+            ex      hl,de
+            add     hl,hl
+            ld      de,hl
+            add     hl,hl
+            add     hl,hl
+            add     hl,de
+            ex      hl,de
+            ret
+
+;
+; DIV10
+;
+__DIV10:    
+            ld      bc,$0D0A
+            xor     a
+            add     hl,hl
+            rla
+            add     hl,hl
+            rla
+            add     hl,hl
+            rla
+__DIV10A: 
+            add     hl,hl
+            rla
+            cp      c
+            jr c,   __DIV10B
+            sub c
+            inc l
+__DIV10B:
+            djnz __DIV10A
+            ret
+
+#if defined(CPM)
+;
+; PUTC
+;
+__PUTC:
+            ld      e,a
+            ld      c,2
+            call    5
+            ret
+#endif
+
+#if defined(NXT)
+;
+; PUTC
+;
+__PUTC:
+            ld      iy,(__SAVED_IY)
+            rst     16
+            ret
+#endif
+
+;
+; PUTS
+;
+__PUTS:
+            ld      b,(hl)
+            inc     b
+            jr      __PUTSCHCK
+__PUTSLOOP: ld      a,(hl)
+            push    hl
+            push    bc
+            call    __PUTC
+            pop     bc
+            pop     hl
+__PUTSCHCK: inc     hl
+            djnz    __PUTSLOOP
+            ld      a,13
+            call    __PUTC
+#if defined(CPM)
+            ld      a,10
+            call    __PUTC
+#endif
+            ret
+
+#if defined(__NXT__)
+;
+; PUTS
+;
+__PUTS:
+     ld      a,2
+     rst $18
+     defw    $1601
+
+            push    ix
+            push    iy
+            ld      iy,(__SAVED_IY)
+            ld      e,(hl)
+            inc     hl
+            ld      de,$01c6
+            ld      c,7
+            rst     8
+            db      $94
+            ld      a,13
+            rst     16
+            ld      a,10
+            rst     16
+            pop     iy
+            pop     ix
+            ret
+#endif
+;
+; PUTI
+;
+__PUTN:
+            ld      a,128
+            and     h
+            jr      z,__PUTNPOS
+            ld      de,0
+            ex      hl,de
+            sbc     hl,de
+            ld      a,'-'
+            push    af
+            jp      __PUTNGO
+__PUTNPOS:
+            ld      a,' '
+            push    af
+__PUTNGO:
+            ld      de,__PUTNBUF+6
+__PUTNLOOP:
+            call    __DIV10
+            add     '0'
+            ld      (de),a
+            dec     de
+
+            ld      a,h
+            or      l
+            jr      nz,__PUTNLOOP
+            pop     af
+            ld      (de),a
+            ld      hl,__PUTNBUF+7
+            and     a
+            sbc     hl,de
+            ld      a,l
+            dec     de
+            ld      (de),a
+            ex      hl,de
+            call    __PUTS
+            ret
+__PUTNBUF:
+            db      0,"-32768"
+
+#if defined(CPM)
+__GETN:
+            ld      a,'>'
+            call    __PUTC
+
+            ld      de,__GETNBUF
+            ld      c,10
+            call    5
+
+            ld      a,'>'
+            call    __PUTC
+
+            ld      hl,__GETNBUF+1
+            call    __PUTS
+
+            ld      de,0
+            ld      a,(__GETNBUF+1)
+            cp     0
+            ret     z
+
+            ld      b,a
+            ld      hl,__GETNBUF+2
+            ld      a,(hl)
+            cp     '-'
+            jr      z,__GETNCHK
+__GETNLOOP:
+            sub     '0'
+            push    hl
+            call    __MUL10
+            ld      l,a
+            ld      h,0
+            add     hl,de
+            ex      hl,de
+            pop     hl
+__GETNCHK:
+            inc     hl
+            ld      a,(hl)
+            djnz    __GETNLOOP
+
+            ld      a,(__GETNBUF+2)
+            cp     '-'
+            ret     nz
+
+            xor     a
+            ld      hl,0
+            sbc     hl,de
+            ex      hl,de
+
+            ret
+
+__GETNBUF:
+            db      10,0,"-32768"
+#endif
+
+#if defined(NXT)
+__GETN:
+            push    ix
+            ld      iy, (__SAVED_IY)
+
+ ;    ld      a,1
+  ;   rst $18
+  ;   defw    $1601
+
+            ld a,'>'
+            call __PUTC
+
+	ld      de,(23633)      ; save current channel
+	push    de       
+	ld      de,(_zxn_window_channel)        ; set current channel to magic window
+	ld      (23633), de 
+
+            ld      de,$01c3
+            ld      c,7
+            exx
+            ld      hl,__GETNBUF
+            ld      e,0
+            ld      a,10
+            exx
+
+            rst     8
+            db      $94
+
+;            ld      de,0
+
+	pop     bc
+	ld      (23633), bc 
+
+            pop ix
+
+            push    de
+            ld a,13
+            call __PUTC
+            pop de
+
+;            ld      hl,__GET
+;            push   de
+;            call    __PUTS
+;            pop     de
+
+            ; exx
+            ld      a,e
+            cp     0
+            ret     z
+
+            ld      de,0
+
+;            ret
+
+            ld      b,a
+            ld      hl,__GETNBUF
+            ld      a,(hl)
+            cp     '-'
+            jr      z,__GETNCHK
+__GETNLOOP:
+            sub     '0'
+            push    hl
+            call    __MUL10
+            ld      l,a
+            ld      h,0
+            add     hl,de
+            ex      hl,de
+            pop     hl
+__GETNCHK:
+            inc     hl
+            ld      a,(hl)
+            djnz    __GETNLOOP
+
+            ld      a,(__GETNBUF)
+            cp     '-'
+            ret     nz
+
+            xor     a
+            ld      hl,0
+            sbc     hl,de
+            ex      hl,de
+
+            ret
+
+__GETNBUF:  equ    30000
+;            db      "-32768"
+#endif
+
+__DISPLAY:
+            ds      32
+
+__SAVED_IY  ds 2
+
+_zxn_window_channel ds 2
+
+
+__INIT:
+#if defined(NXT)
+    ld      (__SAVED_IY),iy
+
+;    push    af
+;    push    bc
+;    push    de
+;    push    hl
+;    push    ix
+
+;    exx
+;    push    bc
+;    push    de
+;    push    hl
+;    exx
+
+  ;   ld      a,2
+  ;   rst $18
+  ;   defw    $1601
+
+	ld      de, $01d5
+	ld      a,1
+	exx
+	ld      bc, $0001
+	exx
+	ld      c, 7
+	rst     $08
+	db      $94
+
+    exx
+	ld      (_zxn_window_channel), hl
+	exx
+
+;	ld      de, $01d5
+;	ld      a,1
+;	exx
+;	ld      bc, $0102
+;	exx
+;	ld      c, 7
+;	rst     $08
+;	db      $94
+;	jr      nc, err_die
+
+;	exx
+;	ld      (_zxn_window_channel), hl
+;	exx
+#endif
+            ret
+
+__DONE:
+;        exx
+;        pop     hl
+;        pop     de
+;        pop     bc
+;        exx
+
+;        pop ix
+;        pop hl
+;        pop de
+;        pop bc
+;        pop af
+   
+            ld      iy,(__SAVED_IY)
+            ret
+
+;cls     EQU $0D6B
+;    opench  EQU $1601
+;    print   EQU $203C
+    

@@ -1,5 +1,8 @@
 program PL0;
 
+uses
+  Dos;
+
 (* Utility *)
 
 function UpperStr(S: String): String;
@@ -70,14 +73,19 @@ begin
   end
 end;
 
+function ChangeExt(Name, Ext: String): String;
+var
+  I: Integer;
+begin
+  I := Pos('.', Name);
+  if I = 0 then
+    ChangeExt := Name + Ext
+  else
+    ChangeExt := Copy(Name, 1, I-1) + Ext;
+end;
+
 // Debug / Warning / Error
 
-procedure Error(Message: String);
-begin
-  WriteLn;
-  WriteLn('*** Error: ', Message);
-  Halt(1);
-end;
 (* --- Input ----------------------------------------------------------- *)
 
 type 
@@ -91,6 +99,18 @@ type
 
 var
   Source: TSource;
+
+procedure Error(Message: String);
+var  I: Integer;
+begin
+  WriteLn;
+  WriteLn(Source.Buffer);
+  for I := 1 to Source.Column - 1 do Write(' ');
+  WriteLn('^');
+  WriteLn('*** Error: ', Message, ' in line ', Source.Line, ', column ', Source.Column);
+  WriteLn();
+  Halt(1);
+end;
 
 procedure OpenInput(FileName: String);
 begin
@@ -119,18 +139,18 @@ begin
     Source.Line := Source.Line + 1 ;
     Source.Column := 1;
 
-    WriteLn('[', Source.Line, '] ', Source.Buffer);
+    (* WriteLn('[', Source.Line, '] ', Source.Buffer); *)
   end;
 
   GetChar := Source.Buffer[Source.Column];
-  Write(Source.Buffer[Source.Column]);
+  (* Write(Source.Buffer[Source.Column]); *)
   Inc(Source.Column);
 end;
 
 (* Table *)
 
 type
-  TSymbolClass = (scConst, scVar, scProc, scScope);
+  TSymbolClass = (scConst, scVar, scProc, scScope, scString);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -138,12 +158,13 @@ type
     Kind: TSymbolClass;
     Level: Integer;
     Value: Integer;
+    StrVal: String;
     Tag: String;
     Next: PSymbol;
   end;
 
 var
-  SymbolTable: PSymbol;
+  SymbolTable: PSymbol = nil;
   Level, Offset: Integer;
 
 procedure OpenScope();
@@ -160,15 +181,25 @@ begin
   Offset := 0;
 end;
 
+procedure Emit(Tag, Instruction, Comment: String); forward;
+
 procedure CloseScope();
 var
   Sym: PSymbol;
   Kind: TSymbolClass;
+  S: String;
 begin
   repeat
     Kind := SymbolTable^.Kind;
     Sym := SymbolTable^.Next;
-    Offset := Sym^.Value;
+    Offset := SymbolTable^.Value;
+
+    if Kind = scString then
+    begin
+      S := SymbolTable^.Name;
+      Emit(SymbolTable^.Tag, 'db ' + Int2Str(Length(S)) + ',"' + SymbolTable^.Name + '"', '');
+    end;
+
     Dispose(SymbolTable);
     SymbolTable := Sym;
   until Kind = scScope;
@@ -184,7 +215,7 @@ begin
   Sym := SymbolTable;
   while Sym^.Kind <> scScope do
   begin
-    if UpperStr(Sym^.Name) = Name then
+    if (Sym^.Kind <> scString) and (UpperStr(Sym^.Name) = Name) then
     begin
       LookupLocal := Sym;
       Exit;
@@ -203,7 +234,7 @@ begin
   Sym := SymbolTable;
   while Sym <> nil do
   begin
-    if UpperStr(Sym^.Name) = Name then
+    if (Sym^.Kind <> scString) and (UpperStr(Sym^.Name) = Name) then
     begin
       LookupGlobal := Sym;
       Exit;
@@ -218,7 +249,7 @@ function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  if LookupLocal(Name) <> nil then
+  if (Name <> '') and (LookupLocal(Name) <> nil) then
   begin
     Error('Duplicate symbol "' + Name + '".');
   end;
@@ -239,11 +270,13 @@ begin
   CreateSymbol := Sym;
 end;
 
+(* --------------------------------------------------------------------- *)
 (* --- Scanner --------------------------------------------------------- *)
+(* --------------------------------------------------------------------- *)
 
 type
   TToken = (toNone,
-            toIdent, toNumber,
+            toIdent, toNumber, toString,
             toAdd, toSub, toMul, toDiv, toMod,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen,
@@ -359,8 +392,20 @@ begin
         C := GetChar;
       end;
     end
+    else if C = '"' then
+    begin
+      Token := toString;
+      C := GetChar;
+      while (C <> '"') and (C <> #26) do
+      begin
+        StrValue := StrValue + C;
+        C := GetChar;
+      end;
+
+      if C = #26 then Error('Unterminated String') else C := GetChar;
+    end
     else case C of 
-      '+':
+      '+': 
       begin
         Token := toAdd;
         C := GetChar;
@@ -444,13 +489,13 @@ begin
         Error('Invalid token.');
     end;
 
-    Write('{', Token, '->', StrValue , '}');
+    (* Write('{', Token, '->', StrValue , '}'); *)
   end;
 end;
 
 procedure require(Token: TToken);
 begin
-  Write('<', Token, '/', Scanner.Token, '>');
+  (* Write('<', Token, '/', Scanner.Token, '>'); *)
   if Scanner.Token <> Token then Error('Parser error');
 end;
 
@@ -472,6 +517,8 @@ begin
   NextLabel := NextLabel + 1;
 end;
 
+// Emit(Col1, Col2, Col3, Col4)
+
 procedure Emit(Tag, Instruction, Comment: String);
 begin
   if Tag <> '' then WriteLn(Target, Tag, ':');
@@ -489,6 +536,11 @@ begin
     WriteLn(Target, '; ' + Comment);
 end;
 
+procedure EmitS(S: String);
+begin
+  WriteLn(Target, S);
+end;
+
 procedure EmitL(S: String);
 begin
   Emit(S, '', '');
@@ -502,6 +554,11 @@ end;
 procedure EmitC(S: String);
 begin
   Emit('', '', S);
+end;
+
+procedure EmitInclude(S: String);
+begin
+  WriteLn(Target, ' include "', S, '"');
 end;
 
 procedure EmitCall(Sym: PSymbol);
@@ -538,20 +595,34 @@ begin
 end;
 
 procedure EmitPrologue(Sym: PSymbol);
+var
+  I: Integer;
 begin
-  EmitL(Sym^.Tag);
-  (*
+  // EmitL(Sym^.Tag);
+  
   Emit(Sym^.Tag, 'push ix', 'Prologue');
-  EmitI('push iy');
-  *)
+
+  EmitI('ld hl,(__DISPLAY + ' + Int2Str(Level * 2) + ')');
+  EmitI('push hl');
+
+  EmitI('ld ix,0');
+  EmitI('add ix,sp');
+
+  EmitI('ld (__DISPLAY + ' + Int2Str(Level * 2) + '),ix');
+
+  EmitI('ld de,0');
+  for I := 0 to Offset div 2 - 1 do
+    EmitI('push de');
 end;
 
-procedure EmitEpilogue();
+procedure EmitEpilogue(Sym: PSymbol);
 begin
-  (*
-  Emit('', 'pop ix', 'Epilogue');
-  EmitI('pop iy');
-  *)
+  Emit('', 'ld sp,ix', 'Epilogue');
+
+  EmitI('pop hl');
+  EmitI('ld (__DISPLAY + ' + Int2Str(Level * 2) + '),hl');
+
+  EmitI('pop ix');
   EmitI('ret');
 end;
 
@@ -562,40 +633,24 @@ var
 begin
   L := Level - Sym^.Level;
 
-  if L = 0 then
+  if Sym^.Level = 1 then
   begin
-    Emit('', 'ld d,(ix+' + Int2Str(Sym^.Value+1) + ')', 'Get ' + Sym^.Name);
-    EmitI('ld e,(ix+' + Int2Str(Sym^.Value+0) + ')');
+    Emit('', 'ld de,(Data+' + Int2Str(Sym^.Value) + ')', 'Get global ' + Sym^.Name);
     EmitI('push de');
   end
-  else if L = 1 then
+  else if L = 0 then
   begin
-    Emit('', 'ld d,(iy+' + Int2Str(Sym^.Value+1) + ')', 'Get ' + Sym^.Name);
-    EmitI('ld e,(iy+' + Int2Str(Sym^.Value+0) + ')');
+    Emit('', 'ld d,(ix-' + Int2Str(Sym^.Value+1) + ')', 'Get local ' + Sym^.Name);
+    EmitI('ld e,(ix-' + Int2Str(Sym^.Value+2) + ')');
     EmitI('push de');
   end
   else
   begin
-    Emit('', 'ld h,(iy-1)', 'Get ' + Sym^.Name);
-    EmitI('ld l,(iy-2)');
-    if L > 2 then
-    begin
-      S := GetLabel('loop');
-      EmitI('ld b,' + Int2Str(L-2));
-      EmitI('dec hl');
-      Emit(S, 'ld d,(hl)', '');
-      EmitI('dec hl');
-      EmitI('ld e,(hl)');
-      EmitI('ex hl,de');
-      EmitI('djnz ' + S);
-    end;
-    EmitI('ld de,' + Int2Str(Sym^.Value));
-    EmitI('add hl,de');
-    EmitI('ld e,(hl)');
-    EmitI('inc hl');
-    EmitI('ld d,(hl)');
-    EmitI('push de'); 
-  end;
+    Emit('', 'ld iy,(__DISPLAY + ' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
+    EmitI('ld d,(iy-' + Int2Str(Sym^.Value+1) + ')');
+    EmitI('ld e,(iy-' + Int2Str(Sym^.Value+2) + ')');
+    EmitI('push de');
+  end
 end;
 
 procedure EmitSetVar(Sym: PSymbol);
@@ -605,40 +660,24 @@ var
 begin
   L := Level - Sym^.Level;
 
-  if L = 0 then
+  if Sym^.Level = 1 then
   begin
-    Emit('', 'pop de', 'Set ' + Sym^.Name);
-    EmitI('ld (ix+' + Int2Str(Sym^.Value+1) + '),d');
-    EmitI('ld (ix+' + Int2Str(Sym^.Value+0) + '),e');
+    EmitI('pop de');
+    Emit('', 'ld (Data+' + Int2Str(Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
   end
-  else if L = 1 then
+  else if L = 0 then
   begin
-    Emit('', 'pop de', 'Set ' + Sym^.Name);
-    EmitI('ld (iy+' + Int2Str(Sym^.Value+1) + '),d');
-    EmitI('ld (iy+' + Int2Str(Sym^.Value+0) + '),e');
+    Emit('', 'pop de', 'Set local ' + Sym^.Name);
+    EmitI('ld (ix-' + Int2Str(Sym^.Value+1) + '),d');
+    EmitI('ld (ix-' + Int2Str(Sym^.Value+2) + '),e');
   end
   else
   begin
-    Emit('', 'ld h,(iy-1)', 'Set ' + Sym^.Name);
-    EmitI('ld l,(iy-2)');
-    if L > 2 then
-    begin
-      S := GetLabel('loop');
-      EmitI('ld b,' + Int2Str(L-2));
-      EmitI('dec hl');
-      Emit(S, 'ld d,(hl)', '');
-      EmitI('dec hl');
-      EmitI('ld e,(hl)');
-      EmitI('ex hl,de');
-      EmitI('djnz ' + S);
-    end;
-    EmitI('ld de,' + Int2Str(Sym^.Value));
-    EmitI('add hl,de');
     EmitI('pop de');
-    EmitI('ld (hl),e');
-    EmitI('inc hl');
-    EmitI('ld (hl),e');
-  end;
+    Emit('', 'ld iy,(__DISPLAY + ' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
+    EmitI('ld (iy-' + Int2Str(Sym^.Value+1) + '),d');
+    EmitI('ld (iy-' + Int2Str(Sym^.Value+2) + '),e');
+  end
 end;
 
 procedure EmitLiteral(Value: Integer);
@@ -664,12 +703,26 @@ end;
 
 procedure EmitCompare(Op: TToken);
 var
-  S: String;
+  S, T: String;
 begin
   Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
   EmitI('pop hl');
 
-  if (Op = toGt) or (Op = toGeq) then EmitI('ex hl,de');
+  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
+
+  T := GetLabel('SameSign');
+
+  if (Op <> toEq) and (Op <> toNeq) then
+  begin
+    EmitI('ld a,h');
+    EmitI('xor d');
+    EmitI('and 128');
+    EmitI('jr z,' + T);
+    EmitI('ex hl,de');
+    EmitL(T);
+  end;
+
+  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
 
   EmitI('xor a');
   EmitI('sbc hl,de');
@@ -677,33 +730,106 @@ begin
   S := GetLabel('false');
 
   case Op of
-    toEq: begin
-            EmitI('jr z,' + S);
-          end;
-    toNeq: begin
-            EmitI('jr nz,' + S);
-          end;
-    toLt, toGt: begin
-            EmitI('jr c,' + S);
-          end;
-    toLeq, toGeq: begin
-            EmitI('jr c,' + S);
-            EmitI('jr z,' + S);
-          end;
+    toEq:   EmitI('jr nz,' + S);
+    toNeq:  EmitI('jr z,' + S);
+    toLt:   EmitI('jr nc,' + S);
+    toGt:   EmitI('jr nc,' + S);
+    toLeq:  EmitI('jr c,' + S);
+    toGeq:  EmitI('jr c,' + S);
   end;
 
+  EmitI('ld a,255');
+  Emit(S, 'push af', '');
+end;
+
+procedure EmitJumpIf(Op: TToken; Target: String);
+var
+  S, T: String;
+begin
+  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
+  EmitI('pop hl');
+
+  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
+
+  EmitI('call __COMP16');
+
+(*
+  T := GetLabel('SameSign');
+
+  if (Op <> toEq) and (Op <> toNeq) then
+  begin
+    EmitI('ld a,h');
+    EmitI('xor d');
+    EmitI('and 128');
+    EmitI('jr z,' + T);
+    EmitI('ex hl,de');
+    EmitL(T);
+  end;
+
+  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
+
+  EmitI('xor a');
+  EmitI('sbc hl,de');
+*)
+  S := GetLabel('false');
+
+  case Op of
+    toEq:   EmitI('jr z,' + Target);
+    toNeq:  EmitI('jr nz,' + Target);
+    toLt:   EmitI('jr c,' + Target);
+    toGt:   EmitI('jr c,' + Target);
+    toLeq:  EmitI('jr nc,' + S);
+    toGeq:  EmitI('jr nc,' + S);
+  end;
+
+//  EmitI('ld a,255');
+//  Emit(S, 'push af', '');
+end;
+
+procedure EmitCOmpare2(Op: TToken);
+var
+  S, T: String;
+begin
+  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
+  EmitI('pop hl');
+
+  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
+
+  EmitI('call __COMP16');
+
+  S := GetLabel('true');
+  T := GetLabel('exit');
+
+  case Op of
+    toEq:   EmitI('jr z,' + S);
+    toNeq:  EmitI('jr nz,' + S);
+    toLt:   EmitI('jr c,' + S);
+    toGt:   EmitI('jr c,' + S);
+    toLeq:  EmitI('jr nc,' + S);
+    toGeq:  EmitI('jr nc,' + S);
+  end;
+
+  EmitI('xor a');
+  EmitI('jr ' + T);
+
   Emit(S, 'ld a,255', '');
-  EmitI('push af');
+  Emit(T, 'push af', '');
 end;
 
 procedure EmitMul();
 begin
-  Emit('', ' ', 'Mul');
+  Emit('', 'pop de', '');
+  Emit('', 'pop hl', '');
+  Emit('', 'call __MUL16', 'Mul');
+  Emit('', 'push hl', '');
 end;
 
 procedure EmitDiv();
 begin
-  Emit('', ' ', 'Div');
+  Emit('', 'pop de', '');
+  Emit('', 'pop hl', '');
+  Emit('', 'call __SDIV16', 'Div');
+  Emit('', 'push hl', '');
 end;
 
 procedure EmitAdd();
@@ -721,6 +847,28 @@ begin
   EmitI('xor a');
   EmitI('sbc hl,de');
   EmitI('push hl');
+end;
+
+procedure EmitInputNum(S: String);
+begin
+  Emit('', 'call __GETN', 'Get ' + S);
+  EmitI('push de');
+end;
+
+procedure EmitPrintNum(S: String);
+begin
+  Emit('', 'pop hl', '');
+  Emit('', 'call __PUTN', '');
+end;
+
+procedure EmitPrintStr(S: String);
+var
+  Sym: PSymbol;
+begin
+  Sym := CreateSymbol(scString, S);
+  Sym^.Tag := GetLabel('STRING');
+  Emit('', 'ld hl,' + Sym^.Tag, '');
+  Emit('', 'call __PUTS', '');
 end;
 
 procedure CloseTarget();
@@ -781,6 +929,8 @@ procedure ParseExpression;
 var
   Op: TToken;
 begin
+  Op := toNone;
+
   if (Scanner.Token = toAdd) or (Scanner.Token = toSub) then
   begin
     Op := Scanner.Token;
@@ -825,7 +975,7 @@ begin
     else Error('RelOp expected');
     ParseExpression;
 
-    EmitCompare(Op);
+    EmitCompare2(Op);
   end;
 end;
 
@@ -861,15 +1011,23 @@ begin
     if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
     NextToken;
 
-    EmitC('Ask');
+    EmitInputNum(Scanner.StrValue);
+    EmitSetVar(Sym);
   end
   else if Scanner.Token = toSay then
   begin
     NextToken;
-    
-    ParseExpression;
 
-    EmitC('Say');
+    if Scanner.Token = toString then
+    begin
+      EmitPrintStr(Scanner.StrValue);
+      NextToken;
+    end
+    else
+    begin
+      ParseExpression;
+      EmitPrintNum(Scanner.StrValue);
+    end;
   end
   else if Scanner.Token = toBegin then
   begin
@@ -992,24 +1150,110 @@ begin
     EmitC('');
   end;
 
-  if Sym <> Nil then EmitPrologue(Sym);
+  if Sym <> Nil then EmitPrologue(Sym) else
+  begin
+    Emit('Data', 'ds ' + Int2Str(Offset), 'Globals');
+    EmitC('');
+    EmitL('__MAIN');
+  end;
+
   parseStatement();
-  if Sym <> Nil then EmitEpilogue();
+  if Sym <> Nil then EmitEpilogue(Sym) else EmitI('ret');
 end;
 
 procedure ParseProgram;
 begin
+  EmitC('');
   EmitC('program ' + ParamStr(1));
   EmitC('');
+  EmitS('#define NXT 1');
+  EmitI('org $2000');
+  EmitC('');
+  EmitI('call __INIT');
+  EmitI('call __MAIN');
+  EmitI('call __DONE');
+  EmitI('ret');
+  EmitC('');
+  EmitInclude('pl0.z80');
+  EmitC('');
 
-  EmitI('org 256');
+  OpenScope;
 
   parseBlock(Nil);
   require(toPeriod);
 
+  CloseScope;
+
+  EmitC('');
   EmitC('end');
   EmitC('');
 end;
+
+(*
+	Bytes 0...7	- +3DOS signature - 'PLUS3DOS'
+	Byte 8		- 1Ah (26) Soft-EOF (end of file)
+	Byte 9		- Issue number
+	Byte 10		- Version number
+	Bytes 11...14	- Length of the file in bytes, 32 bit number,
+			    least significant byte in lowest address
+	Bytes 15...22	- +3 BASIC header data
+	Bytes 23...126	- Reserved (set to 0)
+	Byte 127	- Checksum (sum of bytes 0...126 modulo 256)
+*)
+
+var
+  H: array[0..127] of Byte;
+  B: array[0..4095] of Byte;
+
+procedure MakeNextFile(FileName: String);
+var
+  F: File of Byte;
+  L, I: Integer;
+begin
+  WriteLn('*');
+
+  Assign(F, FileName);
+  Reset(F);
+  L := FileSize(F);
+  BlockRead(F, B, L);
+  Close(F);
+
+  WriteLn('**');
+
+  for I := 0 to 127 do H[I] := 0;
+
+  H[0] := Ord('P');
+  H[1] := Ord('L');
+  H[2] := Ord('U');
+  H[3] := Ord('S');
+  H[4] := Ord('3');
+  H[5] := Ord('D');
+  H[6] := Ord('O');
+  H[7] := Ord('S');
+  H[8] := 26;
+  H[9] := 1;
+  H[10] := 0;
+  H[11] := 128;
+  H[12] := 16;
+  H[15] := 3;
+  H[16] := 0; // 128;
+  H[17] := 16;
+  H[18] := 0;
+  H[19] := 128;
+  for I := 0 to 126 do H[127] := (H[127] + H[I]) mod 256;
+
+  WriteLn('***');
+
+  Rewrite(F);
+  BlockWrite(F, H, 128);
+  BlockWrite(F, B, 4096);
+  Close(F);
+
+  WriteLn('****');
+end;
+
+var
+  SrcFile, AsmFile, BinFile: String;
 
 begin
   RegisterKeyword(toBegin, 'begin');
@@ -1025,12 +1269,26 @@ begin
   RegisterKeyword(toDo, 'do');
   RegisterKeyword(toOdd, 'odd');
 
-  OpenScope;
+  SrcFile := ParamStr(1);
+  if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pl0';
 
-  OpenInput(ParamStr(1));
-  OpenTarget('output.asm');
+  AsmFile := ChangeExt(SrcFile, '.z80');
+  BinFile := ChangeExt(SrcFile, '.dot');
+
+  WriteLn('Compiling...');
+
+  OpenInput(SrcFile);
+  OpenTarget(AsmFile);
   NextToken;
   ParseProgram;
   CloseTarget();
   CloseInput();
+
+  WriteLn('Assembling...');
+
+  Exec('/Users/joerg/Downloads/zasm-4.3.3-macos10.12/zasm',  AsmFile + ' ' + BinFile);
+
+  // MakeNextFile(BinFile);
+
+  WriteLn('Success!');
 end.
