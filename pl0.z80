@@ -460,7 +460,7 @@ __INIT:
 	ld      de, $01d5
 	ld      a,1
 	exx
-	ld      bc, $0001
+	ld      bc, $0101
 	exx
 	ld      c, 7
 	rst     $08
