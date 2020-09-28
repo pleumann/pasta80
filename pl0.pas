@@ -531,7 +531,7 @@ end;
 (* Emitter *)
 
 type
-  TBinaryType = (btCpm, btDot);
+  TBinaryType = (btCom, btDot);
 
 var
   Binary: TBinaryType;
@@ -1110,7 +1110,7 @@ begin
   EmitC('');
   EmitC('program ' + ParamStr(1));
   EmitC('');
-  if Binary = btCpm then
+  if Binary = btCom then
   begin
     EmitS('#define CPM 1');
     EmitC('');
@@ -1149,14 +1149,18 @@ var
   I: Integer;
 
 begin
+  WriteLn('PL0 for Z80 Compiler Version 0.1');
+  WriteLn('Copyright (c) 2020 by Joerg Pleumann');
+  WriteLn;
+
   RegisterAllKeywords();
 
   I := 1;  
   SrcFile := ParamStr(I);
   while Copy(SrcFile, 1, 2) = '--' do
   begin
-    if SrcFile = '--cpm' then
-      Binary := btCpm
+    if SrcFile = '--com' then
+      Binary := btCom
     else if SrcFile = '--dot' then
       Binary := btDot
     else
@@ -1167,7 +1171,10 @@ begin
 
   if SrcFile = '' then
   begin
-    WriteLn('Usage: pl0 [ --cpm | --dot ] <src>');
+    WriteLn('Usage: pl0 [ --com | --dot ] <src>');
+    WriteLn;
+    WriteLn('  --com outputs CP/M command file');
+    WriteLn('  --dot outputs Next dot command');
     WriteLn;
     Halt(1);
   end;
@@ -1176,7 +1183,7 @@ begin
 
   AsmFile := ChangeExt(SrcFile, '.z80');
 
-  if Binary = btCpm then
+  if Binary = btCom then
     BinFile := ChangeExt(SrcFile, '.com')
   else if Binary = btDot then
     BinFile := ChangeExt(SrcFile, '.dot');
