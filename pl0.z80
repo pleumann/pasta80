@@ -2,10 +2,10 @@
 ; PL0 built-in assembler functions
 ; ----------------------------------------------------------------------------
 
-__COMP16:
-            ld      a,h
-            and     128
-            jr      nz,__NEGM1
+__comp16:
+      ld   a,h
+      and  128
+            jr      nz,__negm1
             bit     7,d
             ret     nz
             ld      a,h
@@ -14,7 +14,7 @@ __COMP16:
             ld      a,l
             cp      e
             ret
-__NEGM1:
+__negm1:
             xor     d
             rla
             ret     c
@@ -28,65 +28,65 @@ __NEGM1:
 ; MUL10
 ;
 
-__MUL16:
+__mul16:
             ld      c,l
             ld      b,h
             ld      hl,0
             ld      a,15
-__MUL16A:
+__mul16a:
             sla     e
             rl      d
-            jr      nc,__MUL16B
+            jr      nc,__mul16b
             add     hl,bc
-__MUL16B:
+__mul16b:
             add     hl,hl
             dec     a
-            jr      nz,__MUL16A
+            jr      nz,__mul16a
             or      d
             ret     p
             add     hl,bc
             ret
 
-__SDIV16:
+__sdiv16:
             ld      a,h
-            ld      (__SREM),a
+            ld      (__srem),a
             xor     d
-            ld      (__SQUOT),a
+            ld      (__squot),a
 
             ld      a,d
             or      a
-            jp      p,__CHKDE
+            jp      p,__chkde
             sub     a
             sub     e
             ld      e,a
             sbc     a,a
             sub     d
             ld      d,a
-__CHKDE:
+__chkde:
             ld      a,h
             or      a
-            jp      p,__DODIV
+            jp      p,__dodiv
             sub     a
             sub     l
             ld      l,a
             sbc     a,a
             sub     h
             ld      h,a
-__DODIV:
-            call    __UDIV16
+__dodiv:
+            call    __udiv16
             ret     c
 
-            ld      a,(__SQUOT)
+            ld      a,(__squot)
             or      a
-            jp      p,__DOREM
+            jp      p,__dorem
             sub     a
             sub     l
             ld      l,a
             sbc     a,a
             sub     h
             ld      h,a
-__DOREM:
-            ld      a,(__SREM)
+__dorem:
+            ld      a,(__srem)
             or      a
             ret     p
             sub     a
@@ -97,22 +97,22 @@ __DOREM:
             ld      d,a
             ret
 
-__UDIV16:
+__udiv16:
             ld      a,e
             or      d
-            jr      nz,__DIVIDE
+            jr      nz,__divide
             ld      hl,0
             ld      d,h
             ld      e,l
             scf
             ret
-__DIVIDE:
+__divide:
             ld      c,l
             ld      a,h
             ld      hl,0
             ld      b,16
             or      a
-__DVLOOP:
+__dvloop:
             rl      c
             rla
             rl      l
@@ -120,12 +120,12 @@ __DVLOOP:
             push    hl
             sbc     hl,de
             ccf
-            jr      c,__DROP
+            jr      c,__drop
             ex      (sp),hl
-__DROP:
+__drop:
             inc     sp
             inc     sp
-            djnz    __DVLOOP
+            djnz    __dvloop
 
             ex      de,hl
             rl      c
@@ -135,15 +135,15 @@ __DROP:
             or      a
             ret
 
-__SQUOT:    ds      1
-__SREM:     ds      1
-__COUNT:    ds      1
+__squot:    ds      1
+__srem:     ds      1
+__count:    ds      1
 
 
 ; ------------------------------------------------------------------------------
 ; Multiply by 10
 ; ------------------------------------------------------------------------------
-__MUL10:    
+__mul10:    
             ex      hl,de
             add     hl,hl
             ld      de,hl
@@ -156,7 +156,7 @@ __MUL10:
 ;
 ; DIV10
 ;
-__DIV10:    
+__div10:    
             ld      bc,$0D0A
             xor     a
             add     hl,hl
@@ -165,22 +165,22 @@ __DIV10:
             rla
             add     hl,hl
             rla
-__DIV10A: 
+__div10a: 
             add     hl,hl
             rla
             cp      c
-            jr c,   __DIV10B
+            jr c,   __div10b
             sub c
             inc l
-__DIV10B:
-            djnz __DIV10A
+__div10b:
+            djnz __div10a
             ret
 
 #if defined(CPM)
 ;
 ; PUTC
 ;
-__PUTC:
+__putc:
             ld      e,a
             ld      c,2
             call    5
@@ -191,8 +191,8 @@ __PUTC:
 ;
 ; PUTC
 ;
-__PUTC:
-            ld      iy,(__SAVED_IY)
+__putc:
+            ld      iy,(__saved_iy)
             rst     16
             ret
 #endif
@@ -200,23 +200,23 @@ __PUTC:
 ;
 ; PUTS
 ;
-__PUTS:
+__puts:
             ld      b,(hl)
             inc     b
-            jr      __PUTSCHCK
-__PUTSLOOP: ld      a,(hl)
+            jr      __putschk
+__putsloop: ld      a,(hl)
             push    hl
             push    bc
-            call    __PUTC
+            call    __putc
             pop     bc
             pop     hl
-__PUTSCHCK: inc     hl
-            djnz    __PUTSLOOP
+__putschk: inc     hl
+            djnz    __putsloop
             ld      a,13
-            call    __PUTC
+            call    __putc
 #if defined(CPM)
             ld      a,10
-            call    __PUTC
+            call    __putc
 #endif
             ret
 
@@ -224,14 +224,14 @@ __PUTSCHCK: inc     hl
 ;
 ; PUTS
 ;
-__PUTS:
+__puts:
      ld      a,2
      rst $18
      defw    $1601
 
             push    ix
             push    iy
-            ld      iy,(__SAVED_IY)
+            ld      iy,(__saved_iy)
             ld      e,(hl)
             inc     hl
             ld      de,$01c6
@@ -249,84 +249,84 @@ __PUTS:
 ;
 ; PUTI
 ;
-__PUTN:
+__putn:
             ld      a,128
             and     h
-            jr      z,__PUTNPOS
+            jr      z,__putnpos
             ld      de,0
             ex      hl,de
             sbc     hl,de
             ld      a,'-'
             push    af
-            jp      __PUTNGO
-__PUTNPOS:
+            jp      __putngo
+__putnpos:
             ld      a,' '
             push    af
-__PUTNGO:
-            ld      de,__PUTNBUF+6
-__PUTNLOOP:
-            call    __DIV10
+__putngo:
+            ld      de,__putnbuf+6
+__putnloop:
+            call    __div10
             add     '0'
             ld      (de),a
             dec     de
 
             ld      a,h
             or      l
-            jr      nz,__PUTNLOOP
+            jr      nz,__putnloop
             pop     af
             ld      (de),a
-            ld      hl,__PUTNBUF+7
+            ld      hl,__putnbuf+7
             and     a
             sbc     hl,de
             ld      a,l
             dec     de
             ld      (de),a
             ex      hl,de
-            call    __PUTS
+            call    __puts
             ret
-__PUTNBUF:
+__putnbuf:
             db      0,"-32768"
 
 #if defined(CPM)
-__GETN:
+__getn:
             ld      a,'>'
-            call    __PUTC
+            call    __putc
 
-            ld      de,__GETNBUF
+            ld      de,__getnbuf
             ld      c,10
             call    5
 
             ld      a,'>'
-            call    __PUTC
+            call    __putc
 
-            ld      hl,__GETNBUF+1
+            ld      hl,__getnbuf+1
             call    __PUTS
 
             ld      de,0
-            ld      a,(__GETNBUF+1)
+            ld      a,(__getnbuf+1)
             cp     0
             ret     z
 
             ld      b,a
-            ld      hl,__GETNBUF+2
+            ld      hl,__getnbuf+2
             ld      a,(hl)
             cp     '-'
-            jr      z,__GETNCHK
-__GETNLOOP:
+            jr      z,__getnchk
+__getnloop:
             sub     '0'
             push    hl
-            call    __MUL10
+            call    __mul10
             ld      l,a
             ld      h,0
             add     hl,de
             ex      hl,de
             pop     hl
-__GETNCHK:
+__getnchk:
             inc     hl
             ld      a,(hl)
-            djnz    __GETNLOOP
+            djnz    __getnloop
 
-            ld      a,(__GETNBUF+2)
+            ld      a,(__getnbuf+2)
             cp     '-'
             ret     nz
 
@@ -337,21 +337,21 @@ __GETNCHK:
 
             ret
 
-__GETNBUF:
+__getnbuf:
             db      10,0,"-32768"
 #endif
 
 #if defined(NXT)
-__GETN:
+__getn:
             push    ix
-            ld      iy, (__SAVED_IY)
+            ld      iy, (__saved_iy)
 
  ;    ld      a,1
   ;   rst $18
   ;   defw    $1601
 
             ld a,'>'
-            call __PUTC
+            call __putc
 
 	ld      de,(23633)      ; save current channel
 	push    de       
@@ -361,7 +361,7 @@ __GETN:
             ld      de,$01c3
             ld      c,7
             exx
-            ld      hl,__GETNBUF
+            ld      hl,__getnbuf
             ld      e,0
             ld      a,10
             exx
@@ -378,7 +378,7 @@ __GETN:
 
             push    de
             ld a,13
-            call __PUTC
+            call __putc
             pop de
 
 ;            ld      hl,__GET
@@ -396,25 +396,25 @@ __GETN:
 ;            ret
 
             ld      b,a
-            ld      hl,__GETNBUF
+            ld      hl,__getnbuf
             ld      a,(hl)
             cp     '-'
-            jr      z,__GETNCHK
-__GETNLOOP:
+            jr      z,__getnchk
+__getnloop:
             sub     '0'
             push    hl
-            call    __MUL10
+            call    __mul10
             ld      l,a
             ld      h,0
             add     hl,de
             ex      hl,de
             pop     hl
-__GETNCHK:
+__getnchk:
             inc     hl
             ld      a,(hl)
-            djnz    __GETNLOOP
+            djnz    __getnloop
 
-            ld      a,(__GETNBUF)
+            ld      a,(__getnbuf)
             cp     '-'
             ret     nz
 
@@ -425,21 +425,21 @@ __GETNCHK:
 
             ret
 
-__GETNBUF:  equ    30000
+__getnbuf:  equ    30000
 ;            db      "-32768"
 #endif
 
-__DISPLAY:
+__display:
             ds      32
 
-__SAVED_IY  ds 2
+__saved_iy  ds 2
 
 _zxn_window_channel ds 2
 
 
-__INIT:
+__init:
 #if defined(NXT)
-    ld      (__SAVED_IY),iy
+    ld      (__saved_iy),iy
 
 ;    push    af
 ;    push    bc
@@ -467,7 +467,7 @@ __INIT:
 	db      $94
 
     exx
-	ld      (_zxn_window_channel), hl
+	          ld   (_zxn_window_channel), hl      ; ggggg
 	exx
 
 ;	ld      de, $01d5
@@ -486,7 +486,7 @@ __INIT:
 #endif
             ret
 
-__DONE:
+__done:
 ;        exx
 ;        pop     hl
 ;        pop     de
@@ -499,7 +499,7 @@ __DONE:
 ;        pop bc
 ;        pop af
    
-            ld      iy,(__SAVED_IY)
+            ld      iy,(__saved_iy)
             ret
 
 ;cls     EQU $0D6B

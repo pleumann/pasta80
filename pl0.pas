@@ -1305,7 +1305,7 @@ begin
 
   WriteLn('Assembling...');
 
-  Exec('/Users/joerg/Downloads/zasm-4.3.3-macos10.12/zasm', '--casefold ' + AsmFile + ' ' + BinFile);
+  Exec('/Users/joerg/Library/bin/zasm', AsmFile + ' ' + BinFile);
 
   // MakeNextFile(BinFile);
 
