@@ -367,6 +367,22 @@ begin
   LookupKeyword := toIdent;
 end;
 
+procedure RegisterAllKeywords;
+begin
+  RegisterKeyword(toBegin, 'begin');
+  RegisterKeyword(toEnd, 'end');
+  RegisterKeyword(toConst, 'const');
+  RegisterKeyword(toVar, 'var');
+  RegisterKeyword(toProcedure, 'procedure');
+  RegisterKeyword(toCall, 'call');
+  RegisterKeyword(toIf, 'if');
+  RegisterKeyword(toThen, 'then');
+  RegisterKeyword(toElse, 'else');
+  RegisterKeyword(toWhile, 'while');
+  RegisterKeyword(toDo, 'do');
+  RegisterKeyword(toOdd, 'odd');
+end;
+
 var
   C: Char;
 
@@ -586,43 +602,13 @@ end;
 
 procedure EmitCall(Sym: PSymbol);
 begin
-  (*
-  if Sym.Level > Level then
-  begin
-    Emit('', 'push iy', 'Call nested');
-    Emit('', 'call ' + Sym.Tag, '');
-    Emit('', 'pop ix', '');
-  end
-  else if Sym.Level = Level then
-  begin
-    Emit('', 'call ' + Sym.Tag, 'Call same');
-  end
-  else
-  begin
-    Emit('', 'push iy', '');
-    Emit('', 'ld h,(iy-1)', 'Call nested');
-    Emit('', 'ld l,(iy-2)');
-    Emit('', 'pushl hl', '');
-
-    Emit('', 'push ix', 'Call nested');
-    Emit('', 'push ix', 'Call nested');
-    Emit('', 'call ' + Sym.Tag, '');
-    Emit('', 'pop ix', '');
-  end
-
-  EmitL(Sym^.Tag);    EmitI('push ix');    EmitC('Prologue');
-
-  Emit(Sym^.Tag, 'push ix', 'Prologue');
-  EmitI('push iy');
-  *)
+  EmitI('call ' + Sym^.Tag);
 end;
 
 procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
 begin
-  // EmitL(Sym^.Tag);
-  
   Emit(Sym^.Tag, 'push ix', 'Prologue');
 
   EmitI('ld hl,(__display+' + Int2Str(Level * 2) + ')');
@@ -724,47 +710,6 @@ begin
   Emit(S, 'push de', '');
 end;
 
-procedure EmitCompare(Op: TToken);
-var
-  S, T: String;
-begin
-  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
-  EmitI('pop hl');
-
-  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
-
-  T := GetLabel('SameSign');
-
-  if (Op <> toEq) and (Op <> toNeq) then
-  begin
-    EmitI('ld a,h');
-    EmitI('xor d');
-    EmitI('and 128');
-    EmitI('jr z,' + T);
-    EmitI('ex hl,de');
-    EmitL(T);
-  end;
-
-  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
-
-  EmitI('xor a');
-  EmitI('sbc hl,de');
-
-  S := GetLabel('false');
-
-  case Op of
-    toEq:   EmitI('jr nz,' + S);
-    toNeq:  EmitI('jr z,' + S);
-    toLt:   EmitI('jr nc,' + S);
-    toGt:   EmitI('jr nc,' + S);
-    toLeq:  EmitI('jr c,' + S);
-    toGeq:  EmitI('jr c,' + S);
-  end;
-
-  EmitI('ld a,255');
-  Emit(S, 'push af', '');
-end;
-
 procedure EmitJumpIf(Op: TToken; Target: String);
 var
   S, T: String;
@@ -776,24 +721,6 @@ begin
 
   EmitI('call __comp16');
 
-(*
-  T := GetLabel('SameSign');
-
-  if (Op <> toEq) and (Op <> toNeq) then
-  begin
-    EmitI('ld a,h');
-    EmitI('xor d');
-    EmitI('and 128');
-    EmitI('jr z,' + T);
-    EmitI('ex hl,de');
-    EmitL(T);
-  end;
-
-  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
-
-  EmitI('xor a');
-  EmitI('sbc hl,de');
-*)
   S := GetLabel('false');
 
   case Op of
@@ -804,9 +731,6 @@ begin
     toLeq:  EmitI('jr nc,' + S);
     toGeq:  EmitI('jr nc,' + S);
   end;
-
-//  EmitI('ld a,255');
-//  Emit(S, 'push af', '');
 end;
 
 procedure EmitCOmpare2(Op: TToken);
@@ -1024,7 +948,7 @@ begin
     if Sym^.Kind <> scProc then Error('"' + Scanner.StrValue + '" not a proc.');
     NextToken;
 
-    EmitI('call ' + Sym^.Tag);
+    EmitCall(Sym);
   end
   else if Scanner.Token = toAsk then
   begin
@@ -1116,9 +1040,6 @@ procedure ParseVar;
 begin
   Require(toIdent);
   CreateSymbol(scVar, Scanner.StrValue);
-
-  (* TODO: Put address into symbol. *)
-
   NextToken;
 end;
 
@@ -1223,86 +1144,12 @@ begin
   EmitC('');
 end;
 
-(*
-	Bytes 0...7	- +3DOS signature - 'PLUS3DOS'
-	Byte 8		- 1Ah (26) Soft-EOF (end of file)
-	Byte 9		- Issue number
-	Byte 10		- Version number
-	Bytes 11...14	- Length of the file in bytes, 32 bit number,
-			    least significant byte in lowest address
-	Bytes 15...22	- +3 BASIC header data
-	Bytes 23...126	- Reserved (set to 0)
-	Byte 127	- Checksum (sum of bytes 0...126 modulo 256)
-*)
-
-var
-  H: array[0..127] of Byte;
-  B: array[0..4095] of Byte;
-
-procedure MakeNextFile(FileName: String);
-var
-  F: File of Byte;
-  L, I: Integer;
-begin
-  WriteLn('*');
-
-  Assign(F, FileName);
-  Reset(F);
-  L := FileSize(F);
-  BlockRead(F, B, L);
-  Close(F);
-
-  WriteLn('**');
-
-  for I := 0 to 127 do H[I] := 0;
-
-  H[0] := Ord('P');
-  H[1] := Ord('L');
-  H[2] := Ord('U');
-  H[3] := Ord('S');
-  H[4] := Ord('3');
-  H[5] := Ord('D');
-  H[6] := Ord('O');
-  H[7] := Ord('S');
-  H[8] := 26;
-  H[9] := 1;
-  H[10] := 0;
-  H[11] := 128;
-  H[12] := 16;
-  H[15] := 3;
-  H[16] := 0; // 128;
-  H[17] := 16;
-  H[18] := 0;
-  H[19] := 128;
-  for I := 0 to 126 do H[127] := (H[127] + H[I]) mod 256;
-
-  WriteLn('***');
-
-  Rewrite(F);
-  BlockWrite(F, H, 128);
-  BlockWrite(F, B, 4096);
-  Close(F);
-
-  WriteLn('****');
-end;
-
 var
   SrcFile, AsmFile, BinFile: String;
   I: Integer;
 
 begin
-  RegisterKeyword(toBegin, 'begin');
-  RegisterKeyword(toEnd, 'end');
-  RegisterKeyword(toConst, 'const');
-  RegisterKeyword(toVar, 'var');
-  RegisterKeyword(toProcedure, 'procedure');
-  RegisterKeyword(toCall, 'call');
-  RegisterKeyword(toIf, 'if');
-  RegisterKeyword(toThen, 'then');
-  RegisterKeyword(toElse, 'else');
-  RegisterKeyword(toWhile, 'while');
-  RegisterKeyword(toDo, 'do');
-  RegisterKeyword(toOdd, 'odd');
+  RegisterAllKeywords();
 
   I := 1;  
   SrcFile := ParamStr(I);
@@ -1346,8 +1193,6 @@ begin
   WriteLn('Assembling...');
 
   Exec('/Users/joerg/Library/bin/zasm', AsmFile + ' ' + BinFile);
-
-  // MakeNextFile(BinFile);
 
   WriteLn('Success!');
 end.
