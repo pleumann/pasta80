@@ -300,7 +300,7 @@ __getn:
             call    __putc
 
             ld      hl,__getnbuf+1
-            call    __PUTS
+            call    __puts
 
             ld      de,0
             ld      a,(__getnbuf+1)
