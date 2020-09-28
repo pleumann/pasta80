@@ -514,7 +514,11 @@ end;
 
 (* Emitter *)
 
+type
+  TBinaryType = (btCpm, btDot);
+
 var
+  Binary: TBinaryType;
   Target: Text;
   NextLabel: Integer;
 
@@ -1185,8 +1189,19 @@ begin
   EmitC('');
   EmitC('program ' + ParamStr(1));
   EmitC('');
-  EmitS('#define NXT 1');
-  EmitI('org $2000');
+  if Binary = btCpm then
+  begin
+    EmitS('#define CPM 1');
+    EmitC('');
+    EmitI('org $100');
+  end
+  else if Binary = btDot then
+  begin
+    EmitS('#define NXT 1');
+    EmitC('');
+    EmitI('org $2000');
+  end;
+
   EmitC('');
   EmitI('call __init');
   EmitI('call __main');
@@ -1273,6 +1288,7 @@ end;
 
 var
   SrcFile, AsmFile, BinFile: String;
+  I: Integer;
 
 begin
   RegisterKeyword(toBegin, 'begin');
@@ -1288,11 +1304,35 @@ begin
   RegisterKeyword(toDo, 'do');
   RegisterKeyword(toOdd, 'odd');
 
-  SrcFile := ParamStr(1);
+  I := 1;  
+  SrcFile := ParamStr(I);
+  while Copy(SrcFile, 1, 2) = '--' do
+  begin
+    if SrcFile = '--cpm' then
+      Binary := btCpm
+    else if SrcFile = '--dot' then
+      Binary := btDot
+    else
+      Error('***');
+    I := I + 1;
+    SrcFile := ParamStr(I);
+  end;
+
+  if SrcFile = '' then
+  begin
+    WriteLn('Usage: pl0 [ --cpm | --dot ] <src>');
+    WriteLn;
+    Halt(1);
+  end;
+
   if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pl0';
 
   AsmFile := ChangeExt(SrcFile, '.z80');
-  BinFile := ChangeExt(SrcFile, '.dot');
+
+  if Binary = btCpm then
+    BinFile := ChangeExt(SrcFile, '.com')
+  else if Binary = btDot then
+    BinFile := ChangeExt(SrcFile, '.dot');
 
   WriteLn('Compiling...');
 
