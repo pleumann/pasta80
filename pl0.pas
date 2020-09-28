@@ -73,6 +73,19 @@ begin
   end
 end;
 
+function TrimStr(S: String): String;
+var
+  I, J: Integer;
+begin
+  I := 1;
+  while ((I <= Length(S)) and (S[I] <= ' ')) do
+    I := I + 1;
+  J := Length(S);
+  while ((J > I) and (S[I] <= ' ')) do
+    J := J - 1;
+  TrimStr := Copy(S, I, J - I);
+end;
+
 function ChangeExt(Name, Ext: String): String;
 var
   I: Integer;
@@ -520,14 +533,20 @@ end;
 // Emit(Col1, Col2, Col3, Col4)
 
 procedure Emit(Tag, Instruction, Comment: String);
+var
+  P: Integer;
 begin
   if Tag <> '' then WriteLn(Target, Tag, ':');
 
   if Instruction <> '' then
   begin
-    Write(Target, '            ');
+    P := Pos(' ', Instruction);
+    if P<>0 then
+      Instruction := AlignStr(Copy(Instruction, 1, P-1), 8) + Copy(Instruction, P+1, 255);
+
+    Write(Target, '        ');
     if Comment <> '' then 
-      Write(Target, AlignStr(Instruction, 20))
+      Write(Target, AlignStr(Instruction, 32))
     else
       WriteLn(Target, Instruction);
   end;
@@ -602,13 +621,13 @@ begin
   
   Emit(Sym^.Tag, 'push ix', 'Prologue');
 
-  EmitI('ld hl,(__DISPLAY + ' + Int2Str(Level * 2) + ')');
+  EmitI('ld hl,(__display+' + Int2Str(Level * 2) + ')');
   EmitI('push hl');
 
   EmitI('ld ix,0');
   EmitI('add ix,sp');
 
-  EmitI('ld (__DISPLAY + ' + Int2Str(Level * 2) + '),ix');
+  EmitI('ld (__display+' + Int2Str(Level * 2) + '),ix');
 
   EmitI('ld de,0');
   for I := 0 to Offset div 2 - 1 do
@@ -620,7 +639,7 @@ begin
   Emit('', 'ld sp,ix', 'Epilogue');
 
   EmitI('pop hl');
-  EmitI('ld (__DISPLAY + ' + Int2Str(Level * 2) + '),hl');
+  EmitI('ld (__display+' + Int2Str(Level * 2) + '),hl');
 
   EmitI('pop ix');
   EmitI('ret');
@@ -635,7 +654,7 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    Emit('', 'ld de,(Data+' + Int2Str(Sym^.Value) + ')', 'Get global ' + Sym^.Name);
+    Emit('', 'ld de,(data+' + Int2Str(Sym^.Value) + ')', 'Get global ' + Sym^.Name);
     EmitI('push de');
   end
   else if L = 0 then
@@ -646,7 +665,7 @@ begin
   end
   else
   begin
-    Emit('', 'ld iy,(__DISPLAY + ' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
+    Emit('', 'ld iy,(__display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
     EmitI('ld d,(iy-' + Int2Str(Sym^.Value+1) + ')');
     EmitI('ld e,(iy-' + Int2Str(Sym^.Value+2) + ')');
     EmitI('push de');
@@ -663,7 +682,7 @@ begin
   if Sym^.Level = 1 then
   begin
     EmitI('pop de');
-    Emit('', 'ld (Data+' + Int2Str(Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
+    Emit('', 'ld (data+' + Int2Str(Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
   end
   else if L = 0 then
   begin
@@ -674,7 +693,7 @@ begin
   else
   begin
     EmitI('pop de');
-    Emit('', 'ld iy,(__DISPLAY + ' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
+    Emit('', 'ld iy,(__display+' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
     EmitI('ld (iy-' + Int2Str(Sym^.Value+1) + '),d');
     EmitI('ld (iy-' + Int2Str(Sym^.Value+2) + '),e');
   end
@@ -751,7 +770,7 @@ begin
 
   if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
 
-  EmitI('call __COMP16');
+  EmitI('call __comp16');
 
 (*
   T := GetLabel('SameSign');
@@ -795,7 +814,7 @@ begin
 
   if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
 
-  EmitI('call __COMP16');
+  EmitI('call __comp16');
 
   S := GetLabel('true');
   T := GetLabel('exit');
@@ -820,7 +839,7 @@ procedure EmitMul();
 begin
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
-  Emit('', 'call __MUL16', 'Mul');
+  Emit('', 'call __mul16', 'Mul');
   Emit('', 'push hl', '');
 end;
 
@@ -828,7 +847,7 @@ procedure EmitDiv();
 begin
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
-  Emit('', 'call __SDIV16', 'Div');
+  Emit('', 'call __sdiv16', 'Div');
   Emit('', 'push hl', '');
 end;
 
@@ -851,14 +870,14 @@ end;
 
 procedure EmitInputNum(S: String);
 begin
-  Emit('', 'call __GETN', 'Get ' + S);
+  Emit('', 'call __getn', 'Get ' + S);
   EmitI('push de');
 end;
 
 procedure EmitPrintNum(S: String);
 begin
   Emit('', 'pop hl', '');
-  Emit('', 'call __PUTN', '');
+  Emit('', 'call __putn', '');
 end;
 
 procedure EmitPrintStr(S: String);
@@ -866,9 +885,9 @@ var
   Sym: PSymbol;
 begin
   Sym := CreateSymbol(scString, S);
-  Sym^.Tag := GetLabel('STRING');
+  Sym^.Tag := GetLabel('string');
   Emit('', 'ld hl,' + Sym^.Tag, '');
-  Emit('', 'call __PUTS', '');
+  Emit('', 'call __puts', '');
 end;
 
 procedure CloseTarget();
@@ -1152,9 +1171,9 @@ begin
 
   if Sym <> Nil then EmitPrologue(Sym) else
   begin
-    Emit('Data', 'ds ' + Int2Str(Offset), 'Globals');
+    Emit('data', 'ds ' + Int2Str(Offset), 'Globals');
     EmitC('');
-    EmitL('__MAIN');
+    EmitL('__main');
   end;
 
   parseStatement();
@@ -1169,9 +1188,9 @@ begin
   EmitS('#define NXT 1');
   EmitI('org $2000');
   EmitC('');
-  EmitI('call __INIT');
-  EmitI('call __MAIN');
-  EmitI('call __DONE');
+  EmitI('call __init');
+  EmitI('call __main');
+  EmitI('call __done');
   EmitI('ret');
   EmitC('');
   EmitInclude('pl0.z80');
@@ -1286,7 +1305,7 @@ begin
 
   WriteLn('Assembling...');
 
-  Exec('/Users/joerg/Downloads/zasm-4.3.3-macos10.12/zasm',  AsmFile + ' ' + BinFile);
+  Exec('/Users/joerg/Downloads/zasm-4.3.3-macos10.12/zasm', '--casefold ' + AsmFile + ' ' + BinFile);
 
   // MakeNextFile(BinFile);
 
