@@ -1170,7 +1170,7 @@ begin
 
   Home := GetEnv('PL0_HOME');
   if Home = '' then
-    Home := ParentDir(ParamStr(0));
+    Home := ParentDir(FExpand(ParamStr(0)));
 
   Assembler := GetEnv('PL0_ASM');
 
