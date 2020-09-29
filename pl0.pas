@@ -655,6 +655,9 @@ procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
 begin
+  EmitC('procedure ' + Sym^.Name);
+  EmitC('');
+
   Emit(Sym^.Tag, 'push ix', 'Prologue');
 
   EmitI('ld hl,(__display+' + Int2Str(Level * 2) + ')');
@@ -1127,9 +1130,6 @@ begin
     NewSym := CreateSymbol(scProc, Scanner.StrValue);
     NewSym^.Tag := GetLabel('proc');
 
-    EmitC('procedure ' + Scanner.StrValue);
-    EmitC('');
-
     OpenScope;
     NextToken; Require(toSemicolon);
     NextToken; ParseBlock(NewSym);
@@ -1140,13 +1140,7 @@ begin
     EmitC('');
   end;
 
-  if Sym <> Nil then EmitPrologue(Sym) else
-  begin
-    Emit('data', 'ds ' + Int2Str(Offset), 'Globals');
-    EmitC('');
-    EmitL('__main');
-  end;
-
+  if Sym <> Nil then EmitPrologue(Sym) else EmitL('__main');
   parseStatement();
   if Sym <> Nil then EmitEpilogue(Sym) else EmitI('ret');
 end;
@@ -1156,6 +1150,8 @@ begin
   OpenScope;
   parseBlock(Nil);
   require(toPeriod);
+  Emit('data', 'ds ' + Int2Str(Offset), 'Globals');
+  EmitC('');
   CloseScope;
 end;
 
