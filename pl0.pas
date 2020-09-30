@@ -616,6 +616,41 @@ begin
   EmitI('call ' + Sym^.Tag);
 end;
 
+procedure EmitHeader(Home: String; SrcFile: String);
+begin
+  EmitC('');
+  EmitC('program ' + SrcFile);
+  EmitC('');
+  if Binary = btCom then
+  begin
+    EmitS('#define CPM 1');
+    EmitC('');
+    EmitI('org $100');
+  end
+  else if Binary = btDot then
+  begin
+    EmitS('#define NXT 1');
+    EmitC('');
+    EmitI('org $2000');
+  end;
+
+  EmitC('');
+  EmitI('call __init');
+  EmitI('call __main');
+  EmitI('call __done');
+  EmitI('ret');
+  EmitC('');
+  EmitInclude(Home + '/pl0.z80');
+  EmitC('');
+end;
+
+procedure EmitFooter();
+begin
+  EmitC('');
+  EmitC('end');
+  EmitC('');
+end;
+
 procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
@@ -1118,41 +1153,10 @@ end;
 
 procedure ParseProgram;
 begin
-  EmitC('');
-  EmitC('program ' + ParamStr(1));
-  EmitC('');
-  if Binary = btCom then
-  begin
-    EmitS('#define CPM 1');
-    EmitC('');
-    EmitI('org $100');
-  end
-  else if Binary = btDot then
-  begin
-    EmitS('#define NXT 1');
-    EmitC('');
-    EmitI('org $2000');
-  end;
-
-  EmitC('');
-  EmitI('call __init');
-  EmitI('call __main');
-  EmitI('call __done');
-  EmitI('ret');
-  EmitC('');
-  EmitInclude('pl0.z80');
-  EmitC('');
-
   OpenScope;
-
   parseBlock(Nil);
   require(toPeriod);
-
   CloseScope;
-
-  EmitC('');
-  EmitC('end');
-  EmitC('');
 end;
 
 var
@@ -1218,8 +1222,10 @@ begin
 
   OpenInput(SrcFile);
   OpenTarget(AsmFile);
+  EmitHeader(Home, SrcFile);
   NextToken;
   ParseProgram;
+  EmitFooter();
   CloseTarget();
   CloseInput();
 
