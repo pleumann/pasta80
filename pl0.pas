@@ -732,7 +732,7 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    Emit('', 'ld de,(data+' + Int2Str(Sym^.Value) + ')', 'Get global ' + Sym^.Name);
+    Emit('', 'ld de,(globals+' + Int2Str(Sym^.Value) + ')', 'Get global ' + Sym^.Name);
     EmitI('push de');
   end
   else if L = 0 then
@@ -760,7 +760,7 @@ begin
   if Sym^.Level = 1 then
   begin
     EmitI('pop de');
-    Emit('', 'ld (data+' + Int2Str(Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
+    Emit('', 'ld (globals+' + Int2Str(Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
   end
   else if L = 0 then
   begin
@@ -1185,7 +1185,7 @@ begin
   parseBlock(Nil);
   require(toPeriod);
   EmitC('');
-  Emit('data', 'ds ' + Int2Str(Offset), 'Globals');
+  Emit('globals', 'ds ' + Int2Str(Offset), 'Globals');
   EmitC('');
   Emit('display', 'ds 32', 'Display');
   CloseScope;
