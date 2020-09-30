@@ -86,6 +86,17 @@ begin
   TrimStr := Copy(S, I, J - I);
 end;
 
+function ParentDir(Name: String): String;
+var
+  I: Integer;
+begin
+  I := Length(Name);
+  while (I > 0) and (Name[I] <> '/') do
+    I := I - 1;
+
+  ParentDir := Copy(Name, 1, I - 1);
+end;
+
 function ChangeExt(Name, Ext: String): String;
 var
   I: Integer;
@@ -1145,36 +1156,49 @@ begin
 end;
 
 var
-  SrcFile, AsmFile, BinFile: String;
+  SrcFile, AsmFile, BinFile, Home, Assembler: String; 
   I: Integer;
 
 begin
-  WriteLn('PL0 for Z80 Compiler Version 0.1');
+  WriteLn('PL/0 Compiler for Z80 Version 0.1');
   WriteLn('Copyright (c) 2020 by Joerg Pleumann');
   WriteLn;
 
-  RegisterAllKeywords();
+  Home := GetEnv('PL0_HOME');
+  if Home = '' then
+    Home := ParentDir(ParamStr(0));
+
+  Assembler := GetEnv('PL0_ASM');
 
   I := 1;  
   SrcFile := ParamStr(I);
   while Copy(SrcFile, 1, 2) = '--' do
   begin
-    if SrcFile = '--com' then
+    if SrcFile = '--asm' then
+    begin
+      Assembler := ParamStr(I + 1);
+      I := I + 1;
+    end
+    else if SrcFile = '--com' then
       Binary := btCom
     else if SrcFile = '--dot' then
       Binary := btDot
     else
-      Error('***');
+      Error('Invalid option: ' + SrcFile);
+
     I := I + 1;
     SrcFile := ParamStr(I);
   end;
 
   if SrcFile = '' then
   begin
-    WriteLn('Usage: pl0 [ --com | --dot ] <src>');
+    WriteLn('Usage:');
+    WriteLn('  pl0 { <option> } <input>');
     WriteLn;
-    WriteLn('  --com outputs CP/M command file');
-    WriteLn('  --dot outputs Next dot command');
+    WriteLn('Options:');
+    WriteLn('  --asm <path>   calls external assembler');
+    WriteLn('  --com          target is CP/M .com file');
+    WriteLn('  --dot          target is Next .dot file');
     WriteLn;
     Halt(1);
   end;
@@ -1190,6 +1214,8 @@ begin
 
   WriteLn('Compiling...');
 
+  RegisterAllKeywords();
+
   OpenInput(SrcFile);
   OpenTarget(AsmFile);
   NextToken;
@@ -1197,9 +1223,16 @@ begin
   CloseTarget();
   CloseInput();
 
-  WriteLn('Assembling...');
+  if Assembler <> '' then
+  begin
+    WriteLn('Assembling...');
 
-  Exec('/Users/joerg/Library/bin/zasm', AsmFile + ' ' + BinFile);
+    Exec(Assembler, AsmFile + ' ' + BinFile);
+    if DosError <> 0 then
+      Error('Error ' + Int2Str(DosError) + ' starting ' + Assembler);
+    if DosExitCode <> 0 then
+      Error('Failure! :(')
+  end;
 
-  WriteLn('Success!');
+  WriteLn('Success! :)');
 end.
