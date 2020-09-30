@@ -690,13 +690,13 @@ begin
   begin
     Emit(Sym^.Tag, 'push ix', 'Prologue');
 
-    EmitI('ld hl,(__display+' + Int2Str(Level * 2) + ')');
+    EmitI('ld hl,(display+' + Int2Str(Level * 2) + ')');
     EmitI('push hl');
 
     EmitI('ld ix,0');
     EmitI('add ix,sp');
 
-    EmitI('ld (__display+' + Int2Str(Level * 2) + '),ix');
+    EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
 
     EmitI('ld de,0');
     for I := 0 to Offset div 2 - 1 do
@@ -713,7 +713,7 @@ begin
     Emit('', 'ld sp,ix', 'Epilogue');
 
     EmitI('pop hl');
-    EmitI('ld (__display+' + Int2Str(Level * 2) + '),hl');
+    EmitI('ld (display+' + Int2Str(Level * 2) + '),hl');
 
     EmitI('pop ix');
   end;
@@ -743,7 +743,7 @@ begin
   end
   else
   begin
-    Emit('', 'ld iy,(__display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
+    Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
     EmitI('ld d,(iy-' + Int2Str(Sym^.Value+1) + ')');
     EmitI('ld e,(iy-' + Int2Str(Sym^.Value+2) + ')');
     EmitI('push de');
@@ -771,7 +771,7 @@ begin
   else
   begin
     EmitI('pop de');
-    Emit('', 'ld iy,(__display+' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
+    Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
     EmitI('ld (iy-' + Int2Str(Sym^.Value+1) + '),d');
     EmitI('ld (iy-' + Int2Str(Sym^.Value+2) + '),e');
   end
@@ -1186,6 +1186,8 @@ begin
   require(toPeriod);
   EmitC('');
   Emit('data', 'ds ' + Int2Str(Offset), 'Globals');
+  EmitC('');
+  Emit('display', 'ds 32', 'Display');
   CloseScope;
 end;
 

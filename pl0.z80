@@ -439,9 +439,6 @@ __getnbuf:  equ    30000
 ;            db      "-32768"
 #endif
 
-__display:
-            ds      32
-
 __saved_iy  ds 2
 
 _zxn_window_channel ds 2
