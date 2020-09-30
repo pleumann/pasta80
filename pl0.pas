@@ -627,7 +627,7 @@ begin
   end
   else if Binary = btDot then
   begin
-    Emit('DOT', 'equ 1', 'Target is Next .dot file');
+    Emit('NXT', 'equ 1', 'Target is Next .dot file');
   end;
 
   EmitC('');
