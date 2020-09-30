@@ -217,13 +217,6 @@ begin
     Kind := SymbolTable^.Kind;
     Sym := SymbolTable^.Next;
     Offset := SymbolTable^.Value;
-
-    if Kind = scString then
-    begin
-      S := SymbolTable^.Name;
-      Emit(SymbolTable^.Tag, 'db ' + Int2Str(Length(S)) + ',"' + SymbolTable^.Name + '"', '');
-    end;
-
     Dispose(SymbolTable);
     SymbolTable := Sym;
   until Kind = scScope;
@@ -657,6 +650,20 @@ begin
     if S <> '' then S := S + ', ' + Sym^.Name else S := Sym^.Name;
 end;
 
+procedure CollectString(Sym: PSymbol);
+var
+  S: String;
+begin
+  if Sym^.Kind <> scScope then CollectString(Sym^.Next);
+
+  if Sym^.Kind = scString then
+  begin
+      S := Sym^.Name;
+      EmitC('');
+      Emit(Sym^.Tag, 'db ' + Int2Str(Length(S)) + ',"' + S + '"', '');
+  end;
+end;
+
 procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
@@ -712,6 +719,8 @@ begin
   end;
 
   EmitI('ret');
+
+  CollectString(SymbolTable);
 end;
 
 procedure EmitGetVar(Sym: PSymbol);
