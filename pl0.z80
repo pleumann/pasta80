@@ -2,6 +2,16 @@
 ; PL0 built-in assembler functions
 ; ----------------------------------------------------------------------------
 
+#if defined(CPM)
+            org     $100
+#endif
+
+#if defined(NXT)
+            org     $2000
+#endif
+
+            jp      main
+
 __comp16:
       ld   a,h
       and  128

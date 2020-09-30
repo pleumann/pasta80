@@ -566,24 +566,31 @@ end;
 procedure Emit(Tag, Instruction, Comment: String);
 var
   P: Integer;
+  S: String;
 begin
-  if Tag <> '' then WriteLn(Target, Tag, ':');
+  if (Tag = '') and (Instruction = '') and (Comment <> '') then
+  begin
+    WriteLn(Target, '; ', Comment);
+    Exit;
+  end;
+
+  S := '';
+
+  if Tag <> '' then S := S + Tag + ':';
 
   if Instruction <> '' then
   begin
     P := Pos(' ', Instruction);
     if P<>0 then
-      Instruction := AlignStr(Copy(Instruction, 1, P-1), 8) + Copy(Instruction, P+1, 255);
+      Instruction := AlignStr(Copy(Instruction, 1, P-1), 10) + Copy(Instruction, P+1, 255);
 
-    Write(Target, '        ');
-    if Comment <> '' then 
-      Write(Target, AlignStr(Instruction, 32))
-    else
-      WriteLn(Target, Instruction);
+    S := AlignStr(S, 10) + Instruction;
   end;
 
-  if (Comment <> '') or (Tag = '') and (Instruction = '') then
-    WriteLn(Target, '; ' + Comment);
+  if Comment <> '' then
+    S := AlignStr(S, 40) + '; ' + Comment;
+
+  WriteLn(Target, S);
 end;
 
 procedure EmitS(S: String);
@@ -603,12 +610,12 @@ end;
 
 procedure EmitC(S: String);
 begin
-  Emit('', '', S);
+  WriteLn(Target, '; ', S);
 end;
 
 procedure EmitInclude(S: String);
 begin
-  WriteLn(Target, ' include "', S, '"');
+  EmitI('include "' +  S + '"');
 end;
 
 procedure EmitCall(Sym: PSymbol);
@@ -623,22 +630,13 @@ begin
   EmitC('');
   if Binary = btCom then
   begin
-    EmitS('#define CPM 1');
-    EmitC('');
-    EmitI('org $100');
+    Emit('CPM', 'equ 1', 'Target is CP/M .com file');
   end
   else if Binary = btDot then
   begin
-    EmitS('#define NXT 1');
-    EmitC('');
-    EmitI('org $2000');
+    Emit('DOT', 'equ 1', 'Target is Next .dot file');
   end;
 
-  EmitC('');
-  EmitI('call __init');
-  EmitI('call __main');
-  EmitI('call __done');
-  EmitI('ret');
   EmitC('');
   EmitInclude(Home + '/pl0.z80');
   EmitC('');
@@ -651,36 +649,68 @@ begin
   EmitC('');
 end;
 
+procedure CollectVars(Sym: PSymbol; var S: String);
+begin
+  if Sym^.Kind <> scScope then CollectVars(Sym^.Next, S);
+
+  if Sym^.Kind = scVar then
+    if S <> '' then S := S + ', ' + Sym^.Name else S := Sym^.Name;
+end;
+
 procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
+  V: String;
 begin
-  EmitC('procedure ' + Sym^.Name);
+  if Sym = Nil then
+    EmitC('main entry point')
+  else
+    EmitC('procedure ' + Sym^.Name);
+
   EmitC('');
 
-  Emit(Sym^.Tag, 'push ix', 'Prologue');
+  V := '';
+  CollectVars(SymbolTable, V);
+  if V <> '' then
+  begin
+    EmitC('var ' + V);
+    EmitC('');
+  end;
 
-  EmitI('ld hl,(__display+' + Int2Str(Level * 2) + ')');
-  EmitI('push hl');
+  if Sym = Nil then
+    Emit('main', 'call __init', '')
+  else
+  begin
+    Emit(Sym^.Tag, 'push ix', 'Prologue');
 
-  EmitI('ld ix,0');
-  EmitI('add ix,sp');
+    EmitI('ld hl,(__display+' + Int2Str(Level * 2) + ')');
+    EmitI('push hl');
 
-  EmitI('ld (__display+' + Int2Str(Level * 2) + '),ix');
+    EmitI('ld ix,0');
+    EmitI('add ix,sp');
 
-  EmitI('ld de,0');
-  for I := 0 to Offset div 2 - 1 do
-    EmitI('push de');
+    EmitI('ld (__display+' + Int2Str(Level * 2) + '),ix');
+
+    EmitI('ld de,0');
+    for I := 0 to Offset div 2 - 1 do
+      EmitI('push de');
+  end;
 end;
 
 procedure EmitEpilogue(Sym: PSymbol);
 begin
-  Emit('', 'ld sp,ix', 'Epilogue');
+  if Sym = nil then
+    Emit('', 'call __done', '')
+  else
+  begin
+    Emit('', 'ld sp,ix', 'Epilogue');
 
-  EmitI('pop hl');
-  EmitI('ld (__display+' + Int2Str(Level * 2) + '),hl');
+    EmitI('pop hl');
+    EmitI('ld (__display+' + Int2Str(Level * 2) + '),hl');
 
-  EmitI('pop ix');
+    EmitI('pop ix');
+  end;
+
   EmitI('ret');
 end;
 
@@ -1111,17 +1141,12 @@ begin
   if Scanner.Token = toVar then
   begin
     NextToken; ParseVar;
-    S := 'var ' + SymbolTable^.Name;
     while Scanner.Token = toComma do
     begin
       NextToken; ParseVar;
-      S := S + ', ' + SymbolTable^.Name;
     end;
     require(toSemicolon);
     NextToken;
-
-    EmitC(S);
-    EmitC('');
   end;
 
   while Scanner.Token = toProcedure do
@@ -1140,9 +1165,9 @@ begin
     EmitC('');
   end;
 
-  if Sym <> Nil then EmitPrologue(Sym) else EmitL('__main');
+  EmitPrologue(Sym);
   parseStatement();
-  if Sym <> Nil then EmitEpilogue(Sym) else EmitI('ret');
+  EmitEpilogue(Sym);
 end;
 
 procedure ParseProgram;
@@ -1150,8 +1175,8 @@ begin
   OpenScope;
   parseBlock(Nil);
   require(toPeriod);
-  Emit('data', 'ds ' + Int2Str(Offset), 'Globals');
   EmitC('');
+  Emit('data', 'ds ' + Int2Str(Offset), 'Globals');
   CloseScope;
 end;
 
