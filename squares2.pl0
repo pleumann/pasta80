@@ -1,18 +1,23 @@
-VAR x, y, squ;
+var
+  x, y;
 
-PROCEDURE square;
-BEGIN
-   squ:= x * x
-END;
+procedure square;
+var
+  squ;
+begin
+   squ := x * x;
+   ! squ;
+end;
 
-BEGIN
+begin
    ! "How many squares do you want?";
    ? y;
+   if y < 0 then ! "Naturally!";
+
    x := 1;
-   WHILE x <= y DO
-   BEGIN
-      CALL square;
-      ! squ;
+   while x <= y do
+   begin
+      call square;
       x := x + 1
-   END
-END.
+   end
+end.
