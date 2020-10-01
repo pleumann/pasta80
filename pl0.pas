@@ -154,8 +154,9 @@ begin
   begin
     if Eof(Source.Input) then
     begin
-      GetChar := #26;
-      Exit;
+      Error('Unexpected end of source');
+      (* GetChar := #26;
+      Exit; *)
     end;
 
     ReadLn(Source.Input, Source.Buffer);
@@ -496,6 +497,18 @@ begin
       '(': begin
         Token := toLParen;
         C := GetChar;
+
+        if C = '*' then
+        begin
+          C := GetChar;
+          repeat
+            while C <> '*' do C := GetChar;
+            C := GetChar;
+          until C = ')';
+          C := GetChar;
+          NextToken;
+          Exit;
+        end;
       end;
       ')': begin
         Token := toRParen;

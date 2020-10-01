@@ -1,3 +1,5 @@
+(* Factorial *)
+
 var
   I, J;
 

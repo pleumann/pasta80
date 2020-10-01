@@ -1,3 +1,5 @@
+(* Standard example from Wirth's book *)
+
 VAR x, y, z, q, r, n, f;
 
 PROCEDURE multiply;

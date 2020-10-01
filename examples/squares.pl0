@@ -1,3 +1,5 @@
+(* Squares - taken from Wikipedia *)
+
 VAR x, squ;
 
 PROCEDURE square;

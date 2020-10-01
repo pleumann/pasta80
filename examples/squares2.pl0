@@ -1,3 +1,5 @@
+(* Squares *)
+
 var
   x, y;
 

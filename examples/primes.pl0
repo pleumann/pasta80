@@ -1,3 +1,5 @@
+(* Primes - taken from Wikipedia *)
+
 const max = 32767;
 var arg, ret;
 
