@@ -1,0 +1,11 @@
+.DS_Store
+pl0
+pl0.o
+examples/*.z80
+examples/*.lst
+examples/*.com
+examples/*.dot
+tests/*.z80
+tests/*.lst
+tests/*.com
+tests/*.dot
