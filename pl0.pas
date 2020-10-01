@@ -575,9 +575,9 @@ begin
   begin
     P := Pos(' ', Instruction);
     if P<>0 then
-      Instruction := AlignStr(Copy(Instruction, 1, P-1), 10) + Copy(Instruction, P+1, 255);
+      Instruction := AlignStr(Copy(Instruction, 1, P-1), 8) + Copy(Instruction, P+1, 255);
 
-    S := AlignStr(S, 10) + Instruction;
+    S := AlignStr(S, 16) + Instruction;
   end;
 
   if Comment <> '' then
@@ -1254,10 +1254,10 @@ begin
 
   OpenInput(SrcFile);
   OpenTarget(AsmFile);
-  EmitHeader(Home, SrcFile);
+  EmitHeader(Home, SrcFile);  (* TODO Move this elsewhere. *)
   NextToken;
   ParseProgram;
-  EmitFooter();
+  EmitFooter();               (* TODO Move this elsewhere. *)
   CloseTarget();
   CloseInput();
 
