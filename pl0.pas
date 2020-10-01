@@ -425,6 +425,18 @@ begin
         C := GetChar;
       end;
     end
+    else if C = '''' then
+    begin
+      Token := toString;
+      C := GetChar;
+      while (C <> '''') and (C <> #26) do
+      begin
+        StrValue := StrValue + C;
+        C := GetChar;
+      end;
+
+      if C = #26 then Error('Unterminated String') else C := GetChar;
+    end
     else if C = '"' then
     begin
       Token := toString;

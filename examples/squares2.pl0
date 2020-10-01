@@ -10,9 +10,9 @@ begin
 end;
 
 begin
-   ! "How many squares do you want?";
+   ! 'How many squares do you want?';
    ? y;
-   if y < 0 then ! "Naturally!";
+   if y < 0 then ! 'Naturally!';
 
    x := 1;
    while x <= y do
