@@ -1,7 +1,7 @@
 var
   A, B, I;
 
-procedure fibonacci;
+procedure Fibo;
 var
   C;
 begin
@@ -19,7 +19,7 @@ begin
 
   while I < 25 do
   begin
-    call fibonacci;
+    call Fibo;
     I := I + 1;
   end;
 end.
