@@ -3,7 +3,9 @@ program PL0;
 uses
   Dos;
 
-(* Utility *)
+(* -------------------------------------------------------------------------- *)
+(* --- Utility functions ---------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
 function UpperStr(S: String): String;
 var
@@ -30,8 +32,10 @@ var
   S: String;
 begin
   Str(I:Abs(N), S);
+  (*)
   if N < 0 then
     S := Replace(S, ' ', '0');
+  *)
   Int2Str := S;
 end;
 
@@ -110,7 +114,9 @@ end;
 
 // Debug / Warning / Error
 
-(* --- Input ----------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+(* --- Input ---------------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
 type 
   TSource = record
@@ -172,7 +178,9 @@ begin
   Inc(Source.Column);
 end;
 
-(* Table *)
+(* -------------------------------------------------------------------------- *)
+(* --- Symbol table --------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
 type
   TSymbolClass = (scConst, scVar, scProc, scScope, scString);
@@ -212,7 +220,6 @@ procedure CloseScope();
 var
   Sym: PSymbol;
   Kind: TSymbolClass;
-  S: String;
 begin
   repeat
     Kind := SymbolTable^.Kind;
@@ -551,13 +558,15 @@ begin
   end;
 end;
 
-procedure require(Token: TToken);
+procedure Expect(Token: TToken);
 begin
   (* Write('<', Token, '/', Scanner.Token, '>'); *)
   if Scanner.Token <> Token then Error('Parser error');
 end;
 
-(* Emitter *)
+(* -------------------------------------------------------------------------- *)
+(* --- Emitter -------------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
 type
   TBinaryType = (btCom, btDot);
@@ -741,7 +750,6 @@ end;
 procedure EmitGetVar(Sym: PSymbol);
 var
   L: Integer;
-  S: String;
 begin
   L := Level - Sym^.Level;
 
@@ -768,7 +776,6 @@ end;
 procedure EmitSetVar(Sym: PSymbol);
 var
   L: Integer;
-  S: String;
 begin
   L := Level - Sym^.Level;
 
@@ -815,7 +822,7 @@ end;
 
 procedure EmitJumpIf(Op: TToken; Target: String);
 var
-  S, T: String;
+  S: String;
 begin
   Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
   EmitI('pop hl');
@@ -836,7 +843,7 @@ begin
   end;
 end;
 
-procedure EmitCOmpare2(Op: TToken);
+procedure EmitComp(Op: TToken);
 var
   S, T: String;
 begin
@@ -926,7 +933,9 @@ begin
   Close(Target);
 end;
 
-(* Parser *)
+(* -------------------------------------------------------------------------- *)
+(* --- Parser --------------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
 procedure ParseExpression; forward;
 
@@ -955,7 +964,7 @@ begin
   end
   else if Scanner.Token = toLParen then
   begin
-    NextToken; ParseExpression; Require(toRParen); NextToken;
+    NextToken; ParseExpression; Expect(toRParen); NextToken;
   end
   else Error('Factor expected');
 end;
@@ -1006,7 +1015,6 @@ end;
 procedure ParseCondition;
 var
   Op: TToken; 
-  L: String;
 begin
   if Scanner.Token = toOdd then
   begin
@@ -1025,7 +1033,7 @@ begin
     else Error('RelOp expected');
     ParseExpression;
 
-    EmitCompare2(Op);
+    EmitComp(Op);
   end;
 end;
 
@@ -1039,13 +1047,13 @@ begin
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
-    NextToken; Require(toBecomes); NextToken; ParseExpression;
+    NextToken; Expect(toBecomes); NextToken; ParseExpression;
 
     EmitSetVar(Sym);
   end
   else if Scanner.Token = toCall then
   begin
-    NextToken; Require(toIdent);
+    NextToken; Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scProc then Error('"' + Scanner.StrValue + '" not a proc.');
@@ -1055,7 +1063,7 @@ begin
   end
   else if Scanner.Token = toAsk then
   begin
-    NextToken; Require(toIdent);
+    NextToken; Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
@@ -1087,15 +1095,15 @@ begin
       NextToken;
       ParseStatement;
     end;
-    Require(toEnd); NextToken;
+    Expect(toEnd); NextToken;
   end
   else if Scanner.Token = toIf then
   begin
-    NextToken; ParseCondition; Require(toThen); NextToken;
+    NextToken; ParseCondition; Expect(toThen); NextToken;
     
     Tag := GetLabel('false');
 
-    EmitI('pop af');
+    EmitI('pop af');            (* TODO Move this elsewhere. *)
     EmitI('and a');
     EmitI('jp z,' + Tag);    
 
@@ -1110,15 +1118,15 @@ begin
 
     Emit(Tag, '', '');
 
-    NextToken; ParseCondition; Require(toDo); NextToken;
+    NextToken; ParseCondition; Expect(toDo); NextToken;
 
-    EmitI('pop af');
+    EmitI('pop af');            (* TODO Move this elsewhere. *)
     EmitI('and a');
     EmitI('jp z,' + Tag2);    
 
     ParseStatement;
 
-    EmitI('jp ' + Tag);    
+    EmitI('jp ' + Tag);         (* TODO Move this elsewhere. *)
     Emit(Tag2, '', '');
   end
 end;
@@ -1127,12 +1135,12 @@ procedure ParseConst;
 var
   Sym: PSymbol;
 begin
-  Require(toIdent);
+  Expect(toIdent);
   Sym := CreateSymbol(scConst, Scanner.StrValue);
   NextToken;
-  Require(toEq);
+  Expect(toEq);
   NextToken;
-  Require(toNumber);
+  Expect(toNumber);
 
   Sym^.Value := Scanner.NumValue;
 
@@ -1141,14 +1149,13 @@ end;
 
 procedure ParseVar;
 begin
-  Require(toIdent);
+  Expect(toIdent);
   CreateSymbol(scVar, Scanner.StrValue);
   NextToken;
 end;
 
 procedure ParseBlock(Sym: PSymbol);
 var
-  S: String;
   NewSym: PSymbol;
 begin
   if Scanner.Token = toConst then
@@ -1158,7 +1165,7 @@ begin
     begin
       NextToken; ParseConst;
     end;
-    require(toSemicolon);
+    Expect(toSemicolon);
     NextToken;
   end;
 
@@ -1169,21 +1176,21 @@ begin
     begin
       NextToken; ParseVar;
     end;
-    require(toSemicolon);
+    Expect(toSemicolon);
     NextToken;
   end;
 
   while Scanner.Token = toProcedure do
   begin
-    NextToken; Require(toIdent);
+    NextToken; Expect(toIdent);
     NewSym := CreateSymbol(scProc, Scanner.StrValue);
     NewSym^.Tag := GetLabel('proc');
 
     OpenScope;
-    NextToken; Require(toSemicolon);
+    NextToken; Expect(toSemicolon);
     NextToken; ParseBlock(NewSym);
     CloseScope;
-    Require(toSemicolon);
+    Expect(toSemicolon);
     NextToken;
 
     EmitC('');
@@ -1198,7 +1205,7 @@ procedure ParseProgram;
 begin
   OpenScope;
   parseBlock(Nil);
-  require(toPeriod);
+  Expect(toPeriod);
   EmitC('');
   Emit('globals', 'ds ' + Int2Str(Offset), 'Globals');
   EmitC('');
@@ -1206,8 +1213,12 @@ begin
   CloseScope;
 end;
 
+(* -------------------------------------------------------------------------- *)
+(* --- Main program --------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
 var
-  SrcFile, AsmFile, BinFile, Home, Assembler: String; 
+  SrcFile, AsmFile, BinFile, HomeDir, AsmTool: String; 
   I: Integer;
 
 begin
@@ -1215,11 +1226,11 @@ begin
   WriteLn('Copyright (c) 2020 by Joerg Pleumann');
   WriteLn;
 
-  Home := GetEnv('PL0_HOME');
-  if Home = '' then
-    Home := ParentDir(FExpand(ParamStr(0)));
+  HomeDir := GetEnv('PL0_HOME');
+  if HomeDir = '' then
+    HomeDir := ParentDir(FExpand(ParamStr(0)));
 
-  Assembler := GetEnv('PL0_ASM');
+  AsmTool := GetEnv('PL0_ASM');
 
   I := 1;  
   SrcFile := ParamStr(I);
@@ -1227,7 +1238,7 @@ begin
   begin
     if SrcFile = '--asm' then
     begin
-      Assembler := ParamStr(I + 1);
+      AsmTool := ParamStr(I + 1);
       I := I + 1;
     end
     else if SrcFile = '--com' then
@@ -1269,20 +1280,20 @@ begin
 
   OpenInput(SrcFile);
   OpenTarget(AsmFile);
-  EmitHeader(Home, SrcFile);  (* TODO Move this elsewhere. *)
+  EmitHeader(HomeDir, SrcFile);  (* TODO Move this elsewhere. *)
   NextToken;
   ParseProgram;
-  EmitFooter();               (* TODO Move this elsewhere. *)
+  EmitFooter();                  (* TODO Move this elsewhere. *)
   CloseTarget();
   CloseInput();
 
-  if Assembler <> '' then
+  if AsmTool <> '' then
   begin
     WriteLn('Assembling...');
 
-    Exec(Assembler, AsmFile + ' ' + BinFile);
+    Exec(AsmTool, AsmFile + ' ' + BinFile);
     if DosError <> 0 then
-      Error('Error ' + Int2Str(DosError) + ' starting ' + Assembler);
+      Error('Error ' + Int2Str(DosError) + ' starting ' + AsmTool);
     if DosExitCode <> 0 then
       Error('Failure! :(')
   end;
