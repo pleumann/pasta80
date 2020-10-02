@@ -10,7 +10,7 @@ This implementation targets the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80), 
 
 Use an editor of your choice. The full syntax for PL/0 is on the Wikipedia page (or in the original book). The following example demonstrates most of the functionality of PL/0 (except nested procedures and the 'odd' function). It prints a chosen number of squares.
 
-```
+```Pascal
 (* Squares *)
 
 var
