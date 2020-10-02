@@ -611,16 +611,6 @@ begin
   WriteLn(Target, S);
 end;
 
-procedure EmitS(S: String);
-begin
-  WriteLn(Target, S);
-end;
-
-procedure EmitL(S: String);
-begin
-  Emit(S, '', '');
-end;
-
 procedure EmitI(S: String);
 begin
   Emit('', S, '');
