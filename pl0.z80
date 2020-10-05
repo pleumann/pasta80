@@ -393,6 +393,91 @@ __getnbuf:      equ    30000            ; TODO Should be on the stack
 #endif
 
 ;
+; Integer to string
+;
+; Entry:  HL (buffer), DE (value)
+; Exit:   A (length)
+; Uses:   *
+;
+__itoa:         ld    (hl),' '
+                ld    b,1
+                bit   7,d                
+                jr    z,__itoa_loop1
+                ld    (hl),'-'
+                push  hl
+                ld    hl,0
+                and   a
+                sbc   hl,de
+                pop   de
+__itoa_loop1:   push  bc                ; mod 10 and push
+                call  __div10
+                pop   bc
+                add   a,'0'
+                push  af
+                inc   b
+                ld    a,h
+                and   l
+                jr    nz,__itoa_loop1
+                ld    c,b
+                ex    hl,de
+__itoa_loop2:   pop   af                ; pop and store
+                inc   hl
+                ld    (hl),a
+                djnz  __itoa_loop2
+                ld    a,c
+                ret
+
+;
+; String to integer
+;
+;
+;
+__atoi:         ld      de,0
+                and     a
+                ret     z
+                ld      b,a
+                ld      a,(hl)
+                cp      '-'
+                push    af
+                jr      z,llllll
+                inc     hl
+                
+                ld      a,(hl)
+                sub     '0'
+                ex      hl,de
+                
+                ld      a,e
+                cp     0
+                ret     z
+                ld      de,0
+                ld      b,a
+                ld      hl,__getnbuf
+                ld      a,(hl)
+                cp     '-'
+                jr      z,__getnchk
+__getnloop:     sub     '0'
+                push    hl
+                call    __mul10
+                ld      l,a
+                ld      h,0
+                add     hl,de
+                ex      hl,de
+                pop     hl
+__getnchk:      inc     hl
+                ld      a,(hl)
+                djnz    __getnloop
+                ld      a,(__getnbuf)
+                cp     '-'
+                ret     nz
+                xor     a
+                ld      hl,0
+                sbc     hl,de
+                ex      hl,de
+                ret
+
+
+
+;
 ; Startup (with some help from Melissa O'Neill for NXT case)
 ;
 ; Entry: -
