@@ -366,15 +366,22 @@ __itoa_loop2:   pop     af              ; pop and store
 ; Exit:     DE (value)
 ; Uses:     *
 ;
+; TODO Report errors via carry or a register? 
+;
 __atoi:         ld      de,0
                 and     a
                 ret     z
                 ld      b,a
                 ld      a,(hl)
                 ld      c,a
-                cp      '-'             ; Check for '+', too?
-                jr      z,__atoi_next
-__atoi_loop:    sub     '0'             ; Catch illegal chars?
+                cp      '-'
+                jr      z,__atoi_skip   ; Skip minus sign
+                cp      '+'
+                jr      z,__atoi_skip   ; Skip plus sign
+__atoi_loop:    sub     '0'
+                jr      c,__atoi_done   ; Not a digit
+                cp      10
+                jr      nc,__atoi_done  ; Not a digit
                 push    hl
                 call    __mul10
                 ld      l,a
@@ -382,17 +389,17 @@ __atoi_loop:    sub     '0'             ; Catch illegal chars?
                 add     hl,de
                 ex      hl,de
                 pop     hl
-__atoi_next:    inc     hl
+__atoi_skip:    inc     hl
                 ld      a,(hl)
                 djnz    __atoi_loop
-                ld      a,c
+__atoi_done:    ld      a,c             ; Fix sign, if necessary
                 cp      '-'
                 ret     nz
                 and     a
                 ld      hl,0
                 sbc     hl,de
                 ex      de,hl
-                ret                     ; Carry for errors?
+                ret
 
 ;
 ; Startup (with some help from Melissa O'Neill for NXT case)
