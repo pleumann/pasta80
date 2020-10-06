@@ -6,9 +6,9 @@ begin
 
   while x#0 do
   begin
-    ! "Enter a number (0=exit)."
+    ! "Enter a number (0=exit).";
     ? x;
-    ! "The number your entered was:"
+    ! "The number your entered was:";
     ! x;
   end;
 end.
