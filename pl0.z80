@@ -247,38 +247,14 @@ __putschk:      inc     hl
 ; Exit:   -
 ; Uses:   AF,BC,DE
 ;
-__putn:
-                ld      a,128
-                and     h
-                jr      z,__putnpos
-                ld      de,0
-                ex      hl,de
-                sbc     hl,de
-                ld      a,'-'
-                push    af
-                jp      __putngo
-__putnpos:      ld      a,' '
-                push    af
-__putngo:       ld      de,__putnbuf+6
-__putnloop:     call    __div10
-                add     '0'
-                ld      (de),a
-                dec     de
-                ld      a,h
-                or      l
-                jr      nz,__putnloop
-                pop     af
-                ld      (de),a
-                ld      hl,__putnbuf+7
-                and     a
-                sbc     hl,de
-                ld      a,l
-                dec     de
-                ld      (de),a
-                ex      hl,de
+__putn:         ex      hl,de
+                ld      hl,__putnbuf+1
+                call    __itoa
+                ld      hl,__putnbuf
+                ld      (hl),a
                 call    __puts
                 ret
-__putnbuf:      db      0,"-32768"
+__putnbuf:      db      0,"xxxxxxxxxxxxxxxx"
 
 ;
 ; Read number from keyboard
@@ -299,36 +275,13 @@ __getn:         ld      a,'>'
                 call    __putc
                 ld      hl,__getnbuf+1
                 call    __puts
-                ld      de,0
-                ld      a,(__getnbuf+1)
-                cp     0
-                ret     z
-                ld      b,a
-                ld      hl,__getnbuf+2
+                ld      hl,__getnbuf+1
                 ld      a,(hl)
-                cp     '-'
-                jr      z,__getnchk
-__getnloop:     sub     '0'
-                push    hl
-                call    __mul10
-                ld      l,a
-                ld      h,0
-                add     hl,de
-                ex      hl,de
-                pop     hl
-__getnchk:      inc     hl
-                ld      a,(hl)
-                djnz    __getnloop
-                ld      a,(__getnbuf+2)
-                cp     '-'
-                ret     nz
-                xor     a
-                ld      hl,0
-                sbc     hl,de
-                ex      hl,de
+                inc     hl
+                call    __atoi
                 ret
 
-__getnbuf:      db      10,0,"-32768"
+__getnbuf:      db      10,0,"xxxxxxxxxxxxxxx"
 #endif
 
 #if defined(NXT)
@@ -361,101 +314,67 @@ __getn:
                 call __putc
                 pop de
                 ld      a,e
-                cp     0
-                ret     z
-                ld      de,0
-                ld      b,a
                 ld      hl,__getnbuf
-                ld      a,(hl)
-                cp     '-'
-                jr      z,__getnchk
-__getnloop:     sub     '0'
-                push    hl
-                call    __mul10
-                ld      l,a
-                ld      h,0
-                add     hl,de
-                ex      hl,de
-                pop     hl
-__getnchk:      inc     hl
-                ld      a,(hl)
-                djnz    __getnloop
-                ld      a,(__getnbuf)
-                cp     '-'
-                ret     nz
-                xor     a
-                ld      hl,0
-                sbc     hl,de
-                ex      hl,de
+                call    __atoi
                 ret
 
 __getnbuf:      equ    30000            ; TODO Should be on the stack
 #endif
 
 ;
-; Integer to string
+; Signed 16 bits integer to string
 ;
 ; Entry:  HL (buffer), DE (value)
 ; Exit:   A (length)
 ; Uses:   *
 ;
-__itoa:         ld    (hl),' '
-                ld    b,1
-                bit   7,d                
-                jr    z,__itoa_loop1
-                ld    (hl),'-'
-                push  hl
-                ld    hl,0
-                and   a
-                sbc   hl,de
-                pop   de
-__itoa_loop1:   push  bc                ; mod 10 and push
-                call  __div10
-                pop   bc
-                add   a,'0'
-                push  af
-                inc   b
-                ld    a,h
-                and   l
-                jr    nz,__itoa_loop1
-                ld    c,b
-                ex    hl,de
-__itoa_loop2:   pop   af                ; pop and store
-                inc   hl
-                ld    (hl),a
-                djnz  __itoa_loop2
-                ld    a,c
+__itoa:         ld      (hl),' '
+                ld      b,0
+                bit     7,d                
+                ex      de,hl
+                jr      z,__itoa_loop1
+                ex      de,hl
+                ld      (hl),'-'
+                push    hl
+                ld      hl,0
+                and     a
+                sbc     hl,de
+                pop     de
+__itoa_loop1:   push    bc              ; mod 10 and push
+                call    __div10
+                pop     bc
+                add     a,'0'
+                push    af
+                inc     b
+                ld      a,h
+                or      l
+                jr      nz,__itoa_loop1
+                ld      c,b
+                ex      de,hl
+__itoa_loop2:   pop     af              ; pop and store
+                inc     hl
+                ld      (hl),a
+                djnz    __itoa_loop2
+                ld      a,c
+                inc     a
                 ret
 
 ;
-; String to integer
+; String to signed 16 bits integer
 ;
-;
+; Entry:    HL (buffer), A (length)
+; Exit:     DE (value)
+; Uses:     *
 ;
 __atoi:         ld      de,0
                 and     a
                 ret     z
                 ld      b,a
                 ld      a,(hl)
-                cp      '-'
-                push    af
-                jr      z,llllll
-                inc     hl
-                
-                ld      a,(hl)
-                sub     '0'
-                ex      hl,de
-                
-                ld      a,e
-                cp     0
-                ret     z
-                ld      de,0
-                ld      b,a
-                ld      hl,__getnbuf
-                ld      a,(hl)
-                cp     '-'
-                jr      z,__getnchk
-__getnloop:     sub     '0'
+                ld      c,a
+                cp      '-'             ; Check for '+', too?
+                jr      z,__atoi_next
+__atoi_loop:    sub     '0'             ; Catch illegal chars?
                 push    hl
                 call    __mul10
                 ld      l,a
@@ -463,19 +382,17 @@ __getnloop:     sub     '0'
                 add     hl,de
                 ex      hl,de
                 pop     hl
-__getnchk:      inc     hl
+__atoi_next:    inc     hl
                 ld      a,(hl)
-                djnz    __getnloop
-                ld      a,(__getnbuf)
-                cp     '-'
+                djnz    __atoi_loop
+                ld      a,c
+                cp      '-'
                 ret     nz
-                xor     a
+                and     a
                 ld      hl,0
                 sbc     hl,de
-                ex      hl,de
-                ret
-
-
+                ex      de,hl
+                ret                     ; Carry for errors?
 
 ;
 ; Startup (with some help from Melissa O'Neill for NXT case)
