@@ -13,6 +13,17 @@
                 jp      main
 
 ;
+; Some stuff shared between the routines
+;
+#if defined(CPM)
+__buffer:       ds      32
+#endif
+
+#if defined(NXT)
+__buffer:       equ     23698
+#endif
+
+;
 ; Signed 16 bit comparison (taken from Zaks)
 ;
 ; In:   HL (left), DE (right)
@@ -248,13 +259,12 @@ __putschk:      inc     hl
 ; Uses:   AF,BC,DE
 ;
 __putn:         ex      hl,de
-                ld      hl,__putnbuf+1
+                ld      hl,__buffer+1
                 call    __itoa
-                ld      hl,__putnbuf
+                ld      hl,__buffer
                 ld      (hl),a
                 call    __puts
                 ret
-__putnbuf:      db      0,"xxxxxxxxxxxxxxxx"
 
 ;
 ; Read number from keyboard
@@ -268,20 +278,20 @@ __putnbuf:      db      0,"xxxxxxxxxxxxxxxx"
 #if defined(CPM)
 __getn:         ld      a,'>'
                 call    __putc
-                ld      de,__getnbuf
+                ld      hl,6
+                ld      (__buffer),hl
+                ld      de,__buffer
                 ld      c,10
                 call    5
                 ld      a,'>'
                 call    __putc
-                ld      hl,__getnbuf+1
+                ld      hl,__buffer+1
                 call    __puts
-                ld      hl,__getnbuf+1
+                ld      hl,__buffer+1
                 ld      a,(hl)
                 inc     hl
                 call    __atoi
                 ret
-
-__getnbuf:      db      10,0,"xxxxxxxxxxxxxxx"
 #endif
 
 #if defined(NXT)
@@ -300,7 +310,7 @@ __getn:
                 ld      de,$01c3
                 ld      c,7
                 exx
-                ld      hl,__getnbuf
+                ld      hl,__buffer
                 ld      e,0
                 ld      a,10
                 exx
@@ -314,11 +324,9 @@ __getn:
                 call __putc
                 pop de
                 ld      a,e
-                ld      hl,__getnbuf
+                ld      hl,__buffer
                 call    __atoi
                 ret
-
-__getnbuf:      equ    30000            ; TODO Should be on the stack
 #endif
 
 ;
@@ -409,14 +417,11 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
 ; Uses: *
 ;
 #if defined(CPM)
-__init          ret
+__init:         ret
 #endif
 
 #if defined(NXT)
-__init          ld      (__saved_iy),iy
-                ;   ld      a,2
-                ;   rst $18
-                ;   defw    $1601
+__init:         ld      (__saved_iy),iy
                 ld      de, $01d5
                 ld      a,1
                 exx
@@ -430,9 +435,8 @@ __init          ld      (__saved_iy),iy
                 exx
                 ret
 
-__saved_iy:     ds 2
-
-_zxn_window_channel: ds 2
+__saved_iy:     dw 0
+_zxn_window_channel: dw 0
 #endif
 
 ;
@@ -443,16 +447,10 @@ _zxn_window_channel: ds 2
 ; Uses: *
 ;
 #if defined(CPM)
-__done          ret
+__done:         ret
 #endif
 
 #if defined(NXT)
-__done:
-                ld      iy,(__saved_iy)
+__done:         ld      iy,(__saved_iy)
                 ret
 #endif
-
-;cls     EQU $0D6B
-;    opench  EQU $1601
-;    print   EQU $203C
-    
