@@ -20,6 +20,8 @@ __buffer:       ds      32
 #endif
 
 #if defined(NXT)
+__saved_iy:     dw      0
+__win_handle:   dw      0
 __buffer:       equ     23698
 #endif
 
@@ -305,7 +307,7 @@ __getn:
                 call __putc
                 ld      de,(23633)      ; save current channel
                 push    de       
-                ld      de,(_zxn_window_channel)        ; set current channel to magic window
+                ld      de,(__win_handle)        ; set current channel to magic window
                 ld      (23633), de 
                 ld      de,$01c3
                 ld      c,7
@@ -425,18 +427,15 @@ __init:         ld      (__saved_iy),iy
                 ld      de, $01d5
                 ld      a,1
                 exx
-                ld      bc, $0101
+                ld      bc,$0101
                 exx
-                ld      c, 7
+                ld      c,7
                 rst     $08
                 db      $94
                 exx
-                ld   (_zxn_window_channel),hl
+                ld   (__win_handle),hl
                 exx
                 ret
-
-__saved_iy:     dw 0
-_zxn_window_channel: dw 0
 #endif
 
 ;
