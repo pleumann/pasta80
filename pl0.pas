@@ -1222,7 +1222,7 @@ var
   I: Integer;
 
 begin
-  WriteLn('PL/0 Compiler for Z80 Version 0.1');
+  WriteLn('PL/0 Compiler for Z80 Version 1.0');
   WriteLn('Copyright (c) 2020 by Joerg Pleumann');
   WriteLn;
 
