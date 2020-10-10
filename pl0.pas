@@ -1046,10 +1046,19 @@ begin
   begin
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
-    if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
-    NextToken; Expect(toBecomes); NextToken; ParseExpression;
 
-    EmitSetVar(Sym);
+    if Sym^.Kind = scProc then
+    begin
+      NextToken;
+      if Scanner.Token = toBecomes then Error('"' + Sym^.Name + '" not a var.');
+      EmitCall(Sym);
+    end
+    else
+    begin
+      if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
+      NextToken; Expect(toBecomes); NextToken; ParseExpression;
+      EmitSetVar(Sym);
+    end;
   end
   else if Scanner.Token = toCall then
   begin
