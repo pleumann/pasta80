@@ -270,6 +270,26 @@ begin
   LookupGlobal := nil;
 end;
 
+procedure AdjustOffsets;
+var
+  Sym: PSymbol;
+  I: Integer;
+begin
+  Sym := SymbolTable;
+  I := 0;
+  while Sym^.Kind<>scProc do
+  begin
+    if Sym^.Kind = scVar then
+    begin
+      Sym^.Value := Sym^.Value - Offset + 4;    
+      I := I + 1;
+    end;
+    Sym := Sym^.Next;
+  end;
+  Sym^.Value := I;
+  Offset := -2;
+end;
+
 function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
@@ -289,7 +309,10 @@ begin
   if Kind = scVar then
   begin
     Sym^.Value := Offset;
-    Offset := Offset + 2;
+    if Level = 1 then
+      Offset := Offset + 2
+    else
+      Offset := Offset - 2;
   end;
 
   CreateSymbol := Sym;
@@ -636,8 +659,13 @@ begin
 end;
 
 procedure EmitCall(Sym: PSymbol);
+var
+  I: Integer;
 begin
   EmitI('call ' + Sym^.Tag);
+
+  for I := 1 to Sym^.Value do
+    EmitI('pop hl');
 end;
 
 procedure EmitHeader(Home: String; SrcFile: String);
@@ -671,7 +699,12 @@ begin
   if Sym^.Kind <> scScope then CollectVars(Sym^.Next, S);
 
   if Sym^.Kind = scVar then
+  begin
     if S <> '' then S := S + ', ' + Sym^.Name else S := Sym^.Name;
+    S := S + '(';
+    if Sym^.Value > 0 then S := S + '+';
+    S := S + Int2Str(Sym^.Value) + ')';
+  end;
 end;
 
 procedure CollectString(Sym: PSymbol);
@@ -723,7 +756,7 @@ begin
     EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
 
     EmitI('ld de,0');
-    for I := 0 to Offset div 2 - 1 do
+    for I := 0 downto Offset div 2 - 1 do
       EmitI('push de');
   end;
 end;
@@ -747,6 +780,16 @@ begin
   CollectString(SymbolTable);
 end;
 
+function RelativeAddr(Base: String; Offset: Integer): String;
+begin
+  if Offset < 0 then
+    RelativeAddr := Base + Int2Str(Offset)
+  else if Offset > 0 then
+    RelativeAddr := Base + '+' + Int2Str(Offset)
+  else
+    RelativeAddr := Base;
+end;
+
 procedure EmitGetVar(Sym: PSymbol);
 var
   L: Integer;
@@ -755,20 +798,20 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    Emit('', 'ld de,(globals+' + Int2Str(Sym^.Value) + ')', 'Get global ' + Sym^.Name);
+    Emit('', 'ld de,(' + RelativeAddr('globals', Sym^.Value) + ')', 'Get global ' + Sym^.Name);
     EmitI('push de');
   end
   else if L = 0 then
   begin
-    Emit('', 'ld d,(ix-' + Int2Str(Sym^.Value+1) + ')', 'Get local ' + Sym^.Name);
-    EmitI('ld e,(ix-' + Int2Str(Sym^.Value+2) + ')');
+    Emit('', 'ld d,(' + RelativeAddr('ix', Sym^.Value + 1) + ')', 'Get local ' + Sym^.Name);
+    EmitI('ld e,(' + RelativeAddr('ix', Sym^.Value) + ')');
     EmitI('push de');
   end
   else
   begin
     Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
-    EmitI('ld d,(iy-' + Int2Str(Sym^.Value+1) + ')');
-    EmitI('ld e,(iy-' + Int2Str(Sym^.Value+2) + ')');
+    EmitI('ld d,(' + RelativeAddr('iy', Sym^.Value + 1) + ')');
+    EmitI('ld e,(' + RelativeAddr('iy', Sym^.Value) + ')');
     EmitI('push de');
   end
 end;
@@ -782,20 +825,20 @@ begin
   if Sym^.Level = 1 then
   begin
     EmitI('pop de');
-    Emit('', 'ld (globals+' + Int2Str(Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
+    Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
   end
   else if L = 0 then
   begin
     Emit('', 'pop de', 'Set local ' + Sym^.Name);
-    EmitI('ld (ix-' + Int2Str(Sym^.Value+1) + '),d');
-    EmitI('ld (ix-' + Int2Str(Sym^.Value+2) + '),e');
+    EmitI('ld (' + RelativeAddr('ix', Sym^.Value + 1) + '),d');
+    EmitI('ld (' + RelativeAddr('ix', Sym^.Value) + '),e');
   end
   else
   begin
     EmitI('pop de');
     Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
-    EmitI('ld (iy-' + Int2Str(Sym^.Value+1) + '),d');
-    EmitI('ld (iy-' + Int2Str(Sym^.Value+2) + '),e');
+    EmitI('ld (' + RelativeAddr('iy', Sym^.Value + 1) + '),d');
+    EmitI('ld (' + RelativeAddr('iy', Sym^.Value) + '),e');
   end
 end;
 
@@ -939,6 +982,32 @@ end;
 
 procedure ParseExpression; forward;
 
+procedure ParseArguments(Sym: PSymbol);
+var
+  I: Integer;
+begin
+  I := 0;
+  if Scanner.Token = toLParen then
+  begin
+    NextToken;
+
+    ParseExpression;
+    I := I + 1;
+
+    while Scanner.Token = toComma do
+    begin
+      NextToken;
+      ParseExpression;
+      I := I + 1;
+    end;
+
+    Expect(toRParen);
+    NextToken;
+  end;
+
+  if I <> Sym^.Value then Error('Wrong number of arguments');
+end;
+
 procedure ParseFactor;
 var
   Sym: PSymbol;
@@ -947,7 +1016,6 @@ begin
   begin
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
-    if (Sym^.Kind <> scVar) and (Sym^.Kind <> scConst) then Error('"' + Scanner.StrValue + '" neither var nor const.');
 
     if Sym^.Kind = scVar then
       EmitGetVar(Sym)
@@ -1051,6 +1119,9 @@ begin
     begin
       NextToken;
       if Scanner.Token = toBecomes then Error('"' + Sym^.Name + '" not a var.');
+
+      ParseArguments(Sym);
+
       EmitCall(Sym);
     end
     else
@@ -1067,6 +1138,8 @@ begin
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scProc then Error('"' + Scanner.StrValue + '" not a proc.');
     NextToken;
+
+    ParseArguments(Sym);
 
     EmitCall(Sym);
   end
@@ -1196,7 +1269,24 @@ begin
     NewSym^.Tag := GetLabel('proc');
 
     OpenScope;
-    NextToken; Expect(toSemicolon);
+    NextToken; 
+    
+    if Scanner.Token = toLParen then
+    begin
+      NextToken;
+      ParseVar;
+      while Scanner.Token = toComma do
+      begin
+        NextToken;
+        ParseVar;
+      end;
+      Expect(toRParen);
+      NextToken;
+    end;
+    
+    AdjustOffsets;
+
+    Expect(toSemicolon);
     NextToken; ParseBlock(NewSym);
     CloseScope;
     Expect(toSemicolon);
