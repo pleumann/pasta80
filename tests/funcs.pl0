@@ -18,8 +18,8 @@ end;
 
 function Fact(A);
 begin
-  if A=1 then Fact := 1;
-  if A>1 then Fact := Fact(A-1) * A; (* ditto *)
+  if A=0 then Fact := 1;
+  if A>0 then Fact := Fact(A-1) * A; (* ditto *)
 end;
 
 begin
