@@ -183,7 +183,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scVar, scProc, scScope, scString);
+  TSymbolClass = (scConst, scVar, scProc, scFunc, scScope, scString);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -277,7 +277,7 @@ var
 begin
   Sym := SymbolTable;
   I := 0;
-  while Sym^.Kind<>scProc do
+  while (Sym^.Kind<>scProc) and (Sym^.Kind<>scFunc) do
   begin
     if Sym^.Kind = scVar then
     begin
@@ -286,7 +286,10 @@ begin
     end;
     Sym := Sym^.Next;
   end;
-  Sym^.Value := I;
+  if Sym^.Kind = scProc then
+    Sym^.Value := I
+  else
+    Sym^.Value := I - 1;
   Offset := -2;
 end;
 
@@ -330,8 +333,8 @@ type
             toLParen, toRParen,
             toSay, toAsk, toBecomes, toComma, toSemicolon, toPeriod,
             toOdd,
-            toBegin, toEnd, toConst, toVar, toProcedure, toCall, 
-            toIf, toThen, toElse, toWhile, toDo,
+            toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
+            toCall, toIf, toThen, toElse, toWhile, toDo,
             toEof);
 
   TScanner = record
@@ -370,7 +373,7 @@ type
 end;
 
 const
-  MaxKeywords = 12;
+  MaxKeywords = 13;
 
 var
   NumKeywords: Integer;
@@ -409,6 +412,7 @@ begin
   RegisterKeyword(toConst, 'const');
   RegisterKeyword(toVar, 'var');
   RegisterKeyword(toProcedure, 'procedure');
+  RegisterKeyword(toFunction, 'function');
   RegisterKeyword(toCall, 'call');
   RegisterKeyword(toIf, 'if');
   RegisterKeyword(toThen, 'then');
@@ -1017,12 +1021,29 @@ begin
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
 
-    if Sym^.Kind = scVar then
-      EmitGetVar(Sym)
-    else
-      EmitLiteral(Sym^.Value);
+    (* This is a dirty hack, but ok for now. *)
+    if (Sym^.Kind = scVar) and (Sym^.Tag = 'RESULT') then
+      Sym := Sym^.Next^.Next; 
 
-    NextToken;
+    if Sym^.Kind = scVar then
+    begin
+      EmitGetVar(Sym);
+      NextToken;
+    end
+    else if Sym^.Kind = scConst then
+    begin
+      EmitLiteral(Sym^.Value);
+      NextToken;
+    end
+    else if Sym^.Kind = scFunc then
+    begin
+      EmitLiteral(0); (* Result *)
+      NextToken;
+      ParseArguments(Sym);
+      EmitCall(Sym);     
+    end
+    else
+      Error('"' + Scanner.StrValue + '" cannot be used in expressions.');
   end
   else if Scanner.Token = toNumber then
   begin
@@ -1239,6 +1260,7 @@ end;
 procedure ParseBlock(Sym: PSymbol);
 var
   NewSym: PSymbol;
+  Token: TToken;
 begin
   if Scanner.Token = toConst then
   begin
@@ -1262,13 +1284,24 @@ begin
     NextToken;
   end;
 
-  while Scanner.Token = toProcedure do
+  while (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) do
   begin
+    Token := Scanner.Token;
     NextToken; Expect(toIdent);
-    NewSym := CreateSymbol(scProc, Scanner.StrValue);
-    NewSym^.Tag := GetLabel('proc');
+
+    if Token = toProcedure then
+    begin
+      NewSym := CreateSymbol(scProc, Scanner.StrValue);
+      NewSym^.Tag := GetLabel('proc');
+    end
+    else
+    begin
+      NewSym := CreateSymbol(scFunc, Scanner.StrValue);
+      NewSym^.Tag := GetLabel('func');
+    end;
 
     OpenScope;
+    if Token = toFunction then CreateSymbol(scVar, Scanner.StrValue)^.Tag := 'RESULT';
     NextToken; 
     
     if Scanner.Token = toLParen then
