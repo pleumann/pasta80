@@ -245,6 +245,16 @@ __putsloop:     ld      a,(hl)
                 pop     hl
 __putschk:      inc     hl
                 djnz    __putsloop
+                ret
+
+;
+; New line
+;
+; Entry:  -
+; Exit:   -
+; Uses:   -
+;
+__newline:
                 ld      a,13
                 call    __putc
 #if defined(CPM)
@@ -289,6 +299,7 @@ __getn:         ld      a,'>'
                 call    __putc
                 ld      hl,__buffer+1
                 call    __puts
+                call    __newline
                 ld      hl,__buffer+1
                 ld      a,(hl)
                 inc     hl
@@ -322,8 +333,7 @@ __getn:
                 ld      (23633), bc 
                 pop ix
                 push    de
-                ld a,13
-                call __putc
+                call    __newline
                 pop de
                 ld      a,e
                 ld      hl,__buffer
@@ -410,6 +420,53 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 sbc     hl,de
                 ex      de,hl
                 ret
+
+#if defined(CPM)
+__textfg:     ld a,h
+              add a,'0'
+              ld  (__textfg_str+3),a
+              ld hl,__textfg_str
+              call  __puts
+              ret
+__textfg_str: db 3,27,'T',32
+#endif
+
+#if defined(CPM)
+__textbg:     ld a,h
+              add a,'0'
+              ld  (__textbg_str+3),a
+              ld hl,__textbg_str
+              call  __puts
+              ret
+__textbg_str: db 3,27,'S',32
+#endif
+
+#if defined(CPM)
+__gotoxy:     ld a,l
+              add a,' '
+              ld  (__gotoxy_str+3),a
+              ld a,e
+              add a,' '
+              ld  (__gotoxy_str+4),a
+              ld hl,__gotoxy_str
+              call  __puts
+              ret
+__gotoxy_str: db 4,27,'Y',32,32
+#endif
+
+#if defined(CPM)
+__clrscr:     ld hl,__clrscr_str
+              call  __puts
+              ret
+__clrscr_str: db 4,27,'H',27,'J'
+#endif
+
+;__peek:
+;__poke:
+
+;__border:
+;__setpixel:
+;__getpixel:
 
 ;
 ; Startup (with some help from Melissa O'Neill for NXT case)

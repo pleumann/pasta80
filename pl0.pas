@@ -321,6 +321,24 @@ begin
   CreateSymbol := Sym;
 end;
 
+procedure RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: String);
+var
+  Sym: PSymbol;
+begin
+  Sym := CreateSymbol(Kind, Name);
+  Sym^.Level := 0;
+  Sym^.Value := Args;
+  Sym^.Tag := Tag;
+end;
+
+procedure RegisterAllBuiltIns;
+begin
+  RegisterBuiltIn(scProc, 'ClrScr', 0, '__clrscr');
+  RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
+  RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg');
+  RegisterBuiltIn(scProc, 'TextBackground', 1, '__textbg');
+end;
+
 (* --------------------------------------------------------------------- *)
 (* --- Scanner --------------------------------------------------------- *)
 (* --------------------------------------------------------------------- *)
@@ -666,10 +684,23 @@ procedure EmitCall(Sym: PSymbol);
 var
   I: Integer;
 begin
+  if Sym^.Level = 0 then
+  begin
+    if Sym^.Value >= 3 then
+      EmitI('pop bc');    
+    if Sym^.Value >= 2 then
+      EmitI('pop de');    
+    if Sym^.Value >= 1 then
+      EmitI('pop hl');    
+  end;
+
   EmitI('call ' + Sym^.Tag);
 
+  if Sym^.Level <> 0 then
+  begin
   for I := 1 to Sym^.Value do
     EmitI('pop hl');
+  end;
 end;
 
 procedure EmitHeader(Home: String; SrcFile: String);
@@ -1336,6 +1367,7 @@ end;
 procedure ParseProgram;
 begin
   OpenScope;
+  RegisterAllBuiltIns();
   parseBlock(Nil);
   Expect(toPeriod);
   EmitC('');

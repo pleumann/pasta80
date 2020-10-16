@@ -1,0 +1,7 @@
+begin
+  ClrScr;
+  TextColor(0);
+  TextBackground(7);
+  GotoXY(10, 10);
+  ! 'Hello, World!';
+end.
