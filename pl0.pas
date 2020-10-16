@@ -988,12 +988,14 @@ procedure EmitInputNum(S: String);
 begin
   Emit('', 'call __getn', 'Get ' + S);
   EmitI('push de');
+  Emit('', 'call __newline', '');
 end;
 
 procedure EmitPrintNum(S: String);
 begin
   Emit('', 'pop hl', '');
   Emit('', 'call __putn', '');
+  Emit('', 'call __newline', '');
 end;
 
 procedure EmitPrintStr(S: String);
@@ -1004,6 +1006,7 @@ begin
   Sym^.Tag := GetLabel('string');
   Emit('', 'ld hl,' + Sym^.Tag, '');
   Emit('', 'call __puts', '');
+  Emit('', 'call __newline', '');
 end;
 
 procedure CloseTarget();

@@ -299,7 +299,6 @@ __getn:         ld      a,'>'
                 call    __putc
                 ld      hl,__buffer+1
                 call    __puts
-                call    __newline
                 ld      hl,__buffer+1
                 ld      a,(hl)
                 inc     hl
