@@ -333,6 +333,7 @@ end;
 
 procedure RegisterAllBuiltIns;
 begin
+  RegisterBuiltIn(scFunc, 'Random', 0, '__rand16');
   RegisterBuiltIn(scProc, 'ClrScr', 0, '__clrscr');
   RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
   RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg');
@@ -520,6 +521,10 @@ begin
         Token := toDiv;
         C := GetChar;
       end;
+      '%': begin
+        Token := toMod;
+        C := GetChar;
+      end;
       '=': begin
         Token := toEq;
         C := GetChar;
@@ -696,7 +701,12 @@ begin
 
   EmitI('call ' + Sym^.Tag);
 
-  if Sym^.Level <> 0 then
+  if Sym^.Level = 0 then
+  begin
+    if Sym^.Kind = scFunc then
+      EmitI('push hl');
+  end
+  else
   begin
   for I := 1 to Sym^.Value do
     EmitI('pop hl');
@@ -967,6 +977,14 @@ begin
   Emit('', 'push hl', '');
 end;
 
+procedure EmitMod();
+begin
+  Emit('', 'pop de', '');
+  Emit('', 'pop hl', '');
+  Emit('', 'call __sdiv16', 'Mod');
+  Emit('', 'push de', '');
+end;
+
 procedure EmitAdd();
 begin
   Emit('', 'pop de', 'Add');
@@ -1071,7 +1089,7 @@ begin
     end
     else if Sym^.Kind = scFunc then
     begin
-      EmitLiteral(0); (* Result *)
+      if Sym^.Level <> 0 then EmitLiteral(0); (* Result *)
       NextToken;
       ParseArguments(Sym);
       EmitCall(Sym);     
@@ -1097,13 +1115,13 @@ var
   Op: TToken;
 begin
   ParseFactor;
-  while (Scanner.Token = toMul) or (Scanner.Token = toDiv) do
+  while (Scanner.Token = toMul) or (Scanner.Token = toDiv) or (Scanner.Token = toMod) do
   begin
     Op := Scanner.Token;
     NextToken;
     ParseFactor;
 
-    if Op = toMul then EmitMul() else EmitDiv();
+    if Op = toMul then EmitMul() else if Op = toDiv then EmitDiv() else EmitMod();
   end;
 end;
 

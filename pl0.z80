@@ -206,6 +206,48 @@ __div10b:       djnz __div10a
                 ret
 
 ;
+;
+;
+;
+
+;#define smc    ;uncomment if you are using SMC
+__rand16:
+;;collaboration by Zeda with Runer112
+;;160cc or 148cc if using SMC
+;;26 bytes
+;;cycle: 4,294,901,760 (almost 4.3 billion)
+#if defined(smc)
+seed1=$+1
+    ld hl,9999
+#else
+    ld hl,(seed1)
+#endif
+    ld b,h
+    ld c,l
+    add hl,hl
+    add hl,hl
+    inc l
+    add hl,bc
+    ld (seed1),hl
+#if defined(smc)
+seed2=$+1
+    ld hl,9999
+#else
+    ld hl,(seed2)
+#endif
+    add hl,hl
+    sbc a,a
+    and %00101101
+    xor l
+    ld l,a
+    ld (seed2),hl
+    add hl,bc
+    res 7,h
+    ret
+seed1:              dw 1234
+seed2:              dw 5678
+
+;
 ; Print character to screen
 ;
 ; Entry:  A (ASCII code)
@@ -332,7 +374,6 @@ __getn:
                 ld      (23633), bc 
                 pop ix
                 push    de
-                call    __newline
                 pop de
                 ld      a,e
                 ld      hl,__buffer
@@ -430,6 +471,15 @@ __textfg:     ld a,l
 __textfg_str: db 3,27,'T',32
 #endif
 
+#if defined(NXT)
+__textfg:     ld a,l
+              ld  (__textfg_str+2),a
+              ld hl,__textfg_str
+              call  __puts
+              ret
+__textfg_str: db 2,16,0
+#endif
+
 #if defined(CPM)
 __textbg:     ld a,l
               add a,'0'
@@ -440,17 +490,39 @@ __textbg:     ld a,l
 __textbg_str: db 3,27,'S',32
 #endif
 
+#if defined(NXT)
+__textbg:     ld a,l
+              ld  (__textbg_str+2),a
+              ld hl,__textbg_str
+              call  __puts
+              ret
+__textbg_str: db 2,17,0
+#endif
+
 #if defined(CPM)
 __gotoxy:     ld a,l
-              add a,' '
-              ld  (__gotoxy_str+3),a
-              ld a,e
-              add a,' '
+              add a,31
               ld  (__gotoxy_str+4),a
+              ld a,e
+              add a,31
+              ld  (__gotoxy_str+3),a
               ld hl,__gotoxy_str
               call  __puts
               ret
 __gotoxy_str: db 4,27,'Y',32,32
+#endif
+
+#if defined(NXT)
+__gotoxy:     ld a,l
+              dec   a
+              ld  (__gotoxy_str+3),a
+              ld a,e
+              dec   a
+              ld  (__gotoxy_str+2),a
+              ld hl,__gotoxy_str
+              call  __puts
+              ret
+__gotoxy_str: db 3,22,0,0
 #endif
 
 #if defined(CPM)
@@ -458,6 +530,13 @@ __clrscr:     ld hl,__clrscr_str
               call  __puts
               ret
 __clrscr_str: db 4,27,'H',27,'J'
+#endif
+
+#if defined(NXT)
+__clrscr:     ;ld hl,__clrscr_str
+              ;call  __puts
+              ret
+__clrscr_str: db 1,14
 #endif
 
 ;__peek:

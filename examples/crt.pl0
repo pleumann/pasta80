@@ -1,0 +1,17 @@
+var
+  I, Y, X, Z;
+
+begin
+  ClrScr;
+  I := 0;
+  while I < 2000 do
+  begin
+    X := 1 + Random % 21;
+    Y := 1 + Random % 23;
+    Z := Random % 7;
+    GotoXY(X,Y);
+    TextColor(Z);
+    ! "Hello, PL/0!";
+    I := I + 1;
+  end;
+end.
