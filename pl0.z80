@@ -422,7 +422,7 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 ret
 
 #if defined(CPM)
-__textfg:     ld a,h
+__textfg:     ld a,l
               add a,'0'
               ld  (__textfg_str+3),a
               ld hl,__textfg_str
@@ -432,7 +432,7 @@ __textfg_str: db 3,27,'T',32
 #endif
 
 #if defined(CPM)
-__textbg:     ld a,h
+__textbg:     ld a,l
               add a,'0'
               ld  (__textbg_str+3),a
               ld hl,__textbg_str
