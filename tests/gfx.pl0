@@ -1,0 +1,15 @@
+var
+  X,Y,Z;
+begin
+  Y := 0;
+  while Y < 192 do
+  begin
+    X := 0;
+    while X < 256 do
+    begin
+      SetPixel(X,Y,Random % 256);
+      X := X + 1;
+    end;
+    Y := Y + 1;
+  end;
+end.

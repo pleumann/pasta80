@@ -1,0 +1,128 @@
+const
+  OldColor = 182;
+var
+  X,Y,I,C;
+
+function Color(C);
+begin
+  if C = 0 then Color := 2;
+  if C = 1 then Color := 160;
+  if C = 2 then Color := 162;
+  if C = 3 then Color := 20;
+  if C = 4 then Color := 22;
+  if C = 5 then Color := 180;
+  if C = 6 then Color := 3;
+  if C = 7 then Color := 224;
+  if C = 8 then Color := 231;
+  if C = 9 then Color := 28;
+  if C = 10 then Color := 31;
+  if C = 11 then Color := 252;
+  if C = 12 then Color := 255;
+end;
+
+procedure Wall(X,Y);
+var
+  R, I;
+begin
+  R := Random % 2;
+  if R = 0 then
+  begin
+    I := 0;
+    while I < 8 do
+    begin
+      SetPixel(X+I, Y+I, 0);
+      I := I + 1;
+    end;
+  end;
+
+  if R = 1 then
+  begin
+    while I < 8 do
+    begin
+      SetPixel(X+7-I, Y+I, 0);
+      I := I + 1;
+    end;
+  end;
+end;
+
+procedure Fill(X,Y,D);
+var
+  I, L, R;
+begin
+  L := X;
+  while GetPixel(L-1,Y) = OldColor do L := L - 1;
+  R := X;
+  while GetPixel(R+1,Y) = OldColor do R := R + 1;
+  I := L;
+  while I <= R do
+  begin
+    SetPixel(I, Y, C);
+    I := I + 1;
+  end;
+
+  I := L;
+  while I <= R do
+  begin
+    if GetPixel(I, Y+D) = OldColor then Fill(I,Y+D,D);
+    I := I + 1;
+  end;
+
+  I := L;
+  while I <= R do
+  begin
+    if GetPixel(I, Y-D) = OldColor then Fill(I,Y-D,-D);
+    I := I + 1;
+  end;
+end;
+
+begin
+  Y := 0;
+  while Y < 192 do
+  begin
+    X := 0;
+    while X < 256 do
+    begin
+      SetPixel(X,Y,182);
+      X := X + 1;
+    end;
+    Y := Y + 1;
+  end;
+
+  Y := 0;
+  while Y < 192 do
+  begin
+    SetPixel(0,Y,0);
+    SetPixel(255,Y,0);
+    Y := Y + 1;
+  end;
+
+  X := 0;
+  while X < 256 do
+  begin
+    SetPixel(X,0,0);
+    SetPixel(X,191,0);
+    X := X + 1;
+  end;
+
+  Y := 0;
+  while Y < 192 do
+  begin
+    X := 0;
+    while X < 256 do
+    begin
+      Wall(X,Y);
+      X := X + 8;
+    end;
+    Y := Y + 8;
+  end;
+
+  I := 0;
+  while I < 10000 do
+  begin
+    X := Random % 256;
+    Y := Random % 192;
+    C := Color(Random % 13);
+    if GetPixel(X, Y) = 182 then Fill(X, Y, -1);
+    I := I + 1;
+  end;
+end.
