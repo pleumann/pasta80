@@ -297,7 +297,7 @@ function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  if (Name <> '') and (LookupLocal(Name) <> nil) then
+  if (Kind <> scString) and (Name <> '') and (LookupLocal(Name) <> nil) then
   begin
     Error('Duplicate symbol "' + Name + '".');
   end;
@@ -1267,7 +1267,23 @@ begin
 
     ParseStatement;
 
-    Emit(Tag, '', '');
+    if Scanner.Token = toElse then
+    begin
+      Tag2 := GetLabel('endif');
+      EmitI('jp ' + Tag2);
+
+      Emit(Tag, '', '');
+
+      NextToken;
+      ParseStatement;
+
+      Emit(Tag2, '', '');
+    end
+    else
+    begin
+      Emit(Tag, '', '');
+    end;
+
   end
   else if Scanner.Token = toWhile then
   begin
