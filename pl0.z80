@@ -477,7 +477,7 @@ __textfg:     ld a,l
               ld hl,__textfg_str
               call  __puts
               ret
-__textfg_str: db 2,16,0
+__textfg_str: db 2,16,0 ; No good in LAYER 2,1 - needs mapping
 #endif
 
 #if defined(CPM)
@@ -496,7 +496,7 @@ __textbg:     ld a,l
               ld hl,__textbg_str
               call  __puts
               ret
-__textbg_str: db 2,17,0
+__textbg_str: db 2,17,0 ; No good in LAYER 2,1 - needs mapping
 #endif
 
 #if defined(CPM)
@@ -539,6 +539,73 @@ __clrscr:     ;ld hl,__clrscr_str
 __clrscr_str: db 1,14
 #endif
 
+#if defined(NXT)
+;
+; Set a pixel in LAYER 2,1
+;
+; Entry:    HL  x       (0..255)
+;           DE  y       (0..191)
+;           BC  color   (0..255)
+;
+__set_pixel:    di
+                ld      a,e
+                srl     a
+                srl     a
+                srl     a
+                srl     a
+                srl     a
+                add     a,18
+
+                db      $ed,$92,$56
+
+                ld      a,e
+                and     31
+                ld      h,a
+
+                ld      de,$c000
+                add     hl,de
+                ld      (hl),c
+
+                db      $ed,$91,$56,$00
+
+                ei
+                ret
+
+;
+; Get a pixel in LAYER 2,1
+;
+; Entry:    HL  x       (0..255)
+;           DE  y       (0..191)
+;
+__get_pixel:    di
+                ld      a,e
+                srl     a
+                srl     a
+                srl     a
+                srl     a
+                srl     a
+                add     a,18
+
+                db      $ed,$92,$56
+
+                ld      a,e
+                and     31
+                ld      h,a
+
+                ld      de,$c000
+                add     hl,de
+                ld      a,(hl)
+                ld      h,0
+                ld      l,a
+
+                db      $ed,$91,$56,$00
+
+                ei
+                ret
+
+
+#endif
+
 ;__peek:
 ;__poke:
 
@@ -562,7 +629,7 @@ __init:         ld      (__saved_iy),iy
                 ld      de, $01d5
                 ld      a,1
                 exx
-                ld      bc,$0101
+                ld      bc,$0201
                 exx
                 ld      c,7
                 rst     $08

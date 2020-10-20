@@ -338,6 +338,9 @@ begin
   RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
   RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg');
   RegisterBuiltIn(scProc, 'TextBackground', 1, '__textbg');
+
+  RegisterBuiltIn(scProc, 'SetPixel', 3, '__set_pixel');
+  RegisterBuiltIn(scFunc, 'GetPixel', 2, '__get_pixel');
 end;
 
 (* --------------------------------------------------------------------- *)
