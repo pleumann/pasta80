@@ -5,27 +5,39 @@ var
 
 function Color(C);
 begin
-  if C = 0 then Color := 2;
-  if C = 1 then Color := 160;
-  if C = 2 then Color := 162;
-  if C = 3 then Color := 20;
-  if C = 4 then Color := 22;
-  if C = 5 then Color := 180;
-  if C = 6 then Color := 3;
-  if C = 7 then Color := 224;
-  if C = 8 then Color := 231;
-  if C = 9 then Color := 28;
-  if C = 10 then Color := 31;
-  if C = 11 then Color := 252;
-  if C = 12 then Color := 255;
+  if C = 0 then
+    Color := 2
+  else if C = 1 then
+    Color := 160
+  else if C = 2 then
+    Color := 162
+  else if C = 3 then
+    Color := 20
+  else if C = 4 then
+    Color := 22
+  else if C = 5 then
+    Color := 180
+  else if C = 6 then
+    Color := 3
+  else if C = 7 then
+    Color := 224
+  else if C = 8 then
+    Color := 231
+  else if C = 9 then
+    Color := 28
+  else if C = 10 then
+    Color := 31
+  else if C = 11 then
+    Color := 252
+  else if C = 12 then
+    Color := 255;
 end;
 
 procedure Wall(X,Y);
 var
-  R, I;
+  I;
 begin
-  R := Random % 2;
-  if R = 0 then
+  if Random % 2 = 0 then
   begin
     I := 0;
     while I < 8 do
@@ -33,9 +45,8 @@ begin
       SetPixel(X+I, Y+I, 0);
       I := I + 1;
     end;
-  end;
-
-  if R = 1 then
+  end
+  else
   begin
     while I < 8 do
     begin
