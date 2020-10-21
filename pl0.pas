@@ -357,6 +357,7 @@ type
             toOdd,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
+            toFor, toTo, toDownTo,
             toEof);
 
   TScanner = record
@@ -395,7 +396,7 @@ type
 end;
 
 const
-  MaxKeywords = 15;
+  MaxKeywords = 18;
 
 var
   NumKeywords: Integer;
@@ -443,6 +444,9 @@ begin
   RegisterKeyword(toDo, 'do');
   RegisterKeyword(toRepeat, 'repeat');
   RegisterKeyword(toUntil, 'until');
+  RegisterKeyword(toFor, 'for');
+  RegisterKeyword(toTo, 'to');
+  RegisterKeyword(toDownTo, 'downto');
   RegisterKeyword(toOdd, 'odd');
 end;
 
@@ -1187,6 +1191,7 @@ procedure ParseStatement;
 var
   Sym: PSymbol;
   Tag, Tag2: String;
+  Delta: Integer;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -1324,6 +1329,58 @@ begin
     EmitI('pop af');            (* TODO EmitCondJump? *)
     EmitI('and a');
     EmitI('jp z,' + Tag);    
+  end
+  else if Scanner.Token = toFor then
+  begin
+    NextToken;
+    Expect(toIdent);
+
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
+
+    NextToken; Expect(toBecomes); NextToken; ParseExpression;
+    EmitSetVar(Sym);
+
+    if Scanner.Token = toTo then
+      Delta := 1
+    else if Scanner.Token = toDownTo then
+      Delta := -1
+    else
+      Error('"to" or "downto" expected.');
+
+    NextToken; ParseExpression; Expect(toDo); NextToken; (* final value on stack *)
+
+    Tag := GetLabel('forloop');
+    Tag2 := GetLabel('forcheck');
+
+    Emit('', 'jp ' + Tag2, '');
+
+    Emit(Tag, '', '');
+
+    ParseStatement;
+
+    EmitGetVar(Sym);
+    Emit('', 'ld de,' + Int2Str(Delta), '');
+    Emit('', 'push de', '');
+    EmitAdd;
+    EmitSetVar(Sym);
+
+    Emit(Tag2, '', '');
+
+    Emit('', 'pop de','');
+    Emit('', 'push de','');
+    Emit('', 'push de', '');
+
+    EmitGetVar(Sym);
+
+    if Delta = 1 then EmitComp(toGeq) else EmitComp(toLeq); (* Operands swapped! *)
+
+    EmitI('pop af');            (* TODO EmitCondJump? *)
+    EmitI('and a');
+    EmitI('jp nz,' + Tag);
+
+    EmitI('pop de'); (* Cleanup loop variable *)
   end
 end;
 
