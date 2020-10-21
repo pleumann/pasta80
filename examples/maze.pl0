@@ -1,7 +1,5 @@
-const
-  OldColor = 182;
 var
-  X,Y,I,C;
+  I,X,Y,C;
 
 function Color(C);
 begin
@@ -38,22 +36,11 @@ var
   I;
 begin
   if Random % 2 = 0 then
-  begin
-    I := 0;
-    while I < 8 do
-    begin
-      SetPixel(X+I, Y+I, 0);
-      I := I + 1;
-    end;
-  end
+    for I := 0 to 7 do
+      SetPixel(X+I,Y+I,0)
   else
-  begin
-    while I < 8 do
-    begin
-      SetPixel(X+7-I, Y+I, 0);
-      I := I + 1;
-    end;
-  end;
+    for I := 7 downto 0 do
+      SetPixel(X+7-I,Y+I,0);
 end;
 
 procedure Fill(X,Y,D);
@@ -61,79 +48,59 @@ var
   I, L, R;
 begin
   L := X;
-  while GetPixel(L-1,Y) = OldColor do L := L - 1;
+  while GetPixel(L-1,Y) = 182 do
+    L := L - 1;
+  
   R := X;
-  while GetPixel(R+1,Y) = OldColor do R := R + 1;
-  I := L;
-  while I <= R do
-  begin
-    SetPixel(I, Y, C);
-    I := I + 1;
-  end;
+  while GetPixel(R+1,Y) = 182 do
+    R := R + 1;
 
-  I := L;
-  while I <= R do
-  begin
-    if GetPixel(I, Y+D) = OldColor then Fill(I,Y+D,D);
-    I := I + 1;
-  end;
+  for I := L to R do
+    SetPixel(I,Y,C);
 
-  I := L;
-  while I <= R do
-  begin
-    if GetPixel(I, Y-D) = OldColor then Fill(I,Y-D,-D);
-    I := I + 1;
-  end;
+  for I := L to R do
+    if GetPixel(I,Y+D) = 182 then
+      Fill(I,Y+D,D);
+
+  for I := L to R do
+    if GetPixel(I,Y-D) = 182 then
+      Fill(I,Y-D,-D);
+end;
+
+procedure Setup;
+var
+  X,Y;
+begin
+  for Y := 0 to 191 do
+    for X := 0 to 255 do
+      SetPixel(X,Y,182);
+
+  for Y := 0 to 191 do
+    begin
+      SetPixel(0,Y,0);
+      SetPixel(255,Y,0);
+    end;
+
+  for X := 0 to 255 do
+    begin
+      SetPixel(X,0,0);
+      SetPixel(X,191,0);
+    end;
+
+  for Y := 0 to 23 do
+    for X := 0 to 31 do
+      Wall(X*8,Y*8);
 end;
 
 begin
-  Y := 0;
-  while Y < 192 do
-  begin
-    X := 0;
-    while X < 256 do
+  Setup;
+
+  for I := 1 to 10000 do
     begin
-      SetPixel(X,Y,182);
-      X := X + 1;
+      X := Random % 256;
+      Y := Random % 192;
+      C := Color(Random % 13);
+      if GetPixel(X,Y) = 182 then
+        Fill(X,Y,-1);
     end;
-    Y := Y + 1;
-  end;
-
-  Y := 0;
-  while Y < 192 do
-  begin
-    SetPixel(0,Y,0);
-    SetPixel(255,Y,0);
-    Y := Y + 1;
-  end;
-
-  X := 0;
-  while X < 256 do
-  begin
-    SetPixel(X,0,0);
-    SetPixel(X,191,0);
-    X := X + 1;
-  end;
-
-  Y := 0;
-  while Y < 192 do
-  begin
-    X := 0;
-    while X < 256 do
-    begin
-      Wall(X,Y);
-      X := X + 8;
-    end;
-    Y := Y + 8;
-  end;
-
-  I := 0;
-  while I < 10000 do
-  begin
-    X := Random % 256;
-    Y := Random % 192;
-    C := Color(Random % 13);
-    if GetPixel(X, Y) = 182 then Fill(X, Y, -1);
-    I := I + 1;
-  end;
 end.
