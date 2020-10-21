@@ -1,0 +1,22 @@
+var
+  I;
+
+begin
+  repeat
+  until 1=1;
+
+  repeat
+    ! "Should see this once";
+  until 1=1;
+
+  repeat
+    ! "This,";
+    ! "too"
+  until 1=1;
+
+  I := 0;
+  repeat
+    ! I;
+    I := I + 1;
+  until I = 10;
+end.

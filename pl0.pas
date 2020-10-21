@@ -356,7 +356,7 @@ type
             toSay, toAsk, toBecomes, toComma, toSemicolon, toPeriod,
             toOdd,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
-            toCall, toIf, toThen, toElse, toWhile, toDo,
+            toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toEof);
 
   TScanner = record
@@ -395,7 +395,7 @@ type
 end;
 
 const
-  MaxKeywords = 13;
+  MaxKeywords = 15;
 
 var
   NumKeywords: Integer;
@@ -440,7 +440,8 @@ begin
   RegisterKeyword(toThen, 'then');
   RegisterKeyword(toElse, 'else');
   RegisterKeyword(toWhile, 'while');
-  RegisterKeyword(toDo, 'do');
+  RegisterKeyword(toRepeat, 'repeat');
+  RegisterKeyword(toUntil, 'until');
   RegisterKeyword(toOdd, 'odd');
 end;
 
@@ -1302,6 +1303,26 @@ begin
 
     EmitI('jp ' + Tag);         (* TODO Move this elsewhere. *)
     Emit(Tag2, '', '');
+  end
+  else if Scanner.Token = toRepeat then
+  begin
+    Tag := GetLabel('repeat');
+
+    Emit(Tag, '', '');
+
+    NextToken; ParseStatement;
+    while Scanner.Token = toSemicolon do
+    begin
+      NextToken;
+      ParseStatement;
+    end;
+    Expect(toUntil); NextToken;
+    
+    ParseCondition;
+
+    EmitI('pop af');            (* TODO EmitCondJump? *)
+    EmitI('and a');
+    EmitI('jp z,' + Tag);    
   end
 end;
 
