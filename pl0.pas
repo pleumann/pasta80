@@ -440,6 +440,7 @@ begin
   RegisterKeyword(toThen, 'then');
   RegisterKeyword(toElse, 'else');
   RegisterKeyword(toWhile, 'while');
+  RegisterKeyword(toDo, 'do');
   RegisterKeyword(toRepeat, 'repeat');
   RegisterKeyword(toUntil, 'until');
   RegisterKeyword(toOdd, 'odd');
