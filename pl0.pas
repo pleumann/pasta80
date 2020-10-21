@@ -782,6 +782,8 @@ var
 begin
   if Sym = Nil then
     EmitC('main entry point')
+  else if Sym^.Kind = scFunc then
+    EmitC('function ' + Sym^.Name)
   else
     EmitC('procedure ' + Sym^.Name);
 
