@@ -331,7 +331,7 @@ begin
   Sym^.Tag := Tag;
 end;
 
-procedure RegisterAllBuiltIns;
+procedure RegisterAllBuiltIns(Graphics: Boolean);
 begin
   RegisterBuiltIn(scFunc, 'Random', 0, '__rand16');
   RegisterBuiltIn(scProc, 'ClrScr', 0, '__clrscr');
@@ -339,8 +339,11 @@ begin
   RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg');
   RegisterBuiltIn(scProc, 'TextBackground', 1, '__textbg');
 
-  RegisterBuiltIn(scProc, 'SetPixel', 3, '__set_pixel');
-  RegisterBuiltIn(scFunc, 'GetPixel', 2, '__get_pixel');
+  if Graphics then
+  begin
+    RegisterBuiltIn(scProc, 'SetPixel', 3, '__set_pixel');
+    RegisterBuiltIn(scFunc, 'GetPixel', 2, '__get_pixel');
+  end;
 end;
 
 (* --------------------------------------------------------------------- *)
@@ -1488,7 +1491,7 @@ end;
 procedure ParseProgram;
 begin
   OpenScope;
-  RegisterAllBuiltIns();
+  RegisterAllBuiltIns(Binary = btDot);
   parseBlock(Nil);
   Expect(toPeriod);
   EmitC('');
