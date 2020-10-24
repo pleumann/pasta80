@@ -637,6 +637,8 @@ var
   Binary: TBinaryType;
   Target: Text;
   NextLabel: Integer;
+  LastTag, LastInstruction, LastComment: String;
+  Optimize: Boolean;
 
 procedure OpenTarget(Filename: String);
 begin
@@ -652,7 +654,7 @@ end;
 
 // Emit(Col1, Col2, Col3, Col4)
 
-procedure Emit(Tag, Instruction, Comment: String);
+procedure Emit0(Tag, Instruction, Comment: String);
 var
   P: Integer;
   S: String;
@@ -682,6 +684,76 @@ begin
   WriteLn(Target, S);
 end;
 
+procedure Flush;
+begin
+  if not Optimize then Exit;
+
+  if (LastTag <> '') or (LastInstruction <> '') or (LastComment <> '') then
+  begin
+    Emit0(LastTag, LastInstruction, LastComment);
+    LastTag := '';
+    LastInstruction := '';
+    LastComment := '';
+  end;
+end;
+
+procedure Emit(Tag, Instruction, Comment: String);
+var
+  TwoOp: String;
+begin
+  if not Optimize then
+  begin
+    Emit0(Tag, Instruction, Comment);
+    Exit;
+  end;
+
+  if Tag <> '' then
+  begin
+    Flush;
+    LastTag := Tag;
+    LastInstruction := Instruction;
+    LastComment := Comment;
+    Exit;
+  end;
+
+  if (LastInstruction = '') then
+  begin
+    LastInstruction := Instruction;
+    LastComment := Comment;
+    Exit;
+  end;
+
+  (* Try to eliminate the most embarrassing generated instruction pairs. *)
+  TwoOp := LastInstruction + '/' + Instruction;
+
+  if (TwoOp = 'push de/pop de') or (TwoOp = 'push af/pop af') then
+  begin
+    LastInstruction := '';
+    LastComment := '';
+    Exit;
+  end
+  else if TwoOp = 'push de/pop hl' then
+  begin
+    LastInstruction := 'ld hl,de';
+    Exit;
+  end
+  else if TwoOp = 'push de/pop bc' then
+  begin
+    LastInstruction := 'ld bc,de';
+    Exit;
+  end
+  else if TwoOp = 'push hl/pop de' then
+  begin
+    LastInstruction := 'ld de,hl';
+    Exit;
+  end;
+
+  Flush;
+  LastTag := Tag;
+  LastInstruction := Instruction;
+  LastComment := Comment;
+end;
+
 procedure EmitI(S: String);
 begin
   Emit('', S, '');
@@ -689,6 +761,7 @@ end;
 
 procedure EmitC(S: String);
 begin
+  Flush;
   WriteLn(Target, '; ', S);
 end;
 
@@ -1043,6 +1116,7 @@ end;
 
 procedure CloseTarget();
 begin
+  Flush;
   Close(Target);
 end;
 
@@ -1533,6 +1607,8 @@ begin
       Binary := btCom
     else if SrcFile = '--dot' then
       Binary := btDot
+    else if SrcFile = '--opt' then
+      Optimize := True
     else
       Error('Invalid option: ' + SrcFile);
 
