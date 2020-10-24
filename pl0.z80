@@ -26,31 +26,63 @@ __buffer:       equ     23698
 #endif
 
 ;
-; Signed 16 bit comparison (taken from Zaks)
+; Signed 16 bit '=' check (with help from Ped7g)
 ;
 ; In:   HL (left), DE (right)
-; Out:  CF (smaller), ZF (equal)
-; Uses: A
+; Out:  A=0 if false, A=1 if true
 ;
-__comp16:       ld      a,h
-                and     128
-                jr      nz,__negm1
-                bit     7,d
-                ret     nz
-                ld      a,h
-                cp      d
-                ret     nz
-                ld      a,l
-                cp      e
+__int16_eq:     xor a
+                sbc hl,de
+                ; add hl,de
+                ret nz
+                inc a
                 ret
-__negm1:        xor     d
-                rla
-                ret     c
-                ld      a,h
-                cp      d
-                ret     nz
-                ld      a,l
-                cp      e
+
+;
+; Signed 16 bit '<>' check (with help from Ped7g)
+;
+; In:   HL (left), DE (right)
+; Out:  A=0 if false, A=1 if true
+;
+__int16_neq:    xor a
+                sbc hl,de
+                ; add hl,de
+                ret z
+                inc a
+                ret
+
+;
+; Signed 16 bit 'lt' check (with help from Ped7g)
+;
+; In:   HL (left), DE (right)
+; Out:  A=0 if false, A=1 if true
+;
+__int16_lt:     xor a
+                sbc hl,de
+                ; add hl,de
+                jp pe,__int16_lt_of
+                ret p
+                inc a
+                ret
+__int16_lt_of:  ret m
+                inc a
+                ret
+
+;
+; Signed 16 bit '>=' check (with help from Ped7g)
+;
+; In:   HL (left), DE (right)
+; Out:  A=0 if false, A=1 if true
+;
+__int16_geq:    xor a
+                sbc hl,de
+                ; add hl,de
+                jp pe,__int16_geq_of
+                ret m
+                inc a
+                ret
+__int16_geq_of: ret p
+                inc a
                 ret
 
 ;

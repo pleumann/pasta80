@@ -995,29 +995,6 @@ begin
   Emit(S, 'push de', '');
 end;
 
-procedure EmitJumpIf(Op: TToken; Target: String);
-var
-  S: String;
-begin
-  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
-  EmitI('pop hl');
-
-  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
-
-  EmitI('call __comp16');
-
-  S := GetLabel('false');
-
-  case Op of
-    toEq:   EmitI('jr z,' + Target);
-    toNeq:  EmitI('jr nz,' + Target);
-    toLt:   EmitI('jr c,' + Target);
-    toGt:   EmitI('jr c,' + Target);
-    toLeq:  EmitI('jr nc,' + S);
-    toGeq:  EmitI('jr nc,' + S);
-  end;
-end;
-
 procedure EmitComp(Op: TToken);
 var
   S, T: String;
@@ -1027,25 +1004,38 @@ begin
 
   if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
 
-  EmitI('call __comp16');
-
-  S := GetLabel('true');
-  T := GetLabel('exit');
-
   case Op of
-    toEq:   EmitI('jr z,' + S);
-    toNeq:  EmitI('jr nz,' + S);
-    toLt:   EmitI('jr c,' + S);
-    toGt:   EmitI('jr c,' + S);
-    toLeq:  EmitI('jr nc,' + S);
-    toGeq:  EmitI('jr nc,' + S);
+    toEq:   EmitI('call __int16_eq');
+    toNeq:  EmitI('call __int16_neq');
+    toLt:   EmitI('call __int16_lt');
+    toGt:   EmitI('call __int16_lt');
+    toLeq:  EmitI('call __int16_geq');
+    toGeq:  EmitI('call __int16_geq');
   end;
 
-  EmitI('xor a');
-  EmitI('jr ' + T);
+  Emit('', 'push af', '');
+end;
 
-  Emit(S, 'ld a,255', '');
-  Emit(T, 'push af', '');
+procedure EmitJumpIf(Op: TToken; Target: String);
+var
+  S, T: String;
+begin
+  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
+  EmitI('pop hl');
+
+  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
+
+  case Op of
+    toEq:   EmitI('call __int16_eq');
+    toNeq:  EmitI('call __int16_neq');
+    toLt:   EmitI('call __int16_lt');
+    toGt:   EmitI('call __int16_lt');
+    toLeq:  EmitI('call __int16_geq');
+    toGeq:  EmitI('call __int16_geq');
+  end;
+
+  EmitI('and a');
+  EmitI('jp nz,' + Target);
 end;
 
 procedure EmitMul();
