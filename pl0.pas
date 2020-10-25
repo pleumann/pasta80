@@ -996,8 +996,6 @@ begin
 end;
 
 procedure EmitComp(Op: TToken);
-var
-  S, T: String;
 begin
   Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
   EmitI('pop hl');
@@ -1005,37 +1003,23 @@ begin
   if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
 
   case Op of
-    toEq:   EmitI('call __int16_eq');
-    toNeq:  EmitI('call __int16_neq');
-    toLt:   EmitI('call __int16_lt');
-    toGt:   EmitI('call __int16_lt');
-    toLeq:  EmitI('call __int16_geq');
-    toGeq:  EmitI('call __int16_geq');
+    toEq:         EmitI('call __int16_eq');
+    toNeq:        EmitI('call __int16_neq');
+    toLt, toGt:   EmitI('call __int16_lt');
+    toLeq, toGeq: EmitI('call __int16_geq');
   end;
 
   Emit('', 'push af', '');
 end;
 
-procedure EmitJumpIf(Op: TToken; Target: String);
-var
-  S, T: String;
+procedure EmitJumpIf(When: Boolean; Target: String);
 begin
-  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
-  EmitI('pop hl');
-
-  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
-
-  case Op of
-    toEq:   EmitI('call __int16_eq');
-    toNeq:  EmitI('call __int16_neq');
-    toLt:   EmitI('call __int16_lt');
-    toGt:   EmitI('call __int16_lt');
-    toLeq:  EmitI('call __int16_geq');
-    toGeq:  EmitI('call __int16_geq');
-  end;
-
+  EmitI('pop af');
   EmitI('and a');
-  EmitI('jp nz,' + Target);
+  if When then
+    EmitI('jp nz,' + Target)
+  else
+    EmitI('jp z,' + Target);
 end;
 
 procedure EmitMul();
@@ -1337,9 +1321,7 @@ begin
     
     Tag := GetLabel('false');
 
-    EmitI('pop af');            (* TODO Move this elsewhere. *)
-    EmitI('and a');
-    EmitI('jp z,' + Tag);    
+    EmitJumpIf(False, Tag);
 
     ParseStatement;
 
@@ -1370,9 +1352,7 @@ begin
 
     NextToken; ParseCondition; Expect(toDo); NextToken;
 
-    EmitI('pop af');            (* TODO Move this elsewhere. *)
-    EmitI('and a');
-    EmitI('jp z,' + Tag2);    
+    EmitJumpIf(False, Tag2);
 
     ParseStatement;
 
@@ -1395,9 +1375,7 @@ begin
     
     ParseCondition;
 
-    EmitI('pop af');            (* TODO EmitCondJump? *)
-    EmitI('and a');
-    EmitI('jp z,' + Tag);    
+    EmitJumpIf(False, Tag);
   end
   else if Scanner.Token = toFor then
   begin
@@ -1445,9 +1423,7 @@ begin
 
     if Delta = 1 then EmitComp(toGeq) else EmitComp(toLeq); (* Operands swapped! *)
 
-    EmitI('pop af');            (* TODO EmitCondJump? *)
-    EmitI('and a');
-    EmitI('jp nz,' + Tag);
+    EmitJumpIf(True, Tag);
 
     EmitI('pop de'); (* Cleanup loop variable *)
   end
