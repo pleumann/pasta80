@@ -1588,9 +1588,10 @@ begin
     WriteLn('  pl0 { <option> } <input>');
     WriteLn;
     WriteLn('Options:');
-    WriteLn('  --asm <path>   calls external assembler');
+    WriteLn('  --asm <path>   sets assembler binary');
     WriteLn('  --com          target is CP/M .com file');
     WriteLn('  --dot          target is Next .dot file');
+    WriteLn('  --opt          enables optimizations');
     WriteLn;
     Halt(1);
   end;
