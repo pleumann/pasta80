@@ -15,6 +15,14 @@ begin
   UpperStr := S;  
 end;
 
+function LowerStr(S: String): String;
+var
+  I: Integer;
+begin
+  for I := 1 to Length(S) do S[I] := LowerCase(S[I]);
+  LowerStr := S;  
+end;
+
 function Replace(S: String; C, D: Char): String;
 var
   I: Integer;
@@ -369,6 +377,23 @@ type
     NumValue: Integer;
   end;
 
+const
+  TokenStr: array[TToken] of String = 
+           ('<nul>',
+            'Identifier', 'Number', 'String',
+            '+', '-', '*', '/', '%',
+            '=', '#', '<', '<=', '>', '>=',
+            '(', ')',
+            '!', '?', ':=', ',', ';', '.',
+            'odd',
+            'begin', 'end', 'const', 'var', 'procedure', 'function',
+            'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
+            'for', 'to', 'downto',
+            '<eof>');
+
+  FirstKeyword = toOdd;
+  LastKeyword = toDownTo;
+
 var
   Scanner: TScanner;
 
@@ -392,65 +417,20 @@ begin
   IsHexDigit := IsDecDigit(C) or (C >= 'A') and (C <= 'F') or (C >= 'a') and (C <= 'f');
 end;
 
-type
-  TKeyword = record
-    Token: TToken;
-    Ident: String;
-end;
-
-const
-  MaxKeywords = 18;
-
-var
-  NumKeywords: Integer;
-  Keywords: array[0..MaxKeywords-1] of TKeyword;
-    
-procedure RegisterKeyword(Token: TToken; Ident: String);
-begin
-  if (NumKeywords = MaxKeywords) then Error('Too many keywords.');
-
-  Keywords[NumKeywords].Token := Token;
-  Keywords[NumKeywords].Ident := UpperStr(Ident);
-
-  NumKeywords := NumKeywords+1;
-end;
-
 function LookupKeyword(Ident: String): TToken;
 var
-  I: Integer;
+  T: TToken;
 begin
-  Ident := UpperStr(Ident);
+  Ident := LowerStr(Ident);
 
-  for I := 0 to MaxKeywords-1 do
-    if Keywords[I].Ident = Ident then
+  for T := FirstKeyword to LastKeyword do
+    if TokenStr[T] = Ident then
     begin
-      LookupKeyword := Keywords[I].Token;
+      LookupKeyword := T;
       Exit;
     end;
 
   LookupKeyword := toIdent;
-end;
-
-procedure RegisterAllKeywords;
-begin
-  RegisterKeyword(toBegin, 'begin');
-  RegisterKeyword(toEnd, 'end');
-  RegisterKeyword(toConst, 'const');
-  RegisterKeyword(toVar, 'var');
-  RegisterKeyword(toProcedure, 'procedure');
-  RegisterKeyword(toFunction, 'function');
-  RegisterKeyword(toCall, 'call');
-  RegisterKeyword(toIf, 'if');
-  RegisterKeyword(toThen, 'then');
-  RegisterKeyword(toElse, 'else');
-  RegisterKeyword(toWhile, 'while');
-  RegisterKeyword(toDo, 'do');
-  RegisterKeyword(toRepeat, 'repeat');
-  RegisterKeyword(toUntil, 'until');
-  RegisterKeyword(toFor, 'for');
-  RegisterKeyword(toTo, 'to');
-  RegisterKeyword(toDownTo, 'downto');
-  RegisterKeyword(toOdd, 'odd');
 end;
 
 var
@@ -623,7 +603,7 @@ end;
 procedure Expect(Token: TToken);
 begin
   (* Write('<', Token, '/', Scanner.Token, '>'); *)
-  if Scanner.Token <> Token then Error('Parser error');
+  if Scanner.Token <> Token then Error('Expected "' + TokenStr[Token] + '", but got "' + TokenStr[Scanner.Token] + '"');
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -1606,8 +1586,6 @@ begin
     BinFile := ChangeExt(SrcFile, '.dot');
 
   WriteLn('Compiling...');
-
-  RegisterAllKeywords();
 
   OpenInput(SrcFile);
   OpenTarget(AsmFile);
