@@ -867,9 +867,16 @@ begin
 
     EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
 
-    EmitI('ld de,0');
-    for I := 0 downto Offset div 2 - 1 do
-      EmitI('push de');
+    I := Offset;
+    if I < -2 then
+    begin
+      Emit('', 'ld de,0', 'Space for locals');
+      while I < -2 do
+      begin
+        EmitI('push de');
+        I := I + 2;
+      end;
+    end;
   end;
 end;
 
@@ -915,15 +922,13 @@ begin
   end
   else if L = 0 then
   begin
-    Emit('', 'ld d,(' + RelativeAddr('ix', Sym^.Value + 1) + ')', 'Get local ' + Sym^.Name);
-    EmitI('ld e,(' + RelativeAddr('ix', Sym^.Value) + ')');
+    Emit('', 'ld de,(' + RelativeAddr('ix', Sym^.Value) + ')', 'Get local ' + Sym^.Name);
     EmitI('push de');
   end
   else
   begin
     Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
-    EmitI('ld d,(' + RelativeAddr('iy', Sym^.Value + 1) + ')');
-    EmitI('ld e,(' + RelativeAddr('iy', Sym^.Value) + ')');
+    EmitI('ld de,(' + RelativeAddr('iy', Sym^.Value) + ')');
     EmitI('push de');
   end
 end;
@@ -942,15 +947,13 @@ begin
   else if L = 0 then
   begin
     Emit('', 'pop de', 'Set local ' + Sym^.Name);
-    EmitI('ld (' + RelativeAddr('ix', Sym^.Value + 1) + '),d');
-    EmitI('ld (' + RelativeAddr('ix', Sym^.Value) + '),e');
+    EmitI('ld (' + RelativeAddr('ix', Sym^.Value) + '),de');
   end
   else
   begin
     EmitI('pop de');
     Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
-    EmitI('ld (' + RelativeAddr('iy', Sym^.Value + 1) + '),d');
-    EmitI('ld (' + RelativeAddr('iy', Sym^.Value) + '),e');
+    EmitI('ld (' + RelativeAddr('iy', Sym^.Value) + '),de');
   end
 end;
 
