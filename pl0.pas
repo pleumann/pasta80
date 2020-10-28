@@ -946,8 +946,8 @@ begin
   end
   else if L = 0 then
   begin
-    Emit('', 'pop de', 'Set local ' + Sym^.Name);
-    EmitI('ld (' + RelativeAddr('ix', Sym^.Value) + '),de');
+    EmitI('pop de');
+    Emit('', 'ld (' + RelativeAddr('ix', Sym^.Value) + '),de', 'Set local ' + Sym^.Name);
   end
   else
   begin
