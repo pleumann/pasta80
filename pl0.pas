@@ -774,7 +774,7 @@ begin
   else
   begin
   for I := 1 to Sym^.Value do
-    EmitI('pop hl');
+    Emit('', 'pop hl', 'Cleanup arguments');
   end;
 end;
 
@@ -831,6 +831,35 @@ begin
   end;
 end;
 
+(*
+  Stack frame layout
+
+          +------------------+
+          | result (if any)  |
+          | 1st argument     |
+          | ...              |
+          | nth argument     |
+          | return addr      |
+  ix+2 -> | old ix           |
+  ix ---> | old display      |
+  ix-2 -> | 1st local        |
+          | ...              |
+  sp ---> | nth local        |
+          +------------------+
+
+  Caller cleans up arguments.
+
+  ix used for arguments and
+  local variables.
+
+  iy used for intermediate-level
+  variables (neither local nor
+  global), happens when procedures
+  are nested (Pascal-speciality).
+
+  Fast call via registers possible
+  for run-time library functions.
+*)
 procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
@@ -1384,21 +1413,21 @@ begin
     Tag := GetLabel('forloop');
     Tag2 := GetLabel('forcheck');
 
-    Emit('', 'jp ' + Tag2, '');
+    Emit('', 'jp ' + Tag2, 'Limit on stack, start loop');
 
     Emit(Tag, '', '');
 
     ParseStatement;
 
     EmitGetVar(Sym);
-    Emit('', 'ld de,' + Int2Str(Delta), '');
+    Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
     Emit('', 'push de', '');
     EmitAdd;
     EmitSetVar(Sym);
-
+  
     Emit(Tag2, '', '');
 
-    Emit('', 'pop de','');
+    Emit('', 'pop de','Dup and check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
 
@@ -1408,7 +1437,7 @@ begin
 
     EmitJumpIf(True, Tag);
 
-    EmitI('pop de'); (* Cleanup loop variable *)
+    Emit('', 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
   end
 end;
 
