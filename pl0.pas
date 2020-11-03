@@ -706,7 +706,7 @@ begin
   (* Try to eliminate the most embarrassing generated instruction pairs. *)
   TwoOp := LastInstruction + '/' + Instruction;
 
-  if (TwoOp = 'push de/pop de') or (TwoOp = 'push af/pop af') then
+  if (TwoOp = 'push hl/pop hl') or (TwoOp = 'push de/pop de') or (TwoOp = 'push af/pop af') then
   begin
     LastInstruction := '';
     LastComment := '';
@@ -946,8 +946,8 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    Emit('', 'ld de,(' + RelativeAddr('globals', Sym^.Value) + ')', 'Get global ' + Sym^.Name);
-    EmitI('push de');
+    Emit('', 'ld hl,(' + RelativeAddr('globals', Sym^.Value) + ')', 'Get global ' + Sym^.Name);
+    EmitI('push hl');
   end
   else if L = 0 then
   begin
@@ -970,8 +970,8 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    EmitI('pop de');
-    Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
+    EmitI('pop hl');
+    Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),hl', 'Set global ' + Sym^.Name);
   end
   else if L = 0 then
   begin
