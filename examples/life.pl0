@@ -6,20 +6,29 @@ const
   Dead     = 182;
 
 var
-  I;
+  I, Map[1024];
 
 function GetCell(X,Y);
 begin
-  X := (X + 100) % 100;
-  Y := (Y + 100) % 100;
-  GetCell := GetPixel(78+X,46+Y);
+  X := (X + 32) % 32;
+  Y := (Y + 32) % 32;
+  GetCell := Map[Y*32+X];
 end;
 
 procedure SetCell(X,Y,Z);
 begin
-  X := (X + 100) % 100;
-  Y := (Y + 100) % 100;
-  SetPixel(78+X,46+Y,Z);
+  X := (X + 32) % 32;
+  Y := (Y + 32) % 32;
+  Map[Y*32+X] := Z;
+end;
+
+procedure Paint;
+var
+  X,Y;
+begin
+  for Y := 0 to 31 do
+    for X := 0 to 31 do
+      SetPixel(X, Y, GetCell(X, Y))
 end;
 
 function Next(X,Y);
@@ -53,10 +62,10 @@ var
   X,Y,Z;
 begin
   Y := 0;
-  while Y < 100 do
+  while Y < 32 do
   begin
     X := 0;
-    while X < 100 do
+    while X < 32 do
     begin
       SetCell(X,Y,Next(X,Y));
       X := X + 1;
@@ -65,10 +74,10 @@ begin
   end;
 
   Y := 0;
-  while Y < 100 do
+  while Y < 32 do
   begin
     X := 0;
-    while X < 100 do
+    while X < 32 do
     begin
       Z := GetCell(X,Y);
       if Z = Dying then SetCell(X,Y,Dead) else if Z = Breeding then SetCell(X,Y,Alive);
@@ -83,10 +92,10 @@ var
   X,Y,Z;
 begin
   Y := 0;
-  while Y < 100 do
+  while Y < 32 do
   begin
     X := 0;
-    while X < 100 do
+    while X < 32 do
     begin
       Z := Random % 100;
       if Z < Percent then
@@ -103,9 +112,10 @@ begin
   Setup;
 
   I := 0;
-  while I < 10 do
+  while I < 100 do
   begin
     Generation;
+    Paint;
     I := I + 1;
   end;
 end.
