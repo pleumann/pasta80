@@ -1,0 +1,116 @@
+const
+  Width    = 32,
+  Height   = 24,
+  Size     = 768,
+  Percent  = 25,
+  Rounds   = 100;
+
+var
+  I, Cells[768], Neighbours[768];
+
+function GetCell(X,Y);
+begin
+  X := (X + Width) % Width;
+  Y := (Y + Height) % Height;
+  GetCell := Cells[Y*Width+X];
+end;
+
+procedure SetCell(X,Y,Z);
+begin
+  X := (X + Width) % Width;
+  Y := (Y + Height) % Height;
+  Cells[Y*Width+X] := Z;
+end;
+
+function GetNeighbour(X,Y);
+begin
+  X := (X + Width) % Width;
+  Y := (Y + Height) % Height;
+  GetNeighbour := Neighbours[Y*Width+X];
+end;
+
+procedure SetNeighbour(X,Y,Z);
+begin
+  X := (X + Width) % Width;
+  Y := (Y + Height) % Height;
+  Neighbours[Y*Width+X] := Z;
+end;
+
+procedure Paint;
+var
+  X,Y;
+begin
+  for Y := 0 to Height-1 do
+    for X := 0 to Width-1 do
+      if GetCell(X,Y) = 1 then SetPixel(X,Y,255) else SetPixel(X,Y,0);
+end;
+
+procedure Think;
+var
+  X,Y,Z,I,J;
+begin
+  for Y := 0 to Height-1 do
+    for X := 0 to Width-1 do
+      SetNeighbour(X,Y,0);
+
+  for Y := 0 to Height-1 do
+    for X := 0 to Width-1 do
+      if GetCell(X,Y) = 1 then
+        begin
+          SetNeighbour(I-1,J-1,GetNeighbour(I-1,J-1)+1);
+          SetNeighbour(I,J,GetNeighbour(I,J)+1);
+          SetNeighbour(I,J,GetNeighbour(I,J)+1);
+          SetNeighbour(I,J,GetNeighbour(I,J)+1);
+          SetNeighbour(I,J,GetNeighbour(I,J)+1);
+          SetNeighbour(I,J,GetNeighbour(I,J)+1);
+          SetNeighbour(I,J,GetNeighbour(I,J)+1);
+          SetNeighbour(I,J,GetNeighbour(I,J)+1);
+        end;
+
+  for Y := 0 to Height-1 do
+    for X := 0 to Width-1 do
+    begin
+      Z := GetNeighbour(X,Y);
+      if GetCell(X,Y) = 1 then
+        begin
+          if Z < 2 then SetCell(X,Y,0) else if Z > 3 then SetCell(X,Y,0);
+        end
+        else
+        begin
+          if Z = 3 then SetCell(X,Y,1);
+        end;
+    end;
+end;
+
+procedure Setup;
+var
+  X,Y,Z;
+begin
+  Y := 0;
+  while Y < Height do
+  begin
+    X := 0;
+    while X < Width do
+    begin
+      Z := Random % 100;
+      if Z < Percent then
+        SetCell(X,Y,1)
+      else
+        SetCell(X,Y,0);
+      X := X + 1;
+    end;
+    Y := Y + 1;
+  end;
+end;
+
+begin
+  Setup;
+
+  I := 0;
+  while I < 100 do
+  begin
+    Paint;
+    Think;
+    I := I + 1;
+  end;
+end.
