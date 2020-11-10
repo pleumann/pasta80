@@ -1,0 +1,20 @@
+var
+  I, X, Y[100], Z;
+
+begin
+  X := 42;
+  Z := 43;
+
+  for I := 0 to 99 do
+  begin
+    Y[I] := 2 * I;
+  end;
+
+  for I := 0 to 99 do
+  begin
+    ! Y[I];
+  end;
+
+  ! X;
+  ! Z;
+end.
