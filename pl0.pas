@@ -201,6 +201,7 @@ type
     Value: Integer;
     StrVal: String;
     Tag: String;
+    Bounds: Integer;
     Next: PSymbol;
   end;
 
@@ -301,9 +302,10 @@ begin
   Offset := -2;
 end;
 
-function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
+function CreateSymbol(Kind: TSymbolClass; Name: String; Bounds: Integer): PSymbol;
 var
   Sym: PSymbol;
+  Size: Integer;
 begin
   if (Kind <> scString) and (Name <> '') and (LookupLocal(Name) <> nil) then
   begin
@@ -315,15 +317,22 @@ begin
   Sym^.Name := Name;
   Sym^.Level := Level;
   Sym^.Next := SymbolTable;
+  Sym^.Bounds := Bounds;
   SymbolTable := Sym;
 
   if Kind = scVar then
   begin
-    Sym^.Value := Offset;
+    if Bounds = 0 then SIze := 2 else Size := 2 * Bounds;
     if Level = 1 then
-      Offset := Offset + 2
+    begin
+      Sym^.Value := Offset;
+      Offset := Offset + Size;
+    end
     else
-      Offset := Offset - 2;
+    begin
+      Offset := Offset - Size;
+      Sym^.Value := Offset + 2;
+    end;
   end;
 
   CreateSymbol := Sym;
@@ -333,7 +342,7 @@ procedure RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: 
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(Kind, Name);
+  Sym := CreateSymbol(Kind, Name, 0);
   Sym^.Level := 0;
   Sym^.Value := Args;
   Sym^.Tag := Tag;
@@ -363,7 +372,7 @@ type
             toIdent, toNumber, toString,
             toAdd, toSub, toMul, toDiv, toMod,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
-            toLParen, toRParen,
+            toLParen, toRParen, toLBrack, toRBrack,
             toSay, toAsk, toBecomes, toComma, toSemicolon, toPeriod,
             toOdd,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
@@ -383,7 +392,7 @@ const
             'Identifier', 'Number', 'String',
             '+', '-', '*', '/', '%',
             '=', '#', '<', '<=', '>', '>=',
-            '(', ')',
+            '(', ')', '[', ']',
             '!', '?', ':=', ',', ';', '.',
             'odd',
             'begin', 'end', 'const', 'var', 'procedure', 'function',
@@ -561,6 +570,14 @@ begin
       end;
       ')': begin
         Token := toRParen;
+        C := GetChar;
+      end;
+      '[': begin
+        Token := toLBrack;
+        C := GetChar;
+      end;
+      ']': begin
+        Token := toRBrack;
         C := GetChar;
       end;
       '!': begin
@@ -946,8 +963,20 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    Emit('', 'ld hl,(' + RelativeAddr('globals', Sym^.Value) + ')', 'Get global ' + Sym^.Name);
-    EmitI('push hl');
+    if Sym^.Bounds <> 0 then
+    begin
+      EmitI('pop de');
+      Emit('', 'ld hl,' + RelativeAddr('globals', Sym^.Value), 'Get global ' + Sym^.Name);
+      EmitI('add hl,de');
+      EmitI('add hl,de');
+      EmitI('ld de,(hl)');
+      EmitI('push de');
+    end
+    else
+    begin
+      Emit('', 'ld hl,(' + RelativeAddr('globals', Sym^.Value) + ')', 'Get global ' + Sym^.Name);
+      EmitI('push hl');
+    end;
   end
   else if L = 0 then
   begin
@@ -970,8 +999,20 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    EmitI('pop hl');
-    Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),hl', 'Set global ' + Sym^.Name);
+    if Sym^.Bounds <> 0 then
+    begin
+      EmitI('pop bc');
+      EmitI('pop de');
+      Emit('', 'ld hl,' + RelativeAddr('globals', Sym^.Value), 'Set global ' + Sym^.Name);
+      EmitI('add hl,de');
+      EmitI('add hl,de');
+      EmitI('ld (hl),bc');
+    end
+    else
+    begin
+      EmitI('pop hl');
+      Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),hl', 'Set global ' + Sym^.Name);
+    end;
   end
   else if L = 0 then
   begin
@@ -1093,7 +1134,7 @@ procedure EmitPrintStr(S: String);
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(scString, S);
+  Sym := CreateSymbol(scString, S, 0);
   Sym^.Tag := GetLabel('string');
   Emit('', 'ld hl,' + Sym^.Tag, '');
   Emit('', 'call __puts', '');
@@ -1153,8 +1194,17 @@ begin
 
     if Sym^.Kind = scVar then
     begin
-      EmitGetVar(Sym);
       NextToken;
+      if Scanner.Token = toLBrack then
+      begin
+        if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
+        NextToken;
+        ParseExpression; (* Index now on stack *)
+        Expect(toRBrack);
+        NextToken;
+      end
+      else if Sym^.Bounds <> 0 then Error('" ' + Sym^.Name + '" is an array.');
+      EmitGetVar(Sym);
     end
     else if Sym^.Kind = scConst then
     begin
@@ -1275,7 +1325,17 @@ begin
     else
     begin
       if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
-      NextToken; Expect(toBecomes); NextToken; ParseExpression;
+      NextToken;
+      if Scanner.Token = toLBrack then
+      begin
+        if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
+        NextToken;
+        ParseExpression; (* Index now on stack *)
+        Expect(toRBrack);
+        NextToken;
+      end
+      else if Sym^.Bounds <> 0 then Error('" ' + Sym^.Name + '" is an array.');      
+      Expect(toBecomes); NextToken; ParseExpression;
       EmitSetVar(Sym);
     end;
   end
@@ -1446,7 +1506,7 @@ var
   Sym: PSymbol;
 begin
   Expect(toIdent);
-  Sym := CreateSymbol(scConst, Scanner.StrValue);
+  Sym := CreateSymbol(scConst, Scanner.StrValue, 0);
   NextToken;
   Expect(toEq);
   NextToken;
@@ -1458,10 +1518,28 @@ begin
 end;
 
 procedure ParseVar;
+var
+  Name: String;
+  Bounds: Integer;
+  Sym: PSymbol;
 begin
   Expect(toIdent);
-  CreateSymbol(scVar, Scanner.StrValue);
+  Name := Scanner.StrValue;
   NextToken;
+
+  Bounds := 0;
+
+  if Scanner.Token = toLBrack then
+  begin
+    NextToken;
+    Expect(toNumber);
+    Bounds := Scanner.NumValue;
+    NextToken;
+    Expect(toRBrack);
+    NextToken;
+  end;
+
+  Sym := CreateSymbol(scVar, Name, Bounds);
 end;
 
 procedure ParseBlock(Sym: PSymbol);
@@ -1498,17 +1576,17 @@ begin
 
     if Token = toProcedure then
     begin
-      NewSym := CreateSymbol(scProc, Scanner.StrValue);
+      NewSym := CreateSymbol(scProc, Scanner.StrValue, 0);
       NewSym^.Tag := GetLabel('proc');
     end
     else
     begin
-      NewSym := CreateSymbol(scFunc, Scanner.StrValue);
+      NewSym := CreateSymbol(scFunc, Scanner.StrValue, 0);
       NewSym^.Tag := GetLabel('func');
     end;
 
     OpenScope;
-    if Token = toFunction then CreateSymbol(scVar, Scanner.StrValue)^.Tag := 'RESULT';
+    if Token = toFunction then CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
     NextToken; 
     
     if Scanner.Token = toLParen then
