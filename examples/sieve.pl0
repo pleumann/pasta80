@@ -1,0 +1,31 @@
+var
+  Primes[1000], Count, N;
+
+function IsPrime(N);
+var
+  I, P;
+begin
+  IsPrime := 0;
+  I := 0;
+  P := Primes[I];
+  while P * P <= N do begin
+    if N % Primes[I] = 0 then Exit;
+    I := I + 1;
+    P := Primes[I];
+  end;
+  IsPrime := 1;
+end;
+
+begin
+  Primes[0] := 2;
+  Count := 1;
+  N := 3;
+  while Count < 1000 do begin
+    if IsPrime(N) = 1 then begin
+      ! N;
+      Primes[Count] := N;
+      Count := Count + 1;
+    end;
+    N := N + 1;
+  end;
+end.
