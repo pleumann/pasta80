@@ -377,7 +377,7 @@ type
             toOdd,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
-            toFor, toTo, toDownTo, toBreak, toExit,
+            toFor, toTo, toDownTo, toCont, toBreak, toExit,
             toEof);
 
   TScanner = record
@@ -397,7 +397,7 @@ const
             'odd',
             'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
-            'for', 'to', 'downto', 'break', 'exit',
+            'for', 'to', 'downto', 'continue', 'break', 'exit',
             '<eof>');
 
   FirstKeyword = toOdd;
@@ -1305,10 +1305,10 @@ begin
   end;
 end;
 
-procedure ParseStatement(BreakTarget: String);
+procedure ParseStatement(ContTarget, BreakTarget: String);
 var
   Sym: PSymbol;
-  Tag, Tag2, Tag3: String;
+  Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
 begin
   if Scanner.Token = toIdent then
@@ -1382,11 +1382,11 @@ begin
   end
   else if Scanner.Token = toBegin then
   begin
-    NextToken; ParseStatement(BreakTarget);
+    NextToken; ParseStatement(ContTarget, BreakTarget);
     while Scanner.Token = toSemicolon do
     begin
       NextToken;
-      ParseStatement(BreakTarget);
+      ParseStatement(ContTarget, BreakTarget);
     end;
     Expect(toEnd); NextToken;
   end
@@ -1398,7 +1398,7 @@ begin
 
     EmitJumpIf(False, Tag);
 
-    ParseStatement(BreakTarget);
+    ParseStatement(ContTarget, BreakTarget);
 
     if Scanner.Token = toElse then
     begin
@@ -1408,7 +1408,7 @@ begin
       Emit(Tag, '', '');
 
       NextToken;
-      ParseStatement(BreakTarget);
+      ParseStatement(ContTarget, BreakTarget);
 
       Emit(Tag2, '', '');
     end
@@ -1431,7 +1431,7 @@ begin
 
     EmitJumpIf(False, Tag2);
 
-    ParseStatement(Tag2);
+    ParseStatement(Tag, Tag2);
 
     EmitI('jp ' + Tag);         (* TODO Move this elsewhere. *)
     Emit(Tag2, '', '');
@@ -1445,11 +1445,11 @@ begin
 
     Emit(Tag, '', '');
 
-    NextToken; ParseStatement(Tag2);
+    NextToken; ParseStatement(Tag, Tag2);
     while Scanner.Token = toSemicolon do
     begin
       NextToken;
-      ParseStatement(Tag2);
+      ParseStatement(Tag, Tag2);
     end;
     Expect(toUntil); NextToken;
     
@@ -1484,13 +1484,16 @@ begin
     Tag := GetLabel('forloop');
     Tag2 := GetLabel('forcheck');
     Tag3 := GetLabel('forbreak');
+    Tag4 := GetLabel('fornext');
 
     Emit('', 'jp ' + Tag2, 'Limit on stack, start loop');
 
     Emit(Tag, '', '');
 
-    ParseStatement(Tag3);
+    ParseStatement(Tag4, Tag3);
 
+    Emit(Tag4, '', '');
+    
     EmitGetVar(Sym);
     Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
     Emit('', 'push de', '');
@@ -1510,6 +1513,12 @@ begin
     EmitJumpIf(True, Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
+  end
+  else if Scanner.Token = toCont then
+  begin
+    if ContTarget = '' then Error('Not in loop');
+    NextToken;
+    Emit('', 'jp ' + ContTarget, 'Continue');    
   end
   else if Scanner.Token = toBreak then
   begin
@@ -1638,7 +1647,7 @@ begin
 
   ExitTarget := GetLabel('exit');
   EmitPrologue(Sym);
-  parseStatement('');
+  parseStatement('', '');
   EmitEpilogue(Sym);
 end;
 
