@@ -377,7 +377,7 @@ type
             toOdd,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
-            toFor, toTo, toDownTo, toBreak,
+            toFor, toTo, toDownTo, toBreak, toExit,
             toEof);
 
   TScanner = record
@@ -397,11 +397,11 @@ const
             'odd',
             'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
-            'for', 'to', 'downto', 'break',
+            'for', 'to', 'downto', 'break', 'exit',
             '<eof>');
 
   FirstKeyword = toOdd;
-  LastKeyword = toBreak;
+  LastKeyword = toExit;
 
 var
   Scanner: TScanner;
@@ -636,6 +636,7 @@ var
   NextLabel: Integer;
   LastTag, LastInstruction, LastComment: String;
   Optimize: Boolean;
+  ExitTarget: String;
 
 procedure OpenTarget(Filename: String);
 begin
@@ -929,10 +930,10 @@ end;
 procedure EmitEpilogue(Sym: PSymbol);
 begin
   if Sym = nil then
-    Emit('', 'call __done', '')
+    Emit(ExitTarget, 'call __done', '')
   else
   begin
-    Emit('', 'ld sp,ix', 'Epilogue');
+    Emit(ExitTarget, 'ld sp,ix', 'Epilogue');
 
     EmitI('pop hl');
     EmitI('ld (display+' + Int2Str(Level * 2) + '),hl');
@@ -1515,6 +1516,11 @@ begin
     if BreakTarget = '' then Error('Not in loop');
     NextToken;
     Emit('', 'jp ' + BreakTarget, 'Break');    
+  end
+  else if Scanner.Token = toExit then
+  begin
+    NextToken;
+    Emit('', 'jp ' + ExitTarget, 'Exit');    
   end;
 end;
 
@@ -1630,6 +1636,7 @@ begin
     EmitC('');
   end;
 
+  ExitTarget := GetLabel('exit');
   EmitPrologue(Sym);
   parseStatement('');
   EmitEpilogue(Sym);
