@@ -992,7 +992,7 @@ begin
   end
 end;
 
-procedure EmitSetVar(Sym: PSymbol);
+procedure EmitSetVar(Sym: PSymbol; Again: Boolean);
 var
   L: Integer;
 begin
@@ -1008,23 +1008,27 @@ begin
       EmitI('add hl,de');
       EmitI('add hl,de');
       EmitI('ld (hl),bc');
+      if Again then EmitI('push bc');
     end
     else
     begin
       EmitI('pop hl');
       Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),hl', 'Set global ' + Sym^.Name);
+      if Again then EmitI('push hl');
     end;
   end
   else if L = 0 then
   begin
     EmitI('pop de');
     Emit('', 'ld (' + RelativeAddr('ix', Sym^.Value) + '),de', 'Set local ' + Sym^.Name);
+    if Again then EmitI('push de');
   end
   else
   begin
     EmitI('pop de');
     Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
     EmitI('ld (' + RelativeAddr('iy', Sym^.Value) + '),de');
+    if Again then EmitI('push de');
   end
 end;
 
@@ -1305,6 +1309,38 @@ begin
   end;
 end;
 
+procedure ParseAssignment(Sym: PSymbol; Again: Boolean);
+var
+  Sym2: PSymbol;
+begin
+  if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
+  NextToken;
+  if Scanner.Token = toLBrack then
+  begin
+    if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
+    NextToken;
+    ParseExpression; (* Index now on stack *)
+    Expect(toRBrack);
+    NextToken;
+  end
+  else if Sym^.Bounds <> 0 then Error('" ' + Sym^.Name + '" is an array.');
+
+  if Scanner.Token = toComma then
+  begin
+    NextToken;
+    Expect(toIdent);
+    Sym2 := LookupGlobal(Scanner.StrValue);
+    if Sym2 = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    ParseAssignment(Sym2, true);
+  end
+  else
+  begin
+    Expect(toBecomes); NextToken; ParseExpression;
+  end;
+
+  EmitSetVar(Sym, Again);
+end;
+
 procedure ParseStatement(ContTarget, BreakTarget: String);
 var
   Sym: PSymbol;
@@ -1327,19 +1363,7 @@ begin
     end
     else
     begin
-      if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
-      NextToken;
-      if Scanner.Token = toLBrack then
-      begin
-        if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
-        NextToken;
-        ParseExpression; (* Index now on stack *)
-        Expect(toRBrack);
-        NextToken;
-      end
-      else if Sym^.Bounds <> 0 then Error('" ' + Sym^.Name + '" is an array.');      
-      Expect(toBecomes); NextToken; ParseExpression;
-      EmitSetVar(Sym);
+      ParseAssignment(Sym, false);
     end;
   end
   else if Scanner.Token = toCall then
@@ -1363,7 +1387,7 @@ begin
     NextToken;
 
     EmitInputNum(Scanner.StrValue);
-    EmitSetVar(Sym);
+    EmitSetVar(Sym, false);
   end
   else if Scanner.Token = toSay then
   begin
@@ -1470,7 +1494,7 @@ begin
     if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
 
     NextToken; Expect(toBecomes); NextToken; ParseExpression;
-    EmitSetVar(Sym);
+    EmitSetVar(Sym, false);
 
     if Scanner.Token = toTo then
       Delta := 1
@@ -1498,7 +1522,7 @@ begin
     Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
     Emit('', 'push de', '');
     EmitAdd;
-    EmitSetVar(Sym);
+    EmitSetVar(Sym, false);
   
     Emit(Tag2, '', '');
 
