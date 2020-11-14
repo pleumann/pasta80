@@ -1,0 +1,34 @@
+var
+  X,Y,Z,A[10];
+
+procedure Test;
+var
+  P,Q;
+begin
+  X,Y,Z := 0;
+  ! X;
+  ! Y;
+  ! Z;
+
+  X,Y,Z := X + Y + Z + 1;
+  ! X;
+  ! Y;
+  ! Z;
+
+  A[0],A[1],A[2] := 42;
+  ! A[0];
+  ! A[1];
+  ! A[2];
+
+  X,A[0],P,Y,A[1],Q,Z := 666;
+
+  ! X;
+  ! Y;
+  ! Z;
+  ! A[0];
+  ! A[1];
+  ! P;
+  ! Q;
+end;
+
+Test.

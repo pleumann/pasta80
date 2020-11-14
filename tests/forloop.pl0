@@ -1,5 +1,18 @@
 var
   A;
+
+procedure TestForToLimitLtStart;
+var
+  I, J;
+begin
+  for I := 1 to 0 do
+  begin
+    J := J + 1;
+  end;
+
+  
+end;
+
 begin
   ! "Should print 0";
   for A := 0 to 0 do
@@ -16,4 +29,11 @@ begin
   ! "Should print 10..1";
   for A := 10 downto 1 do
     ! A;
+
+  ! "Should skip 4 and stop at 8";
+  for A := 1 to 10 do begin
+    if A = 4 then Continue;
+    if A = 8 then Break;
+    ! A
+  end;
 end.

@@ -19,4 +19,12 @@ begin
     ! I;
     I := I + 1;
   until I = 10;
+
+  I := 0;
+  repeat
+    I := I + 1;
+    if I = 4 then Continue;
+    if I = 6 then Break;
+    ! I;
+  until I = 10;
 end.
