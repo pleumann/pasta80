@@ -571,7 +571,51 @@ __clrscr:     ;ld hl,__clrscr_str
 __clrscr_str: db 1,14
 #endif
 
-#if defined(NXT)
+#if defined(LORES)
+;
+;
+;
+;
+;
+;
+__pixel_addr:   sla     l
+                rr      e
+                rr      l
+                ld      h,e
+                ld      a,h
+                cp      $18
+                jr      c,__pixel_addr1
+                ld      de,$6000
+                jr      __pixel_addr2
+__pixel_addr1:  ld      de,$4000
+__pixel_addr2:  add     hl,de
+                ret
+;
+; Set a pixel in low-res mode
+;
+; Entry:    HL  x       (0..128)
+;           DE  y       (0..95)
+;           BC  color   (0..255)
+;
+__set_pixel:    call    __pixel_addr
+                ld      (hl),c
+                ret
+
+;
+; Get a pixel in LAYER 2,1
+;
+; Entry:    HL  x       (0..255)
+;           DE  y       (0..191)
+;
+__get_pixel:    call    __pixel_addr
+                ld      l,(hl)
+                ld      h,0
+                ret
+
+
+#endif
+
+#if defined(HIRES)
 ;
 ; Set a pixel in LAYER 2,1
 ;
@@ -661,7 +705,12 @@ __init:         ld      (__saved_iy),iy
                 ld      de, $01d5
                 ld      a,1
                 exx
+#if defined(LORES)
+                ld      bc,$0100
+#endif
+#if defined(HIRES)
                 ld      bc,$0201
+#endif
                 exx
                 ld      c,7
                 rst     $08

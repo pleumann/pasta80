@@ -630,8 +630,11 @@ end;
 type
   TBinaryType = (btCom, btDot);
 
+  TGraphicsMode = (gmNone, gmLowRes, gmHighRes);
+
 var
   Binary: TBinaryType;
+  Graphics: TGraphicsMode;
   Target: Text;
   NextLabel: Integer;
   LastTag, LastInstruction, LastComment: String;
@@ -808,6 +811,11 @@ begin
   else if Binary = btDot then
   begin
     Emit('NXT', 'equ 1', 'Target is Next .dot file');
+
+    if Graphics = gmLowRes then 
+      Emit('LORES', 'equ 1', 'Low-res graphics support')
+    else if Graphics = gmHighRes then 
+      Emit('HIRES', 'equ 1', 'High-res graphics support');
   end;
 
   EmitC('');
@@ -1186,7 +1194,7 @@ begin
   if I <> Sym^.Value then Error('Wrong number of arguments');
 end;
 
-procedure ParseFactor;
+procedure ParseFactor; (* DataType: PSymbol *)
 var
   Sym: PSymbol;
 begin
@@ -1201,6 +1209,7 @@ begin
 
     if Sym^.Kind = scVar then
     begin
+      (* Type = Type(var) *)
       NextToken;
       if Scanner.Token = toLBrack then
       begin
@@ -1215,11 +1224,13 @@ begin
     end
     else if Sym^.Kind = scConst then
     begin
+      (* Type = Type(const) *)
       EmitLiteral(Sym^.Value);
       NextToken;
     end
     else if Sym^.Kind = scFunc then
     begin
+      (* Type = Type(func) *)
       if Sym^.Level <> 0 then EmitLiteral(0); (* Result *)
       NextToken;
       ParseArguments(Sym);
@@ -1230,22 +1241,24 @@ begin
   end
   else if Scanner.Token = toNumber then
   begin
+      (* Type = Type(integer) *)
     EmitLiteral(Scanner.NumValue);
 
     NextToken;
   end
+  (* true false + String constants *)
   else if Scanner.Token = toLParen then
   begin
-    NextToken; ParseExpression; Expect(toRParen); NextToken;
+    NextToken; (* Type= *) ParseExpression; Expect(toRParen); NextToken;
   end
   else Error('Factor expected');
 end;
 
-procedure ParseTerm;
+procedure ParseTerm; (* DataType PSymbol *)
 var
   Op: TToken;
 begin
-  ParseFactor;
+  ParseFactor; (* DataType *)
   while (Scanner.Token = toMul) or (Scanner.Token = toDiv) or (Scanner.Token = toMod) do
   begin
     Op := Scanner.Token;
@@ -1256,12 +1269,13 @@ begin
   end;
 end;
 
-procedure ParseExpression;
+procedure ParseExpression; (* DataType: PSymbol *)
 var
   Op: TToken;
 begin
   Op := toNone;
 
+  (* Integer only *)
   if (Scanner.Token = toAdd) or (Scanner.Token = toSub) then
   begin
     Op := Scanner.Token;
@@ -1678,7 +1692,7 @@ end;
 procedure ParseProgram;
 begin
   OpenScope;
-  RegisterAllBuiltIns(Binary = btDot);
+  RegisterAllBuiltIns((Binary = btDot) and (Graphics <> gmNone));
   parseBlock(Nil);
   Expect(toPeriod);
   EmitC('');
@@ -1693,7 +1707,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 var
-  SrcFile, AsmFile, BinFile, HomeDir, AsmTool: String; 
+  SrcFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
   I: Integer;
 
 begin
@@ -1720,6 +1734,19 @@ begin
       Binary := btCom
     else if SrcFile = '--dot' then
       Binary := btDot
+    else if SrcFile = '--gfx' then
+    begin
+      S := LowerStr(ParamStr(I + 1));
+
+      if S = 'lo' then
+        Graphics := gmLowRes
+      else if S = 'hi' then
+        Graphics := gmHighRes
+      else
+        Error('Invalid graphics mode: ' + S);
+
+      I := I + 1;
+    end
     else if SrcFile = '--opt' then
       Optimize := True
     else
@@ -1736,9 +1763,11 @@ begin
     WriteLn;
     WriteLn('Options:');
     WriteLn('  --asm <path>   sets assembler binary');
-    WriteLn('  --com          target is CP/M .com file');
-    WriteLn('  --dot          target is Next .dot file');
+    WriteLn('  --com          selects CP/M .com target');
+    WriteLn('  --dot          selects Next .dot target');
+    WriteLn('  --gfx <lo|hi>  enables graphics mode');
     WriteLn('  --opt          enables optimizations');
+(*  WriteLn('  --chk          enables run-time checks'); *)
     WriteLn;
     Halt(1);
   end;

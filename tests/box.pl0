@@ -1,0 +1,16 @@
+var
+  I;
+
+begin
+  for I := 0 to 191 do
+  begin
+    SetPixel(I, 0, 255);
+    SetPixel(I, 95, 255);
+  end;
+
+  for I := 0 to 95 do
+  begin
+    SetPixel(0, I, 255);
+    SetPixel(127, I, 255);
+  end;
+end.
