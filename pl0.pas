@@ -374,6 +374,7 @@ type
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
             toSay, toAsk, toBecomes, toComma, toSemicolon, toPeriod,
+            toAnd, toOr, toXor, toNot,
             toOdd,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
@@ -394,13 +395,14 @@ const
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
             '!', '?', ':=', ',', ';', '.',
+            'and', 'or', 'xor', 'not',
             'odd',
             'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit',
             '<eof>');
 
-  FirstKeyword = toOdd;
+  FirstKeyword = toAnd;
   LastKeyword = toExit;
 
 var
@@ -1129,6 +1131,57 @@ begin
   EmitI('push hl');
 end;
 
+procedure EmitAnd();
+begin
+  Emit('', 'pop de', 'And');
+  EmitI('pop hl');
+  EmitI('ld a,h');
+  EmitI('and d');
+  EmitI('ld h,a');
+  EmitI('ld a,l');
+  EmitI('and e');
+  EmitI('ld l,a');
+  EmitI('push hl');
+end;
+
+procedure EmitOr();
+begin
+  Emit('', 'pop de', 'Or');
+  EmitI('pop hl');
+  EmitI('ld a,h');
+  EmitI('or d');
+  EmitI('ld h,a');
+  EmitI('ld a,l');
+  EmitI('or e');
+  EmitI('ld l,a');
+  EmitI('push hl');
+end;
+
+procedure EmitXor();
+begin
+  Emit('', 'pop de', 'Xor');
+  EmitI('pop hl');
+  EmitI('ld a,h');
+  EmitI('xor d');
+  EmitI('ld h,a');
+  EmitI('ld a,l');
+  EmitI('xor e');
+  EmitI('ld l,a');
+  EmitI('push hl');
+end;
+
+procedure EmitNot();
+begin
+  Emit('', 'pop hl', 'Not');
+  EmitI('ld a,255');
+  EmitI('xor h');
+  EmitI('ld h,a');
+  EmitI('ld a,255');
+  EmitI('xor l');
+  EmitI('ld l,a');
+  EmitI('push hl');
+end;
+
 procedure EmitInputNum(S: String);
 begin
   Emit('', 'call __getn', 'Get ' + S);
@@ -1251,6 +1304,12 @@ begin
   begin
     NextToken; (* Type= *) ParseExpression; Expect(toRParen); NextToken;
   end
+  else if Scanner.Token = toNot then
+  begin
+    NextToken;
+    ParseFactor;
+    EmitNot;
+  end
   else Error('Factor expected');
 end;
 
@@ -1259,13 +1318,20 @@ var
   Op: TToken;
 begin
   ParseFactor; (* DataType *)
-  while (Scanner.Token = toMul) or (Scanner.Token = toDiv) or (Scanner.Token = toMod) do
+  while Scanner.Token in [toMul, toDiv, toMod, toAnd] do
   begin
     Op := Scanner.Token;
     NextToken;
     ParseFactor;
 
-    if Op = toMul then EmitMul() else if Op = toDiv then EmitDiv() else EmitMod();
+    if Op = toMul then
+      EmitMul()
+    else if Op = toDiv then
+      EmitDiv()
+    else if Op = toAnd then
+      EmitAnd()
+    else
+      EmitMod();
   end;
 end;
 
@@ -1288,13 +1354,20 @@ begin
 
   if Op = toSub then EmitSub();
 
-  while (Scanner.Token = toAdd) or (Scanner.Token = toSub) do
+  while Scanner.Token in [toAdd, toSub, toOr, toXor] do
   begin
     Op := Scanner.Token;
     NextToken;
     ParseTerm;
 
-    if Op = toAdd then EmitAdd() else EmitSub();
+    if Op = toAdd then
+      EmitAdd() else
+    if Op = toSub then
+      EmitSub()
+    else if Op = toOr then
+      EmitOr
+    else
+      EmitXor;
   end;
 end;
 
