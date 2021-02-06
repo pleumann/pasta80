@@ -1,0 +1,4 @@
+begin
+  if odd 1 then ! "1 is odd" else ! "1 is even";
+  if odd 2 then ! "2 is odd" else ! "2 is even";
+end.
