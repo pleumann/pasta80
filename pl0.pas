@@ -1048,22 +1048,7 @@ begin
   EmitI('push de');
 end;
 
-procedure EmitOdd();
-var
-  S: String;
-begin
-  Emit('', 'pop hl', 'Odd');
-  EmitI('bit 0,l');
-  EmitI('ld de,0');
-
-  S := GetLabel('false');
-
-  EmitI('jr z,' + S);
-  EmitI('ld de,255');
-  Emit(S, 'push de', '');
-end;
-
-procedure EmitComp(Op: TToken);
+procedure EmitRelOp(Op: TToken);
 begin
   Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
   EmitI('pop hl');
@@ -1090,96 +1075,57 @@ begin
     EmitI('jp z,' + Target);
 end;
 
-procedure EmitMul();
+procedure EmitBinOp(Op: TToken);
 begin
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
-  Emit('', 'call __mul16', 'Mul');
+
+  case Op of
+    toAdd: EmitI('add hl,de');
+    toSub: begin
+             EmitI('xor a');
+             EmitI('sbc hl,de');
+           end;
+    toMul: Emit('', 'call __mul16', 'Mul');
+    toDiv: Emit('', 'call __sdiv16', 'Div');
+    toMod: begin Emit('', 'call __sdiv16', 'Mod'); EmitI('ex hl,de'); end;
+    toAnd: begin
+             EmitI('ld a,h'); EmitI('and d'); EmitI('ld h,a');
+             EmitI('ld a,l'); EmitI('and e'); EmitI('ld l,a');
+           end;
+    toOr: begin
+             EmitI('ld a,h'); EmitI('or d'); EmitI('ld h,a');
+             EmitI('ld a,l'); EmitI('or e'); EmitI('ld l,a');
+           end;
+    toXor: begin
+             EmitI('ld a,h'); EmitI('xor d'); EmitI('ld h,a');
+             EmitI('ld a,l'); EmitI('xor e'); EmitI('ld l,a');
+           end;
+    end;
   Emit('', 'push hl', '');
 end;
 
-procedure EmitDiv();
+procedure EmitUnOp(Op: TToken);
 begin
-  Emit('', 'pop de', '');
-  Emit('', 'pop hl', '');
-  Emit('', 'call __sdiv16', 'Div');
-  Emit('', 'push hl', '');
-end;
 
-procedure EmitMod();
-begin
-  Emit('', 'pop de', '');
-  Emit('', 'pop hl', '');
-  Emit('', 'call __sdiv16', 'Mod');
-  Emit('', 'push de', '');
-end;
-
-procedure EmitAdd();
-begin
-  Emit('', 'pop de', 'Add');
-  EmitI('pop hl');
-  EmitI('add hl,de');
-  EmitI('push hl');
-end;
-
-procedure EmitSub();
-begin
-  Emit('', 'pop de', 'Sub');
-  EmitI('pop hl');
-  EmitI('xor a');
-  EmitI('sbc hl,de');
-  EmitI('push hl');
-end;
-
-procedure EmitAnd();
-begin
-  Emit('', 'pop de', 'And');
-  EmitI('pop hl');
-  EmitI('ld a,h');
-  EmitI('and d');
-  EmitI('ld h,a');
-  EmitI('ld a,l');
-  EmitI('and e');
-  EmitI('ld l,a');
-  EmitI('push hl');
-end;
-
-procedure EmitOr();
-begin
-  Emit('', 'pop de', 'Or');
-  EmitI('pop hl');
-  EmitI('ld a,h');
-  EmitI('or d');
-  EmitI('ld h,a');
-  EmitI('ld a,l');
-  EmitI('or e');
-  EmitI('ld l,a');
-  EmitI('push hl');
-end;
-
-procedure EmitXor();
-begin
-  Emit('', 'pop de', 'Xor');
-  EmitI('pop hl');
-  EmitI('ld a,h');
-  EmitI('xor d');
-  EmitI('ld h,a');
-  EmitI('ld a,l');
-  EmitI('xor e');
-  EmitI('ld l,a');
-  EmitI('push hl');
-end;
-
-procedure EmitNot();
-begin
-  Emit('', 'pop hl', 'Not');
-  EmitI('ld a,255');
-  EmitI('xor h');
-  EmitI('ld h,a');
-  EmitI('ld a,255');
-  EmitI('xor l');
-  EmitI('ld l,a');
-  EmitI('push hl');
+  case Op of
+    toOdd: begin
+             Emit('', 'pop hl', 'Odd');
+             EmitI('ld a,l');
+             EmitI('and 1');
+             EmitI('push af');
+           end;
+    toNot: begin
+             Emit('', 'pop hl', 'Not');
+             EmitI('ld a,255');
+             EmitI('xor h');
+             EmitI('ld h,a');
+             EmitI('ld a,255');
+             EmitI('xor l');
+             EmitI('ld l,a');
+             EmitI('push hl');
+           end;
+  end;
 end;
 
 procedure EmitInputNum(S: String);
@@ -1308,7 +1254,7 @@ begin
   begin
     NextToken;
     ParseFactor;
-    EmitNot;
+    EmitUnOp(toNot);
   end
   else Error('Factor expected');
 end;
@@ -1323,15 +1269,7 @@ begin
     Op := Scanner.Token;
     NextToken;
     ParseFactor;
-
-    if Op = toMul then
-      EmitMul()
-    else if Op = toDiv then
-      EmitDiv()
-    else if Op = toAnd then
-      EmitAnd()
-    else
-      EmitMod();
+    EmitBinOp(Op);
   end;
 end;
 
@@ -1352,22 +1290,14 @@ begin
 
   ParseTerm;
 
-  if Op = toSub then EmitSub();
+  if Op = toSub then EmitBinOp(toSub);
 
   while Scanner.Token in [toAdd, toSub, toOr, toXor] do
   begin
     Op := Scanner.Token;
     NextToken;
     ParseTerm;
-
-    if Op = toAdd then
-      EmitAdd() else
-    if Op = toSub then
-      EmitSub()
-    else if Op = toOr then
-      EmitOr
-    else
-      EmitXor;
+    EmitBinOp(Op);
   end;
 end;
 
@@ -1379,7 +1309,7 @@ begin
   begin
     NextToken; ParseExpression;
 
-    EmitOdd();
+    EmitUnOp(toOdd);
   end 
   else
   begin
@@ -1392,7 +1322,7 @@ begin
     else Error('RelOp expected');
     ParseExpression;
 
-    EmitComp(Op);
+    EmitRelOp(Op);
   end;
 end;
 
@@ -1608,7 +1538,7 @@ begin
     EmitGetVar(Sym);
     Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
     Emit('', 'push de', '');
-    EmitAdd;
+    EmitBinOp(toAdd);
     EmitSetVar(Sym, false);
   
     Emit(Tag2, '', '');
@@ -1619,7 +1549,7 @@ begin
 
     EmitGetVar(Sym);
 
-    if Delta = 1 then EmitComp(toGeq) else EmitComp(toLeq); (* Operands swapped! *)
+    if Delta = 1 then EmitRelOp(toGeq) else EmitRelOp(toLeq); (* Operands swapped! *)
 
     EmitJumpIf(True, Tag);
 
