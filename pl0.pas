@@ -193,10 +193,13 @@ end;
 type
   TSymbolClass = (scConst, scVar, scProc, scFunc, scScope, scString);
 
+  TDataType = (dtBoolean, dtInteger);
+
   PSymbol = ^TSymbol;
   TSymbol = record
     Name: String;
     Kind: TSymbolClass;
+    DataType: TDataType;
     Level: Integer;
     Value: Integer;
     StrVal: String;
@@ -373,9 +376,10 @@ type
             toAdd, toSub, toMul, toDiv, toMod,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
-            toSay, toAsk, toBecomes, toComma, toSemicolon, toPeriod,
+            toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod,
             toAnd, toOr, toXor, toNot,
             toOdd,
+            toBoolean, toInteger, toTrue, toFalse,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit,
@@ -394,9 +398,10 @@ const
             '+', '-', '*', '/', '%',
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
-            '!', '?', ':=', ',', ';', '.',
+            '!', '?', ':=', ',', ':', ';', '.',
             'and', 'or', 'xor', 'not',
             'odd',
+            'boolean', 'integer', 'true', 'false',
             'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit',
@@ -591,13 +596,13 @@ begin
         C := GetChar;
       end; 
       ':': begin
+        Token := toColon;
         C := GetChar;
         if C = '=' then
         begin
           Token := toBecomes;
           C := GetChar;
-        end
-        else Error('"=" expected.')
+        end;
       end;
       ',': begin
         Token := toComma;
@@ -1303,7 +1308,7 @@ end;
 
 procedure ParseCondition;
 var
-  Op: TToken; 
+  Op: TToken;
 begin
   if Scanner.Token = toOdd then
   begin
@@ -1352,7 +1357,7 @@ begin
   end
   else
   begin
-    Expect(toBecomes); NextToken; ParseExpression;
+    Expect(toBecomes); NextToken; (* T := *) ParseExpression;
   end;
 
   EmitSetVar(Sym, Again);
@@ -1617,8 +1622,9 @@ end;
 
 procedure ParseBlock(Sym: PSymbol);
 var
-  NewSym: PSymbol;
+  NewSym, Old, Tmp: PSymbol;
   Token: TToken;
+  DataType: TDataType;
 begin
   if Scanner.Token = toConst then
   begin
@@ -1633,11 +1639,33 @@ begin
 
   if Scanner.Token = toVar then
   begin
+    Old := SymbolTable;
     NextToken; ParseVar;
     while Scanner.Token = toComma do
     begin
       NextToken; ParseVar;
     end;
+    
+    DataType := dtInteger;
+
+    if Scanner.Token = toColon then
+    begin
+      NextToken;
+      case Scanner.Token of
+        toBoolean: DataType := dtBoolean;
+        toInteger: DataType := dtInteger;
+        else Error('Type expected');
+      end;
+      NextToken;
+    end;
+
+    Tmp := SymbolTable;
+    while Tmp <> Old do
+    begin
+      Tmp^.DataType := DataType;
+      Tmp := Tmp^.Next;
+    end;
+
     Expect(toSemicolon);
     NextToken;
   end;
