@@ -182,7 +182,7 @@ begin
   end;
 
   GetChar := Source.Buffer[Source.Column];
-  (* Write(Source.Buffer[Source.Column]); *)
+  Write(Source.Buffer[Source.Column]);
   Inc(Source.Column);
 end;
 
@@ -191,9 +191,13 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scVar, scProc, scFunc, scScope, scString);
+  TDataType = (dtInteger, dtBoolean);
 
-  TDataType = (dtBoolean, dtInteger);
+const
+  TypeName: array [TDataType] of String = ('Integer', 'Boolean');
+
+type
+  TSymbolClass = (scConst, scVar, scProc, scFunc, scScope, scString);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -1140,6 +1144,13 @@ begin
   Emit('', 'call __newline', '');
 end;
 
+procedure EmitPrintBoolean();
+begin
+  Emit('', 'pop hl', '');
+  Emit('', 'call __putb', '');
+  Emit('', 'call __newline', '');
+end;
+
 procedure EmitPrintNum(S: String);
 begin
   Emit('', 'pop hl', '');
@@ -1168,9 +1179,12 @@ end;
 (* --- Parser --------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
+procedure TypeCheck(Expected, Found: TDataType);
+begin
+  if Expected <> Found then Error('Type error, expected ' + TypeName[Expected] + ', got ' + TypeName[Found]);
+end;
 
-
-procedure ParseExpression; forward;
+function ParseExpression: TDataType; forward;
 
 procedure ParseArguments(Sym: PSymbol);
 var
@@ -1198,9 +1212,9 @@ begin
   if I <> Sym^.Value then Error('Wrong number of arguments');
 end;
 
-procedure ParseFactor; (* DataType: PSymbol *)
+function ParseFactor: TDataType;
 var
-  Sym: PSymbol;
+  Sym: PSymbol;T: TDataType;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -1213,13 +1227,13 @@ begin
 
     if Sym^.Kind = scVar then
     begin
-      (* Type = Type(var) *)
+      T := Sym^.DataType;
       NextToken;
       if Scanner.Token = toLBrack then
       begin
         if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
         NextToken;
-        ParseExpression; (* Index now on stack *)
+        TypeCheck(dtInteger, ParseExpression); (* Index now on stack *)
         Expect(toRBrack);
         NextToken;
       end
@@ -1228,13 +1242,13 @@ begin
     end
     else if Sym^.Kind = scConst then
     begin
-      (* Type = Type(const) *)
+      T := Sym^.DataType;
       EmitLiteral(Sym^.Value);
       NextToken;
     end
     else if Sym^.Kind = scFunc then
     begin
-      (* Type = Type(func) *)
+      T := Sym^.DataType; (* Type = Type(func) *)
       if Sym^.Level <> 0 then EmitLiteral(0); (* Result *)
       NextToken;
       ParseArguments(Sym);
@@ -1243,44 +1257,54 @@ begin
     else
       Error('"' + Scanner.StrValue + '" cannot be used in expressions.');
   end
+  else if (Scanner.Token = toTrue) or (Scanner.Token = toFalse) then
+  begin
+    T := dtBoolean;
+    if Scanner.Token = toTrue then EmitLiteral(65535) else EmitLiteral(0);
+    NextToken;
+  end
   else if Scanner.Token = toNumber then
   begin
-      (* Type = Type(integer) *)
+    T := dtInteger;
     EmitLiteral(Scanner.NumValue);
-
     NextToken;
   end
   (* true false + String constants *)
   else if Scanner.Token = toLParen then
   begin
-    NextToken; (* Type= *) ParseExpression; Expect(toRParen); NextToken;
+    NextToken; T := ParseExpression; Expect(toRParen); NextToken;
   end
   else if Scanner.Token = toNot then
   begin
     NextToken;
-    ParseFactor;
+    T := ParseFactor();
     EmitUnOp(toNot);
   end
   else Error('Factor expected');
+
+  ParseFactor := T;
 end;
 
-procedure ParseTerm; (* DataType PSymbol *)
+function ParseTerm: TDataType;
 var
   Op: TToken;
+  T: TDataType;
 begin
-  ParseFactor; (* DataType *)
+  T := ParseFactor;
   while Scanner.Token in [toMul, toDiv, toMod, toAnd] do
   begin
     Op := Scanner.Token;
     NextToken;
-    ParseFactor;
+    TypeCheck(T, ParseFactor);
     EmitBinOp(Op);
   end;
+  ParseTerm := T;
 end;
 
-procedure ParseExpression; (* DataType: PSymbol *)
+function ParseSimpleExpression: TDataType;
 var
   Op: TToken;
+  T: TDataType;
 begin
   Op := toNone;
 
@@ -1293,7 +1317,9 @@ begin
 
   if Op = toSub then EmitLiteral(0);
 
-  ParseTerm;
+  T := ParseTerm;
+
+  if Op <> toNone then TypeCheck(T, dtInteger);
 
   if Op = toSub then EmitBinOp(toSub);
 
@@ -1301,34 +1327,43 @@ begin
   begin
     Op := Scanner.Token;
     NextToken;
-    ParseTerm;
+    TypeCheck(T, ParseTerm);
     EmitBinOp(Op);
   end;
+
+  WriteLn('Type of SimpleExpression is ', T);
+
+  ParseSimpleExpression := T;
 end;
 
-procedure ParseCondition;
+function ParseExpression: TDataType;
 var
   Op: TToken;
+  T: TDataType;
 begin
-  if Scanner.Token = toOdd then
+  if Scanner.Token = toOdd then (* Make this a function later *)
   begin
-    NextToken; ParseExpression;
-
+    NextToken;
+    TypeCheck(dtInteger, ParseSimpleExpression);
+    T := dtBoolean;
     EmitUnOp(toOdd);
   end 
   else
   begin
-    ParseExpression;
+    T := ParseSimpleExpression;
     if (Scanner.Token >= toEq) and (Scanner.Token <= toGeq) then
     begin
       Op := Scanner.Token;
       NextToken;
-    end
-    else Error('RelOp expected');
-    ParseExpression;
-
-    EmitRelOp(Op);
+      TypeCheck(T, ParseSimpleExpression);
+      T := dtBoolean;
+      EmitRelOp(Op);
+    end;
   end;
+
+  WriteLn('Type of Expression is ', T);
+
+  ParseExpression := T;
 end;
 
 procedure ParseAssignment(Sym: PSymbol; Again: Boolean);
@@ -1341,7 +1376,7 @@ begin
   begin
     if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
     NextToken;
-    ParseExpression; (* Index now on stack *)
+    TypeCheck(dtInteger, ParseExpression); (* Index now on stack *)
     Expect(toRBrack);
     NextToken;
   end
@@ -1353,11 +1388,12 @@ begin
     Expect(toIdent);
     Sym2 := LookupGlobal(Scanner.StrValue);
     if Sym2 = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    TypeCheck(Sym^.DataType, Sym2^.DataType);
     ParseAssignment(Sym2, true);
   end
   else
   begin
-    Expect(toBecomes); NextToken; (* T := *) ParseExpression;
+    Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression);
   end;
 
   EmitSetVar(Sym, Again);
@@ -1368,6 +1404,7 @@ var
   Sym: PSymbol;
   Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
+  T: TDataType;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -1422,8 +1459,11 @@ begin
     end
     else
     begin
-      ParseExpression;
-      EmitPrintNum(Scanner.StrValue);
+      T := ParseExpression;
+      case T of
+        dtBoolean: EmitPrintBoolean();
+        dtInteger: EmitPrintNum(Scanner.StrValue);
+      end;      
     end;
   end
   else if Scanner.Token = toBegin then
@@ -1438,7 +1478,7 @@ begin
   end
   else if Scanner.Token = toIf then
   begin
-    NextToken; ParseCondition; Expect(toThen); NextToken;
+    NextToken; TypeCheck(dtBoolean, ParseExpression); Expect(toThen); NextToken;
     
     Tag := GetLabel('false');
 
@@ -1473,7 +1513,7 @@ begin
 
     Emit(Tag, '', '');
 
-    NextToken; ParseCondition; Expect(toDo); NextToken;
+    NextToken; TypeCheck(dtBoolean, ParseExpression); Expect(toDo); NextToken;
 
     EmitJumpIf(False, Tag2);
 
@@ -1499,7 +1539,7 @@ begin
     end;
     Expect(toUntil); NextToken;
     
-    ParseCondition;
+    TypeCheck(dtBoolean, ParseExpression);
 
     EmitJumpIf(False, Tag);
     Emit(Tag2, '', '');
@@ -1591,6 +1631,7 @@ begin
   Expect(toNumber);
 
   Sym^.Value := Scanner.NumValue;
+  Sym^.DataType := dtInteger;
 
   NextToken;
 end;
@@ -1639,35 +1680,39 @@ begin
 
   if Scanner.Token = toVar then
   begin
-    Old := SymbolTable;
-    NextToken; ParseVar;
-    while Scanner.Token = toComma do
-    begin
-      NextToken; ParseVar;
-    end;
-    
-    DataType := dtInteger;
-
-    if Scanner.Token = toColon then
-    begin
-      NextToken;
-      case Scanner.Token of
-        toBoolean: DataType := dtBoolean;
-        toInteger: DataType := dtInteger;
-        else Error('Type expected');
-      end;
-      NextToken;
-    end;
-
-    Tmp := SymbolTable;
-    while Tmp <> Old do
-    begin
-      Tmp^.DataType := DataType;
-      Tmp := Tmp^.Next;
-    end;
-
-    Expect(toSemicolon);
     NextToken;
+    
+    repeat
+      Old := SymbolTable;
+      ParseVar;
+      while Scanner.Token = toComma do
+      begin
+        NextToken; ParseVar;
+      end;
+      
+      DataType := dtInteger;
+
+      if Scanner.Token = toColon then
+      begin
+        NextToken;
+        case Scanner.Token of
+          toBoolean: DataType := dtBoolean;
+          toInteger: DataType := dtInteger;
+          else Error('Type expected');
+        end;
+        NextToken;
+      end;
+
+      Tmp := SymbolTable;
+      while Tmp <> Old do
+      begin
+        Tmp^.DataType := DataType;
+        Tmp := Tmp^.Next;
+      end;
+
+      Expect(toSemicolon);
+      NextToken;
+    until Scanner.Token <> toIdent;
   end;
 
   while (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) do

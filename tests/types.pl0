@@ -1,0 +1,23 @@
+var
+  A,B: Boolean;
+  X,Y: Integer;
+begin
+  A := true;
+  B := false;
+
+  ! A and B;
+  ! A or B;
+  ! A xor B;
+
+  X := 42;
+  Y := 666;
+
+  ! " ";
+  ! X;
+  ! Y;
+  ! " ";
+
+  ! (X = 42) and (Y = 667);
+  ! (X = 42) or (Y = 667);
+  ! (X = 42) xor (Y = 667);
+end.

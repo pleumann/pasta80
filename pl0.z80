@@ -353,6 +353,25 @@ __putn:         ex      hl,de
                 ret
 
 ;
+; Print boolean to screen
+;
+; Entry:  HL (number)
+; Exit:   -
+; Uses:   AF,BC,DE
+;
+__putb:         xor     a
+                or      h
+                jr      z,__putb2
+                ld      hl,__putb_true
+                call    __puts
+                ret
+__putb2:        ld      hl,__putb_false
+                call    __puts
+                ret
+__putb_true:    db      4,"TRUE"
+__putb_false:   db      5,"FALSE"
+
+;
 ; Read number from keyboard
 ;
 ; Entry:  -
