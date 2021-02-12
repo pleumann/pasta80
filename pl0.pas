@@ -1661,6 +1661,39 @@ begin
   Sym := CreateSymbol(scVar, Name, Bounds);
 end;
 
+procedure ParseVarList();
+var
+  Old, Tmp: PSymbol;
+  DataType: TDataType;
+begin
+  Old := SymbolTable;
+  ParseVar;
+  while Scanner.Token = toComma do
+  begin
+    NextToken; ParseVar;
+  end;
+  
+  DataType := dtInteger;
+
+  if Scanner.Token = toColon then
+  begin
+    NextToken;
+    case Scanner.Token of
+      toBoolean: DataType := dtBoolean;
+      toInteger: DataType := dtInteger;
+      else Error('Type expected');
+    end;
+    NextToken;
+  end;
+
+  Tmp := SymbolTable;
+  while Tmp <> Old do
+  begin
+    Tmp^.DataType := DataType;
+    Tmp := Tmp^.Next;
+  end;
+end;
+
 procedure ParseBlock(Sym: PSymbol);
 var
   NewSym, Old, Tmp: PSymbol;
@@ -1681,35 +1714,8 @@ begin
   if Scanner.Token = toVar then
   begin
     NextToken;
-    
     repeat
-      Old := SymbolTable;
-      ParseVar;
-      while Scanner.Token = toComma do
-      begin
-        NextToken; ParseVar;
-      end;
-      
-      DataType := dtInteger;
-
-      if Scanner.Token = toColon then
-      begin
-        NextToken;
-        case Scanner.Token of
-          toBoolean: DataType := dtBoolean;
-          toInteger: DataType := dtInteger;
-          else Error('Type expected');
-        end;
-        NextToken;
-      end;
-
-      Tmp := SymbolTable;
-      while Tmp <> Old do
-      begin
-        Tmp^.DataType := DataType;
-        Tmp := Tmp^.Next;
-      end;
-
+      parseVarList();
       Expect(toSemicolon);
       NextToken;
     until Scanner.Token <> toIdent;
@@ -1738,11 +1744,11 @@ begin
     if Scanner.Token = toLParen then
     begin
       NextToken;
-      ParseVar;
-      while Scanner.Token = toComma do
+      ParseVarList();
+      while Scanner.Token = toSemicolon do
       begin
         NextToken;
-        ParseVar;
+        ParseVarList();
       end;
       Expect(toRParen);
       NextToken;
