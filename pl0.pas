@@ -1696,7 +1696,7 @@ end;
 
 procedure ParseBlock(Sym: PSymbol);
 var
-  NewSym, Old, Tmp: PSymbol;
+  NewSym, ResVar, Old, Tmp: PSymbol;
   Token: TToken;
   DataType: TDataType;
 begin
@@ -1738,7 +1738,11 @@ begin
     end;
 
     OpenScope;
-    if Token = toFunction then CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
+    if Token = toFunction then
+    begin
+      CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
+      ResVar := SymbolTable;
+    end;
     NextToken; 
     
     if Scanner.Token = toLParen then
@@ -1751,6 +1755,19 @@ begin
         ParseVarList();
       end;
       Expect(toRParen);
+      NextToken;
+    end;
+
+    if Scanner.Token = toColon then
+    begin
+      NextToken;
+      if Scanner.Token = toInteger then
+        NewSym^.DataType := dtInteger
+      else if Scanner.Token = toBoolean then
+        NewSym^.DataType := dtBoolean
+      else
+        Error('Type expected');
+      ResVar^.DataType := NewSym^.DataType;
       NextToken;
     end;
     
