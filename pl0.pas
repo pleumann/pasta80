@@ -204,6 +204,7 @@ type
     Name: String;
     Kind: TSymbolClass;
     DataType: TDataType;
+    ArgTypes: array[0..15] of TDataType;
     Level: Integer;
     Value: Integer;
     StrVal: String;
@@ -288,7 +289,7 @@ end;
 
 procedure AdjustOffsets;
 var
-  Sym: PSymbol;
+  Sym, Sym2: PSymbol;
   I: Integer;
 begin
   Sym := SymbolTable;
@@ -302,10 +303,18 @@ begin
     end;
     Sym := Sym^.Next;
   end;
-  if Sym^.Kind = scProc then
-    Sym^.Value := I
-  else
-    Sym^.Value := I - 1;
+  if Sym^.Kind = scFunc then
+    I := I - 1;
+  Sym^.Value := I;
+
+  Sym2 := SymbolTable;
+  while I > 0 do
+  begin
+    Sym^.ArgTypes[I-1] := Sym2^.DataType;
+    I := I - 1;
+    Sym2 := Sym2^.Next;
+  end;
+
   Offset := -2;
 end;
 
@@ -1195,13 +1204,13 @@ begin
   begin
     NextToken;
 
-    ParseExpression;
+    TypeCheck(Sym^.ArgTypes[I], ParseExpression);
     I := I + 1;
 
     while Scanner.Token = toComma do
     begin
       NextToken;
-      ParseExpression;
+      TypeCheck(Sym^.ArgTypes[I], ParseExpression);
       I := I + 1;
     end;
 

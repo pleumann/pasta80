@@ -1,6 +1,24 @@
 var
   A,B: Boolean;
   X,Y: Integer;
+
+function P: Integer;
+begin
+  P := 1;
+end;
+
+function Q: Boolean;
+begin
+  Q := False;
+end;
+
+procedure R(I,J: Integer; K: Boolean);
+begin
+  ! I;
+  ! J;
+  ! K;
+end;
+
 begin
   A := true;
   B := false;
@@ -20,4 +38,9 @@ begin
   ! (X = 42) and (Y = 667);
   ! (X = 42) or (Y = 667);
   ! (X = 42) xor (Y = 667);
+
+  A := Q;
+  X := P;
+
+  R(1,2,false);
 end.
