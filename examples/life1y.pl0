@@ -1,5 +1,5 @@
 const
-  Width    = 40,
+  Width    = 30,
   Height   = 20,
   Percent  = 10;
 
@@ -20,37 +20,32 @@ procedure Paint;
 var
   X,Y;
 begin
-  (* ClrScr; *)  
+  GotoXY(1,1);
   for Y := 0 to Height - 1 do
+  begin
     for X := 0 to Width - 1 do
     begin
-      GotoXY(X+1,Y+1);
-      if GetCell(X,Y) = 1 then ! "#" else ! " ";
+      if GetCell(X,Y) = 1 then Write("#") else Write(" ");
     end;
+    WriteLn;
+  end;
 end;
 
 function Alive(X,Y);
 var
   L,R,U,D,C;
 begin
-  L := (X-1+Width) % Width;
-  R := (X+1      ) % Width;
-  U := (Y-1+Height) % Height;
-  D := (Y+1       ) % Height;
+  if X = 0 then L := Width - 1 else L := X-1;
+  if Y = 0 then U := Height - 1 else U := Y-1;
+
+  if X = Width-1 then R := 0 else R := X+1;
+  if Y = Height-1 then D := 0 else D := Y+1;
 
   C := GetCell(L,U) + GetCell(X,U) + GetCell(R,U)
      + GetCell(L,Y)                + GetCell(R,Y)
      + GetCell(L,D) + GetCell(X,D) + GetCell(R,D);
 
   if (GetCell(X,Y) = 1) and (C=2) or (C=3) then Alive := 1 else Alive := 0;
-(*
-  if (C < 2) or (C > 3) then
-    Alive := 0
-  else if (GetCell(X,Y) = 1) or (C = 3) then
-    Alive := 1
-  else
-    Alive := 0;
-*)
 end;
 
 procedure Generation;
@@ -85,12 +80,12 @@ begin
   ClrScr;
   Setup;
 
-  for I := 1 to 500 do
+  for I := 1 to 1000 do
   begin
     Generation;
     TextColor(Color);
     Paint;
-    ! I;
+    Write('Generation:', I);
     Color := Color + DColor;
     if Color = 1 then DColor := -DColor else if Color = 7 then DColor := -DColor;
   end;
