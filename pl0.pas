@@ -395,7 +395,7 @@ type
             toBoolean, toInteger, toTrue, toFalse,
             toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
-            toFor, toTo, toDownTo, toCont, toBreak, toExit,
+            toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
 
   TScanner = record
@@ -417,11 +417,11 @@ const
             'boolean', 'integer', 'true', 'false',
             'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
-            'for', 'to', 'downto', 'continue', 'break', 'exit',
+            'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
 
   FirstKeyword = toAnd;
-  LastKeyword = toExit;
+  LastKeyword = toWriteLn;
 
 var
   Scanner: TScanner;
@@ -1157,14 +1157,12 @@ procedure EmitPrintBoolean();
 begin
   Emit('', 'pop hl', '');
   Emit('', 'call __putb', '');
-  Emit('', 'call __newline', '');
 end;
 
 procedure EmitPrintNum(S: String);
 begin
   Emit('', 'pop hl', '');
   Emit('', 'call __putn', '');
-  Emit('', 'call __newline', '');
 end;
 
 procedure EmitPrintStr(S: String);
@@ -1175,6 +1173,10 @@ begin
   Sym^.Tag := GetLabel('string');
   Emit('', 'ld hl,' + Sym^.Tag, '');
   Emit('', 'call __puts', '');
+end;
+
+procedure EmitPrintNewLine();
+begin
   Emit('', 'call __newline', '');
 end;
 
@@ -1219,6 +1221,28 @@ begin
   end;
 
   if I <> Sym^.Value then Error('Wrong number of arguments');
+end;
+
+
+procedure ParseWriteArgument;
+var
+  T: TDataType;
+begin
+    if Scanner.Token = toString then
+    begin
+      EmitPrintStr(Scanner.StrValue);
+      NextToken;
+    end
+    else
+    begin
+      T := ParseExpression;
+      if T = dtInteger then
+        EmitPrintNum(Scanner.StrValue)
+      else if T = dtBoolean then
+        EmitPrintBoolean
+      else
+        Error('Type expected');
+    end;
 end;
 
 function ParseFactor: TDataType;
@@ -1414,6 +1438,7 @@ var
   Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
   T: TDataType;
+  NewLine: Boolean;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -1464,6 +1489,7 @@ begin
     if Scanner.Token = toString then
     begin
       EmitPrintStr(Scanner.StrValue);
+      EmitPrintNewLine;
       NextToken;
     end
     else
@@ -1472,7 +1498,8 @@ begin
       case T of
         dtBoolean: EmitPrintBoolean();
         dtInteger: EmitPrintNum(Scanner.StrValue);
-      end;      
+      end;
+      EmitPrintNewLine;
     end;
   end
   else if Scanner.Token = toBegin then
@@ -1625,7 +1652,30 @@ begin
   begin
     NextToken;
     Emit('', 'jp ' + ExitTarget, 'Exit');    
+  end
+  else if (Scanner.Token = toWrite) or (Scanner.Token = toWriteLn) then
+  begin
+    NewLine := Scanner.Token = toWriteLn;
+    NextToken;
+
+    if Scanner.Token = toLParen then
+    begin
+      NextToken;
+      ParseWriteArgument;
+
+      while Scanner.Token = toComma do
+      begin
+        NextToken;
+        ParseWriteArgument;
+      end;
+
+      Expect(toRParen);
+      NextToken;
+    end;
+
+    if NewLine then EmitPrintNewLine;
   end;
+
 end;
 
 procedure ParseConst;
