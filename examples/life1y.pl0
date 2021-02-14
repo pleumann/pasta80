@@ -4,7 +4,7 @@ const
   Percent  = 10;
 
 var
-  Map[1600], I, This, Next, Color, DColor, Q;
+  Map[1600], I, This, Next, Color, DColor, Q, Life;
 
 function GetCell(X,Y);
 begin
@@ -29,9 +29,10 @@ begin
     end;
     WriteLn;
   end;
+  WriteLn;
 end;
 
-function Alive(X,Y);
+function Alive(X,Y): Boolean;
 var
   L,R,U,D,C;
 begin
@@ -45,7 +46,7 @@ begin
      + GetCell(L,Y)                + GetCell(R,Y)
      + GetCell(L,D) + GetCell(X,D) + GetCell(R,D);
 
-  if (GetCell(X,Y) = 1) and (C=2) or (C=3) then Alive := 1 else Alive := 0;
+  Alive := (GetCell(X,Y) = 1) and (C=2) or (C=3);
 end;
 
 procedure Generation;
@@ -54,9 +55,16 @@ var
 begin
   Temp := This; This := Next; Next := Temp;
 
+  Life := 0;
+
   for Y := 0 to Height - 1 do
     for X := 0 to Width  - 1 do
-      SetCell(X,Y,Alive(X,Y));
+      if Alive(X,Y) then
+      begin
+        SetCell(X,Y,1);
+        Life := Life + 1;
+      end
+      else SetCell(X,Y,0);
 end;
 
 procedure Setup;
@@ -66,7 +74,7 @@ begin
   This := 0; Next := 800;
 
   for Y := 0 to Height - 1 do
-    for X := 0 to Width - 1 do
+    for X := 0 to Width-1 do
       if Random % 100 < Percent then
         SetCell(X,Y,1)
       else
@@ -77,15 +85,19 @@ begin
 end;
   
 begin
+  TextBackground(0);
   ClrScr;
   Setup;
 
-  for I := 1 to 1000 do
+  for I := 1 to 800 do
   begin
     Generation;
-    TextColor(Color);
+    TextColor(1 + I % 6);
+    CursorOff;
     Paint;
-    Write('Generation:', I);
+    TextColor(7);
+    Write('Cycle:', I,'  Alive:', Life, '  ');
+    CursorOn;
     Color := Color + DColor;
     if Color = 1 then DColor := -DColor else if Color = 7 then DColor := -DColor;
   end;
