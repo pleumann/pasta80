@@ -584,10 +584,32 @@ __clrscr_str: db 4,27,'H',27,'J'
 #endif
 
 #if defined(NXT)
-__clrscr:     ;ld hl,__clrscr_str
-              ;call  __puts
+__clrscr:     ld hl,__clrscr_str
+              call  __puts
               ret
 __clrscr_str: db 1,14
+#endif
+
+#if defined(CPM)
+__cursor_on:  ld hl,__cur_on_str
+              call  __puts
+              ret
+__cur_on_str: db 2,27,'e'
+#endif
+
+#if defined(NXT)
+__cursor_on:  ret
+#endif
+
+#if defined(CPM)
+__cursor_off: ld hl,__cur_off_str
+              call  __puts
+              ret
+__cur_off_str: db 2,27,'f'
+#endif
+
+#if defined(NXT)
+__cursor_off: ret
 #endif
 
 #if defined(LORES)

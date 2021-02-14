@@ -371,6 +371,8 @@ begin
   RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
   RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg');
   RegisterBuiltIn(scProc, 'TextBackground', 1, '__textbg');
+  RegisterBuiltIn(scProc, 'CursorOn', 0, '__cursor_on');
+  RegisterBuiltIn(scProc, 'CursorOff', 0, '__cursor_off');
 
   if Graphics then
   begin
