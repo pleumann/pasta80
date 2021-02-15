@@ -210,7 +210,7 @@ type
     StrVal: String;
     Tag: String;
     Bounds: Integer;
-    Next: PSymbol;
+    Prev, Next: PSymbol;
   end;
 
 var
@@ -223,7 +223,7 @@ var
 begin
   New(Sym);
   Sym^.Kind := scScope;
-  Sym^.Next := SymbolTable;
+  Sym^.Prev := SymbolTable;
   Sym^.Value := Offset;
   SymbolTable := Sym;
 
@@ -240,7 +240,7 @@ var
 begin
   repeat
     Kind := SymbolTable^.Kind;
-    Sym := SymbolTable^.Next;
+    Sym := SymbolTable^.Prev;
     Offset := SymbolTable^.Value;
     Dispose(SymbolTable);
     SymbolTable := Sym;
@@ -262,7 +262,7 @@ begin
       LookupLocal := Sym;
       Exit;
     end;
-    Sym := Sym^.Next;
+    Sym := Sym^.Prev;
   end;
 
   LookupLocal := nil;
@@ -281,7 +281,7 @@ begin
       LookupGlobal := Sym;
       Exit;
     end;
-    Sym := Sym^.Next;
+    Sym := Sym^.Prev;
   end;
 
   LookupGlobal := nil;
@@ -301,7 +301,7 @@ begin
       Sym^.Value := Sym^.Value - Offset + 4;    
       I := I + 1;
     end;
-    Sym := Sym^.Next;
+    Sym := Sym^.Prev;
   end;
   if Sym^.Kind = scFunc then
     I := I - 1;
@@ -312,7 +312,7 @@ begin
   begin
     Sym^.ArgTypes[I-1] := Sym2^.DataType;
     I := I - 1;
-    Sym2 := Sym2^.Next;
+    Sym2 := Sym2^.Prev;
   end;
 
   Offset := -2;
@@ -332,10 +332,12 @@ begin
   Sym^.Kind := Kind;
   Sym^.Name := Name;
   Sym^.Level := Level;
-  Sym^.Next := SymbolTable;
+  Sym^.Prev := SymbolTable;
   Sym^.Bounds := Bounds;
+  SymbolTable^.Next := Sym;
   SymbolTable := Sym;
 
+(*
   if Kind = scVar then
   begin
     if Bounds = 0 then SIze := 2 else Size := 2 * Bounds;
@@ -350,8 +352,28 @@ begin
       Sym^.Value := Offset + 2;
     end;
   end;
-
+*)
   CreateSymbol := Sym;
+end;
+
+procedure SetDataType(Sym: PSymbol; DataType: TDataType; Bounds: Integer);
+var
+  Size: Integer;
+begin
+  Sym^.DataType := DataType;
+  Sym^.Bounds := Bounds;
+
+  if Bounds = 0 then Size := 2 else Size := 2 * Bounds;
+  if Level = 1 then
+  begin
+    Sym^.Value := Offset;
+    Offset := Offset + Size;
+  end
+  else
+  begin
+    Offset := Offset - Size;
+    Sym^.Value := Offset + 2;
+  end;
 end;
 
 procedure RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: String);
@@ -391,11 +413,11 @@ type
             toAdd, toSub, toMul, toDiv, toMod,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
-            toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod,
+            toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot,
             toOdd,
-            toBoolean, toInteger, toTrue, toFalse,
-            toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
+            toBoolean, toInteger, toTrue, toFalse, toArray, toOf,
+            toProgram, toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
@@ -413,11 +435,11 @@ const
             '+', '-', '*', '/', '%',
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
-            '!', '?', ':=', ',', ':', ';', '.',
+            '!', '?', ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not',
             'odd',
-            'boolean', 'integer', 'true', 'false',
-            'begin', 'end', 'const', 'var', 'procedure', 'function',
+            'boolean', 'integer', 'true', 'false', 'array', 'of',
+            'program', 'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
@@ -630,6 +652,11 @@ begin
       '.': begin
         Token := toPeriod;
         C := GetChar;
+        if C = '.' then
+        begin
+          Token := toRange;
+          C := GetChar;
+        end;
       end
       else
         Error('Invalid token.');
@@ -854,7 +881,7 @@ end;
 
 procedure CollectVars(Sym: PSymbol; var S: String);
 begin
-  if Sym^.Kind <> scScope then CollectVars(Sym^.Next, S);
+  if Sym^.Kind <> scScope then CollectVars(Sym^.Prev, S);
 
   if Sym^.Kind = scVar then
   begin
@@ -869,7 +896,7 @@ procedure CollectString(Sym: PSymbol);
 var
   S: String;
 begin
-  if Sym^.Kind <> scScope then CollectString(Sym^.Next);
+  if Sym^.Kind <> scScope then CollectString(Sym^.Prev);
 
   if Sym^.Kind = scString then
   begin
@@ -1258,7 +1285,7 @@ begin
 
     (* This is a dirty hack, but ok for now. *)
     if (Sym^.Kind = scVar) and (Sym^.Tag = 'RESULT') then
-      Sym := Sym^.Next^.Next; 
+      Sym := Sym^.Prev^.Prev; 
 
     if Sym^.Kind = scVar then
     begin
@@ -1726,7 +1753,11 @@ procedure ParseVarList();
 var
   Old, Tmp: PSymbol;
   DataType: TDataType;
+  Low, High: Integer;
 begin
+  Low := 0;
+  High := -1;
+
   Old := SymbolTable;
   ParseVar;
   while Scanner.Token = toComma do
@@ -1739,6 +1770,26 @@ begin
   if Scanner.Token = toColon then
   begin
     NextToken;
+
+    if Scanner.Token = toArray then
+    begin
+      NextToken;
+      Expect(toLBrack);
+      NextToken;
+      Expect(toNumber);
+      Low := Scanner.NumValue;
+      NextToken;
+      Expect(toRange);
+      NextToken;
+      Expect(toNumber);
+      High := Scanner.NumValue;
+      NextToken;
+      Expect(toRBrack);
+      NextToken;
+      Expect(toOf);
+      NextToken;
+    end;
+
     case Scanner.Token of
       toBoolean: DataType := dtBoolean;
       toInteger: DataType := dtInteger;
@@ -1747,11 +1798,14 @@ begin
     NextToken;
   end;
 
-  Tmp := SymbolTable;
-  while Tmp <> Old do
+  while Old<>SymbolTable do
   begin
-    Tmp^.DataType := DataType;
-    Tmp := Tmp^.Next;
+    Old := Old^.Next;
+    SetDataType(Old, DataType, High - Low + 1);
+//    Tmp^.DataType := DataType;
+    //if High >= Low then Tmp^.Bounds := High - Low + 1;
+//    Tmp := Tmp^.Prev;
+    //Offset := Offset + (High - Low + 1) * 2 - 2;
   end;
 end;
 
@@ -1763,13 +1817,16 @@ var
 begin
   if Scanner.Token = toConst then
   begin
-    NextToken; ParseConst;
-    while Scanner.Token = toComma do
-    begin
-      NextToken; ParseConst;
-    end;
-    Expect(toSemicolon);
     NextToken;
+    repeat
+      ParseConst;
+      while Scanner.Token = toComma do
+      begin
+        NextToken; ParseConst;
+      end;
+      Expect(toSemicolon);
+      NextToken;
+    until Scanner.Token <> toIdent;
   end;
 
   if Scanner.Token = toVar then
@@ -1802,6 +1859,7 @@ begin
     if Token = toFunction then
     begin
       CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
+      SetDataType(SymbolTable, dtInteger, 0);
       ResVar := SymbolTable;
     end;
     NextToken; 
@@ -1853,6 +1911,14 @@ procedure ParseProgram;
 begin
   OpenScope;
   RegisterAllBuiltIns((Binary = btDot) and (Graphics <> gmNone));
+  if Scanner.Token = toProgram then
+  begin
+    NextToken;
+    Expect(toIdent);
+    NextToken;
+    Expect(toSemicolon);
+    NextToken;
+  end;
   parseBlock(Nil);
   Expect(toPeriod);
   EmitC('');
