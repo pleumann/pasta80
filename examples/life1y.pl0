@@ -91,7 +91,7 @@ begin
   for Cycle := 1 to 800 do
   begin
     Think;
-    TextColor(1 + Cycle % 6);
+    TextColor(1 + Cycle mod 6);
     CursorOff;
     Paint;
     TextColor(7);

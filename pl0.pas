@@ -414,7 +414,7 @@ type
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
             toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
-            toAnd, toOr, toXor, toNot,
+            toAnd, toOr, toXor, toNot, toMod2,
             toOdd,
             toBoolean, toInteger, toTrue, toFalse, toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
@@ -436,7 +436,7 @@ const
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
             '!', '?', ':=', ',', ':', ';', '.', '..',
-            'and', 'or', 'xor', 'not',
+            'and', 'or', 'xor', 'not', 'mod',
             'odd',
             'boolean', 'integer', 'true', 'false', 'array', 'of',
             'program', 'begin', 'end', 'const', 'var', 'procedure', 'function',
@@ -512,6 +512,7 @@ begin
         C := GetChar;
       end;
       Token := LookupKeyword(StrValue);
+      if Token = toMod2 then Token := toMod;
     end
     else if IsDecDigit(C) then
     begin
