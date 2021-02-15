@@ -388,7 +388,7 @@ end;
 
 procedure RegisterAllBuiltIns(Graphics: Boolean);
 begin
-  RegisterBuiltIn(scFunc, 'Random', 0, '__rand16');
+  RegisterBuiltIn(scFunc, 'Random', 1, '__random');
   RegisterBuiltIn(scProc, 'ClrScr', 0, '__clrscr');
   RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
   RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg');

@@ -8,7 +8,7 @@ begin
   I := 0;
   while I < Rolls do
   begin
-    J := 1 + Random % Sides;
+    J := 1 + Random(Sides);
     ! J;
     Sum := Sum + J;
     I := I + 1;

@@ -78,7 +78,7 @@ begin
 
   for Y := 0 to Height - 1 do
     for X := 0 to Width-1 do
-      if Random % 100 < Percent then
+      if Random(100) < Percent then
         SetCell(X,Y,1)
       else
         SetCell(X,Y,0);

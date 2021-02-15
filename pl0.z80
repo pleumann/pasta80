@@ -242,6 +242,13 @@ __div10b:       djnz __div10a
 ;
 ;
 
+__random:
+    ex hl,de
+    call __rand16
+    call __sdiv16
+    ex hl,de
+    ret
+    
 ;#define smc    ;uncomment if you are using SMC
 __rand16:
 ;;collaboration by Zeda with Runer112
