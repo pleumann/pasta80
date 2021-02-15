@@ -1,40 +1,43 @@
+program GameOfLife;
+
 const
-  Width    = 30,
-  Height   = 20,
+  Width    = 30;
+  Height   = 20;
   Percent  = 10;
 
 var
-  Map[1600], I, This, Next, Color, DColor, Q, Life;
+  Map: array[0..1599] of Integer;
+  This, Next, Cycle, Live: Integer;
 
-function GetCell(X,Y);
+function GetCell(X,Y: Integer): Integer;
 begin
   GetCell := Map[This+Y*Width+X];
 end;
 
-procedure SetCell(X,Y,Z);
+procedure SetCell(X,Y,Z: Integer);
 begin
   Map[Next+Y*Width+X] := Z;
 end;
 
 procedure Paint;
 var
-  X,Y;
+  X,Y: Integer;
 begin
   GotoXY(1,1);
   for Y := 0 to Height - 1 do
   begin
     for X := 0 to Width - 1 do
     begin
-      if GetCell(X,Y) = 1 then Write("#") else Write(" ");
+      if GetCell(X,Y) = 1 then Write('#') else Write(' ');
     end;
     WriteLn;
   end;
   WriteLn;
 end;
 
-function Alive(X,Y): Boolean;
+function Alive(X,Y: Integer): Boolean;
 var
-  L,R,U,D,C;
+  L,R,U,D,C: Integer;
 begin
   if X = 0 then L := Width - 1 else L := X-1;
   if Y = 0 then U := Height - 1 else U := Y-1;
@@ -49,27 +52,27 @@ begin
   Alive := (GetCell(X,Y) = 1) and (C=2) or (C=3);
 end;
 
-procedure Generation;
+procedure Think;
 var
-  X,Y,Temp;
+  X,Y,Temp: Integer;
 begin
   Temp := This; This := Next; Next := Temp;
 
-  Life := 0;
+  Live := 0;
 
   for Y := 0 to Height - 1 do
     for X := 0 to Width  - 1 do
       if Alive(X,Y) then
       begin
         SetCell(X,Y,1);
-        Life := Life + 1;
+        Live := Live + 1;
       end
       else SetCell(X,Y,0);
 end;
 
 procedure Setup;
 var
-  X,Y;
+  X,Y: Integer;
 begin
   This := 0; Next := 800;
 
@@ -79,26 +82,20 @@ begin
         SetCell(X,Y,1)
       else
         SetCell(X,Y,0);
-
-  Color := 1;
-  DColor := 1;
 end;
   
 begin
-  TextBackground(0);
   ClrScr;
   Setup;
 
-  for I := 1 to 800 do
+  for Cycle := 1 to 800 do
   begin
-    Generation;
-    TextColor(1 + I % 6);
+    Think;
+    TextColor(1 + Cycle % 6);
     CursorOff;
     Paint;
     TextColor(7);
-    Write('Cycle:', I,'  Alive:', Life, '  ');
+    Write('Cycle:', Cycle,'  Alive:', Live, '  ');
     CursorOn;
-    Color := Color + DColor;
-    if Color = 1 then DColor := -DColor else if Color = 7 then DColor := -DColor;
   end;
 end.
