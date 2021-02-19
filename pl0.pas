@@ -1199,10 +1199,18 @@ procedure EmitPrintStr(S: String);
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(scString, S, 0);
-  Sym^.Tag := GetLabel('string');
-  Emit('', 'ld hl,' + Sym^.Tag, '');
-  Emit('', 'call __puts', '');
+  if Length(S) = 1 then
+  begin
+    Emit('', 'ld a,' + Int2Str(Ord(S[1])), '');
+    Emit('', 'call __putc', '');
+  end
+  else
+  begin
+    Sym := CreateSymbol(scString, S, 0);
+    Sym^.Tag := GetLabel('string');
+    Emit('', 'ld hl,' + Sym^.Tag, '');
+    Emit('', 'call __puts', '');
+  end;
 end;
 
 procedure EmitPrintNewLine();
