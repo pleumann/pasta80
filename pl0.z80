@@ -243,7 +243,7 @@ __div10b:       djnz __div10a
 ;
 
 __random:
-    ex hl,de
+    ; ex hl,de
     call __rand16
     call __sdiv16
     ex hl,de

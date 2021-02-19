@@ -1098,10 +1098,21 @@ end;
 
 procedure EmitRelOp(Op: TToken);
 begin
-  Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
-  EmitI('pop hl');
+//  EmitI('pop de');
+//  EmitI('pop hl');
 
-  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
+  if (Op = toGt) or (Op = toLeq) then
+  begin
+    Emit('','pop hl', 'RelOp ' + Int2Str(Ord(Op)));
+    EmitI('pop de');
+  end
+  else
+  begin
+    Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
+    EmitI('pop hl');
+  end;
+
+//  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
 
   case Op of
     toEq:         EmitI('call __int16_eq');
@@ -1123,8 +1134,22 @@ begin
     EmitI('jp z,' + Target);
 end;
 
-procedure EmitBinOp(Op: TToken);
+procedure EmitBinOp(Op: TToken; DataType: TDataType);
 begin
+  if DataType = dtBoolean then
+  begin
+    Emit('', 'pop hl', '');
+    Emit('', 'pop af', '');
+
+    case Op of
+      toAnd: EmitI('and h');
+      toOr:  EmitI('or h');
+      toXor: EmitI('xor h');
+    end;
+    Emit('', 'push af', '');
+    Exit;
+  end;
+
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
 
@@ -1367,7 +1392,7 @@ begin
     Op := Scanner.Token;
     NextToken;
     TypeCheck(T, ParseFactor);
-    EmitBinOp(Op);
+    EmitBinOp(Op, T);
   end;
   ParseTerm := T;
 end;
@@ -1392,14 +1417,14 @@ begin
 
   if Op <> toNone then TypeCheck(T, dtInteger);
 
-  if Op = toSub then EmitBinOp(toSub);
+  if Op = toSub then EmitBinOp(toSub, T);
 
   while Scanner.Token in [toAdd, toSub, toOr, toXor] do
   begin
     Op := Scanner.Token;
     NextToken;
     TypeCheck(T, ParseTerm);
-    EmitBinOp(Op);
+    EmitBinOp(Op, T);
   end;
 
   (* WriteLn('Type of SimpleExpression is ', T); *)
@@ -1657,7 +1682,7 @@ begin
     EmitGetVar(Sym);
     Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
     Emit('', 'push de', '');
-    EmitBinOp(toAdd);
+    EmitBinOp(toAdd, dtInteger);
     EmitSetVar(Sym, false);
   
     Emit(Tag2, '', '');
