@@ -182,7 +182,7 @@ begin
   end;
 
   GetChar := Source.Buffer[Source.Column];
-  Write(Source.Buffer[Source.Column]);
+  (* Write(Source.Buffer[Source.Column]); *)
   Inc(Source.Column);
 end;
 
@@ -1394,7 +1394,7 @@ begin
     EmitBinOp(Op);
   end;
 
-  WriteLn('Type of SimpleExpression is ', T);
+  (* WriteLn('Type of SimpleExpression is ', T); *)
 
   ParseSimpleExpression := T;
 end;
@@ -1424,7 +1424,7 @@ begin
     end;
   end;
 
-  WriteLn('Type of Expression is ', T);
+  (* WriteLn('Type of Expression is ', T); *)
 
   ParseExpression := T;
 end;
