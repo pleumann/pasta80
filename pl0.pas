@@ -1060,18 +1060,18 @@ begin
   begin
     if Sym^.Bounds <> 0 then
     begin
-      EmitI('pop bc');
       EmitI('pop de');
-      Emit('', 'ld hl,' + RelativeAddr('globals', Sym^.Value), 'Set global ' + Sym^.Name);
-      EmitI('add hl,de');
-      EmitI('add hl,de');
-      EmitI('ld (hl),bc');
-      if Again then EmitI('push bc');
+      EmitI('pop hl');
+      Emit('', 'ld bc,' + RelativeAddr('globals', Sym^.Value), 'Set global ' + Sym^.Name);
+      EmitI('add hl,hl');
+      EmitI('add hl,bc');
+      EmitI('ld (hl),de');
+      if Again then EmitI('push de');
     end
     else
     begin
-      EmitI('pop hl');
-      Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),hl', 'Set global ' + Sym^.Name);
+      EmitI('pop de');
+      Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
       if Again then EmitI('push hl');
     end;
   end
