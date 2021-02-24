@@ -98,6 +98,18 @@ begin
   TrimStr := Copy(S, I, J - I);
 end;
 
+function StartsWith(S, T: String): Boolean;
+begin
+  if Length(S) < Length(T) then
+  begin
+    StartsWith := False;
+    Exit;
+  end;
+
+  SetLength(S, Length(T));
+  StartsWith := S = T;
+end;
+
 function ParentDir(Name: String): String;
 var
   I: Integer;
@@ -682,6 +694,12 @@ type
 
   TGraphicsMode = (gmNone, gmLowRes, gmHighRes);
 
+  PCode = ^TCode;
+  TCode = record
+    Tag, Instruction, Comment: String[64];
+    Next, Prev: PCode;
+  end;
+
 var
   Binary: TBinaryType;
   Graphics: TGraphicsMode;
@@ -690,6 +708,34 @@ var
   LastTag, LastInstruction, LastComment: String;
   Optimize: Boolean;
   ExitTarget: String;
+
+  Code: PCode = nil;
+
+procedure AppendCode(Tag, Instruction, Comment: String);
+var
+  Temp: PCode;
+begin
+  New(Temp);
+  Temp^.Tag := Tag;
+  Temp^.Instruction := Instruction;
+  Temp^.Comment := Comment;
+  Temp^.Prev := Code;
+  Temp^.Next := nil;
+  if Code <> nil then
+    Code^.Next := Temp;
+  Code := Temp;
+end;
+
+procedure RemoveCode();
+var
+  Temp: PCode;
+begin
+  Temp := Code;
+  Code := Code^.Prev;
+  if Code <> nil then
+    Code^.Next := nil;
+  Dispose(Temp);
+end;
 
 procedure OpenTarget(Filename: String);
 begin
@@ -736,21 +782,111 @@ begin
 end;
 
 procedure Flush;
+var
+  Temp: PCode;
 begin
-  if not Optimize then Exit;
+  if not Optimize or (Code = nil) then Exit;
 
-  if (LastTag <> '') or (LastInstruction <> '') or (LastComment <> '') then
+  while Code^.Prev <> nil do
+    Code := Code^.Prev;
+
+  while Code <> nil do
   begin
-    Emit0(LastTag, LastInstruction, LastComment);
-    LastTag := '';
-    LastInstruction := '';
-    LastComment := '';
+    if (Code^.Tag <> '') or (Code^.Instruction <> '') or (Code^.Comment <> '') then
+      Emit0(Code^.Tag, Code^.Instruction, Code^.Comment);
+    Temp := Code;
+    Code := Code^.Next;
+    Dispose(Temp);
   end;
+end;
+
+function DoOptimize: Boolean;
+var
+  TwoOp: String;
+  Prev: PCode;
+begin
+  (* Try to eliminate the most embarrassing generated instruction pairs. *)
+
+  DoOptimize := True;
+
+  if (Code <> nil) then
+  begin
+    Prev := Code^.Prev;
+    if Prev = nil then
+    begin
+      DoOptimize := False;
+      Exit;
+    end;
+
+    TwoOp := Prev^.Instruction + '/' + Code^.Instruction;
+    //if StartsWith(TwoOp, 'push af') then
+    //  WriteLn(TwoOp);
+
+    if (TwoOp = 'push hl/pop hl') or (TwoOp = 'push de/pop de') or (TwoOp = 'push af/pop af') then
+    begin
+      // WriteLn('*** Eliminate ', TwoOp);
+      RemoveCode;
+      RemoveCode;
+      Exit;
+    end
+    else if TwoOp = 'push de/pop hl' then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'ld hl,de';
+      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
+      Exit;
+    end
+    else if TwoOp = 'push de/pop bc' then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'ld bc,de';
+      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
+      Exit;
+    end
+    else if TwoOp = 'push hl/pop de' then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'ld de,hl';
+      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
+      Exit;
+    end
+    else if TwoOp = 'push af/pop de' then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'ld d,a';
+      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
+      Exit;
+    end
+    else if TwoOp = 'push af/pop hl' then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'ld h,a';
+      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
+      Exit;
+    end
+    else if StartsWith(TwoOp, 'push hl/ld de,') then
+    begin
+      // WriteLn('*** Fast lane for ', Instruction, ' in ', TwoOp);
+      Prev^.Instruction := Code^.Instruction;
+      Code^.Instruction := 'push hl';
+      Exit;
+    end
+    else if StartsWith(TwoOp, 'ld de,') and not StartsWith(TwoOp, 'ld de,hl') and (Code^.Instruction='pop hl') then
+    begin
+      // WriteLn('*** Fast lane for ', Code^.Instruction, ' in ', TwoOp);
+      Code^.Instruction := Prev^.Instruction;
+      Prev^.Instruction := 'pop hl';
+      Exit;
+    end;
+  end;
+
+  DoOptimize := False;
 end;
 
 procedure Emit(Tag, Instruction, Comment: String);
 var
-  TwoOp: String;
+  TwoOp, S: String;
+  Temp: PCode; 
 begin
   if not Optimize then
   begin
@@ -759,50 +895,13 @@ begin
   end;
 
   if Tag <> '' then
-  begin
     Flush;
-    LastTag := Tag;
-    LastInstruction := Instruction;
-    LastComment := Comment;
-    Exit;
+
+  AppendCode(Tag, Instruction, Comment);
+
+  while DoOptimize do
+  begin
   end;
-
-  if (LastInstruction = '') then
-  begin
-    LastInstruction := Instruction;
-    LastComment := Comment;
-    Exit;
-  end;
-
-  (* Try to eliminate the most embarrassing generated instruction pairs. *)
-  TwoOp := LastInstruction + '/' + Instruction;
-
-  if (TwoOp = 'push hl/pop hl') or (TwoOp = 'push de/pop de') or (TwoOp = 'push af/pop af') then
-  begin
-    LastInstruction := '';
-    LastComment := '';
-    Exit;
-  end
-  else if TwoOp = 'push de/pop hl' then
-  begin
-    LastInstruction := 'ld hl,de';
-    Exit;
-  end
-  else if TwoOp = 'push de/pop bc' then
-  begin
-    LastInstruction := 'ld bc,de';
-    Exit;
-  end
-  else if TwoOp = 'push hl/pop de' then
-  begin
-    LastInstruction := 'ld de,hl';
-    Exit;
-  end;
-
-  Flush;
-  LastTag := Tag;
-  LastInstruction := Instruction;
-  LastComment := Comment;
 end;
 
 procedure EmitI(S: String);
