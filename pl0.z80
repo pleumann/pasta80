@@ -367,7 +367,7 @@ __putn:         ex      hl,de
 ; Uses:   AF,BC,DE
 ;
 __putb:         xor     a
-                or      h
+                or      l
                 jr      z,__putb2
                 ld      hl,__putb_true
                 call    __puts

@@ -1138,11 +1138,17 @@ begin
   end
   else if L = 0 then
   begin
+    // ld hl,Sym^.Value
     Emit('', 'ld de,(' + RelativeAddr('ix', Sym^.Value) + ')', 'Get local ' + Sym^.Name);
     EmitI('push de');
   end
   else
   begin
+    // ld hl,(display+...)
+    // ld de,sym^.value
+    // ld add hl,de
+    // ld de,(hl)
+    // push de
     Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
     EmitI('ld de,(' + RelativeAddr('iy', Sym^.Value) + ')');
     EmitI('push de');
@@ -1220,13 +1226,15 @@ begin
     toLeq, toGeq: EmitI('call __int16_geq');
   end;
 
-  Emit('', 'push af', '');
+  Emit('', 'ld h,0', '');
+  Emit('', 'ld l,a', '');
+  Emit('', 'push hl', '');
 end;
 
 procedure EmitJumpIf(When: Boolean; Target: String);
 begin
-  EmitI('pop af');
-  EmitI('and a');
+  EmitI('pop hl');
+  EmitI('bit 0,l');
   if When then
     EmitI('jp nz,' + Target)
   else
@@ -1235,20 +1243,6 @@ end;
 
 procedure EmitBinOp(Op: TToken; DataType: TDataType);
 begin
-  if DataType = dtBoolean then
-  begin
-    Emit('', 'pop hl', '');
-    Emit('', 'pop af', '');
-
-    case Op of
-      toAnd: EmitI('and h');
-      toOr:  EmitI('or h');
-      toXor: EmitI('xor h');
-    end;
-    Emit('', 'push af', '');
-    Exit;
-  end;
-
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
 
@@ -1262,15 +1256,24 @@ begin
     toDiv: Emit('', 'call __sdiv16', 'Div');
     toMod: begin Emit('', 'call __sdiv16', 'Mod'); EmitI('ex hl,de'); end;
     toAnd: begin
-             EmitI('ld a,h'); EmitI('and d'); EmitI('ld h,a');
+             if DataType = dtInteger then
+             begin
+               EmitI('ld a,h'); EmitI('and d'); EmitI('ld h,a');
+             end;
              EmitI('ld a,l'); EmitI('and e'); EmitI('ld l,a');
            end;
     toOr: begin
-             EmitI('ld a,h'); EmitI('or d'); EmitI('ld h,a');
+             if DataType = dtInteger then
+             begin
+               EmitI('ld a,h'); EmitI('or d'); EmitI('ld h,a');
+             end;
              EmitI('ld a,l'); EmitI('or e'); EmitI('ld l,a');
            end;
     toXor: begin
-             EmitI('ld a,h'); EmitI('xor d'); EmitI('ld h,a');
+             if DataType = dtInteger then
+             begin
+               EmitI('ld a,h'); EmitI('xor d'); EmitI('ld h,a');
+            end;
              EmitI('ld a,l'); EmitI('xor e'); EmitI('ld l,a');
            end;
     end;
@@ -1466,7 +1469,7 @@ begin
   else if (Scanner.Token = toTrue) or (Scanner.Token = toFalse) then
   begin
     T := dtBoolean;
-    if Scanner.Token = toTrue then EmitLiteral(65535) else EmitLiteral(0);
+    if Scanner.Token = toTrue then EmitLiteral(1) else EmitLiteral(0);
     NextToken;
   end
   else if (Scanner.Token = toString) and (Length(Scanner.StrValue)=1) then
