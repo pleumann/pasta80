@@ -203,10 +203,10 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TDataType = (dtInteger, dtBoolean);
+  TDataType = (dtInteger, dtBoolean, dtChar, dtByte);
 
 const
-  TypeName: array [TDataType] of String = ('Integer', 'Boolean');
+  TypeName: array [TDataType] of String = ('Integer', 'Boolean', 'Char', 'Byte');
 
 type
   TSymbolClass = (scConst, scVar, scProc, scFunc, scScope, scString);
@@ -428,7 +428,7 @@ type
             toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
             toOdd,
-            toBoolean, toInteger, toTrue, toFalse, toArray, toOf,
+            toBoolean, toInteger, toChar, toByte, toTrue, toFalse, toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
@@ -450,7 +450,7 @@ const
             '!', '?', ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
             'odd',
-            'boolean', 'integer', 'true', 'false', 'array', 'of',
+            'boolean', 'integer', 'char', 'byte', 'true', 'false', 'array', 'of',
             'program', 'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
@@ -1313,6 +1313,13 @@ begin
   Emit('', 'call __putb', '');
 end;
 
+procedure EmitPrintChar();
+begin
+  Emit('', 'pop hl', '');
+  Emit('', 'ld a,l', '');
+  Emit('', 'call __putc', '');
+end;
+
 procedure EmitPrintNum(S: String);
 begin
   Emit('', 'pop hl', '');
@@ -1399,9 +1406,13 @@ begin
     begin
       T := ParseExpression;
       if T = dtInteger then
-        EmitPrintNum(Scanner.StrValue)
+        EmitPrintNum(Scanner.StrValue) // Arg not needed
       else if T = dtBoolean then
         EmitPrintBoolean
+      else if T = dtChar then
+        EmitPrintChar
+      else if T = dtByte then
+        EmitPrintNum(Scanner.StrValue) // Arg not needed
       else
         Error('Type expected');
     end;
@@ -1458,9 +1469,18 @@ begin
     if Scanner.Token = toTrue then EmitLiteral(65535) else EmitLiteral(0);
     NextToken;
   end
+  else if (Scanner.Token = toString) and (Length(Scanner.StrValue)=1) then
+  begin
+    T := dtChar;
+    EmitLiteral(Ord(Scanner.StrValue[1]));
+    NextToken;
+  end
   else if Scanner.Token = toNumber then
   begin
-    T := dtInteger;
+    if (Scanner.NumValue < 0) or (Scanner.NumValue > 255) then
+      T := dtInteger
+    else
+      T := dtByte;
     EmitLiteral(Scanner.NumValue);
     NextToken;
   end
@@ -1753,7 +1773,7 @@ begin
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
 
-    NextToken; Expect(toBecomes); NextToken; ParseExpression;
+    NextToken; Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression);
     EmitSetVar(Sym, false);
 
     if Scanner.Token = toTo then
@@ -1763,7 +1783,7 @@ begin
     else
       Error('"to" or "downto" expected.');
 
-    NextToken; ParseExpression; Expect(toDo); NextToken; (* final value on stack *)
+    NextToken; TypeCheck(Sym^.DataType, ParseExpression); Expect(toDo); NextToken; (* final value on stack *)
 
     Tag := GetLabel('forloop');
     Tag2 := GetLabel('forcheck');
@@ -1926,6 +1946,8 @@ begin
     case Scanner.Token of
       toBoolean: DataType := dtBoolean;
       toInteger: DataType := dtInteger;
+      toChar: DataType := dtChar;
+      toByte: DataType := dtByte;
       else Error('Type expected');
     end;
     NextToken;
@@ -2164,3 +2186,11 @@ begin
 
   WriteLn('Success! :)');
 end.
+
+(*
+TODO
+- Integrate new types correctly
+- Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
+- Check why Boolean loops don't work correctly
+  ...
+*)
