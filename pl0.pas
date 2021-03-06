@@ -1362,9 +1362,40 @@ end;
 (* --- Parser --------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
-procedure TypeCheck(Expected, Found: TDataType);
+type
+  TTypeCheck = (tcExact, tcAssign, tcExpr);
+
+(**
+ * Performs assignment type check. Might promote either type to the other
+ * depending on the kind of check.
+ *)
+function TypeCheck(Left, Right: TDataType; Check: TTypeCheck): TDataType;
 begin
-  if Expected <> Found then Error('Type error, expected ' + TypeName[Expected] + ', got ' + TypeName[Found]);
+  if Left = Right then
+  begin
+    TypeCheck := Left;
+    Exit;
+  end;
+
+  if Check >= tcAssign then
+  begin
+    if (Left = dtInteger) and (Right = dtByte) then
+    begin
+      TypeCheck := dtInteger;
+      Exit;
+    end;
+  end;
+
+  if Check = tcExpr then
+  begin
+    if (Left = dtByte) and (Right = dtInteger) then
+    begin
+      TypeCheck := dtInteger;
+      Exit;
+    end;
+  end;
+
+  Error('Type error, expected ' + TypeName[Left] + ', got ' + TypeName[Right]);
 end;
 
 function ParseExpression: TDataType; forward;
@@ -1378,13 +1409,13 @@ begin
   begin
     NextToken;
 
-    TypeCheck(Sym^.ArgTypes[I], ParseExpression);
+    TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);
     I := I + 1;
 
     while Scanner.Token = toComma do
     begin
       NextToken;
-      TypeCheck(Sym^.ArgTypes[I], ParseExpression);
+      TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);
       I := I + 1;
     end;
 
@@ -1442,7 +1473,7 @@ begin
       begin
         if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
         NextToken;
-        TypeCheck(dtInteger, ParseExpression); (* Index now on stack *)
+        TypeCheck(dtInteger, ParseExpression, tcAssign); (* Index now on stack *)
         Expect(toRBrack);
         NextToken;
       end
@@ -1495,8 +1526,8 @@ begin
   else if Scanner.Token = toNot then
   begin
     NextToken;
-    T := ParseFactor();
-    EmitUnOp(toNot);
+    T := ParseFactor(); // Check: Integer, Byte or Boolean
+    EmitUnOp(toNot);    // Emit with proper type
   end
   else Error('Factor expected');
 
@@ -1509,13 +1540,24 @@ var
   T: TDataType;
 begin
   T := ParseFactor;
-  while Scanner.Token in [toMul, toDiv, toMod, toAnd] do
-  begin
-    Op := Scanner.Token;
-    NextToken;
-    TypeCheck(T, ParseFactor);
-    EmitBinOp(Op, T);
-  end;
+
+  if (T = dtInteger) or (T = dtByte) then
+    while Scanner.Token in [toMul, toDiv, toMod, toAnd] do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := TypeCheck(T, ParseFactor, tcExpr);
+      EmitBinOp(Op, T);
+    end
+  else if T = dtBoolean then
+    while Scanner.Token = toAnd do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := TypeCheck(T, ParseFactor, tcExact);
+      EmitBinOp(Op, T);
+    end;
+
   ParseTerm := T;
 end;
 
@@ -1537,17 +1579,26 @@ begin
 
   T := ParseTerm;
 
-  if Op <> toNone then TypeCheck(T, dtInteger);
+  if Op <> toNone then T := TypeCheck(dtInteger, T, tcExpr); // +=Byte, -=Integer
 
   if Op = toSub then EmitBinOp(toSub, T);
 
-  while Scanner.Token in [toAdd, toSub, toOr, toXor] do
-  begin
-    Op := Scanner.Token;
-    NextToken;
-    TypeCheck(T, ParseTerm);
-    EmitBinOp(Op, T);
-  end;
+  if (T = dtInteger) or (T = dtByte) then
+    while Scanner.Token in [toAdd, toSub, toOr, toXor] do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := TypeCheck(T, ParseTerm, tcExpr);
+      EmitBinOp(Op, T);
+    end
+  else if T = dtBoolean then
+    while Scanner.Token in [toOr, toXor] do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := TypeCheck(T, ParseTerm, tcExact);
+      EmitBinOp(Op, T);
+    end;
 
   (* WriteLn('Type of SimpleExpression is ', T); *)
 
@@ -1562,7 +1613,7 @@ begin
   if Scanner.Token = toOdd then (* Make this a function later *)
   begin
     NextToken;
-    TypeCheck(dtInteger, ParseSimpleExpression);
+    TypeCheck(dtInteger, ParseSimpleExpression, tcExpr);
     T := dtBoolean;
     EmitUnOp(toOdd);
   end 
@@ -1573,8 +1624,11 @@ begin
     begin
       Op := Scanner.Token;
       NextToken;
-      TypeCheck(T, ParseSimpleExpression);
-      T := dtBoolean;
+      (*
+       * ii ib bi bb zz cc 
+       *)
+      TypeCheck(T, ParseSimpleExpression, tcExpr); // Check type, but ignore result.
+      T := dtBoolean;                       // We know it will be Boolean.
       EmitRelOp(Op);
     end;
   end;
@@ -1594,7 +1648,7 @@ begin
   begin
     if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
     NextToken;
-    TypeCheck(dtInteger, ParseExpression); (* Index now on stack *)
+    TypeCheck(dtInteger, ParseExpression, tcAssign); (* Index now on stack *)
     Expect(toRBrack);
     NextToken;
   end
@@ -1606,12 +1660,12 @@ begin
     Expect(toIdent);
     Sym2 := LookupGlobal(Scanner.StrValue);
     if Sym2 = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
-    TypeCheck(Sym^.DataType, Sym2^.DataType);
+    TypeCheck(Sym^.DataType, Sym2^.DataType, tcExact);
     ParseAssignment(Sym2, true);
   end
   else
   begin
-    Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression);
+    Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
   end;
 
   EmitSetVar(Sym, Again);
@@ -1699,7 +1753,7 @@ begin
   end
   else if Scanner.Token = toIf then
   begin
-    NextToken; TypeCheck(dtBoolean, ParseExpression); Expect(toThen); NextToken;
+    NextToken; TypeCheck(dtBoolean, ParseExpression, tcExact); Expect(toThen); NextToken;
     
     Tag := GetLabel('false');
 
@@ -1734,7 +1788,7 @@ begin
 
     Emit(Tag, '', '');
 
-    NextToken; TypeCheck(dtBoolean, ParseExpression); Expect(toDo); NextToken;
+    NextToken; TypeCheck(dtBoolean, ParseExpression, tcExact); Expect(toDo); NextToken;
 
     EmitJumpIf(False, Tag2);
 
@@ -1760,7 +1814,7 @@ begin
     end;
     Expect(toUntil); NextToken;
     
-    TypeCheck(dtBoolean, ParseExpression);
+    TypeCheck(dtBoolean, ParseExpression, tcExact);
 
     EmitJumpIf(False, Tag);
     Emit(Tag2, '', '');
@@ -1776,7 +1830,7 @@ begin
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
 
-    NextToken; Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression);
+    NextToken; Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
     EmitSetVar(Sym, false);
 
     if Scanner.Token = toTo then
@@ -1786,7 +1840,7 @@ begin
     else
       Error('"to" or "downto" expected.');
 
-    NextToken; TypeCheck(Sym^.DataType, ParseExpression); Expect(toDo); NextToken; (* final value on stack *)
+    NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign); Expect(toDo); NextToken; (* final value on stack *)
 
     Tag := GetLabel('forloop');
     Tag2 := GetLabel('forcheck');
