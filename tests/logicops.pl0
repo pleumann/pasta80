@@ -1,0 +1,19 @@
+begin
+  ! false and false;
+  ! false and true;
+  ! true and false;
+  ! true and true;
+
+  ! false or false;
+  ! false or true;
+  ! true or false;
+  ! true or true;
+
+  ! false xor false;
+  ! false xor true;
+  ! true xor false;
+  ! true xor true;
+
+  ! not false;
+  ! not true;
+end.
