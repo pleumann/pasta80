@@ -1280,26 +1280,39 @@ begin
   Emit('', 'push hl', '');
 end;
 
-procedure EmitUnOp(Op: TToken);
+procedure EmitUnOp(Op: TToken; DataType: TDataType);
 begin
-
   case Op of
-    toOdd: begin
-             Emit('', 'pop hl', 'Odd');
-             EmitI('ld a,l');
-             EmitI('and 1');
-             EmitI('push af');
-           end;
-    toNot: begin
-             Emit('', 'pop hl', 'Not');
-             EmitI('ld a,255');
-             EmitI('xor h');
-             EmitI('ld h,a');
-             EmitI('ld a,255');
-             EmitI('xor l');
-             EmitI('ld l,a');
-             EmitI('push hl');
-           end;
+    toOdd: 
+      begin
+        Emit('', 'pop hl', 'Odd');
+        EmitI('ld a,l');
+        EmitI('and 1');
+        EmitI('push af');
+      end;
+    toNot:
+      begin
+        Emit('', 'pop hl', 'Not');
+        if DataType = dtBoolean then
+        begin
+          EmitI('ld a,1');
+          EmitI('xor l');
+          EmitI('ld l,a');
+        end
+        else
+        begin
+          if DataType = dtInteger then
+          begin
+            EmitI('ld a,h');
+            EmitI('cpl');
+            EmitI('ld h,a');
+          end;
+          EmitI('ld a,l');
+          EmitI('cpl');
+          EmitI('ld l,a');
+        end;
+        EmitI('push hl');
+      end;
   end;
 end;
 
@@ -1526,8 +1539,9 @@ begin
   else if Scanner.Token = toNot then
   begin
     NextToken;
-    T := ParseFactor(); // Check: Integer, Byte or Boolean
-    EmitUnOp(toNot);    // Emit with proper type
+    T := ParseFactor();
+    if T = dtChar then Error('not only applicable to Integer, Byte or Boolean');
+    EmitUnOp(toNot, T);
   end
   else Error('Factor expected');
 
@@ -1615,7 +1629,7 @@ begin
     NextToken;
     TypeCheck(dtInteger, ParseSimpleExpression, tcExpr);
     T := dtBoolean;
-    EmitUnOp(toOdd);
+    EmitUnOp(toOdd, dtInteger);
   end 
   else
   begin
@@ -1736,6 +1750,7 @@ begin
       T := ParseExpression;
       case T of
         dtBoolean: EmitPrintBoolean();
+        dtByte: EmitPrintNum(Scanner.StrValue);
         dtInteger: EmitPrintNum(Scanner.StrValue);
       end;
       EmitPrintNewLine;
