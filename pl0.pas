@@ -931,7 +931,7 @@ begin
     if Sym^.Value >= 2 then
       EmitI('pop de');    
     if Sym^.Value >= 1 then
-      EmitI('pop hl');    
+      EmitI('pop hl');
   end;
 
   EmitI('call ' + Sym^.Tag);
@@ -1323,23 +1323,20 @@ begin
   Emit('', 'call __newline', '');
 end;
 
-procedure EmitPrintBoolean();
+procedure EmitWrite(DataType: TDataType);
 begin
   Emit('', 'pop hl', '');
-  Emit('', 'call __putb', '');
-end;
-
-procedure EmitPrintChar();
-begin
-  Emit('', 'pop hl', '');
-  Emit('', 'ld a,l', '');
-  Emit('', 'call __putc', '');
-end;
-
-procedure EmitPrintNum(S: String);
-begin
-  Emit('', 'pop hl', '');
-  Emit('', 'call __putn', '');
+  case DataType of
+    dtInteger, dtByte:
+      EmitI('call __putn');
+    dtBoolean:
+      EmitI('call __putb');
+    dtChar:
+      begin
+        EmitI('ld a,l');
+        EmitI('call __putc');
+      end;
+  end;
 end;
 
 procedure EmitPrintStr(S: String);
@@ -1450,19 +1447,7 @@ begin
       NextToken;
     end
     else
-    begin
-      T := ParseExpression;
-      if T = dtInteger then
-        EmitPrintNum(Scanner.StrValue) // Arg not needed
-      else if T = dtBoolean then
-        EmitPrintBoolean
-      else if T = dtChar then
-        EmitPrintChar
-      else if T = dtByte then
-        EmitPrintNum(Scanner.StrValue) // Arg not needed
-      else
-        Error('Type expected');
-    end;
+      EmitWrite(ParseExpression);
 end;
 
 function ParseFactor: TDataType;
@@ -1739,22 +1724,8 @@ begin
   begin
     NextToken;
 
-    if Scanner.Token = toString then
-    begin
-      EmitPrintStr(Scanner.StrValue);
-      EmitPrintNewLine;
-      NextToken;
-    end
-    else
-    begin
-      T := ParseExpression;
-      case T of
-        dtBoolean: EmitPrintBoolean();
-        dtByte: EmitPrintNum(Scanner.StrValue);
-        dtInteger: EmitPrintNum(Scanner.StrValue);
-      end;
-      EmitPrintNewLine;
-    end;
+    ParseWriteArgument;
+    EmitPrintNewLine;
   end
   else if Scanner.Token = toBegin then
   begin
