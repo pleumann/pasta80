@@ -1,121 +1,103 @@
+program GameOfLife;
+
 const
-  Percent = 25,
-  Alive    = 0,
-  Dying    = 70,
-  Breeding = 130,
-  Dead     = 182;
+  Width    = 30;
+  Height   = 20;
+  Percent  = 10;
 
 var
-  I, Map[1024];
+  Map: array[0..1599] of Integer;
+  This, Next, Cycle, Live: Integer;
 
-function GetCell(X,Y);
+function GetCell(X,Y: Integer): Integer;
 begin
-  X := (X + 32) % 32;
-  Y := (Y + 32) % 32;
-  GetCell := Map[Y*32+X];
+  GetCell := Map[This+Y*Width+X];
 end;
 
-procedure SetCell(X,Y,Z);
+procedure SetCell(X,Y,Z: Integer);
 begin
-  X := (X + 32) % 32;
-  Y := (Y + 32) % 32;
-  Map[Y*32+X] := Z;
+  Map[Next+Y*Width+X] := Z;
 end;
 
 procedure Paint;
 var
-  X,Y;
+  X,Y: Integer;
 begin
-  for Y := 0 to 31 do
-    for X := 0 to 31 do
-      SetPixel(X, Y, GetCell(X, Y))
+  GotoXY(1,1);
+  for Y := 0 to Height - 1 do
+  begin
+    for X := 0 to Width - 1 do
+      if GetCell(X,Y) = 1 then
+        Write('#')
+      else
+        Write(' ');
+    WriteLn;
+  end;
+  WriteLn;
 end;
 
-function Next(X,Y);
+function Alive(X,Y: Integer): Boolean;
 var
-  C,N;
+  L,R,U,D,Count: Integer;
 begin
-  C := 0;
-  if GetCell(X-1,Y-1) <= Dying then C := C + 1;
-  if GetCell(X  ,Y-1) <= Dying then C := C + 1;
-  if GetCell(X+1,Y-1) <= Dying then C := C + 1;
-  if GetCell(X-1,Y  ) <= Dying then C := C + 1;
-  if GetCell(X+1,Y  ) <= Dying then C := C + 1;
-  if GetCell(X-1,Y+1) <= Dying then C := C + 1;
-  if GetCell(X  ,Y+1) <= Dying then C := C + 1;
-  if GetCell(X+1,Y+1) <= Dying then C := C + 1;
+  if X = 0 then L := Width - 1 else L := X-1;
+  if Y = 0 then U := Height - 1 else U := Y-1;
 
-  N := GetCell(X,Y);
-  Next := N;
-  if N = Alive then
-  begin
-    if C < 2 then Next := Dying else if C > 3 then Next := Dying;
-  end
-  else if N = Dead then
-  begin
-    if C = 3 then Next := Breeding;
-  end;
+  if X = Width-1 then R := 0 else R := X+1;
+  if Y = Height-1 then D := 0 else D := Y+1;
+
+  Count := GetCell(L,U) + GetCell(X,U) + GetCell(R,U)
+         + GetCell(L,Y)                + GetCell(R,Y)
+         + GetCell(L,D) + GetCell(X,D) + GetCell(R,D);
+
+  Alive := (GetCell(X,Y) = 1) and (Count=2) or (Count=3);
 end;
 
-procedure Generation;
+procedure Think;
 var
-  X,Y,Z;
+  X,Y,Temp: Integer;
 begin
-  Y := 0;
-  while Y < 32 do
-  begin
-    X := 0;
-    while X < 32 do
-    begin
-      SetCell(X,Y,Next(X,Y));
-      X := X + 1;
-    end;
-    Y := Y + 1;
-  end;
+  Temp := This; This := Next; Next := Temp;
 
-  Y := 0;
-  while Y < 32 do
-  begin
-    X := 0;
-    while X < 32 do
-    begin
-      Z := GetCell(X,Y);
-      if Z = Dying then SetCell(X,Y,Dead) else if Z = Breeding then SetCell(X,Y,Alive);
-      X := X + 1;
-    end;
-    Y := Y + 1;
-  end;
+  Live := 0;
+
+  for Y := 0 to Height - 1 do
+    for X := 0 to Width  - 1 do
+      if Alive(X,Y) then
+      begin
+        SetCell(X,Y,1);
+        Live := Live + 1;
+      end
+      else SetCell(X,Y,0);
 end;
 
 procedure Setup;
 var
-  X,Y,Z;
+  X,Y: Integer;
 begin
-  Y := 0;
-  while Y < 32 do
-  begin
-    X := 0;
-    while X < 32 do
-    begin
-      Z := Random % 100;
-      if Z < Percent then
-        SetCell(X,Y,Alive)
-      else
-        SetCell(X,Y,Dead);
-      X := X + 1;
-    end;
-    Y := Y + 1;
-  end;
-end;
+  This := 0; Next := 800;
 
+  for Y := 0 to Height - 1 do
+    for X := 0 to Width-1 do
+      if Random(100) < Percent then
+        SetCell(X,Y,1)
+      else
+        SetCell(X,Y,0);
+end;
+  
 begin
+  ClrScr;
   Setup;
 
-  I := 0;
-  while I < 100 do
+  for Cycle := 1 to 800 do
   begin
-    Generation;
+    TextColor(1 + Cycle mod 6);
+    CursorOff;
     Paint;
-    I := I + 1;
+    TextColor(7);
+    Write('Cycle:', Cycle,'  Alive:', Live, '  ');
+    CursorOn;
+
+    Think;
   end;
 end.
