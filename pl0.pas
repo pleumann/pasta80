@@ -593,7 +593,12 @@ begin
       end;
       '<': begin
         C := GetChar;
-        if C = '=' then
+        if C = '>' then
+        begin
+          Token := toNeq;
+          C := GetChar;
+        end
+        else if C = '=' then
         begin
           Token := toLeq;
           C := GetChar;
