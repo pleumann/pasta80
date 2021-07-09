@@ -203,10 +203,10 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TDataType = (dtInteger, dtBoolean, dtChar, dtByte);
+  TDataType = (dtInteger, dtBoolean, dtChar, dtByte, dtString);
 
 const
-  TypeName: array [TDataType] of String = ('Integer', 'Boolean', 'Char', 'Byte');
+  TypeName: array [TDataType] of String = ('Integer', 'Boolean', 'Char', 'Byte', 'String');
 
 type
   TSymbolClass = (scConst, scVar, scProc, scFunc, scScope, scString);
@@ -428,7 +428,7 @@ type
             toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
             toOdd,
-            toBoolean, toInteger, toChar, toByte, toTrue, toFalse, toArray, toOf,
+            toBoolean, toInteger, toChar, toByte, toStringT, toTrue, toFalse, toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
@@ -450,7 +450,7 @@ const
             '!', '?', ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
             'odd',
-            'boolean', 'integer', 'char', 'byte', 'true', 'false', 'array', 'of',
+            'boolean', 'integer', 'char', 'byte', 'string', 'true', 'false', 'array', 'of',
             'program', 'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
@@ -1342,6 +1342,8 @@ begin
         EmitI('ld a,l');
         EmitI('call __putc');
       end;
+    dtString:
+      EmitI('call __puts');
   end;
 end;
 
@@ -1507,10 +1509,21 @@ begin
     if Scanner.Token = toTrue then EmitLiteral(1) else EmitLiteral(0);
     NextToken;
   end
-  else if (Scanner.Token = toString) and (Length(Scanner.StrValue)=1) then
+  else if Scanner.Token = toString then
   begin
-    T := dtChar;
-    EmitLiteral(Ord(Scanner.StrValue[1]));
+    if Length(Scanner.StrValue)=1 then
+    begin
+      T := dtChar;
+      EmitLiteral(Ord(Scanner.StrValue[1]));
+    end
+    else
+    begin
+      T := dtString;
+      Sym := CreateSymbol(scString, Scanner.StrValue, 0);
+      Sym^.Tag := GetLabel('string');      
+      EmitI('ld hl,' + Sym^.Tag);
+      EmitI('push hl');
+    end;
     NextToken;
   end
   else if Scanner.Token = toNumber then
@@ -1618,9 +1631,9 @@ begin
   if Scanner.Token = toOdd then (* Make this a function later *)
   begin
     NextToken;
-    TypeCheck(dtInteger, ParseSimpleExpression, tcExpr);
+    (*TypeCheck(dtInteger,*) T := ParseSimpleExpression (*), tcExpr)*);
+    EmitUnOp(toOdd, T);
     T := dtBoolean;
-    EmitUnOp(toOdd, dtInteger);
   end 
   else
   begin
@@ -1729,8 +1742,7 @@ begin
   else if Scanner.Token = toSay then
   begin
     NextToken;
-
-    ParseWriteArgument;
+    EmitWrite(ParseExpression);
     EmitPrintNewLine;
   end
   else if Scanner.Token = toBegin then
@@ -1892,12 +1904,12 @@ begin
     if Scanner.Token = toLParen then
     begin
       NextToken;
-      ParseWriteArgument;
+      EmitWrite(ParseExpression);
 
       while Scanner.Token = toComma do
       begin
         NextToken;
-        ParseWriteArgument;
+        EmitWrite(ParseExpression);
       end;
 
       Expect(toRParen);
@@ -1997,6 +2009,7 @@ begin
       toInteger: DataType := dtInteger;
       toChar: DataType := dtChar;
       toByte: DataType := dtByte;
+      toStringT: DataType := dtString;
       else Error('Type expected');
     end;
     NextToken;
@@ -2088,6 +2101,10 @@ begin
         NewSym^.DataType := dtInteger
       else if Scanner.Token = toBoolean then
         NewSym^.DataType := dtBoolean
+      else if Scanner.Token = toChar then
+        NewSym^.DataType := dtChar
+      else if Scanner.Token = toStringT then
+        NewSym^.DataType := dtString
       else
         Error('Type expected');
       ResVar^.DataType := NewSym^.DataType;
@@ -2241,5 +2258,8 @@ TODO
 - Integrate new types correctly
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
 - Check why Boolean loops don't work correctly
+- Integrate String literals as String data type, allow variables and parameters.
+- Build super-simple test infrastruture
+- Cleanup existing tests
   ...
 *)
