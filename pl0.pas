@@ -1293,7 +1293,8 @@ begin
         Emit('', 'pop hl', 'Odd');
         EmitI('ld a,l');
         EmitI('and 1');
-        EmitI('push af');
+        EmitI('ld l,a');
+        EmitI('push hl');
       end;
     toNot:
       begin
