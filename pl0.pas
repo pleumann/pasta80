@@ -1341,6 +1341,7 @@ begin
         EmitI('ld a,l');
         EmitI('and 1');
         EmitI('ld l,a');
+        EmitI('ld h,0');
         EmitI('push hl');
       end;
     toNot:
