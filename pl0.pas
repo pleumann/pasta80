@@ -1278,6 +1278,11 @@ begin
   Emit('', 'push hl', '');
 end;
 
+procedure EmitJump(Target: String);
+begin
+    EmitI('jp ' + Target);
+end;
+
 procedure EmitJumpIf(When: Boolean; Target: String);
 begin
   EmitI('pop hl');
@@ -1889,27 +1894,10 @@ begin
     NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign); Expect(toDo); NextToken; (* final value on stack *)
 
     Tag := GetLabel('forloop');
-    Tag2 := GetLabel('forcheck');
     Tag3 := GetLabel('forbreak');
     Tag4 := GetLabel('fornext');
 
-    Emit('', 'jp ' + Tag2, 'Limit on stack, start loop');
-
-    Emit(Tag, '', '');
-
-    ParseStatement(Tag4, Tag3);
-
-    Emit(Tag4, '', '');
-    
-    EmitGetVar(Sym);
-    Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
-    Emit('', 'push de', '');
-    EmitBinOp(toAdd, dtInteger);
-    EmitSetVar(Sym, false);
-  
-    Emit(Tag2, '', '');
-
-    Emit('', 'pop de','Dup and check limit');
+    Emit('', 'pop de','Dup and pre-check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
 
@@ -1917,7 +1905,31 @@ begin
 
     if Delta = 1 then EmitRelOp(toGeq) else EmitRelOp(toLeq); (* Operands swapped! *)
 
-    EmitJumpIf(True, Tag);
+    EmitJumpIf(False, Tag3);
+
+    Emit(Tag, '', '');
+
+    ParseStatement(Tag4, Tag3);
+
+    Emit(Tag4, '', '');
+    
+    Emit('', 'pop de','Dup and check limit');
+    Emit('', 'push de','');
+    Emit('', 'push de', '');
+
+    EmitGetVar(Sym);
+
+    if Delta = 1 then EmitRelOp(toGt) else EmitRelOp(toLt); (* Operands swapped! *)
+
+    EmitJumpIf(False, Tag3);
+
+    EmitGetVar(Sym);
+    Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
+    Emit('', 'push de', '');
+    EmitBinOp(toAdd, dtInteger);
+    EmitSetVar(Sym, false);
+  
+    EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
   end
