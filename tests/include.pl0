@@ -1,0 +1,13 @@
+procedure TestInclude;
+var
+  I: Integer;
+begin
+  TestCase('TestInclude');
+
+  I := 1;
+(*$i  tests/include.inc  *)
+  AssertInteger('First include', 2, I);
+(*$i  tests/include.inc  *)
+  AssertInteger('Second include', 3, I);
+end;
+

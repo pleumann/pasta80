@@ -92,8 +92,8 @@ begin
   I := 1;
   while ((I <= Length(S)) and (S[I] <= ' ')) do
     I := I + 1;
-  J := Length(S);
-  while ((J > I) and (S[I] <= ' ')) do
+  J := Length(S) + 1;
+  while ((J > I) and (S[J-1] <= ' ')) do
     J := J - 1;
   TrimStr := Copy(S, I, J - I);
 end;
@@ -142,60 +142,90 @@ type
   TSource = record
     Input:  Text;
     Buffer: String;
-    Count:  Integer;
+  (*  Count:  Integer; *)
     Line:   Integer;
     Column: Integer;
   end;
 
 var
-  Source: TSource;
+  Source: array[Boolean] of TSource;
+  Include: Boolean = False;
 
 procedure Error(Message: String);
 var  I: Integer;
 begin
-  WriteLn;
-  WriteLn(Source.Buffer);
-  for I := 1 to Source.Column - 1 do Write(' ');
-  WriteLn('^');
-  WriteLn('*** Error: ', Message, ' in line ', Source.Line, ', column ', Source.Column);
-  WriteLn();
-  Halt(1);
+  with Source[Include] do
+  begin
+    WriteLn;
+    WriteLn(Buffer);
+    for I := 1 to Column - 1 do Write(' ');
+    WriteLn('^');
+    WriteLn('*** Error: ', Message, ' in line ', Line, ', column ', Column);
+    WriteLn();
+    Halt(1);
+  end;
 end;
 
 procedure OpenInput(FileName: String);
 begin
-  Assign(Source.Input, FileName);
-  Reset(Source.Input);
-  Source.Column := 1;
+  with Source[Include] do
+  begin
+    Assign(Input, FileName);
+    Reset(Input);
+    Buffer := '';
+    Line := 0;
+    Column := 1;
+  end;
 end;
 
 procedure CloseInput();
 begin
-  Close(Source.Input);
+  with Source[Include] do
+    Close(Input);
+end;
+
+procedure SetInclude(FileName: String);
+begin
+  if Include then
+    Error('Nested includes not allowed');
+
+  Include := True;
+
+  OpenInput(FileName);
 end;
 
 function GetChar(): Char;
 begin
-  if Source.Column > Length(Source.Buffer) then
+  with Source[Include] do
   begin
-    if Eof(Source.Input) then
+    if Column > Length(Buffer) then
     begin
-      Error('Unexpected end of source');
-      (* GetChar := #26;
-      Exit; *)
+      if Eof(Input) then
+      begin
+        if Include then
+        begin
+          Close(Input);
+          Include := False;
+          GetChar := ' ';
+          Exit;
+        end
+        else Error('Unexpected end of source');
+        (* GetChar := #26;
+        Exit; *)
+      end;
+
+      ReadLn(Input, Buffer);
+      Buffer := Buffer + #13;
+      Line := Line + 1;
+      Column := 1;
+
+      (* WriteLn('[', Line, '] ', Buffer); *)
     end;
 
-    ReadLn(Source.Input, Source.Buffer);
-    Source.Buffer := Source.Buffer + #13;
-    Source.Line := Source.Line + 1 ;
-    Source.Column := 1;
-
-    (* WriteLn('[', Source.Line, '] ', Source.Buffer); *)
+    GetChar := Buffer[Column];
+    (* Write(Source.Buffer[Source.Column]); *)
+    Inc(Column);
   end;
-
-  GetChar := Source.Buffer[Source.Column];
-  (* Write(Source.Buffer[Source.Column]); *)
-  Inc(Source.Column);
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -502,6 +532,8 @@ var
   C: Char;
 
 procedure NextToken();
+var
+  S: String;
 begin
   while (C <= ' ') do
   begin
@@ -621,11 +653,21 @@ begin
         if C = '*' then
         begin
           C := GetChar;
+          S := '(*' + C;
           repeat
-            while C <> '*' do C := GetChar;
+            while C <> '*' do
+            begin
+              C := GetChar;
+              S := S + C;
+            end;
             C := GetChar;
+            S := S + C;
           until C = ')';
           C := GetChar;
+
+          if LowerStr(Copy(S, 3, 2)) = '$i' then
+            SetInclude(TrimStr(Copy(S, 5, Length(S) - 6)));
+
           NextToken;
           Exit;
         end;
@@ -1159,7 +1201,7 @@ begin
     EmitI('push de');
   end
 end;
-
+ 
 procedure EmitSetVar(Sym: PSymbol; Again: Boolean);
 var
   L: Integer;
