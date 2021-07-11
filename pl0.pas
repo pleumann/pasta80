@@ -1577,10 +1577,7 @@ begin
   end
   else if Scanner.Token = toNumber then
   begin
-    if (Scanner.NumValue < 0) or (Scanner.NumValue > 255) then
-      T := dtInteger
-    else
-      T := dtByte;
+    T := dtInteger;
     EmitLiteral(Scanner.NumValue);
     NextToken;
   end
