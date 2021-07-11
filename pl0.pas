@@ -1509,6 +1509,7 @@ end;
 function ParseFactor: TDataType;
 var
   Sym: PSymbol;T: TDataType;
+  Op: TToken;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -1591,8 +1592,22 @@ begin
   else if Scanner.Token = toNot then
   begin
     NextToken;
+
+    Op := toNone;
+    if (Scanner.Token = toAdd) or (Scanner.Token = toSub) then
+    begin
+      Op := Scanner.Token;
+      NextToken;
+    end;
+
+    if Op = toSub then
+      EmitLiteral(0);
+
     T := ParseFactor();
     if T = dtChar then Error('not only applicable to Integer, Byte or Boolean');
+
+    if Op = toSub then EmitBinOp(toSub, T);
+
     EmitUnOp(toNot, T);
   end
   else Error('Factor expected');
