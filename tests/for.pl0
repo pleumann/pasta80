@@ -1,0 +1,70 @@
+procedure TestFor;
+var
+  I, J, K: Integer;
+begin
+  BeginTest('TestFor');
+
+  I := 0; J := 0;
+  for J := 1 to 0 do
+  begin
+    I := I + J;
+  end;
+
+  AssertInteger('Minimum iterations up I', 0, I);
+  AssertInteger('Minimum iterations up J', 1, J);
+
+  I := 0; J := 0;
+  for J := 0 downto 1 do
+  begin
+    I := I + J;
+  end;
+
+  AssertInteger('Minimum iterations down I', 0, I);
+  AssertInteger('Minimum iterations down J', 0, J);
+
+  I := 0; J := 0;
+  for J := 1 to 10 do
+  begin
+    I := I + J;
+  end;
+
+  AssertInteger('Simple loop J', 10, J);
+  AssertInteger('Simple loop I', 55, I);
+
+  I := 0; J := 10;
+  for J := 10 downto 1 do
+  begin
+    I := I + J;
+  end;
+
+  AssertInteger('Simple loop J', 1, J);
+  AssertInteger('Simple loop I', 55, I);
+
+  I := 0;
+  J := 0;
+  for J := 1 to 10 do
+  begin
+    K := 0;
+    for K := 1 to 20 do
+    begin
+      I := I + J * K;
+    end;
+  end;
+
+  AssertInteger('Nested loop K', 20, K);
+  AssertInteger('Nested loop J', 10, J);
+  AssertInteger('Nested loop I', 11550, I);
+
+  I := 0; J := 0;
+  for J := 1 to 10 do
+  begin
+    if J = 4 then Continue;
+    if J = 8 then Break;
+    I := I + J;
+  end;
+  
+  AssertInteger('Break/continue J', 8, J);
+  AssertInteger('Break/continue I', 24, I);
+
+  EndTest;
+end;

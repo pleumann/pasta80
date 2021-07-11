@@ -1,94 +1,74 @@
+procedure TestRelOps;
 begin
-  ! "----------";
+  BeginTest('TestRelOps');
 
-  ! "1=1";
-  if 1=1 then ! "True";
+  AssertBoolean('1=1', True, 1=1);
+  AssertBoolean('1#1', False, 1#1);
+  AssertBoolean('1<1', False, 1<1);
+  AssertBoolean('1>1', False, 1>1);
+  AssertBoolean('1<=1', True, 1<=1);
+  AssertBoolean('1>=1', True, 1>=1);
 
-  ! "1#1";
-  if 1#1 then ! "True";
+  AssertBoolean('1=0', False, 1=0);
+  AssertBoolean('1#0', True, 1#0);
+  AssertBoolean('1<0', False, 1<0);
+  AssertBoolean('1>0', True, 1>0);
+  AssertBoolean('1<=0', False, 1<=0);
+  AssertBoolean('1>=0', True, 1>=0);
 
-  ! "1<1";
-  if 1<1 then ! "True";
+  AssertBoolean('0=1', False, 0=1);  
+  AssertBoolean('0#1', True, 0#1);
+  AssertBoolean('0<1', True, 0<1);
+  AssertBoolean('0>1', False, 0>1);
+  AssertBoolean('0<=1', True, 0<=1);
+  AssertBoolean('0>=1', False, 0>=1);
 
-  ! "1>1";
-  if 1>1 then ! "True";
+  AssertBoolean('0<-1', False, 0<-1);
+  AssertBoolean('0>-1', True, 0>-1);
+  AssertBoolean('0<=-1', False, 0<=-1);
+  AssertBoolean('0>=-1', True, 0>=-1);
 
-  ! "1<=1";
-  if 1<=1 then ! "True";
+  AssertBoolean('-10000<20000', True, -10000<20000);
+  AssertBoolean('-10000>20000', False, -10000>20000);
+  AssertBoolean('-10000<=20000', True, -10000<=20000);
+  AssertBoolean('-10000>=20000', False, -10000>=20000);
+  AssertBoolean('-10000<=-20000', False, -10000<=-20000);
+  AssertBoolean('-10000>=-20000', True, -10000>=-20000);
 
-  ! "1>=1";
-  if 1>=1 then ! "True";
+  AssertBoolean('False=False', True, False=False);
+  AssertBoolean('False#False', False, False#False);
+  AssertBoolean('False<False', False, False<False);
+  AssertBoolean('False>False', False, False>False);
+  AssertBoolean('False<=False', True, False<=False);
+  AssertBoolean('False>=False', True, False>=False);
 
-  ! "----------";
+  AssertBoolean('True=True', True, True=True);
+  AssertBoolean('True#True', False, True#True);
+  AssertBoolean('True<True', False, True<True);
+  AssertBoolean('True>True', False, True>True);
+  AssertBoolean('True<=True', True, True<=True);
+  AssertBoolean('True>=True', True, True>=True);
 
-  ! "1=0";
-  if 1=0 then ! "True";
+  AssertBoolean('False=True', False, False=True);
+  AssertBoolean('False#True', True, False#True);
+  AssertBoolean('False<True', True, False<True);
+  AssertBoolean('False>True', False, False>True);
+  AssertBoolean('False<=True', True, False<=True);
+  AssertBoolean('False>=True', False, False>=True);
 
-  ! "1#0";
-  if 1#0 then ! "True";
+  AssertBoolean('A=A', True, 'A'='A');
+  AssertBoolean('A#A', False, 'A'#'A');
+  AssertBoolean('A<A', False, 'A'<'A');
+  AssertBoolean('A>A', False, 'A'>'A');
+  AssertBoolean('A<=A', True, 'A'>='A');
+  AssertBoolean('A>=A', True, 'A'>='A');
 
-  ! "1<0";
-  if 1<0 then ! "True";
+  AssertBoolean('A=Z', False, 'A'='Z');
+  AssertBoolean('A#Z', True, 'A'#'Z');
+  AssertBoolean('A<Z', True, 'A'<'Z');
+  AssertBoolean('A>Z', False, 'A'>'Z');
+  AssertBoolean('A<=Z', True, 'A'<='Z');
+  AssertBoolean('A>=Z', False, 'A'>='Z');
 
-  ! "1>0";
-  if 1>0 then ! "True";
-
-  ! "1<=0";
-  if 1<=0 then ! "True";
-
-  ! "1>=0";
-  if 1>=0 then ! "True";
-
-  ! "----------";
-
-  ! "0=1";
-  if 0=1 then ! "True";
-
-  ! "0#1";
-  if 0#1 then ! "True";
-
-  ! "0<1";
-  if 0<1 then ! "True";
-
-  ! "0>1";
-  if 0>1 then ! "True";
-
-  ! "0<=1";
-  if 0<=1 then ! "True";
-
-  ! "0>=1";
-  if 0>=1 then ! "True";
-
-  ! "----------";
-
-  ! "0<-1";
-  if 0<-1 then ! "True";
-
-  ! "0>-1";
-  if 0>-1 then ! "True";
-
-  ! "0<=-1";
-  if 0<=-1 then ! "True";
-
-  ! "0>=-1";
-  if 0>=-1 then ! "True";
-
-  ! "-10000<20000";
-  if -10000<20000 then ! "True";
-
-  ! "-10000>20000";
-  if -10000>20000 then ! "True";
-
-  ! "-10000<=20000";
-  if -10000<=20000 then ! "True";
-
-  ! "-10000>=20000";
-  if -10000>=20000 then ! "True";
-
-  ! "-10000<=-20000";
-  if -10000<=-20000 then ! "True";
-
-  ! "-10000>=-20000";
-  if -10000>=-20000 then ! "True";
-
-end.
+  EndTest;
+end;

@@ -1,4 +1,23 @@
+procedure TestOdd;
 begin
-  if odd 1 then ! "1 is odd" else ! "1 is even";
-  if odd 2 then ! "2 is odd" else ! "2 is even";
-end.
+  BeginTest('TestOdd');
+
+  AssertBoolean('Integer 0 must not be odd', False, Odd 0);
+
+  AssertBoolean('Integer 1001 must be odd', True, Odd 1001);
+  AssertBoolean('Integer 1002 must not be odd', False, Odd 1002);
+
+  AssertBoolean('Integer -1001 must be odd', True, Odd -1001);
+  AssertBoolean('Integer -1002 must not be odd', False, Odd -1002);
+
+  AssertBoolean('Boolean True must be odd', True, Odd True);
+  AssertBoolean('Boolean False must not be odd', False, Odd False);
+
+  AssertBoolean('Byte 1 must be odd', True, Odd 1);
+  AssertBoolean('Byte 2 must not be odd', False, Odd 2);
+
+  AssertBoolean('Char A must be odd', True, Odd 'A');
+  AssertBoolean('CHar B must not be odd', False, Odd 'B');
+
+  EndTest;
+end;

@@ -1,12 +1,18 @@
+procedure TestBitOps;
 begin
-  ! 6 or 3;
-  ! 6 and 3;
-  ! 6 xor 3;
+  BeginTest('TestBitOps');
 
-  ! 1536 or 768;
-  ! 1536 and 768;
-  ! 1536 xor 768;
+  AssertInteger('Integer or', 1792, 1536 or 768);
+  AssertInteger('Integer and', 512, 1536 and 768);
+  AssertInteger('Integer xor', 1280, 1536 xor 768);
 
-  ! not 0;
-  ! not (-1);
-end.
+  AssertInteger('Byte or', 7, 6 or 3);
+  AssertInteger('Byte and', 2, 6 and 3);
+  AssertInteger('Byte xor', 5, 6 xor 3);
+
+  AssertInteger('not 0', -1, not 0);
+  AssertInteger('not 1', -2, not 1);
+  AssertInteger('not -1', 0, not -1);
+
+  EndTest;
+end;
