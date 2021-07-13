@@ -457,7 +457,7 @@ type
             toLParen, toRParen, toLBrack, toRBrack,
             toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
-            toOdd,
+            toOdd, toOrd,
             toBoolean, toInteger, toChar, toByte, toStringT, toTrue, toFalse, toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
@@ -479,7 +479,7 @@ const
             '(', ')', '[', ']',
             '!', '?', ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
-            'odd',
+            'odd', 'ord',
             'boolean', 'integer', 'char', 'byte', 'string', 'true', 'false', 'array', 'of',
             'program', 'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
@@ -1443,22 +1443,10 @@ begin
     Exit;
   end;
 
-  if Check >= tcAssign then
+  if (Left = dtInteger) and (Right = dtByte) or (Left = dtByte) and (Right = dtInteger) then
   begin
-    if (Left = dtInteger) and (Right = dtByte) then
-    begin
-      TypeCheck := dtInteger;
-      Exit;
-    end;
-  end;
-
-  if Check = tcExpr then
-  begin
-    if (Left = dtByte) and (Right = dtInteger) then
-    begin
-      TypeCheck := dtInteger;
-      Exit;
-    end;
+    TypeCheck := dtInteger;
+    Exit;
   end;
 
   Error('Type error, expected ' + TypeName[Left] + ', got ' + TypeName[Right]);
@@ -1606,6 +1594,26 @@ begin
     if Op = toSub then EmitBinOp(toSub, T);
 
     EmitUnOp(toNot, T);
+  end
+  else if Scanner.Token in [toOrd, toInteger, toBoolean, toChar, toByte] then
+  begin
+    Op := Scanner.Token;
+
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+    ParseExpression();
+
+    case Op of
+      toOrd:      T := dtInteger;
+      toInteger:  T := dtInteger;
+      toBoolean:  T := dtBoolean;
+      toChar:     T := dtChar;
+      toByte:     T := dtByte;
+    end;
+
+    Expect(toRParen);
+    NextToken;
   end
   else Error('Factor expected');
 

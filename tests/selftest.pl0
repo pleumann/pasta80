@@ -101,6 +101,7 @@ end;
 (*$i tests/for.pl0      *)
 
 (*$i tests/odd.pl0      *)
+(*$i tests/ord.pl0      *)
 
 begin
   Header;
@@ -114,6 +115,7 @@ begin
   TestFor;
 
   TestOdd;
+  TestOrd;
 
   Footer;
 end.
