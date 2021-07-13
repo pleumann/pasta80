@@ -1,6 +1,8 @@
 procedure TestFor;
 var
   I, J, K: Integer;
+  B: Boolean;
+  C: Char;
 begin
   BeginTest('TestFor');
 
@@ -28,8 +30,8 @@ begin
     I := I + J;
   end;
 
-  AssertInteger('Simple loop J', 10, J);
-  AssertInteger('Simple loop I', 55, I);
+  AssertInteger('Simple loop up J', 10, J);
+  AssertInteger('Simple loop up I', 55, I);
 
   I := 0; J := 10;
   for J := 10 downto 1 do
@@ -65,6 +67,42 @@ begin
   
   AssertInteger('Break/continue J', 8, J);
   AssertInteger('Break/continue I', 24, I);
+
+  I := 0;
+  for B := False to True do
+  begin
+    if not B then I := 1 else I := I * 2;
+  end;
+  AssertInteger('Boolean While I', 2, I);
+  AssertBoolean('Boolean While B', True, B);
+
+  I := 0;
+  for B := True downto False do
+  begin
+    if B then I := 1 else I := I * 2;
+  end;
+  AssertInteger('Boolean While I', 2, I);
+  AssertBoolean('Boolean While B', False, B);
+
+  I := 0; J := 0;
+  for C := 'A' to 'Z' do
+  begin
+    J := J + 1;
+    I := I + J * Ord(C);
+  end;
+  AssertInteger('Char While I', 28665, I);
+  AssertInteger('Char While J', 26, J);
+  AssertChar('Char While C', 'Z', C);
+
+  I := 0; J := 0;
+  for C := 'Z' downto 'A' do
+  begin
+    J := J + 1;
+    I := I + J * Ord(C);
+  end;
+  AssertInteger('Char While I', 25740, I);
+  AssertInteger('Char While J', 26, J);
+  AssertChar('Char While C', 'A', C);
 
   EndTest;
 end;
