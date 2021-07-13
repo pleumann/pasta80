@@ -47,7 +47,7 @@ begin
     if J = 8 then Break;
     I := I + J;
   end;
-  
+
   AssertInteger('Break/continue J', 8, J);
   AssertInteger('Break/continue I', 24, I);
 
