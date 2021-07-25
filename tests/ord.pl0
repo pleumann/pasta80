@@ -5,7 +5,7 @@ begin
   AssertInteger('Integer(Ord(Integer))', 12345, Integer(Ord(12344) + 1));
   AssertBoolean('Boolean(Ord(Boolean))', True, Boolean(Ord(False) + 1));
   AssertChar('Char(Ord(Char))', 'B', Char(Ord('A') + 1));
-  AssertByte('Byte(Ord(Byte))', 0, Byte(Ord(255) + 1));
+  AssertByte('Byte(Ord(Byte))', 100, Byte(Ord(99) + 1));
 
   EndTest;
 end;
