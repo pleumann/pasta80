@@ -1,0 +1,83 @@
+procedure TestLiterals;
+begin
+  BeginTest('TestLiterals');
+
+  AssertInteger('0 ', 0, 0); (* Char/String conflict *)
+  AssertInteger('1 ', 1, 1); (* Char/String conflict *)
+  AssertInteger('-1', -1, -1);
+  AssertInteger('32767', 32767, 32767);
+  AssertInteger('-32768', 32768, 32768);
+
+  EndTest;
+end;
+
+procedure TestAdd;
+begin
+  BeginTest('TestAddition');
+
+  AssertInteger('1+0', 1, 1+0);
+  AssertInteger('1+1', 2, 1+1);
+  AssertInteger('32767+1', -32768, 32767+1);
+  AssertInteger('-32768+1', -32767, -32768+1);
+
+  EndTest;
+end;
+
+procedure TestSubtract;
+begin
+  BeginTest('TestSubtract');
+
+  AssertInteger('1-0', 1, 1-0);
+  AssertInteger('1-1', 0, 1-1);
+  AssertInteger('0-1', -1, 0-1);
+  AssertInteger('4-4-4', -4, 4-4-4);
+  AssertInteger('-32768-1', 32767, -32768-1);
+
+  EndTest;
+end;
+
+procedure TestMultiply;
+begin
+  BeginTest('TestMultiply');
+
+  AssertInteger('3*4', 12, 3*4);
+  AssertInteger('3*(-4)', -12, 3*(-4));       (* Signed factor needed *)
+  AssertInteger('(-3)*4', -12, (-3)*4);
+  AssertInteger('(-3)*(-4)', 12, (-3)*(-4));  (* Signed factor needed *)
+
+  EndTest;
+end;
+
+procedure TestDivide;
+begin
+  BeginTest('TestDivide');
+
+  AssertInteger('10/5', 2, 10/5);
+  AssertInteger('10/(-5)', -2, 10/(-5));      (* Signed factor needed *)
+  AssertInteger('(-10)/5', -2, (-10)/5);
+  AssertInteger('(-10)/(-5)', 2, (-10)/(-5)); (* Signed factor needed *)
+
+  EndTest;
+end;
+
+procedure TestModulus;
+begin
+  BeginTest('TestModulus');
+
+  AssertInteger('10%1', 0, 10%1);
+  AssertInteger('10%2', 0, 10%2);
+  AssertInteger('10%3', 1, 10%3);
+  AssertInteger('10%4', 2, 10%4);
+  AssertInteger('10%10', 0, 10%10);
+
+  EndTest;
+end;
+
+procedure TestNested;
+begin
+  BeginTest('TestNested');
+
+  AssertInteger('2*(3+4*(5-6*(7+8*(9/3))))', -1442, 2*(3+4*(5-6*(7+8*(9/3)))));
+
+  EndTest;
+end;

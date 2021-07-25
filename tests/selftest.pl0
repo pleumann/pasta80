@@ -92,6 +92,8 @@ begin
   WriteLn('************');
 end;
 
+(*$i tests/expr.pl0     *)
+
 (*$i tests/relops.pl0   *)
 (*$i tests/logops.pl0   *)
 (*$i tests/bitops.pl0   *)
@@ -105,6 +107,13 @@ end;
 
 begin
   Header;
+
+  TestAdd;
+  TestSubtract;
+  TestMultiply;
+  TestDivide;
+  TestModulus;
+  TestNested;
 
   TestRelOps;
   TestLogOps;
