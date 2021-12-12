@@ -1017,6 +1017,10 @@ begin
   EmitC('');
   EmitInclude(Home + '/pl0.z80');
   EmitC('');
+
+  Emit0('', 'jp main', '');
+  EmitC('');
+
 end;
 
 procedure EmitFooter();
@@ -1171,7 +1175,7 @@ begin
     if Sym^.Bounds <> 0 then
     begin
       EmitI('pop de');
-      Emit('', 'ld hl,' + RelativeAddr('globals', Sym^.Value), 'Get global ' + Sym^.Name);
+      Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
       EmitI('add hl,de');
       EmitI('add hl,de');
       EmitI('ld de,(hl)');
@@ -1179,7 +1183,7 @@ begin
     end
     else
     begin
-      Emit('', 'ld hl,(' + RelativeAddr('globals', Sym^.Value) + ')', 'Get global ' + Sym^.Name);
+      Emit('', 'ld hl,(' + Sym^.Tag + ')', 'Get global ' + Sym^.Name);
       EmitI('push hl');
     end;
   end
@@ -1214,7 +1218,7 @@ begin
     begin
       EmitI('pop de');
       EmitI('pop hl');
-      Emit('', 'ld bc,' + RelativeAddr('globals', Sym^.Value), 'Set global ' + Sym^.Name);
+      Emit('', 'ld bc,' + Sym^.Tag, 'Set global ' + Sym^.Name);
       EmitI('add hl,hl');
       EmitI('add hl,bc');
       EmitI('ld (hl),de');
@@ -1223,7 +1227,7 @@ begin
     else
     begin
       EmitI('pop de');
-      Emit('', 'ld (' + RelativeAddr('globals', Sym^.Value) + '),de', 'Set global ' + Sym^.Name);
+      Emit('', 'ld (' + Sym^.Tag + '),de', 'Set global ' + Sym^.Name);
       if Again then EmitI('push hl');
     end;
   end
@@ -2036,6 +2040,13 @@ begin
   end;
 
   Sym := CreateSymbol(scVar, Name, Bounds);
+  (*
+  if Sym^.Level = 1 then
+  begin
+    Sym^.Tag := GetLabel('global');
+    Emit0(Sym^.Tag, 'ds ' + Int2Str(Sym^.Bounds * 2), 'Global ' + Sym^.Name);
+  end;
+  *)
 end;
 
 procedure ParseVarList();
@@ -2094,6 +2105,17 @@ begin
   begin
     Old := Old^.Next;
     SetDataType(Old, DataType, High - Low + 1);
+
+    if Old^.Level = 1 then
+    begin
+      Old^.Tag := GetLabel('global');
+      if Old^.Bounds = 0 then
+        Emit0(Old^.Tag, 'ds 2', 'Global ' + Old^.Name)
+      else
+        Emit0(Old^.Tag, 'ds ' + Int2Str(Old^.Bounds * 2), 'Global ' + Old^.Name);
+    end;
+
+
 //    Tmp^.DataType := DataType;
     //if High >= Low then Tmp^.Bounds := High - Low + 1;
 //    Tmp := Tmp^.Prev;
@@ -2217,8 +2239,10 @@ begin
   end;
   parseBlock(Nil);
   Expect(toPeriod);
+(*
   EmitC('');
   Emit('globals', 'ds ' + Int2Str(Offset), 'Globals');
+*)
   EmitC('');
   Emit('display', 'ds 32', 'Display');
   CloseScope;
