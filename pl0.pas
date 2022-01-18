@@ -2003,15 +2003,22 @@ end;
 procedure ParseConst;
 var
   Sym: PSymbol;
+  Sign: Integer;
 begin
   Expect(toIdent);
   Sym := CreateSymbol(scConst, Scanner.StrValue, 0);
   NextToken;
   Expect(toEq);
   NextToken;
+  if Scanner.Token = toSub then
+  begin
+    Sign := -1;
+    NextToken;
+  end
+  else Sign := 1;
   Expect(toNumber);
 
-  Sym^.Value := Scanner.NumValue;
+  Sym^.Value := Sign * Scanner.NumValue;
   Sym^.DataType := dtInteger;
 
   NextToken;
