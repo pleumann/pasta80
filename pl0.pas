@@ -229,6 +229,61 @@ begin
 end;
 
 (* -------------------------------------------------------------------------- *)
+(* --- String table --------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+function GetLabel(Prefix: String): String; forward;
+
+type
+  PStringLiteral = ^TStringLiteral;
+  TStringLiteral = record
+    Tag: String;
+    Value: String;
+    Next: PStringLiteral;
+  end;
+
+var
+  Strings: PStringLiteral;
+
+function AddString(S: String): String;
+var
+  Temp: PStringLiteral;
+begin
+  if Strings = nil then
+  begin
+    New(Strings);
+    Strings^.Tag := GetLabel('string');
+    Strings^.Value := S;
+    Strings^.Next := nil;
+    AddString := Strings^.Tag;
+  end
+  else
+  begin
+    Temp := Strings;
+    while Temp <> nil do
+    begin
+      if Temp^.Value = S then
+      begin
+        AddString := Temp^.Tag;
+        Exit;
+      end;
+
+      if Temp^.Next = nil then
+      begin
+        New(Temp^.Next);
+        Temp^.Next^.Tag := GetLabel('string');
+        Temp^.Next^.Value := S;
+        Temp^.Next^.Next := nil;
+        AddString := Temp^.Next^.Tag;
+        Exit;
+      end;
+
+      Temp := Temp^.Next;
+    end;
+  end;
+end;
+
+(* -------------------------------------------------------------------------- *)
 (* --- Symbol table --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
@@ -239,7 +294,7 @@ const
   TypeName: array [TDataType] of String = ('Integer', 'Boolean', 'Char', 'Byte', 'String');
 
 type
-  TSymbolClass = (scConst, scVar, scProc, scFunc, scScope, scString);
+  TSymbolClass = (scConst, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -299,7 +354,7 @@ begin
   Sym := SymbolTable;
   while Sym^.Kind <> scScope do
   begin
-    if (Sym^.Kind <> scString) and (UpperStr(Sym^.Name) = Name) then
+    if UpperStr(Sym^.Name) = Name then
     begin
       LookupLocal := Sym;
       Exit;
@@ -318,7 +373,7 @@ begin
   Sym := SymbolTable;
   while Sym <> nil do
   begin
-    if (Sym^.Kind <> scString) and (UpperStr(Sym^.Name) = Name) then
+    if UpperStr(Sym^.Name) = Name then
     begin
       LookupGlobal := Sym;
       Exit;
@@ -365,7 +420,7 @@ var
   Sym: PSymbol;
   Size: Integer;
 begin
-  if (Kind <> scString) and (Name <> '') and (LookupLocal(Name) <> nil) then
+  if LookupLocal(Name) <> nil then
   begin
     Error('Duplicate symbol "' + Name + '".');
   end;
@@ -1043,6 +1098,22 @@ begin
   end;
 end;
 
+procedure EmitStrings();
+var
+  Temp: PStringLiteral;
+begin
+  Temp := Strings;
+
+  while Temp <> nil do
+  begin
+    EmitC('');
+    Emit(Temp^.Tag, 'db ' + Int2Str(Length(Temp^.Value)) + ',"' + Temp^.Value + '"', '');
+
+    Temp := Temp^.Next;
+  end;
+end;
+
+(*)
 procedure CollectString(Sym: PSymbol);
 var
   S: String;
@@ -1056,6 +1127,7 @@ begin
       Emit(Sym^.Tag, 'db ' + Int2Str(Length(S)) + ',"' + S + '"', '');
   end;
 end;
+*)
 
 (*
   Stack frame layout
@@ -1150,8 +1222,6 @@ begin
   end;
 
   EmitI('ret');
-
-  CollectString(SymbolTable);
 end;
 
 function RelativeAddr(Base: String; Offset: Integer): String;
@@ -1402,6 +1472,7 @@ end;
 procedure EmitPrintStr(S: String);
 var
   Sym: PSymbol;
+  Tag: String;
 begin
   if Length(S) = 1 then
   begin
@@ -1410,9 +1481,8 @@ begin
   end
   else
   begin
-    Sym := CreateSymbol(scString, S, 0);
-    Sym^.Tag := GetLabel('string');
-    Emit('', 'ld hl,' + Sym^.Tag, '');
+    Tag := AddString(S);
+    Emit('', 'ld hl,' + Tag, '');
     Emit('', 'call __puts', '');
   end;
 end;
@@ -1502,6 +1572,7 @@ function ParseFactor: TDataType;
 var
   Sym: PSymbol;T: TDataType;
   Op: TToken;
+  Tag: String;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -1560,9 +1631,8 @@ begin
     else
     begin
       T := dtString;
-      Sym := CreateSymbol(scString, Scanner.StrValue, 0);
-      Sym^.Tag := GetLabel('string');      
-      EmitI('ld hl,' + Sym^.Tag);
+      Tag := AddString(Scanner.StrValue);
+      EmitI('ld hl,' + Tag);
       EmitI('push hl');
     end;
     NextToken;
@@ -2250,6 +2320,7 @@ begin
   EmitC('');
   Emit('globals', 'ds ' + Int2Str(Offset), 'Globals');
 *)
+  EmitStrings();
   EmitC('');
   Emit('display', 'ds 32', 'Display');
   CloseScope;
