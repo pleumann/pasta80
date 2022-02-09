@@ -288,20 +288,14 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TDataType = (dtInteger, dtBoolean, dtChar, dtByte, dtString);
-
-const
-  TypeName: array [TDataType] of String = ('Integer', 'Boolean', 'Char', 'Byte', 'String');
-
-type
-  TSymbolClass = (scConst, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
     Name: String;
     Kind: TSymbolClass;
-    DataType: TDataType;
-    ArgTypes: array[0..15] of TDataType;
+    DataType: PSymbol;
+    ArgTypes: array[0..15] of PSymbol;
     Level: Integer;
     Value: Integer;
     StrVal: String;
@@ -313,6 +307,7 @@ type
 var
   SymbolTable: PSymbol = nil;
   Level, Offset: Integer;
+  dtInteger, dtBoolean, dtChar, dtByte, dtString: PSymbol;
 
 procedure OpenScope();
 var
@@ -407,6 +402,7 @@ begin
   Sym2 := SymbolTable;
   while I > 0 do
   begin
+    WriteLn('Args[', I, '] is ', Sym2^.DataType^.Name);
     Sym^.ArgTypes[I-1] := Sym2^.DataType;
     I := I - 1;
     Sym2 := Sym2^.Prev;
@@ -453,7 +449,7 @@ begin
   CreateSymbol := Sym;
 end;
 
-procedure SetDataType(Sym: PSymbol; DataType: TDataType; Bounds: Integer);
+procedure SetDataType(Sym: PSymbol; DataType: PSymbol; Bounds: Integer);
 var
   Size: Integer;
 begin
@@ -473,7 +469,17 @@ begin
   end;
 end;
 
-procedure RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: String);
+function RegisterType(Name: String; Size: Integer): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Sym := CreateSymbol(scType, Name, 0);
+  Sym^.Value := Size;
+
+  RegisterType := Sym;
+end;
+
+function RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: String): PSymbol;
 var
   Sym: PSymbol;
 begin
@@ -481,15 +487,31 @@ begin
   Sym^.Level := 0;
   Sym^.Value := Args;
   Sym^.Tag := Tag;
+
+  RegisterBuiltIn := Sym;
 end;
 
 procedure RegisterAllBuiltIns(Graphics: Boolean);
+var
+  Sym: PSymbol;
 begin
+  dtInteger := RegisterType('Integer', 2);
+  dtBoolean := RegisterType('Boolean', 1);
+  dtChar := RegisterType('Char', 1);
+  dtByte := RegisterType('Byte', 1);
+  dtString := RegisterType('String', 2);
+
   RegisterBuiltIn(scFunc, 'Random', 1, '__random');
+
   RegisterBuiltIn(scProc, 'ClrScr', 0, '__clrscr');
-  RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
-  RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg');
-  RegisterBuiltIn(scProc, 'TextBackground', 1, '__textbg');
+  
+  Sym := RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
+  Sym^.ArgTypes[0] := dtInteger;
+  Sym^.ArgTypes[1] := dtInteger;
+
+  RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg')^.ArgTypes[0] := dtInteger;
+  RegisterBuiltIn(scProc, 'TextBackground', 1, '__textbg')^.ArgTypes[0] := dtInteger;
+
   RegisterBuiltIn(scProc, 'CursorOn', 0, '__cursor_on');
   RegisterBuiltIn(scProc, 'CursorOff', 0, '__cursor_off');
 
@@ -513,7 +535,7 @@ type
             toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
             toOdd, toOrd,
-            toBoolean, toInteger, toChar, toByte, toStringT, toTrue, toFalse, toArray, toOf,
+            (* toBoolean, toInteger, toChar, toByte, toStringT, *) toTrue, toFalse, toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
@@ -535,7 +557,7 @@ const
             '!', '?', ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
             'odd', 'ord',
-            'boolean', 'integer', 'char', 'byte', 'string', 'true', 'false', 'array', 'of',
+            (* 'boolean', 'integer', 'char', 'byte', 'string', *) 'true', 'false', 'array', 'of',
             'program', 'begin', 'end', 'const', 'var', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
@@ -1367,7 +1389,7 @@ begin
     EmitI('jp z,' + Target);
 end;
 
-procedure EmitBinOp(Op: TToken; DataType: TDataType);
+procedure EmitBinOp(Op: TToken; DataType: PSymbol);
 begin
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
@@ -1406,7 +1428,7 @@ begin
   Emit('', 'push hl', '');
 end;
 
-procedure EmitUnOp(Op: TToken; DataType: TDataType);
+procedure EmitUnOp(Op: TToken; DataType: PSymbol);
 begin
   case Op of
     toOdd: 
@@ -1451,21 +1473,21 @@ begin
   Emit('', 'call __newline', '');
 end;
 
-procedure EmitWrite(DataType: TDataType);
+procedure EmitWrite(DataType: PSymbol);
 begin
   Emit('', 'pop hl', '');
-  case DataType of
-    dtInteger, dtByte:
-      EmitI('call __putn');
-    dtBoolean:
-      EmitI('call __putb');
-    dtChar:
-      begin
-        EmitI('ld a,l');
-        EmitI('call __putc');
-      end;
-    dtString:
-      EmitI('call __puts');
+  if (DataType = dtInteger) or (DataType = dtByte) then
+    EmitI('call __putn')
+  else if DataType = dtBoolean then
+    EmitI('call __putb')
+  else if DataType = dtChar then
+  begin
+    EmitI('ld a,l');
+    EmitI('call __putc');
+  end
+  else if DataType = dtString then
+  begin
+    EmitI('call __puts');
   end;
 end;
 
@@ -1509,7 +1531,7 @@ type
  * Performs assignment type check. Might promote either type to the other
  * depending on the kind of check.
  *)
-function TypeCheck(Left, Right: TDataType; Check: TTypeCheck): TDataType;
+function TypeCheck(Left, Right: PSymbol; Check: TTypeCheck): PSymbol;
 begin
   if Left = Right then
   begin
@@ -1523,10 +1545,10 @@ begin
     Exit;
   end;
 
-  Error('Type error, expected ' + TypeName[Left] + ', got ' + TypeName[Right]);
+  Error('Type error, expected ' + Left^.Name + ', got ' + Right^.Name);
 end;
 
-function ParseExpression: TDataType; forward;
+function ParseExpression: PSymbol; forward;
 
 procedure ParseArguments(Sym: PSymbol);
 var
@@ -1557,7 +1579,7 @@ end;
 
 procedure ParseWriteArgument;
 var
-  T: TDataType;
+  T: PSymbol;
 begin
     if Scanner.Token = toString then
     begin
@@ -1568,9 +1590,9 @@ begin
       EmitWrite(ParseExpression);
 end;
 
-function ParseFactor: TDataType;
+function ParseFactor: PSymbol;
 var
-  Sym: PSymbol;T: TDataType;
+  Sym: PSymbol;T: PSymbol;
   Op: TToken;
   Tag: String;
 begin
@@ -1612,6 +1634,17 @@ begin
       ParseArguments(Sym);
       EmitCall(Sym);     
     end
+    else if Sym^.Kind = scType then
+    begin
+      NextToken;
+      Expect(toLParen);
+      NextToken;
+      ParseExpression();
+      Expect(toRParen);
+      NextToken;
+
+      T := Sym;
+   end
     else
       Error('"' + Scanner.StrValue + '" cannot be used in expressions.');
   end
@@ -1669,7 +1702,7 @@ begin
 
     EmitUnOp(toNot, T);
   end
-  else if Scanner.Token in [toOrd, toInteger, toBoolean, toChar, toByte] then
+  else if Scanner.Token = toOrd then
   begin
     Op := Scanner.Token;
 
@@ -1677,27 +1710,20 @@ begin
     Expect(toLParen);
     NextToken;
     ParseExpression();
-
-    case Op of
-      toOrd:      T := dtInteger;
-      toInteger:  T := dtInteger;
-      toBoolean:  T := dtBoolean;
-      toChar:     T := dtChar;
-      toByte:     T := dtByte;
-    end;
-
     Expect(toRParen);
     NextToken;
+
+    T := dtInteger;
   end
   else Error('Factor expected');
 
   ParseFactor := T;
 end;
 
-function ParseTerm: TDataType;
+function ParseTerm: PSymbol;
 var
   Op: TToken;
-  T: TDataType;
+  T: PSymbol;
 begin
   T := ParseFactor;
 
@@ -1721,10 +1747,10 @@ begin
   ParseTerm := T;
 end;
 
-function ParseSimpleExpression: TDataType;
+function ParseSimpleExpression: PSymbol;
 var
   Op: TToken;
-  T: TDataType;
+  T: PSymbol;
 begin
   Op := toNone;
 
@@ -1765,10 +1791,10 @@ begin
   ParseSimpleExpression := T;
 end;
 
-function ParseExpression: TDataType;
+function ParseExpression: PSymbol;
 var
   Op: TToken;
-  T: TDataType;
+  T: PSymbol;
 begin
   if Scanner.Token = toOdd then (* Make this a function later *)
   begin
@@ -1836,7 +1862,7 @@ var
   Sym: PSymbol;
   Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
-  T: TDataType;
+  T: PSymbol;
   NewLine: Boolean;
 begin
   if Scanner.Token = toIdent then
@@ -2094,6 +2120,23 @@ begin
   NextToken;
 end;
 
+function ParseTypeDef: PSymbol;
+var
+  DataType: PSymbol;
+begin
+  Expect(toIdent);
+  DataType := LookupGlobal(Scanner.StrValue);
+
+  if DataType = nil then
+    Error('Type not found: ' + Scanner.StrValue);
+  if DataType^.Kind <> scType then
+    Error('Not a type: ' + Scanner.StrValue);
+
+  NextToken;
+
+  ParseTypeDef := DataType;
+end;
+
 procedure ParseVar;
 var
   Name: String;
@@ -2129,7 +2172,7 @@ end;
 procedure ParseVarList();
 var
   Old, Tmp: PSymbol;
-  DataType: TDataType;
+  DataType: PSymbol;
   Low, High: Integer;
 begin
   Low := 0;
@@ -2167,15 +2210,7 @@ begin
       NextToken;
     end;
 
-    case Scanner.Token of
-      toBoolean: DataType := dtBoolean;
-      toInteger: DataType := dtInteger;
-      toChar: DataType := dtChar;
-      toByte: DataType := dtByte;
-      toStringT: DataType := dtString;
-      else Error('Type expected');
-    end;
-    NextToken;
+    DataType := ParseTypeDef();
   end;
 
   while Old<>SymbolTable do
@@ -2204,7 +2239,7 @@ procedure ParseBlock(Sym: PSymbol);
 var
   NewSym, ResVar, Old, Tmp: PSymbol;
   Token: TToken;
-  DataType: TDataType;
+  DataType: PSymbol;
 begin
   if Scanner.Token = toConst then
   begin
@@ -2271,18 +2306,9 @@ begin
     if Scanner.Token = toColon then
     begin
       NextToken;
-      if Scanner.Token = toInteger then
-        NewSym^.DataType := dtInteger
-      else if Scanner.Token = toBoolean then
-        NewSym^.DataType := dtBoolean
-      else if Scanner.Token = toChar then
-        NewSym^.DataType := dtChar
-      else if Scanner.Token = toStringT then
-        NewSym^.DataType := dtString
-      else
-        Error('Type expected');
+
+      NewSym^.DataType := ParseTypeDef();
       ResVar^.DataType := NewSym^.DataType;
-      NextToken;
     end;
     
     AdjustOffsets;
