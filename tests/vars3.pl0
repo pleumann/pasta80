@@ -1,0 +1,39 @@
+var
+  I: array[10] of Array[10] of Integer; 
+  C: array[10] of Char;
+  J, K: Integer;
+
+begin
+  ! I[0][0];
+  ! I[9][9];
+
+  I[5][5] := 100;
+  ! I[5][5];
+
+  C[0] := 'A';
+  !C[0];
+
+  J := 0;
+  while J < 10 do
+  begin
+    K := 0;
+    while K < 10 do
+    begin
+      I[J][K] := 10 * J + K;
+      K := K + 1;
+    end;
+    J := J + 1;
+  end;
+
+  J := 0;
+  while J < 10 do
+  begin
+    K := 0;
+    while K < 10 do
+    begin
+      ! I[J][K];
+      K := K + 1;
+    end;
+    J := J + 1;
+  end;
+end.

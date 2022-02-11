@@ -39,7 +39,7 @@ const
 var
   S: String;
 begin
-  Str(I:Abs(N), S);
+  Str(I, S);
   (*)
   if N < 0 then
     S := Replace(S, ' ', '0');
@@ -288,7 +288,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -416,7 +416,7 @@ var
   Sym: PSymbol;
   Size: Integer;
 begin
-  if LookupLocal(Name) <> nil then
+  if (Length(Name) <> 0) and (LookupLocal(Name) <> nil) then
   begin
     Error('Duplicate symbol "' + Name + '".');
   end;
@@ -799,7 +799,7 @@ begin
         Error('Invalid token.');
     end;
 
-    (* Write('{', Token, '->', StrValue , '}'); *)
+    WriteLn('{', Token, '->', StrValue , '}');
   end;
 end;
 
@@ -1256,7 +1256,7 @@ begin
     RelativeAddr := Base;
 end;
 
-procedure EmitGetVar(Sym: PSymbol);
+procedure EmitAddress(Sym: PSymbol);
 var
   L: Integer;
 begin
@@ -1264,7 +1264,48 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    if Sym^.Bounds <> 0 then
+    Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
+    EmitI('push hl');
+  end
+  else if L = 0 then
+  begin
+    Emit('', 'ld de,ix', '');
+    Emit('', 'ld hl,' + Int2Str(Sym^.Value), '');
+    Emit('', 'add hl,de', '');
+    Emit('', 'push hl', '');
+  end
+  else
+  begin
+    Emit('', 'ld hl,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
+    Emit('', 'ld de,' + Int2Str(Sym^.Value), '');
+    Emit('', 'add hl,de', '');
+    Emit('', 'push hl', '');
+  end
+end;
+
+procedure EmitLoad();
+begin
+  EmitI('pop hl');
+  EmitI('ld de,(hl)');
+  EmitI('push de');
+end;
+
+procedure EmitStore();
+begin
+  EmitI('pop de');
+  EmitI('pop hl');
+  EmitI('ld (hl), de');
+end;
+
+procedure _EmitGetVar(Sym: PSymbol);
+var
+  L: Integer;
+begin
+  L := Level - Sym^.Level;
+
+  if Sym^.Level = 1 then
+  begin
+    if Sym^.DataType^.Kind = scArrayType then
     begin
       EmitI('pop de');
       Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
@@ -1297,8 +1338,8 @@ begin
     EmitI('push de');
   end
 end;
- 
-procedure EmitSetVar(Sym: PSymbol; Again: Boolean);
+
+procedure _EmitSetVar(Sym: PSymbol; Again: Boolean);
 var
   L: Integer;
 begin
@@ -1306,7 +1347,7 @@ begin
 
   if Sym^.Level = 1 then
   begin
-    if Sym^.Bounds <> 0 then
+    if Sym^.DataType^.Kind = scArrayType then
     begin
       EmitI('pop de');
       EmitI('pop hl');
@@ -1550,6 +1591,37 @@ end;
 
 function ParseExpression: PSymbol; forward;
 
+function ParseVariableAccess(Symbol: PSymbol): PSymbol;
+var
+  DataType: PSymbol;
+begin
+  EmitAddress(Symbol);
+
+  DataType := Symbol^.DataType;
+
+  while Scanner.Token = toLBrack do
+  begin
+    if DataType^.Kind <> scArrayType then
+      Error('Not an array');
+
+    NextToken;
+
+    TypeCheck(dtInteger, ParseExpression(), tcExpr);
+
+    DataType := DataType^.DataType;
+
+    EmitLiteral(DataType^.Value);
+    EmitBinOp(toMul, dtInteger);
+    EmitBinOp(toAdd, dtInteger);
+    
+    Expect(toRBrack);
+
+    NextToken;
+  end;
+
+  ParseVariableAccess := DataType;
+end;
+
 procedure ParseArguments(Sym: PSymbol);
 var
   I: Integer;
@@ -1607,18 +1679,23 @@ begin
 
     if Sym^.Kind = scVar then
     begin
-      T := Sym^.DataType;
+      NextToken;
+      T := ParseVariableAccess(Sym);
+      (*
       NextToken;
       if Scanner.Token = toLBrack then
       begin
-        if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
+        if Sym^.DataType^.Kind <> scArrayType then Error('" ' + Sym^.Name + '" is not an array.');
+        T := T^.DataType;
         NextToken;
-        TypeCheck(dtInteger, ParseExpression, tcAssign); (* Index now on stack *)
+        TypeCheck(dtInteger, ParseExpression, tcAssign);  Index now on stack 
         Expect(toRBrack);
         NextToken;
       end
-      else if Sym^.Bounds <> 0 then Error('" ' + Sym^.Name + '" is an array.');
-      EmitGetVar(Sym);
+      else 
+      *)
+      if T^.Kind <> scType then Error('" ' + Sym^.Name + '" is not a simple type.');
+      EmitLoad();
     end
     else if Sym^.Kind = scConst then
     begin
@@ -1799,7 +1876,7 @@ begin
   if Scanner.Token = toOdd then (* Make this a function later *)
   begin
     NextToken;
-    (*TypeCheck(dtInteger,*) T := ParseSimpleExpression (*), tcExpr)*);
+    (*TypeCheck(dtInteger,*) T := ParseSimpleExpression() (*), tcExpr)*);
     EmitUnOp(toOdd, T);
     T := dtBoolean;
   end 
@@ -1826,19 +1903,31 @@ end;
 
 procedure ParseAssignment(Sym: PSymbol; Again: Boolean);
 var
-  Sym2: PSymbol;
+  Sym2, T: PSymbol;
 begin
   if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
   NextToken;
+
+  T := ParseVariableAccess(Sym);
+
+  if T^.Kind <> scType then Error('" ' + Sym^.Name + '" is not a simple type.');
+
+  Expect(toBecomes);
+  NextToken;
+
+  T := TypeCheck(T, ParseExpression, tcAssign);
+
+  EmitStore();
+(*
   if Scanner.Token = toLBrack then
   begin
-    if Sym^.Bounds = 0 then Error('" ' + Sym^.Name + '" is not an array.');
+    if Sym^.DataType^.Kind <> scArrayType then Error('" ' + Sym^.Name + '" is not an array.');
     NextToken;
-    TypeCheck(dtInteger, ParseExpression, tcAssign); (* Index now on stack *)
+    TypeCheck(dtInteger, ParseExpression, tcAssign);  Index now on stack
     Expect(toRBrack);
     NextToken;
   end
-  else if Sym^.Bounds <> 0 then Error('" ' + Sym^.Name + '" is an array.');
+  else if Sym^.DataType^.Kind <> scType then Error('" ' + Sym^.Name + '" is not a simple type.');
 
   if Scanner.Token = toComma then
   begin
@@ -1851,10 +1940,25 @@ begin
   end
   else
   begin
-    Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
+    Expect(toBecomes); NextToken;
+
+    WriteLn(Sym^.Kind);
+    WriteLn(Sym^.Name);
+    WriteLn(Sym^.DataType^.Kind);
+    WriteLn(Sym^.DataType^.Name);
+
+    if (Sym^.DataType^.Kind = scArrayType) then
+    begin
+      WriteLn('Array of');
+      WriteLn(Sym^.DataType^.DataType^.Kind);
+      WriteLn(Sym^.DataType^.DataType^.Name);
+      TypeCheck(Sym^.DataType^.DataType, ParseExpression, tcAssign)
+    end
+    else
+      TypeCheck(Sym^.DataType, ParseExpression, tcAssign)
   end;
 
-  EmitSetVar(Sym, Again);
+  EmitSetVar(Sym, Again);*)
 end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String);
@@ -1900,12 +2004,11 @@ begin
   begin
     NextToken; Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
-    if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
-    NextToken;
+
+    T := ParseVariableAccess(Sym);
 
     EmitInputNum(Scanner.StrValue);
-    EmitSetVar(Sym, false);
+    EmitStore();
   end
   else if Scanner.Token = toSay then
   begin
@@ -1994,16 +2097,32 @@ begin
   else if Scanner.Token = toFor then
   begin
   (* break would jump to cleanup after for *)
+    Tag := GetLabel('forloop');
+    Tag3 := GetLabel('forbreak');
+    Tag4 := GetLabel('fornext');
 
     NextToken;
     Expect(toIdent);
 
     Sym := LookupGlobal(Scanner.StrValue);
+
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
 
-    NextToken; Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
-    EmitSetVar(Sym, false);
+    NextToken;
+
+    T := ParseVariableAccess(Sym);
+
+    WriteLn('*** Loop var type is ', T^.Name);
+
+    Emit('', 'pop de','Dup and pre-check limit');
+    Emit('', 'push de','');
+    Emit('', 'push de', '');
+
+    Expect(toBecomes); NextToken;
+
+    TypeCheck(T, ParseExpression, tcAssign);
+    EmitStore();
 
     if Scanner.Token = toTo then
       Delta := 1
@@ -2012,23 +2131,21 @@ begin
     else
       Error('"to" or "downto" expected.');
 
-    NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign); Expect(toDo); NextToken; (* final value on stack *)
+    NextToken; 
 
-    Tag := GetLabel('forloop');
-    Tag3 := GetLabel('forbreak');
-    Tag4 := GetLabel('fornext');
+    Emit(Tag, '', '');
 
     Emit('', 'pop de','Dup and pre-check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
 
-    EmitGetVar(Sym);
+    EmitLoad();
 
-    if Delta = 1 then EmitRelOp(toGeq) else EmitRelOp(toLeq); (* Operands swapped! *)
+    TypeCheck(T, ParseExpression, tcAssign); Expect(toDo); NextToken; (* final value on stack *)
+
+    if Delta = 1 then EmitRelOp(toLeq) else EmitRelOp(toGeq);
 
     EmitJumpIf(False, Tag3);
-
-    Emit(Tag, '', '');
 
     ParseStatement(Tag4, Tag3);
 
@@ -2037,19 +2154,13 @@ begin
     Emit('', 'pop de','Dup and check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
-
-    EmitGetVar(Sym);
-
-    if Delta = 1 then EmitRelOp(toGt) else EmitRelOp(toLt); (* Operands swapped! *)
-
-    EmitJumpIf(False, Tag3);
-
-    EmitGetVar(Sym);
-    Emit('', 'ld de,' + Int2Str(Delta), 'Inc/dec counter');
     Emit('', 'push de', '');
+
+    EmitLoad;
+    EmitLiteral(Delta);
     EmitBinOp(toAdd, dtInteger);
-    EmitSetVar(Sym, false);
-  
+    EmitStore();
+
     EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
@@ -2124,15 +2235,52 @@ function ParseTypeDef: PSymbol;
 var
   DataType: PSymbol;
 begin
-  Expect(toIdent);
-  DataType := LookupGlobal(Scanner.StrValue);
+  if Scanner.Token = toArray then
+  begin
+    DataType := CreateSymbol(scArrayType, '', 0);
+    NextToken;
 
-  if DataType = nil then
-    Error('Type not found: ' + Scanner.StrValue);
-  if DataType^.Kind <> scType then
-    Error('Not a type: ' + Scanner.StrValue);
+    Expect(toLBrack);
+    NextToken;
 
-  NextToken;
+    Expect(toNumber);
+    DataType^.Bounds := Scanner.NumValue;
+    NextToken;
+(*
+    if Scanner.Token = toDots then
+    begin
+      NextToken;
+
+      Expect(toNumber);
+      NextToken;
+    end;
+*)
+    Expect(toRBrack);
+    NextToken;
+
+    Expect(toOf);
+    NextToken;
+
+    DataType^.DataType := ParseTypeDef();
+    DataType^.Value := DataType^.Bounds * DataType^.DataType^.Value;
+
+    WriteLn('Array component type is now ', DataType^.DataType^.Name);
+    WriteLn('Type size is ', DataType^.Value);
+  end
+  else
+  begin
+    Expect(toIdent);
+    DataType := LookupGlobal(Scanner.StrValue);
+
+    if DataType = nil then
+      Error('Type not found: ' + Scanner.StrValue);
+    if DataType^.Kind <> scType then
+      Error('Not a type: ' + Scanner.StrValue);
+
+    NextToken;
+  end;
+
+  WriteLn('ParseTypeDef: ', DataType^.Kind, ' ', DataType^.Name);
 
   ParseTypeDef := DataType;
 end;
@@ -2191,42 +2339,25 @@ begin
   begin
     NextToken;
 
-    if Scanner.Token = toArray then
-    begin
-      NextToken;
-      Expect(toLBrack);
-      NextToken;
-      Expect(toNumber);
-      Low := Scanner.NumValue;
-      NextToken;
-      Expect(toRange);
-      NextToken;
-      Expect(toNumber);
-      High := Scanner.NumValue;
-      NextToken;
-      Expect(toRBrack);
-      NextToken;
-      Expect(toOf);
-      NextToken;
-    end;
+    DataType := ParseTypeDef;
 
-    DataType := ParseTypeDef();
+    WriteLn('Var type is ', DataType^.Name);
+    if DataType^.Kind = scArrayType then WriteLn(' of ', DataType^.DataType^.Name);
   end;
 
   while Old<>SymbolTable do
   begin
     Old := Old^.Next;
-    SetDataType(Old, DataType, High - Low + 1);
-
-    if Old^.Level = 1 then
+    if Old^.Kind = scVar then
     begin
-      Old^.Tag := GetLabel('global');
-      if Old^.Bounds = 0 then
-        Emit0(Old^.Tag, 'ds 2', 'Global ' + Old^.Name)
-      else
-        Emit0(Old^.Tag, 'ds ' + Int2Str(Old^.Bounds * 2), 'Global ' + Old^.Name);
-    end;
+      SetDataType(Old, DataType, High - Low + 1);
 
+      if Old^.Level = 1 then
+      begin
+        Old^.Tag := GetLabel('global');
+        Emit0(Old^.Tag, 'ds ' + Int2Str(Old^.DataType^.Value), 'Global ' + Old^.Name);
+      end;
+    end;
 
 //    Tmp^.DataType := DataType;
     //if High >= Low then Tmp^.Bounds := High - Low + 1;
