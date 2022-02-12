@@ -140,6 +140,7 @@ end;
 
 type 
   TSource = record
+    Name: String;
     Input:  Text;
     Buffer: String;
   (*  Count:  Integer; *)
@@ -170,6 +171,7 @@ procedure OpenInput(FileName: String);
 begin
   with Source[Include] do
   begin
+    Name := FileName;
     Assign(Input, FileName);
     Reset(Input);
     Buffer := '';
@@ -2033,6 +2035,32 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
+    if UpperStr(Scanner.StrValue) = 'ASSERT' then
+    begin
+      Tag := GetLabel('assert');
+      NextToken;
+      Expect(toLParen);
+
+      NextToken;
+      TypeCheck(dtBoolean, ParseExpression, tcExact);
+
+      EmitJumpIf(True, Tag);
+
+      EmitPrintStr('*** Assertion failed in ');
+      EmitPrintStr(Source[Include].Name);
+      EmitPrintStr(', line');
+      EmitLiteral(Source[Include].Line);
+      EmitWrite(dtInteger);
+      EmitPrintNewLine;
+
+      Emit(Tag, '', '');
+
+      Expect(toRParen);
+      NextToken;
+
+      Exit;
+    end;
+
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
 
