@@ -514,13 +514,21 @@ end;
 
 procedure RegisterAllBuiltIns(Graphics: Boolean);
 var
-  Sym: PSymbol;
+  Sym, Sym2: PSymbol;
 begin
   dtInteger := RegisterType('Integer', 2);
   dtBoolean := RegisterType('Boolean', 1);
   dtChar := RegisterType('Char', 1);
   dtByte := RegisterType('Byte', 1);
   dtString := RegisterType('String', 2);
+
+  Sym := CreateSymbol(scArrayType, '', 65536);
+  Sym^.DataType := dtByte;
+
+  Sym2 := CreateSymbol(scVar, 'Mem', 0);
+  Sym2^.DataType := Sym;
+  Sym2^.Tag := '0';
+  Sym2^.Value := 0;
 
   RegisterBuiltIn(scFunc, 'Random', 1, '__random');
 
@@ -1710,6 +1718,20 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
+    (* Make this a function later *)
+    if UpperStr(Scanner.StrValue) = 'ADDR' then
+    begin
+      NextToken; Expect(toLParen);
+      NextToken; Expect(toIdent);
+      Sym := LookupGlobal(Scanner.StrValue);
+      if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+      NextToken;
+      ParseVariableAccess(Sym);
+      Expect(toRParen); NextToken;
+      ParseFactor := dtInteger;
+      Exit;          
+    end;
+
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
 
@@ -2693,10 +2715,14 @@ end.
 
 (*
 TODO
+- Load/Store correct size
+- Assert
+- Type declarations
 - Addr(something)
 - var X absolute $1234
 - var X absolute Y;
 - Mem[]
+- Automated tests
 - Integrate new types correctly
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
 - Check why Boolean loops don't work correctly
