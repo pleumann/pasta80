@@ -565,7 +565,7 @@ type
             toAnd, toOr, toXor, toNot, toMod2,
             toOdd, toOrd,
             (* toBoolean, toInteger, toChar, toByte, toStringT, *) toTrue, toFalse, toArray, toOf,
-            toProgram, toBegin, toEnd, toConst, toVar, toRecord, toProcedure, toFunction,
+            toProgram, toBegin, toEnd, toConst, toType, toVar, toRecord, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
@@ -587,7 +587,7 @@ const
             'and', 'or', 'xor', 'not', 'mod',
             'odd', 'ord',
             (* 'boolean', 'integer', 'char', 'byte', 'string', *) 'true', 'false', 'array', 'of',
-            'program', 'begin', 'end', 'const', 'var', 'record', 'procedure', 'function',
+            'program', 'begin', 'end', 'const', 'type', 'var', 'record', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
@@ -2400,7 +2400,7 @@ begin
 
     if DataType = nil then
       Error('Type not found: ' + Scanner.StrValue);
-    if DataType^.Kind <> scType then
+    if not (DataType^.Kind in [scType, scArrayType, scRecordType]) then
       Error('Not a type: ' + Scanner.StrValue);
 
     NextToken;
@@ -2497,6 +2497,7 @@ var
   NewSym, ResVar, Old, Tmp: PSymbol;
   Token: TToken;
   DataType: PSymbol;
+  Name: String;
 begin
   if Scanner.Token = toConst then
   begin
@@ -2507,6 +2508,27 @@ begin
       begin
         NextToken; ParseConst;
       end;
+      Expect(toSemicolon);
+      NextToken;
+    until Scanner.Token <> toIdent;
+  end;
+
+  if Scanner.Token = toType then
+  begin
+    NextToken;
+    Expect(toIdent);
+
+    repeat
+      Name := Scanner.StrValue;
+
+      if LookupLocal(Name) <> nil then Error('Duplicate identifier ' + Name);
+
+      NextToken;
+      Expect(toEq);
+      NextToken;
+
+      ParseTypeDef^.Name := Name;
+
       Expect(toSemicolon);
       NextToken;
     until Scanner.Token <> toIdent;
