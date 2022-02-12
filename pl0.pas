@@ -288,7 +288,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -377,6 +377,27 @@ begin
   end;
 
   LookupGlobal := nil;
+end;
+
+function FindField(Fields: PSymbol; Name: String): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  WriteLn('Find field ', Name);
+  Name := UpperStr(Name);
+  Sym := Fields;
+  while Sym <> nil do
+  begin
+    WriteLn('... ', Sym^.Name);
+    if UpperStr(Sym^.Name) = Name then
+    begin
+      FindField := Sym;
+      Exit;
+    end;
+    Sym := Sym^.Prev;
+  end;
+
+  FindField := nil;
 end;
 
 procedure AdjustOffsets;
@@ -536,7 +557,7 @@ type
             toAnd, toOr, toXor, toNot, toMod2,
             toOdd, toOrd,
             (* toBoolean, toInteger, toChar, toByte, toStringT, *) toTrue, toFalse, toArray, toOf,
-            toProgram, toBegin, toEnd, toConst, toVar, toProcedure, toFunction,
+            toProgram, toBegin, toEnd, toConst, toVar, toRecord, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
@@ -558,7 +579,7 @@ const
             'and', 'or', 'xor', 'not', 'mod',
             'odd', 'ord',
             (* 'boolean', 'integer', 'char', 'byte', 'string', *) 'true', 'false', 'array', 'of',
-            'program', 'begin', 'end', 'const', 'var', 'procedure', 'function',
+            'program', 'begin', 'end', 'const', 'var', 'record', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
@@ -799,7 +820,7 @@ begin
         Error('Invalid token.');
     end;
 
-    WriteLn('{', Token, '->', StrValue , '}');
+    //WriteLn('{', Token, '->', StrValue , '}');
   end;
 end;
 
@@ -1599,26 +1620,45 @@ begin
 
   DataType := Symbol^.DataType;
 
-  while Scanner.Token = toLBrack do
+  while Scanner.Token in [toLBrack, toPeriod] do
   begin
-    if DataType^.Kind <> scArrayType then
-      Error('Not an array');
+    if Scanner.Token = toLBrack then
+    begin
+      if DataType^.Kind <> scArrayType then
+        Error('Not an array');
 
-    NextToken;
+      NextToken;
 
-    TypeCheck(dtInteger, ParseExpression(), tcExpr);
+      TypeCheck(dtInteger, ParseExpression(), tcExpr);
 
-    DataType := DataType^.DataType;
+      DataType := DataType^.DataType;
 
-    EmitLiteral(DataType^.Value);
-    EmitBinOp(toMul, dtInteger);
-    EmitBinOp(toAdd, dtInteger);
-    
-    Expect(toRBrack);
+      EmitLiteral(DataType^.Value);
+      EmitBinOp(toMul, dtInteger);
+      EmitBinOp(toAdd, dtInteger);
+      
+      Expect(toRBrack);
 
-    NextToken;
+      NextToken;
+    end
+    else
+    begin
+      if DataType^.Kind <> scRecordType then
+        Error('Not a record');
+
+      NextToken;
+      Expect(toIdent);
+      Symbol := FindField(DataType^.DataType, Scanner.StrValue);
+      if Symbol = nil  then Error('Field not found: ' + Scanner.StrValue);
+
+      DataType := Symbol^.DataType;
+
+      EmitLiteral(Symbol^.Value);
+      EmitBinOp(toAdd, dtInteger);
+
+      NextToken;
+    end;
   end;
-
   ParseVariableAccess := DataType;
 end;
 
@@ -2231,6 +2271,53 @@ begin
   NextToken;
 end;
 
+function ParseTypeDef: PSymbol; forward;
+
+function ParseFieldGroup(var Fields: PSymbol): PSymbol;
+var
+  Name: String;
+  Sym: PSymbol;
+begin
+  Name := Scanner.StrValue;
+  NextToken;
+
+  WriteLn('New record field: ', Name);
+
+  New(Sym);
+  Sym^.Kind := scVar;
+  Sym^.Name := Name;
+  Sym^.Prev := Fields;
+  Fields := Sym;
+
+  if Scanner.Token = toComma then
+  begin
+    NextToken;
+    Expect(toIdent);
+    Sym^.DataType := ParseFieldGroup(Fields);
+  end
+  else
+  begin
+    Expect(toColon);
+    NextToken;
+    Sym^.DataType := ParseTypeDef();
+  end;
+
+  ParseFieldGroup := Sym^.DataType;
+end;
+
+function GetFieldOffset(Field: PSymbol): Integer;
+begin
+  if Field = nil then
+    GetFieldOffset := 0
+  else
+  begin
+    Field^.Value := GetFieldOffset(Field^.Prev);
+    WriteLn('Offset for ', Field^.Name, ' is ', Field^.Value);
+    WriteLn('DataType is ', Field^.DataType^.Name, ' size ', Field^.DataType^.Value);
+    GetFieldOffset := Field^.Value + Field^.DataType^.Value;
+  end;
+end;
+
 function ParseTypeDef: PSymbol;
 var
   DataType: PSymbol;
@@ -2266,6 +2353,23 @@ begin
 
     WriteLn('Array component type is now ', DataType^.DataType^.Name);
     WriteLn('Type size is ', DataType^.Value);
+  end
+  else if Scanner.Token = toRecord then
+  begin
+    DataType := CreateSymbol(scRecordType, '', 0);
+    NextToken;
+
+    while Scanner.Token = toIdent do
+    begin
+      ParseFieldGroup(DataType^.DataType);
+      Expect(toSemicolon);
+      NextToken;
+    end;
+
+    Expect(toEnd);
+    NextToken;
+
+    if DataType^.DataType <> nil then DataType^.Value := GetFieldOffset(DataType^.DataType);
   end
   else
   begin
@@ -2589,6 +2693,10 @@ end.
 
 (*
 TODO
+- Addr(something)
+- var X absolute $1234
+- var X absolute Y;
+- Mem[]
 - Integrate new types correctly
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
 - Check why Boolean loops don't work correctly

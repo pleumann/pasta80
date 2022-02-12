@@ -3,6 +3,17 @@ var
   C: array[10] of Char;
   J, K: Integer;
 
+  R: record
+    X: Integer;
+    Y, Z: Char;
+    A: array[10] of Byte;
+    S: record
+      T: array[5] of record
+        P, Q: Boolean;
+      end;
+    end;
+    U: Char;
+  end;
 
 begin
   ! I[0][0];
@@ -37,4 +48,18 @@ begin
   for I[3][6] := 1 to 10 do
     ! I[3][6];
 
+  R.X := 42;
+  ! R.X;
+
+  R.Y := 'a';
+  ! R.Y;
+
+  R.Z := R.Y;
+  ! R.Z;
+
+  R.S.T[3].P := true;
+  ! R.S.T[3].P;
+
+  R.U := '?';
+  ! R.U;
 end.
