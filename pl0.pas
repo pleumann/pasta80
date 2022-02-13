@@ -1586,6 +1586,13 @@ begin
   Emit('', 'call __newline', '');
 end;
 
+procedure EmitAssertFailed(S: String; L: Integer);
+begin
+  Emit('', 'ld hl, ' + S, '');
+  Emit('', 'ld de, ' + Int2Str(L), '');
+  Emit('', 'call __assertfailed', '');
+end;
+
 procedure CloseTarget();
 begin
   Flush;
@@ -2045,14 +2052,7 @@ begin
       TypeCheck(dtBoolean, ParseExpression, tcExact);
 
       EmitJumpIf(True, Tag);
-
-      EmitPrintStr('*** Assertion failed in ');
-      EmitPrintStr(Source[Include].Name);
-      EmitPrintStr(', line');
-      EmitLiteral(Source[Include].Line);
-      EmitWrite(dtInteger);
-      EmitPrintNewLine;
-
+      EmitAssertFailed(AddString(Source[Include].Name), Source[Include].Line);
       Emit(Tag, '', '');
 
       Expect(toRParen);

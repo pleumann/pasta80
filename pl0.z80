@@ -440,6 +440,32 @@ __getn:
 #endif
 
 ;
+; Print assertion failed message
+;
+; Entry:  HL Source file
+;         DE Source line
+; Exit:   -
+; Uses:   ?
+;
+__assertfailed: push    de
+                push    hl
+                ld      hl, __assert_msg_1
+                call    __puts
+                pop     hl
+                call    __puts
+                ld      hl, __assert_msg_2
+                call    __puts
+                pop     hl
+                call    __putn
+                call    __newline
+                ret
+__assert_msg_1: db 24,"*** Assertion failed in "
+__assert_msg_2: db 7,", line "
+
+
+
+
+;
 ; Signed 16 bits integer to string
 ;
 ; Entry:  HL (buffer), DE (value)
