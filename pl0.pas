@@ -533,7 +533,9 @@ begin
   Sym2^.Tag := '0';
   Sym2^.Value := 0;
 
-  RegisterBuiltIn(scFunc, 'Random', 1, '__random');
+  Sym := RegisterBuiltIn(scFunc, 'Random', 1, '__random');
+  Sym^.ArgTypes[0] := dtInteger;
+  Sym^.DataType := dtInteger;
 
   RegisterBuiltIn(scProc, 'ClrScr', 0, '__clrscr');
   
