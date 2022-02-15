@@ -450,6 +450,7 @@ begin
   Sym^.Level := Level;
   Sym^.Prev := SymbolTable;
   Sym^.Bounds := Bounds;
+  Sym^.Tag := '';
   SymbolTable^.Next := Sym;
   SymbolTable := Sym;
 
