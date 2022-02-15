@@ -385,12 +385,10 @@ function FindField(Fields: PSymbol; Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  WriteLn('Find field ', Name);
   Name := UpperStr(Name);
   Sym := Fields;
   while Sym <> nil do
   begin
-    WriteLn('... ', Sym^.Name);
     if UpperStr(Sym^.Name) = Name then
     begin
       FindField := Sym;
@@ -425,7 +423,6 @@ begin
   Sym2 := SymbolTable;
   while I > 0 do
   begin
-    WriteLn('Args[', I, '] is ', Sym2^.DataType^.Name);
     Sym^.ArgTypes[I-1] := Sym2^.DataType;
     I := I - 1;
     Sym2 := Sym2^.Prev;
@@ -1795,9 +1792,11 @@ begin
       NextToken;
 
       T := Sym;
-   end
+    end
     else
+    begin
       Error('"' + Scanner.StrValue + '" cannot be used in expressions.');
+    end;
   end
   else if (Scanner.Token = toTrue) or (Scanner.Token = toFalse) then
   begin
@@ -2206,8 +2205,6 @@ begin
 
     T := ParseVariableAccess(Sym);
 
-    WriteLn('*** Loop var type is ', T^.Name);
-
     Emit('', 'pop de','Dup and pre-check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
@@ -2334,8 +2331,6 @@ begin
   Name := Scanner.StrValue;
   NextToken;
 
-  WriteLn('New record field: ', Name);
-
   New(Sym);
   Sym^.Kind := scVar;
   Sym^.Name := Name;
@@ -2365,8 +2360,6 @@ begin
   else
   begin
     Field^.Value := GetFieldOffset(Field^.Prev);
-    WriteLn('Offset for ', Field^.Name, ' is ', Field^.Value);
-    WriteLn('DataType is ', Field^.DataType^.Name, ' size ', Field^.DataType^.Value);
     GetFieldOffset := Field^.Value + Field^.DataType^.Value;
   end;
 end;
@@ -2403,9 +2396,6 @@ begin
 
     DataType^.DataType := ParseTypeDef();
     DataType^.Value := DataType^.Bounds * DataType^.DataType^.Value;
-
-    WriteLn('Array component type is now ', DataType^.DataType^.Name);
-    WriteLn('Type size is ', DataType^.Value);
   end
   else if Scanner.Token = toRecord then
   begin
@@ -2436,8 +2426,6 @@ begin
 
     NextToken;
   end;
-
-  WriteLn('ParseTypeDef: ', DataType^.Kind, ' ', DataType^.Name);
 
   ParseTypeDef := DataType;
 end;
@@ -2498,8 +2486,8 @@ begin
 
     DataType := ParseTypeDef;
 
-    WriteLn('Var type is ', DataType^.Name);
-    if DataType^.Kind = scArrayType then WriteLn(' of ', DataType^.DataType^.Name);
+    // WriteLn('Var type is ', DataType^.Name);
+    // if DataType^.Kind = scArrayType then WriteLn(' of ', DataType^.DataType^.Name);
   end;
 
   while Old<>SymbolTable do
@@ -2769,14 +2757,8 @@ end.
 (*
 TODO
 - Load/Store correct size
-- Assert
-- Type declarations
-- Addr(something)
 - var X absolute $1234
 - var X absolute Y;
-- Mem[]
-- Automated tests
-- Integrate new types correctly
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
 - Check why Boolean loops don't work correctly
 - Integrate String literals as String data type, allow variables and parameters.
