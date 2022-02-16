@@ -1,19 +1,25 @@
-var
-  D: Char;
+type
+  MyType = record
+    T: array[5] of record
+      P, Q: Boolean;
+    end;
+  end;
 
-  I: array[10] of Array[10] of Integer; 
-  C: array[10] of Char;
+var
   J, K: Integer;
+  D: Char;
+  B: Byte;
+
+  C: array[10] of Char;
+  I: array[10] of Array[10] of Integer; 
+
+  M: MyType;
 
   R: record
     X: Integer;
     Y, Z: Char;
     A: array[10] of Byte;
-    S: record
-      T: array[5] of record
-        P, Q: Boolean;
-      end;
-    end;
+    S: MyType;
     U: Char;
   end;
 
@@ -111,5 +117,9 @@ begin
   R.U := 'C';
   ! R.U;
   ! Mem[A];
+
+  Assert(true);
+
+  Assert(false);
 
 end.
