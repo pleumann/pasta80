@@ -290,7 +290,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -1765,7 +1765,7 @@ begin
       end
       else 
       *)
-      if T^.Kind <> scType then Error('" ' + Sym^.Name + '" is not a simple type.');
+      if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
       EmitLoad();
     end
     else if Sym^.Kind = scConst then
@@ -1983,7 +1983,7 @@ begin
 
   T := ParseVariableAccess(Sym);
 
-  if T^.Kind <> scType then Error('" ' + Sym^.Name + '" is not a simple type.');
+  if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
 
   Expect(toBecomes);
   NextToken;
@@ -2366,7 +2366,8 @@ end;
 
 function ParseTypeDef: PSymbol;
 var
-  DataType: PSymbol;
+  DataType, Sym: PSymbol;
+  I: Integer;
 begin
   if Scanner.Token = toArray then
   begin
@@ -2414,6 +2415,27 @@ begin
 
     if DataType^.DataType <> nil then DataType^.Value := GetFieldOffset(DataType^.DataType);
   end
+  else if Scanner.Token = toLParen then
+  begin
+    DataType := CreateSymbol(scEnumType, '', 0);
+    DataType^.Value := 2; // TODO Should be 1
+    I := 0;
+
+    repeat
+      NextToken;
+      Expect(toIdent);
+
+      Sym := CreateSymbol(scConst, Scanner.StrValue, 0);
+      Sym^.Value := I;
+      // Sym^.Value2 := AddString(Sym^.Name);
+      Sym^.DataType := DataType;
+      I := I + 1;
+      NextToken;
+    until Scanner.Token <> toComma;
+
+    Expect(toRParen);
+    NextToken;
+  end
   else
   begin
     Expect(toIdent);
@@ -2421,7 +2443,7 @@ begin
 
     if DataType = nil then
       Error('Type not found: ' + Scanner.StrValue);
-    if not (DataType^.Kind in [scType, scArrayType, scRecordType]) then
+    if not (DataType^.Kind in [scType, scArrayType, scRecordType, scEnumType]) then
       Error('Not a type: ' + Scanner.StrValue);
 
     NextToken;
