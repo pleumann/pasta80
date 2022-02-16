@@ -2759,6 +2759,15 @@ TODO
 - Load/Store correct size
 - var X absolute $1234
 - var X absolute Y;
+- Complex types on the stack (parameters, locals), what does Turbo 3 allow?
+- Proper strings
+- Enum types
+- Subrange types
+- Set types
+- References (var, maybe  const)
+- Pointers & heap management
+- Repair 'for' loops
+- Repair optimization
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
 - Check why Boolean loops don't work correctly
 - Integrate String literals as String data type, allow variables and parameters.
