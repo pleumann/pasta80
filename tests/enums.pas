@@ -9,6 +9,7 @@ var
   I: Integer;
 
 begin
+  WriteLn('--- TestEnums ---');
   C := Red;
   Assert(C <> Green);
 
@@ -21,13 +22,14 @@ begin
   Assert(C <= Yellow);
   Assert(C < Green);
 
-(*
   Assert(Red = Pred(Yellow));
   Assert(Succ(Red) = Yellow);
 
   Assert(Yellow = Pred(Green));
   Assert(Succ(Yellow) = Green);
-*)
+
+  Assert(Even(Red));
+  Assert(Odd(Yellow));
 
   I := 0;
   for C := Red to Green do
@@ -59,11 +61,17 @@ begin
     I := I - 1;
   end;
 
+  WriteLn;
+  for C := Red to Green do
+  begin
+    WriteLn('The light is ', C, '.');
+  end;
+  WriteLn;
+
   (* 
-  Pred, Succ,
-  Literale ausgeben,
-  als Array-Index erlauben
-  Boolean retrofitten,
-  8-Bit enforcen,
+  TODO
+  Retrofit Boolean as enum,
+  allow enum as array index,
+  enforce 8-Bit,
   *)
 end.

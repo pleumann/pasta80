@@ -304,12 +304,15 @@ type
     Tag: String;
     Bounds: Integer;
     Prev, Next: PSymbol;
+    IsMagic: Boolean;
   end;
 
 var
   SymbolTable: PSymbol = nil;
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString: PSymbol;
+
+  AddrFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -448,6 +451,7 @@ begin
   Sym^.Prev := SymbolTable;
   Sym^.Bounds := Bounds;
   Sym^.Tag := '';
+  Sym^.IsMagic := False;
   SymbolTable^.Next := Sym;
   SymbolTable := Sym;
 
@@ -530,6 +534,24 @@ begin
   Sym2^.Tag := '0';
   Sym2^.Value := 0;
 
+  AddrFunc := RegisterBuiltIn(scFunc, 'Addr', 1, '');
+  AddrFunc^.IsMagic := True;
+
+  OrdFunc := RegisterBuiltIn(scFunc, 'Ord', 1, '');
+  OrdFunc^.IsMagic := True;
+
+  OddFunc := RegisterBuiltIn(scFunc, 'Odd', 1, '');
+  OddFunc^.IsMagic := True;
+
+  EvenFunc := RegisterBuiltIn(scFunc, 'Even', 1, '');
+  EvenFunc^.IsMagic := True;
+
+  PredFunc := RegisterBuiltIn(scFunc, 'Pred', 1, '');
+  PredFunc^.IsMagic := True;
+
+  SuccFunc := RegisterBuiltIn(scFunc, 'Succ', 1, '');
+  SuccFunc^.IsMagic := True;
+
   Sym := RegisterBuiltIn(scFunc, 'Random', 1, '__random');
   Sym^.ArgTypes[0] := dtInteger;
   Sym^.DataType := dtInteger;
@@ -565,7 +587,7 @@ type
             toLParen, toRParen, toLBrack, toRBrack,
             toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
-            toOdd, toOrd,
+            (* toOdd, toOrd, *)
             (* toBoolean, toInteger, toChar, toByte, toStringT, *) toTrue, toFalse, toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar, toRecord, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
@@ -587,7 +609,7 @@ const
             '(', ')', '[', ']',
             '!', '?', ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
-            'odd', 'ord',
+            (* 'odd', 'ord', *)
             (* 'boolean', 'integer', 'char', 'byte', 'string', *) 'true', 'false', 'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var', 'record', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
@@ -1503,15 +1525,6 @@ end;
 procedure EmitUnOp(Op: TToken; DataType: PSymbol);
 begin
   case Op of
-    toOdd: 
-      begin
-        Emit('', 'pop hl', 'Odd');
-        EmitI('ld a,l');
-        EmitI('and 1');
-        EmitI('ld l,a');
-        EmitI('ld h,0');
-        EmitI('push hl');
-      end;
     toNot:
       begin
         Emit('', 'pop hl', 'Not');
@@ -1560,7 +1573,17 @@ begin
   else if DataType = dtString then
   begin
     EmitI('call __puts');
-  end;
+  end
+  else if DataType^.Kind = scEnumType then
+  begin
+    EmitI('ld de,' + DataType^.Tag);
+    EmitI('add hl,hl');
+    EmitI('add hl,de');
+    EmitI('ld de,(hl)');
+    EmitI('ex hl,de');
+    EmitI('call __puts');
+  end
+  else Error('Unprintable type: ' + DataType^.Name);
 end;
 
 procedure EmitPrintStr(S: String);
@@ -1719,6 +1742,74 @@ begin
       EmitWrite(ParseExpression);
 end;
 
+function ParseBuiltInFunction(Func: PSymbol): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  if Func^.Kind <> scFunc then
+    Error('Not a built-in function: ' + Func^.Name);
+
+  NextToken; Expect(toLParen); NextToken;
+
+  if Func = AddrFunc then
+  begin
+    Expect(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    NextToken;
+    ParseVariableAccess(Sym);
+    ParseBuiltInFunction := dtInteger;
+  end
+  else if Func = OrdFunc then
+  begin
+    ParseExpression; // TODO TypeCheck for Scalar needed
+    ParseBuiltInFunction := dtInteger;
+  end
+  else if Func = OddFunc then
+  begin
+    ParseExpression; // TODO TypeCheck for Scalar needed
+    Emit('', 'pop hl', 'Odd');
+    EmitI('ld a,l');
+    EmitI('and 1');
+    EmitI('ld l,a');
+    EmitI('ld h,0');
+    EmitI('push hl');
+    ParseBuiltInFunction := dtBoolean;
+  end
+  else if Func = EvenFunc then
+  begin
+    ParseExpression; // TODO TypeCheck for Scalar needed
+    Emit('', 'pop hl', 'Even');
+    EmitI('ld a,l');
+    EmitI('and 1');
+    EmitI('xor 1');
+    EmitI('ld l,a');
+    EmitI('ld h,0');
+    EmitI('push hl');
+    ParseBuiltInFunction := dtBoolean;
+  end
+  else if Func = PredFunc then
+  begin
+    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
+    // This should probably go elsewhere.
+    EmitI('pop de');
+    EmitI('dec de');
+    EmitI('push de');
+  end
+  else if Func = SuccFunc then
+  begin
+    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
+    // This should probably go elsewhere.
+    EmitI('pop de');
+    EmitI('inc de');
+    EmitI('push de');
+  end
+  else
+    Error('Cannot handle: ' + Func^.Name);
+
+    Expect(toRParen); NextToken;
+end;
+
 function ParseFactor: PSymbol;
 var
   Sym: PSymbol;T: PSymbol;
@@ -1727,20 +1818,6 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
-    (* Make this a function later *)
-    if UpperStr(Scanner.StrValue) = 'ADDR' then
-    begin
-      NextToken; Expect(toLParen);
-      NextToken; Expect(toIdent);
-      Sym := LookupGlobal(Scanner.StrValue);
-      if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
-      NextToken;
-      ParseVariableAccess(Sym);
-      Expect(toRParen); NextToken;
-      ParseFactor := dtInteger;
-      Exit;          
-    end;
-
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
 
@@ -1773,6 +1850,10 @@ begin
       T := Sym^.DataType;
       EmitLiteral(Sym^.Value);
       NextToken;
+    end
+    else if (Sym^.Kind = scFunc) and (Sym^.IsMagic) then
+    begin
+      T := ParseBuiltInFunction(Sym);
     end
     else if Sym^.Kind = scFunc then
     begin
@@ -1851,19 +1932,6 @@ begin
     if Op = toSub then EmitBinOp(toSub, T);
 
     EmitUnOp(toNot, T);
-  end
-  else if Scanner.Token = toOrd then
-  begin
-    Op := Scanner.Token;
-
-    NextToken;
-    Expect(toLParen);
-    NextToken;
-    ParseExpression();
-    Expect(toRParen);
-    NextToken;
-
-    T := dtInteger;
   end
   else Error('Factor expected');
 
@@ -1946,27 +2014,17 @@ var
   Op: TToken;
   T: PSymbol;
 begin
-  if Scanner.Token = toOdd then (* Make this a function later *)
+  T := ParseSimpleExpression;
+  if (Scanner.Token >= toEq) and (Scanner.Token <= toGeq) then
   begin
+    Op := Scanner.Token;
     NextToken;
-    (*TypeCheck(dtInteger,*) T := ParseSimpleExpression() (*), tcExpr)*);
-    EmitUnOp(toOdd, T);
-    T := dtBoolean;
-  end 
-  else
-  begin
-    T := ParseSimpleExpression;
-    if (Scanner.Token >= toEq) and (Scanner.Token <= toGeq) then
-    begin
-      Op := Scanner.Token;
-      NextToken;
-      (*
-       * ii ib bi bb zz cc 
-       *)
-      TypeCheck(T, ParseSimpleExpression, tcExpr); // Check type, but ignore result.
-      T := dtBoolean;                       // We know it will be Boolean.
-      EmitRelOp(Op);
-    end;
+    (*
+      * ii ib bi bb zz cc 
+      *)
+    TypeCheck(T, ParseSimpleExpression, tcExpr); // Check type, but ignore result.
+    T := dtBoolean;                       // We know it will be Boolean.
+    EmitRelOp(Op);
   end;
 
   (* WriteLn('Type of Expression is ', T); *)
@@ -2418,8 +2476,11 @@ begin
   else if Scanner.Token = toLParen then
   begin
     DataType := CreateSymbol(scEnumType, '', 0);
+    DataType^.Tag := GetLabel('enumlit');
     DataType^.Value := 2; // TODO Should be 1
     I := 0;
+
+    Emit(DataType^.Tag, '', '');
 
     repeat
       NextToken;
@@ -2428,6 +2489,9 @@ begin
       Sym := CreateSymbol(scConst, Scanner.StrValue, 0);
       Sym^.Value := I;
       // Sym^.Value2 := AddString(Sym^.Name);
+
+      Emit('', 'dw ' + AddString(Sym^.Name), '');
+
       Sym^.DataType := DataType;
       I := I + 1;
       NextToken;
