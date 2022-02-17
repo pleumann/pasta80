@@ -1782,7 +1782,7 @@ begin
       ParseArguments(Sym);
       EmitCall(Sym);     
     end
-    else if Sym^.Kind = scType then
+    else if Sym^.Kind in [scType,scEnumType] then
     begin
       NextToken;
       Expect(toLParen);
