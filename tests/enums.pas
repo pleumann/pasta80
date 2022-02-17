@@ -21,6 +21,22 @@ begin
   Assert(C <= Yellow);
   Assert(C < Green);
 
+(*
+  Assert(Red = Pred(Yellow));
+  Assert(Succ(Red) = Yellow);
+
+  Assert(Yellow = Pred(Green));
+  Assert(Succ(Yellow) = Green);
+*)
+
+  I := 0;
+  for C := Red to Green do
+  begin
+    Assert(Ord(C) = I);
+    Assert(C = Color(I));
+    I := I + 1;
+  end;
+
   A[0] := Red;
   A[1] := Yellow;
   A[2] := Green;
@@ -44,11 +60,10 @@ begin
   end;
 
   (* 
-  Type casts,
   Pred, Succ,
-  8-Bit enforcen,
   Literale ausgeben,
-  Boolean retrofitten,
   als Array-Index erlauben
+  Boolean retrofitten,
+  8-Bit enforcen,
   *)
 end.
