@@ -1,3 +1,6 @@
+type
+  Color = (Red, Yellow, Green);
+
 var
   X, Y, Z: Integer;
   B: Boolean;
@@ -8,6 +11,8 @@ var
   AfterA: Integer;
 
   AA: array[10] of array[10] of Integer;
+
+  CA: array[3] of Color;
 
 procedure TestComment;
 var
@@ -936,6 +941,77 @@ begin
   WriteLn;
 end;
 
+procedure TestEnums;
+var
+  C: Color;
+  I: Integer;
+begin
+  WriteLn('--- TestEnums ---');
+  C := Red;
+  Assert(C <> Green);
+
+  C := Green;
+  Assert(C = Green);
+  
+  C := Yellow;
+  Assert(C > Red);
+  Assert(C >= Yellow);
+  Assert(C <= Yellow);
+  Assert(C < Green);
+
+  Assert(Red = Pred(Yellow));
+  Assert(Succ(Red) = Yellow);
+
+  Assert(Yellow = Pred(Green));
+  Assert(Succ(Yellow) = Green);
+
+  Assert(Even(Red));
+  Assert(Odd(Yellow));
+
+  I := 0;
+  for C := Red to Green do
+  begin
+    Assert(Ord(C) = I);
+    Assert(C = Color(I));
+    I := I + 1;
+  end;
+
+  CA[0] := Red;
+  CA[1] := Yellow;
+  CA[2] := Green;
+
+  Assert(CA[0] = Red);
+  Assert(CA[1] = Yellow);
+  Assert(CA[2] = Green);
+
+  I := 0;
+  for C := Red to Green do
+  begin
+    Assert(C = CA[I]);
+    I := I + 1;
+  end;
+
+  I := 2;
+  for C := Green downto Red do
+  begin
+    Assert(C = CA[I]);
+    I := I - 1;
+  end;
+end;
+
+procedure TestWriteEnums;
+var
+  C: Color;
+begin
+  WriteLn('--- TestWriteEnums ---');
+  WriteLn;
+  for C := Red to Green do
+  begin
+    WriteLn('The light is ', C, '.');
+  end;
+  WriteLn;
+end;
+
 begin
   TestComment;
 
@@ -962,6 +1038,8 @@ begin
   TestArrays;
   TestArraysOfArrays;
 
+  TestEnums;
+
   TestProcFunc;
   TestRecursion;
 
@@ -980,4 +1058,5 @@ begin
   TestWriteChar;
   TestWriteByte;
   TestWriteString;
+  TestWriteEnums;
 end.
