@@ -504,6 +504,24 @@ begin
   RegisterType := Sym;
 end;
 
+function NewEnumType(Name: String): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Sym := CreateSymbol(scEnumType, Name, 1);
+  NewEnumType := Sym;
+end;
+
+function NewConst(Name: String; DataType: PSymbol; Value: Integer): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Sym := CreateSymbol(scConst, Name, 0);
+  Sym^.DataType := DataType;
+  Sym^.Value := Value;
+  NewConst := Sym;
+end;
+
 function RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: String): PSymbol;
 var
   Sym: PSymbol;
@@ -516,12 +534,17 @@ begin
   RegisterBuiltIn := Sym;
 end;
 
+
 procedure RegisterAllBuiltIns(Graphics: Boolean);
 var
   Sym, Sym2: PSymbol;
 begin
   dtInteger := RegisterType('Integer', 2);
-  dtBoolean := RegisterType('Boolean', 1);
+
+  dtBoolean := NewEnumType('Boolean');
+  NewConst('False', dtBoolean, 0);
+  NewConst('True', dtBoolean, 1);
+
   dtChar := RegisterType('Char', 1);
   dtByte := RegisterType('Byte', 1);
   dtString := RegisterType('String', 2);
@@ -588,7 +611,7 @@ type
             toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
             (* toOdd, toOrd, *)
-            (* toBoolean, toInteger, toChar, toByte, toStringT, *) toTrue, toFalse, toArray, toOf,
+            (* toBoolean, toInteger, toChar, toByte, toStringT, toTrue, toFalse, *) toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar, toRecord, toProcedure, toFunction,
             toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
@@ -610,7 +633,7 @@ const
             '!', '?', ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
             (* 'odd', 'ord', *)
-            (* 'boolean', 'integer', 'char', 'byte', 'string', *) 'true', 'false', 'array', 'of',
+            (* 'boolean', 'integer', 'char', 'byte', 'string',  'true', 'false', *) 'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var', 'record', 'procedure', 'function',
             'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
@@ -1879,12 +1902,14 @@ begin
       Error('"' + Scanner.StrValue + '" cannot be used in expressions.');
     end;
   end
+  (*
   else if (Scanner.Token = toTrue) or (Scanner.Token = toFalse) then
   begin
     T := dtBoolean;
     if Scanner.Token = toTrue then EmitLiteral(1) else EmitLiteral(0);
     NextToken;
   end
+  *)
   else if Scanner.Token = toString then
   begin
     if Length(Scanner.StrValue)=1 then
