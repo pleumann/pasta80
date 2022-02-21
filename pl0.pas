@@ -608,12 +608,12 @@ type
             toAdd, toSub, toMul, toDiv, toMod,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
-            toSay, toAsk, toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
+            (*toSay, toAsk,*) toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
             (* toOdd, toOrd, *)
             (* toBoolean, toInteger, toChar, toByte, toStringT, toTrue, toFalse, *) toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar, toRecord, toProcedure, toFunction,
-            toCall, toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
+            (*toCall,*) toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
 
@@ -630,12 +630,12 @@ const
             '+', '-', '*', '/', '%',
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
-            '!', '?', ':=', ',', ':', ';', '.', '..',
+            (*'!', '?',*) ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
             (* 'odd', 'ord', *)
             (* 'boolean', 'integer', 'char', 'byte', 'string',  'true', 'false', *) 'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var', 'record', 'procedure', 'function',
-            'call', 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
+            (*'call',*) 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
 
@@ -837,6 +837,7 @@ begin
         Token := toRBrack;
         C := GetChar;
       end;
+      (*
       '!': begin
         Token := toSay;
         C := GetChar;
@@ -844,7 +845,8 @@ begin
       '?': begin
         Token := toAsk;
         C := GetChar;
-      end; 
+      end;
+      *) 
       ':': begin
         Token := toColon;
         C := GetChar;
@@ -2163,6 +2165,7 @@ begin
       ParseAssignment(Sym, false);
     end;
   end
+  (*
   else if Scanner.Token = toCall then
   begin
     NextToken; Expect(toIdent);
@@ -2191,6 +2194,7 @@ begin
     EmitWrite(ParseExpression);
     EmitPrintNewLine;
   end
+  *)
   else if Scanner.Token = toBegin then
   begin
     NextToken; ParseStatement(ContTarget, BreakTarget);
@@ -2551,6 +2555,7 @@ begin
   Name := Scanner.StrValue;
   NextToken;
 
+(*
   Bounds := 0;
 
   if Scanner.Token = toLBrack then
@@ -2562,7 +2567,7 @@ begin
     Expect(toRBrack);
     NextToken;
   end;
-
+*)
   Sym := CreateSymbol(scVar, Name, Bounds);
   (*
   if Sym^.Level = 1 then
@@ -2588,18 +2593,14 @@ begin
   begin
     NextToken; ParseVar;
   end;
-  
-  DataType := dtInteger;
 
-  if Scanner.Token = toColon then
-  begin
-    NextToken;
+  Expect(toColon);
+  NextToken;
 
-    DataType := ParseTypeDef;
+  DataType := ParseTypeDef;
 
     // WriteLn('Var type is ', DataType^.Name);
     // if DataType^.Kind = scArrayType then WriteLn(' of ', DataType^.DataType^.Name);
-  end;
 
   while Old<>SymbolTable do
   begin
@@ -2712,8 +2713,9 @@ begin
       NextToken;
     end;
 
-    if Scanner.Token = toColon then
+    if NewSym^.Kind = scFunc then
     begin
+      Expect(toColon);
       NextToken;
 
       NewSym^.DataType := ParseTypeDef();
@@ -2831,7 +2833,7 @@ begin
     Halt(1);
   end;
 
-  if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pl0';
+  if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pas';
 
   AsmFile := ChangeExt(SrcFile, '.z80');
 
@@ -2867,12 +2869,15 @@ end.
 
 (*
 TODO
+- Get rid of PL/0 features
+- Code cleanup
 - Load/Store correct size
 - var X absolute $1234
 - var X absolute Y;
 - Complex types on the stack (parameters, locals), what does Turbo 3 allow?
 - Proper strings
-- Enum types
+- Enums as array indices
+- Alternative array syntax
 - Subrange types
 - Set types
 - References (var, maybe  const)
