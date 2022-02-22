@@ -732,124 +732,89 @@ begin
 
       if C = #26 then Error('Unterminated String') else C := GetChar;
     end
-    else case C of 
-      '+': 
-      begin
-        Token := toAdd;
-        C := GetChar;
+    else 
+    begin
+      case C of 
+        '+': Token := toAdd;
+        '-': Token := toSub;
+        '*': Token := toMul;
+        '/': Token := toDiv;
+        '=': Token := toEq;
+        '<': Token := toLt;
+        '>': Token := toGt;
+        '(': Token := toLParen;
+        ')': Token := toRParen;
+        '[': Token := toLBrack;
+        ']': Token := toRBrack;
+        ':': Token := toColon;
+        ',': Token := toComma;
+        ';': Token := toSemicolon;
+        '.': Token := toPeriod;
+        else Error('Invalid character "' + C + '"');
       end;
-      '-': begin
-        Token := toSub;
-        C := GetChar;
-      end;
-      '*': begin
-        Token := toMul;
-        C := GetChar;
-      end;
-      '/': begin
-        Token := toDiv;
-        C := GetChar;
-      end;
-      '=': begin
-        Token := toEq;
-        C := GetChar;
-      end;
-      '#': begin
-        Token := toNeq;
-        C := GetChar;
-      end;
-      '<': begin
-        C := GetChar;
-        if C = '>' then
-        begin
-          Token := toNeq;
-          C := GetChar;
-        end
-        else if C = '=' then
-        begin
-          Token := toLeq;
-          C := GetChar;
-        end
-        else Token := toLt;
-      end;
-      '>': begin
-        C := GetChar;
-        if C = '=' then
-        begin
-          Token := toGeq;
-          C := GetChar;
-        end
-        else Token := toGt;
-      end;
-      '(': begin
-        Token := toLParen;
-        C := GetChar;
 
-        if C = '*' then
-        begin
-          C := GetChar;
-          S := '(*' + C;
-          repeat
-            while C <> '*' do
-            begin
+      C := GetChar;
+
+      case Token of
+        toLt:
+          if C = '>' then
+          begin
+            Token := toNeq;
+            C := GetChar;
+          end
+          else if C = '=' then
+          begin
+            Token := toLeq;
+            C := GetChar;
+          end;
+
+        toGt:
+          if C = '=' then
+          begin
+            Token := toGeq;
+            C := GetChar;
+          end;
+
+        toLParen:
+          if C = '*' then
+          begin
+            C := GetChar;
+            S := '(*' + C;
+            repeat
+              while C <> '*' do
+              begin
+                C := GetChar;
+                S := S + C;
+              end;
               C := GetChar;
               S := S + C;
-            end;
+            until C = ')';
             C := GetChar;
-            S := S + C;
-          until C = ')';
-          C := GetChar;
 
-          if LowerStr(Copy(S, 3, 2)) = '$i' then
-            SetInclude(TrimStr(Copy(S, 5, Length(S) - 6)));
+            if LowerStr(Copy(S, 3, 2)) = '$i' then
+              SetInclude(TrimStr(Copy(S, 5, Length(S) - 6)));
 
-          NextToken;
-          Exit;
-        end;
+            NextToken;
+            Exit;
+          end;
+
+        toColon:
+          if C = '=' then
+          begin
+            Token := toBecomes;
+            C := GetChar;
+          end;
+
+        toPeriod:
+          if C = '.' then
+          begin
+            Token := toRange;
+            C := GetChar;
+          end;
       end;
-      ')': begin
-        Token := toRParen;
-        C := GetChar;
-      end;
-      '[': begin
-        Token := toLBrack;
-        C := GetChar;
-      end;
-      ']': begin
-        Token := toRBrack;
-        C := GetChar;
-      end;
-      ':': begin
-        Token := toColon;
-        C := GetChar;
-        if C = '=' then
-        begin
-          Token := toBecomes;
-          C := GetChar;
-        end;
-      end;
-      ',': begin
-        Token := toComma;
-        C := GetChar;
-      end;
-      ';': begin
-        Token := toSemicolon;
-        C := GetChar;
-      end;
-      '.': begin
-        Token := toPeriod;
-        C := GetChar;
-        if C = '.' then
-        begin
-          Token := toRange;
-          C := GetChar;
-        end;
-      end
-      else
-        Error('Invalid token.');
     end;
 
-    //WriteLn('{', Token, '->', StrValue , '}');
+    // WriteLn('{', Token, '->', StrValue , '}');
   end;
 end;
 
