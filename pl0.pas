@@ -1002,6 +1002,7 @@ begin
       // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
       Exit;
     end
+    (*
     else if StartsWith(TwoOp, 'push hl/ld de,') then
     begin
       // WriteLn('*** Fast lane for ', Instruction, ' in ', TwoOp);
@@ -1016,6 +1017,7 @@ begin
       Prev^.Instruction := 'pop hl';
       Exit;
     end;
+    *)
   end;
 
   DoOptimize := False;
@@ -1106,7 +1108,7 @@ begin
   EmitInclude(Home + '/pl0.z80');
   EmitC('');
 
-  Emit0('', 'jp main', '');
+  Emit('', 'jp main', '');
   EmitC('');
 
 end;
@@ -2354,7 +2356,7 @@ begin
       if Old^.Level = 1 then
       begin
         Old^.Tag := GetLabel('global');
-        Emit0(Old^.Tag, 'ds ' + Int2Str(Old^.DataType^.Value), 'Global ' + Old^.Name);
+        Emit(Old^.Tag, 'ds ' + Int2Str(Old^.DataType^.Value), 'Global ' + Old^.Name);
       end;
     end;
 
