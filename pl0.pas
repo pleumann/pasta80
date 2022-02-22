@@ -437,7 +437,6 @@ end;
 function CreateSymbol(Kind: TSymbolClass; Name: String; Bounds: Integer): PSymbol;
 var
   Sym: PSymbol;
-  Size: Integer;
 begin
   if (Length(Name) <> 0) and (LookupLocal(Name) <> nil) then
   begin
@@ -608,12 +607,11 @@ type
             toAdd, toSub, toMul, toDiv, toMod,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
-            (*toSay, toAsk,*) toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
+            toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod2,
-            (* toOdd, toOrd, *)
-            (* toBoolean, toInteger, toChar, toByte, toStringT, toTrue, toFalse, *) toArray, toOf,
+            toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar, toRecord, toProcedure, toFunction,
-            (*toCall,*) toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
+            toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
 
@@ -630,12 +628,11 @@ const
             '+', '-', '*', '/', '%',
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
-            (*'!', '?',*) ':=', ',', ':', ';', '.', '..',
+            ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
-            (* 'odd', 'ord', *)
-            (* 'boolean', 'integer', 'char', 'byte', 'string',  'true', 'false', *) 'array', 'of',
+            'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var', 'record', 'procedure', 'function',
-            (*'call',*) 'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
+            'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
 
@@ -907,7 +904,6 @@ var
   Graphics: TGraphicsMode;
   Target: Text;
   NextLabel: Integer;
-  LastTag, LastInstruction, LastComment: String;
   Optimize: Boolean;
   ExitTarget: String;
 
@@ -1086,9 +1082,6 @@ begin
 end;
 
 procedure Emit(Tag, Instruction, Comment: String);
-var
-  TwoOp, S: String;
-  Temp: PCode; 
 begin
   if not Optimize then
   begin
@@ -1375,88 +1368,6 @@ begin
   EmitI('ld (hl), de');
 end;
 
-procedure _EmitGetVar(Sym: PSymbol);
-var
-  L: Integer;
-begin
-  L := Level - Sym^.Level;
-
-  if Sym^.Level = 1 then
-  begin
-    if Sym^.DataType^.Kind = scArrayType then
-    begin
-      EmitI('pop de');
-      Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
-      EmitI('add hl,de');
-      EmitI('add hl,de');
-      EmitI('ld de,(hl)');
-      EmitI('push de');
-    end
-    else
-    begin
-      Emit('', 'ld hl,(' + Sym^.Tag + ')', 'Get global ' + Sym^.Name);
-      EmitI('push hl');
-    end;
-  end
-  else if L = 0 then
-  begin
-    // ld hl,Sym^.Value
-    Emit('', 'ld de,(' + RelativeAddr('ix', Sym^.Value) + ')', 'Get local ' + Sym^.Name);
-    EmitI('push de');
-  end
-  else
-  begin
-    // ld hl,(display+...)
-    // ld de,sym^.value
-    // ld add hl,de
-    // ld de,(hl)
-    // push de
-    Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
-    EmitI('ld de,(' + RelativeAddr('iy', Sym^.Value) + ')');
-    EmitI('push de');
-  end
-end;
-
-procedure _EmitSetVar(Sym: PSymbol; Again: Boolean);
-var
-  L: Integer;
-begin
-  L := Level - Sym^.Level;
-
-  if Sym^.Level = 1 then
-  begin
-    if Sym^.DataType^.Kind = scArrayType then
-    begin
-      EmitI('pop de');
-      EmitI('pop hl');
-      Emit('', 'ld bc,' + Sym^.Tag, 'Set global ' + Sym^.Name);
-      EmitI('add hl,hl');
-      EmitI('add hl,bc');
-      EmitI('ld (hl),de');
-      if Again then EmitI('push de');
-    end
-    else
-    begin
-      EmitI('pop de');
-      Emit('', 'ld (' + Sym^.Tag + '),de', 'Set global ' + Sym^.Name);
-      if Again then EmitI('push hl');
-    end;
-  end
-  else if L = 0 then
-  begin
-    EmitI('pop de');
-    Emit('', 'ld (' + RelativeAddr('ix', Sym^.Value) + '),de', 'Set local ' + Sym^.Name);
-    if Again then EmitI('push de');
-  end
-  else
-  begin
-    EmitI('pop de');
-    Emit('', 'ld iy,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Set outer ' + Sym^.Name);
-    EmitI('ld (' + RelativeAddr('iy', Sym^.Value) + '),de');
-    if Again then EmitI('push de');
-  end
-end;
-
 procedure EmitLiteral(Value: Integer);
 begin
   Emit('', 'ld de,' + Int2Str(Value), 'Literal ' + Int2Str(Value));
@@ -1613,7 +1524,6 @@ end;
 
 procedure EmitPrintStr(S: String);
 var
-  Sym: PSymbol;
   Tag: String;
 begin
   if Length(S) = 1 then
@@ -1755,8 +1665,6 @@ end;
 
 
 procedure ParseWriteArgument;
-var
-  T: PSymbol;
 begin
     if Scanner.Token = toString then
     begin
@@ -1854,19 +1762,7 @@ begin
     begin
       NextToken;
       T := ParseVariableAccess(Sym);
-      (*
-      NextToken;
-      if Scanner.Token = toLBrack then
-      begin
-        if Sym^.DataType^.Kind <> scArrayType then Error('" ' + Sym^.Name + '" is not an array.');
-        T := T^.DataType;
-        NextToken;
-        TypeCheck(dtInteger, ParseExpression, tcAssign);  Index now on stack 
-        Expect(toRBrack);
-        NextToken;
-      end
-      else 
-      *)
+
       if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
       EmitLoad();
     end
@@ -1904,14 +1800,6 @@ begin
       Error('"' + Scanner.StrValue + '" cannot be used in expressions.');
     end;
   end
-  (*
-  else if (Scanner.Token = toTrue) or (Scanner.Token = toFalse) then
-  begin
-    T := dtBoolean;
-    if Scanner.Token = toTrue then EmitLiteral(1) else EmitLiteral(0);
-    NextToken;
-  end
-  *)
   else if Scanner.Token = toString then
   begin
     if Length(Scanner.StrValue)=1 then
@@ -2061,7 +1949,7 @@ end;
 
 procedure ParseAssignment(Sym: PSymbol; Again: Boolean);
 var
-  Sym2, T: PSymbol;
+  T: PSymbol;
 begin
   if Sym^.Kind <> scVar then Error('"' + Scanner.StrValue + '" not a var.');
   NextToken;
@@ -2076,47 +1964,6 @@ begin
   T := TypeCheck(T, ParseExpression, tcAssign);
 
   EmitStore();
-(*
-  if Scanner.Token = toLBrack then
-  begin
-    if Sym^.DataType^.Kind <> scArrayType then Error('" ' + Sym^.Name + '" is not an array.');
-    NextToken;
-    TypeCheck(dtInteger, ParseExpression, tcAssign);  Index now on stack
-    Expect(toRBrack);
-    NextToken;
-  end
-  else if Sym^.DataType^.Kind <> scType then Error('" ' + Sym^.Name + '" is not a simple type.');
-
-  if Scanner.Token = toComma then
-  begin
-    NextToken;
-    Expect(toIdent);
-    Sym2 := LookupGlobal(Scanner.StrValue);
-    if Sym2 = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
-    TypeCheck(Sym^.DataType, Sym2^.DataType, tcExact);
-    ParseAssignment(Sym2, true);
-  end
-  else
-  begin
-    Expect(toBecomes); NextToken;
-
-    WriteLn(Sym^.Kind);
-    WriteLn(Sym^.Name);
-    WriteLn(Sym^.DataType^.Kind);
-    WriteLn(Sym^.DataType^.Name);
-
-    if (Sym^.DataType^.Kind = scArrayType) then
-    begin
-      WriteLn('Array of');
-      WriteLn(Sym^.DataType^.DataType^.Kind);
-      WriteLn(Sym^.DataType^.DataType^.Name);
-      TypeCheck(Sym^.DataType^.DataType, ParseExpression, tcAssign)
-    end
-    else
-      TypeCheck(Sym^.DataType, ParseExpression, tcAssign)
-  end;
-
-  EmitSetVar(Sym, Again);*)
 end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String);
@@ -2165,36 +2012,6 @@ begin
       ParseAssignment(Sym, false);
     end;
   end
-  (*
-  else if Scanner.Token = toCall then
-  begin
-    NextToken; Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
-    if Sym^.Kind <> scProc then Error('"' + Scanner.StrValue + '" not a proc.');
-    NextToken;
-
-    ParseArguments(Sym);
-
-    EmitCall(Sym);
-  end
-  else if Scanner.Token = toAsk then
-  begin
-    NextToken; Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
-
-    T := ParseVariableAccess(Sym);
-
-    EmitInputNum(Scanner.StrValue);
-    EmitStore();
-  end
-  else if Scanner.Token = toSay then
-  begin
-    NextToken;
-    EmitWrite(ParseExpression);
-    EmitPrintNewLine;
-  end
-  *)
   else if Scanner.Token = toBegin then
   begin
     NextToken; ParseStatement(ContTarget, BreakTarget);
@@ -2548,27 +2365,12 @@ end;
 procedure ParseVar;
 var
   Name: String;
-  Bounds: Integer;
-  Sym: PSymbol;
 begin
   Expect(toIdent);
   Name := Scanner.StrValue;
   NextToken;
 
-(*
-  Bounds := 0;
-
-  if Scanner.Token = toLBrack then
-  begin
-    NextToken;
-    Expect(toNumber);
-    Bounds := Scanner.NumValue;
-    NextToken;
-    Expect(toRBrack);
-    NextToken;
-  end;
-*)
-  Sym := CreateSymbol(scVar, Name, Bounds);
+  CreateSymbol(scVar, Name, 0);
   (*
   if Sym^.Level = 1 then
   begin
@@ -2580,7 +2382,7 @@ end;
 
 procedure ParseVarList();
 var
-  Old, Tmp: PSymbol;
+  Old: PSymbol;
   DataType: PSymbol;
   Low, High: Integer;
 begin
@@ -2625,9 +2427,8 @@ end;
 
 procedure ParseBlock(Sym: PSymbol);
 var
-  NewSym, ResVar, Old, Tmp: PSymbol;
+  NewSym, ResVar: PSymbol;
   Token: TToken;
-  DataType: PSymbol;
   Name: String;
 begin
   if Scanner.Token = toConst then
@@ -2869,8 +2670,6 @@ end.
 
 (*
 TODO
-- Get rid of PL/0 features
-- Code cleanup
 - Load/Store correct size
 - var X absolute $1234
 - var X absolute Y;
@@ -2887,7 +2686,5 @@ TODO
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
 - Check why Boolean loops don't work correctly
 - Integrate String literals as String data type, allow variables and parameters.
-- Build super-simple test infrastruture
 - Cleanup existing tests
-  ...
 *)
