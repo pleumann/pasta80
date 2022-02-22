@@ -1,5 +1,7 @@
 program PL0;
 
+{$Mode delphi}
+
 uses
   Dos;
 
@@ -604,11 +606,11 @@ end;
 type
   TToken = (toNone,
             toIdent, toNumber, toString,
-            toAdd, toSub, toMul, toDiv, toMod,
+            toAdd, toSub, toMul, toDiv,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
             toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
-            toAnd, toOr, toXor, toNot, toMod2,
+            toAnd, toOr, toXor, toNot, toMod,
             toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar, toRecord, toProcedure, toFunction,
             toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
@@ -625,7 +627,7 @@ const
   TokenStr: array[TToken] of String = 
            ('<nul>',
             'Identifier', 'Number', 'String',
-            '+', '-', '*', '/', '%',
+            '+', '-', '*', '/',
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
             ':=', ',', ':', ';', '.', '..',
@@ -706,7 +708,6 @@ begin
         C := GetChar;
       end;
       Token := LookupKeyword(StrValue);
-      if Token = toMod2 then Token := toMod;
     end
     else if IsDecDigit(C) then
     begin
@@ -731,18 +732,6 @@ begin
 
       if C = #26 then Error('Unterminated String') else C := GetChar;
     end
-    else if C = '"' then
-    begin
-      Token := toString;
-      C := GetChar;
-      while (C <> '"') and (C <> #26) do
-      begin
-        StrValue := StrValue + C;
-        C := GetChar;
-      end;
-
-      if C = #26 then Error('Unterminated String') else C := GetChar;
-    end
     else case C of 
       '+': 
       begin
@@ -759,10 +748,6 @@ begin
       end;
       '/': begin
         Token := toDiv;
-        C := GetChar;
-      end;
-      '%': begin
-        Token := toMod;
         C := GetChar;
       end;
       '=': begin
@@ -834,16 +819,6 @@ begin
         Token := toRBrack;
         C := GetChar;
       end;
-      (*
-      '!': begin
-        Token := toSay;
-        C := GetChar;
-      end;
-      '?': begin
-        Token := toAsk;
-        C := GetChar;
-      end;
-      *) 
       ':': begin
         Token := toColon;
         C := GetChar;
