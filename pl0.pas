@@ -198,6 +198,8 @@ begin
   OpenInput(FileName);
 end;
 
+procedure EmitC(S: String); forward;
+
 function GetChar(): Char;
 begin
   with Source[Include] do
@@ -219,6 +221,7 @@ begin
       end;
 
       ReadLn(Input, Buffer);
+      EmitC('[' + Int2Str(Line) + '] ' + Buffer);
       Buffer := Buffer + #13;
       Line := Line + 1;
       Column := 1;
