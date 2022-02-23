@@ -1437,6 +1437,38 @@ begin
   end;
 end;
 
+procedure EmitInc(DataType: PSymbol);
+begin
+  EmitI('pop hl');
+  
+  if DataType = dtInteger then
+  begin
+    EmitI('ld de,(hl)');
+    EmitI('inc de');
+    EmitI('ld (hl),de');
+  end
+  else
+  begin
+    EmitI('inc (hl)');
+  end;
+end;
+
+procedure EmitDec(DataType: PSymbol);
+begin
+  EmitI('pop hl');
+
+  if DataType = dtInteger then
+  begin
+    EmitI('ld de,(hl)');
+    EmitI('dec de');
+    EmitI('ld (hl),de');
+  end
+  else
+  begin
+    EmitI('dec (hl)');
+  end;
+end;
+
 procedure EmitInputNum(S: String);
 begin
   Emit('', 'call __getn', 'Get ' + S);
@@ -2042,31 +2074,18 @@ begin
   end
   else if Scanner.Token = toFor then
   begin
-  (* break would jump to cleanup after for *)
-    Tag := GetLabel('forloop');
-    Tag3 := GetLabel('forbreak');
-    Tag4 := GetLabel('fornext');
+    (* break would jump to cleanup after for *)
 
     NextToken;
     Expect(toIdent);
 
     Sym := LookupGlobal(Scanner.StrValue);
-
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
 
-    NextToken;
-
-    T := ParseVariableAccess(Sym);
-
-    Emit('', 'pop de','Dup and pre-check limit');
-    Emit('', 'push de','');
-    Emit('', 'push de', '');
-
-    Expect(toBecomes); NextToken;
-
-    TypeCheck(T, ParseExpression, tcAssign);
-    EmitStore();
+    EmitAddress(Sym);
+    NextToken; Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
+    EmitStore;
 
     if Scanner.Token = toTo then
       Delta := 1
@@ -2075,22 +2094,26 @@ begin
     else
       Error('"to" or "downto" expected.');
 
-    NextToken; 
+    NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign); Expect(toDo); (* final value on stack *)
 
-    Emit(Tag, '', '');
+    Tag := GetLabel('forloop');
+    Tag3 := GetLabel('forbreak');
+    Tag4 := GetLabel('fornext');
 
     Emit('', 'pop de','Dup and pre-check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
 
+    EmitAddress(Sym);
     EmitLoad();
 
-    TypeCheck(T, ParseExpression, tcAssign); Expect(toDo); NextToken; (* final value on stack *)
-
-    if Delta = 1 then EmitRelOp(toLeq) else EmitRelOp(toGeq);
+    if Delta = 1 then EmitRelOp(toGeq) else EmitRelOp(toLeq); (* Operands swapped! *)
 
     EmitJumpIf(False, Tag3);
 
+    Emit(Tag, '', '');
+
+    NextToken;
     ParseStatement(Tag4, Tag3);
 
     Emit(Tag4, '', '');
@@ -2098,13 +2121,17 @@ begin
     Emit('', 'pop de','Dup and check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
-    Emit('', 'push de', '');
 
-    EmitLoad;
-    EmitLiteral(Delta);
-    EmitBinOp(toAdd, dtInteger);
-    EmitStore();
+    EmitAddress(Sym);
+    EmitLoad();
 
+    if Delta = 1 then EmitRelOp(toGt) else EmitRelOp(toLt); (* Operands swapped! *)
+
+    EmitJumpIf(False, Tag3);
+
+    EmitAddress(Sym);
+    if Delta = 1 then EmitInc(Sym^.DataType) else EmitDec(Sym^.DataType);
+    
     EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
@@ -2631,8 +2658,6 @@ TODO
 - Set types
 - References (var, maybe  const)
 - Pointers & heap management
-- Repair 'for' loops
-- Repair optimization
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
 - Check why Boolean loops don't work correctly
 - Integrate String literals as String data type, allow variables and parameters.
