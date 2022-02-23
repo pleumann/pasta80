@@ -594,8 +594,13 @@ begin
 
   if Graphics then
   begin
-    RegisterBuiltIn(scProc, 'SetPixel', 3, '__set_pixel');
-    RegisterBuiltIn(scFunc, 'GetPixel', 2, '__get_pixel');
+    Sym := RegisterBuiltIn(scProc, 'SetPixel', 3, '__set_pixel');
+    Sym^.ArgTypes[0] := dtInteger;
+    Sym^.ArgTypes[1] := dtInteger;
+    Sym^.ArgTypes[2] := dtInteger;
+    Sym := RegisterBuiltIn(scFunc, 'GetPixel', 2, '__get_pixel');
+    Sym^.ArgTypes[0] := dtInteger;
+    Sym^.ArgTypes[1] := dtInteger;
   end;
 end;
 
