@@ -1470,6 +1470,14 @@ begin
   end;
 end;
 
+procedure EmitShl;
+begin
+  EmitI('pop hl');
+  EmitI('sla l');
+  EmitI('sla h');
+  EmitI('push hl');
+end;
+
 procedure EmitInputNum(S: String);
 begin
   Emit('', 'call __getn', 'Get ' + S);
@@ -1573,6 +1581,7 @@ function ParseExpression: PSymbol; forward;
 function ParseVariableAccess(Symbol: PSymbol): PSymbol;
 var
   DataType: PSymbol;
+  Size: Integer;
 begin
   EmitAddress(Symbol);
 
@@ -1591,8 +1600,18 @@ begin
 
       DataType := DataType^.DataType;
 
-      EmitLiteral(DataType^.Value);
-      EmitBinOp(toMul, dtInteger);
+      Size := DataType^.Value;
+      if Size > 1 then
+      begin
+        case Size of
+          2: EmitShl;
+          4: begin EmitShl; EmitShl; end;
+          else begin
+            EmitLiteral(Size);
+            EmitBinOp(toMul, dtInteger);
+          end;
+        end;
+      end;
       EmitBinOp(toAdd, dtInteger);
       
       Expect(toRBrack);
