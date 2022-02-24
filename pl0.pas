@@ -1206,6 +1206,7 @@ var
   I: Integer;
   V: String;
 begin
+(*
   if Sym = Nil then
     EmitC('main entry point')
   else if Sym^.Kind = scFunc then
@@ -1222,7 +1223,7 @@ begin
     EmitC('var ' + V);
     EmitC('');
   end;
-
+*)
   if Sym = Nil then
     Emit('main', 'call __init', '')
   else
