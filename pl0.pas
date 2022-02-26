@@ -1305,18 +1305,31 @@ begin
   end
 end;
 
-procedure EmitLoad();
+procedure EmitLoad(DataType: PSymbol);
 begin
-  EmitI('pop hl');
-  EmitI('ld de,(hl)');
-  EmitI('push de');
+  if not (DataType^.Kind in [scArrayType, scRecordType]) then
+  begin
+    EmitI('pop hl');
+    EmitI('ld de,(hl)');
+    EmitI('push de');
+  end;
 end;
 
-procedure EmitStore();
+procedure EmitStore(DataType: PSymbol);
 begin
-  EmitI('pop de');
-  EmitI('pop hl');
-  EmitI('ld (hl), de');
+  if not (DataType^.Kind in [scArrayType, scRecordType]) then
+  begin
+    EmitI('pop de');
+    EmitI('pop hl');
+    EmitI('ld (hl), de');
+  end
+  else
+  begin
+    EmitI('pop hl');
+    EmitI('pop de');
+    EmitI('ld bc,' + Int2Str(DataType^.Value));
+    EmitI('ldir');
+  end;
 end;
 
 procedure EmitLiteral(Value: Integer);
@@ -1765,8 +1778,8 @@ begin
       NextToken;
       T := ParseVariableAccess(Sym);
 
-      if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
-      EmitLoad();
+      // if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
+      EmitLoad(T);
     end
     else if Sym^.Kind = scConst then
     begin
@@ -1958,14 +1971,14 @@ begin
 
   T := ParseVariableAccess(Sym);
 
-  if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
+  //if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
 
   Expect(toBecomes);
   NextToken;
 
   T := TypeCheck(T, ParseExpression, tcAssign);
 
-  EmitStore();
+  EmitStore(T); (* T? *)
 end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String);
@@ -2105,7 +2118,7 @@ begin
 
     EmitAddress(Sym);
     NextToken; Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
-    EmitStore;
+    EmitStore(Sym^.DataType);
 
     if Scanner.Token = toTo then
       Delta := 1
@@ -2125,7 +2138,7 @@ begin
     Emit('', 'push de', '');
 
     EmitAddress(Sym);
-    EmitLoad();
+    EmitLoad(Sym^.DataType);
 
     if Delta = 1 then EmitRelOp(toGeq) else EmitRelOp(toLeq); (* Operands swapped! *)
 
@@ -2143,7 +2156,7 @@ begin
     Emit('', 'push de', '');
 
     EmitAddress(Sym);
-    EmitLoad();
+    EmitLoad(Sym^.DataType);
 
     if Delta = 1 then EmitRelOp(toGt) else EmitRelOp(toLt); (* Operands swapped! *)
 
@@ -2505,7 +2518,7 @@ begin
       while Scanner.Token = toSemicolon do
       begin
         NextToken;
-        ParseVarList();
+        ParseVarList(); (* ParamGroup *)
       end;
       Expect(toRParen);
       NextToken;
