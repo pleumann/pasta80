@@ -2291,8 +2291,20 @@ begin
     Expect(toLBrack);
     NextToken;
 
-    Expect(toNumber);
-    DataType^.Bounds := Scanner.NumValue;
+    if Scanner.Token = toNumber then
+      DataType^.Bounds := Scanner.NumValue
+    else if Scanner.Token = toIdent then
+    begin
+      Sym := LookupGlobal(Scanner.StrValue);
+      if Sym = nil then
+        Error(Scanner.StrValue + ' not found');
+      if (Sym^.Kind <> scConst) or (Sym^.DataType <> dtInteger) then
+        Error(Scanner.StrValue + ' is not an integer constant');
+      DataType^.Bounds := Sym^.Value;
+    end
+    else
+      Error('Integer literal or constant expected');     
+
     NextToken;
 (*
     if Scanner.Token = toDots then
