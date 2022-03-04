@@ -303,6 +303,7 @@ type
     Kind: TSymbolClass;
     DataType: PSymbol;
     ArgTypes: array[0..15] of PSymbol;
+    ArgIsRef: array[0..15] of Boolean;
     Level: Integer;
     Value: Integer;
     StrVal: String;
@@ -310,6 +311,7 @@ type
     Bounds: Integer;
     Prev, Next: PSymbol;
     IsMagic: Boolean;
+    IsRef: Boolean;
   end;
 
 var
@@ -432,6 +434,7 @@ begin
   while I > 0 do
   begin
     Sym^.ArgTypes[I-1] := Sym2^.DataType;
+    Sym^.ArgIsRef[I-1] := Sym2^.IsRef;
     I := I - 1;
     Sym2 := Sym2^.Prev;
   end;
@@ -456,6 +459,7 @@ begin
   Sym^.Bounds := Bounds;
   Sym^.Tag := '';
   Sym^.IsMagic := False;
+  Sym^.IsRef := False;
   SymbolTable^.Next := Sym;
   SymbolTable := Sym;
 
@@ -1302,7 +1306,14 @@ begin
     Emit('', 'ld de,' + Int2Str(Sym^.Value), '');
     Emit('', 'add hl,de', '');
     Emit('', 'push hl', '');
-  end
+  end;
+
+  if Sym^.IsRef then
+  begin
+    Emit('', 'pop hl', '');
+    Emit('', 'ld de,(hl)', '');
+    Emit('', 'push de', '');
+  end;  
 end;
 
 procedure EmitLoad(DataType: PSymbol);
@@ -1652,6 +1663,27 @@ begin
   ParseVariableAccess := DataType;
 end;
 
+procedure ParseArgument(Sym: PSymbol; I: Integer);
+var
+  Sym2: PSymbol;
+begin
+  if Sym^.ArgIsRef[I] then
+  begin
+    Expect(toIdent);
+    Sym2 := LookupGlobal(Scanner.StrValue);
+    if Sym2 = nil then
+      Error('Identifier not found: ' + Scanner.StrValue);
+    if Sym2^.Kind <> scVar then
+      Error('Not a variable: ' + Scanner.StrValue);
+
+    NextToken;
+    
+    TypeCheck(Sym^.ArgTypes[I], ParseVariableAccess(Sym2), tcAssign);
+  end
+  else
+    TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);  
+end;
+
 procedure ParseArguments(Sym: PSymbol);
 var
   I: Integer;
@@ -1660,14 +1692,13 @@ begin
   if Scanner.Token = toLParen then
   begin
     NextToken;
-
-    TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);
+    ParseArgument(Sym, I);
     I := I + 1;
 
     while Scanner.Token = toComma do
     begin
       NextToken;
-      TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);
+      ParseArgument(Sym, I);
       I := I + 1;
     end;
 
@@ -2447,11 +2478,48 @@ begin
   end;
 end;
 
+procedure ParseParamList(IsRef: Boolean);
+var
+  Old: PSymbol;
+  DataType: PSymbol;
+  Low, High: Integer;
+begin
+  Low := 0;
+  High := -1;
+
+  Old := SymbolTable;
+  ParseVar;
+  SymbolTable^.IsRef := IsRef;
+  while Scanner.Token = toComma do
+  begin
+    NextToken; ParseVar;
+    SymbolTable^.IsRef := IsRef;
+  end;
+
+  Expect(toColon);
+  NextToken;
+
+  DataType := ParseTypeDef;
+
+  if (DataType^.Kind in [scArrayType, scRecordType]) and not isRef then
+    Error('Structured parameters must be passed by reference');
+
+  while Old<>SymbolTable do
+  begin
+    Old := Old^.Next;
+    if Old^.Kind = scVar then
+    begin
+      SetDataType(Old, DataType, High - Low + 1);
+    end;
+  end;
+end;
+
 procedure ParseBlock(Sym: PSymbol);
 var
   NewSym, ResVar: PSymbol;
   Token: TToken;
   Name: String;
+  IsRef: Boolean;
 begin
   if Scanner.Token = toConst then
   begin
@@ -2526,11 +2594,27 @@ begin
     if Scanner.Token = toLParen then
     begin
       NextToken;
-      ParseVarList();
+
+      IsRef := False;
+      if Scanner.Token = toVar then
+      begin
+        IsRef := True;
+        NextToken;
+      end;
+
+      ParseParamList(IsRef);
       while Scanner.Token = toSemicolon do
       begin
         NextToken;
-        ParseVarList(); (* ParamGroup *)
+
+        IsRef := False;
+        if Scanner.Token = toVar then
+        begin
+          IsRef := True;
+          NextToken;
+        end;
+
+        ParseParamList(IsRef); (* ParamGroup *)
       end;
       Expect(toRParen);
       NextToken;
