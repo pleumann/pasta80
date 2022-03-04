@@ -421,7 +421,7 @@ begin
   begin
     if Sym^.Kind = scVar then
     begin
-      Sym^.Value := Sym^.Value - Offset + 4;    
+      Sym^.Value := Sym^.Value - Offset + 6;    
       I := I + 1;
     end;
     Sym := Sym^.Prev;
@@ -439,7 +439,7 @@ begin
     Sym2 := Sym2^.Prev;
   end;
 
-  Offset := -2;
+  Offset := 0;
 end;
 
 function CreateSymbol(Kind: TSymbolClass; Name: String; Bounds: Integer): PSymbol;
@@ -487,18 +487,18 @@ var
   Size: Integer;
 begin
   Sym^.DataType := DataType;
-  Sym^.Bounds := Bounds;
+//  Sym^.Bounds := Bounds;
 
-  if Bounds = 0 then Size := 2 else Size := 2 * Bounds;
+//  if Bounds = 0 then Size := 2 else Size := 2 * Bounds;
   if Level = 1 then
   begin
     Sym^.Value := Offset;
-    Offset := Offset + Size;
+    Offset := Offset + DataType^.Value;
   end
   else
   begin
-    Offset := Offset - Size;
-    Sym^.Value := Offset + 2;
+    Offset := Offset - DataType^.Value;
+    Sym^.Value := Offset;
   end;
 end;
 
@@ -516,7 +516,8 @@ function NewEnumType(Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(scEnumType, Name, 1);
+  Sym := CreateSymbol(scEnumType, Name, 0);
+  Sym^.Value := 2;
   NewEnumType := Sym;
 end;
 
@@ -554,8 +555,11 @@ begin
   NewConst('True', dtBoolean, 1);
 
   dtChar := RegisterType('Char', 1);
+  dtChar^.Value := 2;
   dtByte := RegisterType('Byte', 1);
+  dtByte^.Value := 2;
   dtString := RegisterType('String', 2);
+  dtString^.Value := 2;
 
   Sym := CreateSymbol(scArrayType, '', 65536);
   Sym^.DataType := dtByte;
@@ -1208,7 +1212,7 @@ end;
 procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
-  V: String;
+  V: String; 
 begin
 (*
   if Sym = Nil then
@@ -1219,7 +1223,7 @@ begin
     EmitC('procedure ' + Sym^.Name);
 
   EmitC('');
-
+*)
   V := '';
   CollectVars(SymbolTable, V);
   if V <> '' then
@@ -1227,7 +1231,7 @@ begin
     EmitC('var ' + V);
     EmitC('');
   end;
-*)
+
   if Sym = Nil then
     Emit('main', 'call __init', '')
   else
@@ -1241,17 +1245,22 @@ begin
     EmitI('add ix,sp');
 
     EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
-
+(*
+    EmitI('ld hl,' + Int2Str(Offset));
+    EmitI('add hl,sp');
+    EmitI('ld sp,hl');
+*)
     I := Offset;
-    if I < -2 then
+    if I < 0 then
     begin
       Emit('', 'ld de,0', 'Space for locals');
-      while I < -2 do
+      while I < 0 do
       begin
         EmitI('push de');
         I := I + 2;
       end;
     end;
+
   end;
 end;
 
@@ -2016,7 +2025,7 @@ var
   Sym: PSymbol;
   Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
-  T: PSymbol;
+  (*T: PSymbol;*)
   NewLine: Boolean;
 begin
   if Scanner.Token = toIdent then
@@ -2775,6 +2784,7 @@ end.
 
 (*
 TODO
+- Too many arguments
 - Load/Store correct size
 - var X absolute $1234
 - var X absolute Y;

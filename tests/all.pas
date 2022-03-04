@@ -1,6 +1,12 @@
 type
   Color = (Red, Yellow, Green);
 
+  TIntArray100 = array[100] of Integer;
+
+  TPoint = record
+    X, Y: Integer;
+  end;
+
 var
   X, Y, Z: Integer;
   B: Boolean;
@@ -13,6 +19,8 @@ var
   AA: array[10] of array[10] of Integer;
 
   CA: array[3] of Color;
+
+  GlobalIntArray: TIntArray100;
 
 procedure TestComment;
 var
@@ -520,6 +528,102 @@ begin
 
   J := MulFunc(100, 200);
   Assert(J = 20000);
+end;
+
+procedure SwapInteger(var X, Y: Integer);
+var
+  Z: Integer;
+begin
+  Z := X;
+  X := Y;
+  Y := Z;
+end;
+
+procedure SwapBoolean(var X, Y: Boolean);
+var
+  Z: Boolean;
+begin
+  Z := X;
+  X := Y;
+  Y := Z;
+end;
+
+procedure SwapRecord(var R: TPoint);
+var
+  Z: Integer;
+begin
+  Z := R.X;
+  R.X := R.Y;
+  R.Y := Z;
+end;
+
+procedure Sort(var A: TIntArray100; Count: Integer);
+var
+  I, J: Integer;
+  Changed: Boolean;
+begin
+  for I := Count - 1 downto 1 do
+  begin
+    Changed := False;
+    for J := 0 to I - 1 do
+    begin
+      if (A[J] > A[J + 1]) then
+      begin
+        SwapInteger(A[J], A[J + 1]);
+        Changed := True;
+      end;
+    end;
+    if not Changed then Exit;
+  end;
+end;
+
+procedure TestSort(var Numbers: TIntArray100; Count: Integer);
+var
+  I: Integer;
+begin
+  for I := 0 to Count - 1 do
+    Numbers[I] := Random(Count);
+  
+  Sort(Numbers, Count);
+
+  I := 1;
+  while I < Count do
+  begin
+    if Numbers[I - 1] > Numbers[I] then Break;
+    I := I + 1;
+  end;
+  Assert(I = Count);
+end;
+
+procedure TestVarParams;
+var
+  I, J: Integer;
+  B, C: Boolean;
+  LocalIntArray: TIntArray100;
+  R: TPoint;
+begin
+  WriteLn('--- TestVarParams ---');
+
+  I := 1234;
+  J := 5678;
+  SwapInteger(I, J);  
+  Assert(I = 5678);
+  Assert(J = 1234);
+
+  B := True;
+  C := False;
+  SwapBoolean(B, C);
+  Assert(not B);
+  Assert(C);
+
+  R.X := 4444;
+  R.Y := 8888;
+  SwapRecord(R);
+  Assert(R.X = 8888);
+  Assert(R.Y = 4444);
+
+  TestSort(GlobalIntArray, 100);
+  TestSort(LocalIntArray, 100);
 end;
 
 function Fibonacci(I: Integer): Integer;
@@ -1041,6 +1145,7 @@ begin
   TestEnums;
 
   TestProcFunc;
+  TestVarParams;
   TestRecursion;
 
   TestIfThen;
