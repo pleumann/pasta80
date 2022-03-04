@@ -1497,8 +1497,7 @@ end;
 procedure EmitShl;
 begin
   EmitI('pop hl');
-  EmitI('sla l');
-  EmitI('sla h');
+  EmitI('add hl,hl');
   EmitI('push hl');
 end;
 
