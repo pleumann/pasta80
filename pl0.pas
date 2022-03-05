@@ -2794,10 +2794,8 @@ TODO
 - Alternative array syntax
 - Subrange types
 - Set types
-- References (var, maybe  const)
+- Floating point type(s)
 - Pointers & heap management
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
-- Check why Boolean loops don't work correctly
 - Integrate String literals as String data type, allow variables and parameters.
-- Cleanup existing tests
 *)
