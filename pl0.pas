@@ -2281,31 +2281,119 @@ begin
 
 end;
 
+function ParseTypeDef: PSymbol; forward;
+
+procedure ParseConstValue(DataType: PSymbol);
+var
+  I, Sign, Value: Integer;
+  Sym: PSymbol;
+begin
+  if DataType^.Kind = scArrayType then
+  begin
+    Expect(toLParen);
+    NextToken;
+
+    for I := 1 to DataType^.Bounds - 1 do
+    begin
+      ParseConstValue(DataType^.DataType);
+      Expect(toComma);
+      NextToken;
+    end;
+    ParseConstValue(DataType^.DataType);
+
+    Expect(toRParen);
+    NextToken;
+  end
+  else if DataType^.Kind = scRecordType then
+  begin    
+    Error('Not supported');
+  end
+  else if DataType^.Kind = scEnumType then
+  begin
+    Expect(toIdent);
+    Sym := LookupLocal(Scanner.StrValue);
+    if (Sym^.Kind <> scConst) or (Sym^.DataType <> DataType) then
+      Error('Invalid enum constant');
+
+    Emit('', 'dw ' + Int2Str(Sym^.Value), '');
+
+    NextToken;
+  end
+  else
+  begin
+    if DataType = dtInteger then
+    begin
+      if Scanner.Token = toSub then
+      begin
+        Sign := -1;
+        NextToken;
+      end
+      else Sign := 1;
+      Expect(toNumber);
+
+      Value := Sign * Scanner.NumValue;
+      Emit('', 'dw ' + Int2Str(Value), '');
+
+      NextToken;
+    end
+    else if DataType = dtChar then
+    begin
+      Expect(toString);
+      if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+      Emit('', 'dw "' + Scanner.StrValue + '"', '');     
+      NextToken; 
+    end
+    else
+      Error('Not supported');
+  end;
+end;
+
 procedure ParseConst;
 var
+  Name: String;
   Sym: PSymbol;
   Sign: Integer;
 begin
   Expect(toIdent);
-  Sym := CreateSymbol(scConst, Scanner.StrValue, 0);
+  Name := Scanner.StrValue;
   NextToken;
-  Expect(toEq);
-  NextToken;
-  if Scanner.Token = toSub then
+
+  if Scanner.Token = toColon then
   begin
-    Sign := -1;
     NextToken;
+
+    Sym := CreateSymbol(scVar, Name, 0);
+    Sym^.DataType := ParseTypeDef();
+    Sym^.Tag := GetLabel('const');
+    Sym^.Level := 1; (* Force global *)
+
+    Emit(Sym^.Tag, '', '');
+
+    Expect(toEq);
+    NextToken;
+
+    ParseConstValue(Sym^.DataType);
   end
-  else Sign := 1;
-  Expect(toNumber);
+  else
+  begin
+    Sym := CreateSymbol(scConst, Name, 0);
 
-  Sym^.Value := Sign * Scanner.NumValue;
-  Sym^.DataType := dtInteger;
+    Expect(toEq);
+    NextToken;
+    if Scanner.Token = toSub then
+    begin
+      Sign := -1;
+      NextToken;
+    end
+    else Sign := 1;
+    Expect(toNumber);
 
-  NextToken;
+    Sym^.Value := Sign * Scanner.NumValue;
+    Sym^.DataType := dtInteger;
+
+    NextToken;
+  end;
 end;
-
-function ParseTypeDef: PSymbol; forward;
 
 function ParseFieldGroup(var Fields: PSymbol): PSymbol;
 var
