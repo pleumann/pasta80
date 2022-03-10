@@ -2964,6 +2964,8 @@ end.
 
 (*
 TODO
+- Non-Integer constants
+- Record typed constants
 - Too many arguments
 - Load/Store correct size
 - var X absolute $1234
