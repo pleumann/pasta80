@@ -712,6 +712,7 @@ var
 procedure NextToken();
 var
   S: String;
+  I: Integer;
 begin
   while (C <= ' ') do
   begin
@@ -770,14 +771,38 @@ begin
     else if (C = '''') or (C = '#') then
     begin
       Token := toString;
-      C := GetChar;
-      while (C <> '''') and (C <> #26) do
-      begin
-        StrValue := StrValue + C;
-        C := GetChar;
-      end;
 
-      if C = #26 then Error('Unterminated String') else C := GetChar;
+      repeat
+        if C = '''' then
+        begin
+          C := GetChar;
+          if C = '''' then
+          begin
+            StrValue := StrValue + '''';
+            C := GetChar;
+          end
+          else
+          begin
+            while (C <> '''') and (C <> #26) do
+            begin
+              StrValue := StrValue + C;
+              C := GetChar;
+            end;
+            if C = #26 then Error('Unterminated String') else C := GetChar;
+          end;
+        end
+        else
+        begin
+          I := 0;
+          C := GetChar;
+          if not IsDecDigit(C) then Error('Dec digit expected');
+          repeat
+            I := I * 10 + Ord(C) - Ord('0');
+            C := GetChar;
+          until not IsDecDigit(C);
+          StrValue := StrValue + Char(I);
+        end;
+      until (C <> '''') and (C <> '#');
     end
     else 
     begin
@@ -1180,6 +1205,43 @@ begin
   end;
 end;
 
+function EncodeAsmStr(S: String): String;
+var
+  T: String;
+  Quotes: Boolean;
+  I: Integer;
+begin
+  T := Int2Str(Length(S));
+  Quotes := False;
+
+  for I := 1 to Length(S) do
+  begin
+    C := S[I];
+    if (C < ' ') or (C > '~') or (C = '"') then
+    begin
+      if Quotes then
+      begin
+        T := T + '"';
+        Quotes := False;
+      end;
+      T := T + ',' + Int2Str(Ord(C));
+    end
+    else
+    begin
+      if not Quotes then
+      begin
+        T := T + ',"';
+        Quotes := True;
+      end;
+      T := T + C;
+    end;
+  end;
+
+  if Quotes then T := T + '"';
+
+  EncodeAsmStr := T;
+end;
+
 procedure EmitStrings();
 var
   Temp: PStringLiteral;
@@ -1189,8 +1251,7 @@ begin
   while Temp <> nil do
   begin
     EmitC('');
-    Emit(Temp^.Tag, 'db ' + Int2Str(Length(Temp^.Value)) + ',"' + Temp^.Value + '"', '');
-
+    Emit(Temp^.Tag, 'db ' + EncodeAsmStr(Temp^.Value), '');
     Temp := Temp^.Next;
   end;
 end;
