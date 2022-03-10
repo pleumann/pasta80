@@ -587,6 +587,10 @@ begin
   SuccFunc := RegisterBuiltIn(scFunc, 'Succ', 1, '');
   SuccFunc^.IsMagic := True;
 
+  Sym := RegisterBuiltIn(scProc, 'Poke', 2, '__poke');
+  Sym^.ArgTypes[0] := dtInteger;
+  Sym^.ArgTypes[1] := dtInteger;
+
   Sym := RegisterBuiltIn(scFunc, 'Random', 1, '__random');
   Sym^.ArgTypes[0] := dtInteger;
   Sym^.DataType := dtInteger;

@@ -645,6 +645,17 @@ __cur_off_str: db 2,27,'f'
 __cursor_off: ret
 #endif
 
+;
+; Poke
+;
+; Entry:  HL (addr), E (value)
+; Exit:   -
+; Uses:   -
+;
+__poke:         ld      (hl),e
+                ret
+
+
 #if defined(LORES)
 ;
 ;
