@@ -1,3 +1,16 @@
+const
+  Pi = 31415;
+
+  FortyTwo: Integer = 42;
+
+  NotTrue: Boolean = False;
+
+  ThreeByThree: array[3] of array[3] of Integer = (
+    (1, 2, 3),
+    (4, 5, 6),
+    (7, 8, 9)
+  );
+
 type
   Color = (Red, Yellow, Green);
 
@@ -45,6 +58,36 @@ begin
    I := 5;
   *)
   Assert(I = 4);
+end;
+
+procedure TestConstHelp(Expected: Integer);
+const
+  Global: Integer = 666;
+begin
+  Assert(Global = Expected);
+  Global := Global + 1;  
+end;
+
+procedure TestConst;
+var
+  I, J: Integer;
+begin
+  WriteLn('--- TestConst ---');
+
+  Assert(Pi = 31415);
+  Assert(not NotTrue);
+
+  Assert(FortyTwo = 42);
+  FortyTwo := 43;
+  Assert(FortyTwo = 43);
+
+  for I := 0 to 2 do
+    for J := 0 to 2 do
+      Assert(ThreeByThree[I][J] = 1 + I * 3 + J);
+
+  TestConstHelp(666);
+  TestConstHelp(667);
+  TestConstHelp(668);
 end;
 
 procedure TestAdd;
@@ -1118,6 +1161,8 @@ end;
 
 begin
   TestComment;
+
+  TestConst;
 
   TestAdd;
   TestSubtract;
