@@ -616,6 +616,12 @@ begin
     Sym := RegisterBuiltIn(scFunc, 'GetPixel', 2, '__get_pixel');
     Sym^.ArgTypes[0] := dtInteger;
     Sym^.ArgTypes[1] := dtInteger;
+
+    Sym := RegisterBuiltIn(scProc, 'SetFrontBuffer', 1, '__set_frontbuf');
+    Sym^.ArgTypes[0] := dtInteger;
+    Sym := RegisterBuiltIn(scProc, 'SetBackBuffer', 1, '__set_backbuf');
+    Sym^.ArgTypes[0] := dtInteger;
+    Sym := RegisterBuiltIn(scProc, 'WaitForVSync', 0, '__wait_vsync');
   end;
 end;
 

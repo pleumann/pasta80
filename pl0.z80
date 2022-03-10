@@ -701,6 +701,23 @@ __get_pixel:    call    __pixel_addr
 #endif
 
 #if defined(HIRES)
+__back_buffer:  db      18
+
+
+__set_frontbuf: ld      a,l
+                srl     a
+                db      $ed,$92,$12
+                ret
+
+__set_backbuf:  ld      a,l
+                ld      (__back_buffer),a
+                srl     a
+                db      $ed,$92,$13
+
+                ret
+
+__wait_vsync:   halt
+                ret
 ;
 ; Set a pixel in LAYER 2,1
 ;
@@ -709,13 +726,14 @@ __get_pixel:    call    __pixel_addr
 ;           BC  color   (0..255)
 ;
 __set_pixel:    di
-                ld      a,e
-                srl     a
-                srl     a
-                srl     a
-                srl     a
-                srl     a
-                add     a,18
+                ld      d,e
+                srl     d
+                srl     d
+                srl     d
+                srl     d
+                srl     d
+                ld      a,(__back_buffer)
+                add     a,d
 
                 db      $ed,$92,$56
 
@@ -739,13 +757,14 @@ __set_pixel:    di
 ;           DE  y       (0..191)
 ;
 __get_pixel:    di
-                ld      a,e
-                srl     a
-                srl     a
-                srl     a
-                srl     a
-                srl     a
-                add     a,18
+                ld      d,e
+                srl     d
+                srl     d
+                srl     d
+                srl     d
+                srl     d
+                ld      a,(__back_buffer)
+                add     a,d
 
                 db      $ed,$92,$56
 
