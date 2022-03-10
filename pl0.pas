@@ -746,7 +746,28 @@ begin
         C := GetChar;
       end;
     end
-    else if C = '''' then
+    else if C = '$' then
+    begin
+      Token := toNumber;
+      StrValue := '$';
+      C := GetChar;
+
+      if not IsHexDigit(C) then Error('Hex digit expected');
+
+      repeat
+        StrValue := StrValue + C;
+        NumValue := (NumValue shl 4);
+        if (C >= '0') and (C <= '9') then
+          NumValue := NumValue + Ord(C) - Ord('0')
+        else if (C >= 'A') and (C <= 'F') then
+          NumValue := NumValue + Ord(C) - Ord('A') + 10
+        else
+          NumValue := NumValue + Ord(C) - Ord('a') + 10;
+           
+        C := GetChar;
+      until not IsHexDigit(C);
+    end
+    else if (C = '''') or (C = '#') then
     begin
       Token := toString;
       C := GetChar;
