@@ -1,9 +1,11 @@
 const
   Pi = 31415;
 
+  NotTrue = False;
+
   FortyTwo: Integer = 42;
 
-  NotTrue: Boolean = False;
+  NotTrueEither: Boolean = False;
 
   ThreeByThree: array[3] of array[3] of Integer = (
     (1, 2, 3),
@@ -76,6 +78,10 @@ begin
 
   Assert(Pi = 31415);
   Assert(not NotTrue);
+
+  Assert(not NotTrueEither);
+  NotTrueEither := True;
+  Assert(NotTrueEither);
 
   Assert(FortyTwo = 42);
   FortyTwo := 43;

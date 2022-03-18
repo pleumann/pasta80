@@ -2426,7 +2426,7 @@ end;
 procedure ParseConst;
 var
   Name: String;
-  Sym: PSymbol;
+  Sym, Sym2: PSymbol;
   Sign: Integer;
 begin
   Expect(toIdent);
@@ -2455,16 +2455,34 @@ begin
 
     Expect(toEq);
     NextToken;
-    if Scanner.Token = toSub then
-    begin
-      Sign := -1;
-      NextToken;
-    end
-    else Sign := 1;
-    Expect(toNumber);
 
-    Sym^.Value := Sign * Scanner.NumValue;
-    Sym^.DataType := dtInteger;
+    if Scanner.Token = toString then
+    begin
+      Sym^.DataType := dtString;
+      Sym^.Tag := AddString(Scanner.StrValue);
+    end
+    else if Scanner.Token = toIdent then
+    begin
+      Sym2 := LookupGlobal(Scanner.StrValue);
+      if Sym2 = nil then Error('Identifier not found: ' + Scanner.StrValue);
+      if Sym2^.Kind <> scConst then Error('Not a constant: ' + Scanner.StrValue);
+
+      Sym^.DataType := Sym2^.DataType;
+      Sym^.Value := Sym2^.Value;
+    end
+    else
+    begin
+      if Scanner.Token = toSub then
+      begin
+        Sign := -1;
+        NextToken;
+      end
+      else Sign := 1;
+      Expect(toNumber);
+
+      Sym^.Value := Sign * Scanner.NumValue;
+      Sym^.DataType := dtInteger;
+    end;
 
     NextToken;
   end;
@@ -2978,7 +2996,6 @@ end.
 
 (*
 TODO
-- Non-Integer constants
 - Record typed constants
 - Too many arguments
 - Load/Store correct size
