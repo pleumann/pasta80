@@ -1028,6 +1028,20 @@ begin
       Exit;
     end;
 
+    if StartsWith(Prev^.Instruction, 'db ') and StartsWith(Code^.Instruction, 'db') then
+    begin
+      Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
+      RemoveCode;
+      Exit;
+    end;
+
+    if StartsWith(Prev^.Instruction, 'dw ') and StartsWith(Code^.Instruction, 'dw') then
+    begin
+      Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
+      RemoveCode;
+      Exit;
+    end;
+
     TwoOp := Prev^.Instruction + '/' + Code^.Instruction;
     //if StartsWith(TwoOp, 'push af') then
     //  WriteLn(TwoOp);
