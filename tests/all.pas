@@ -716,6 +716,60 @@ begin
       Assert(AA[I][J] = 10 * I + J);
 end;
 
+procedure TestTypeChecks;
+var
+  I: Integer;
+  B: Byte;
+  A: array[5] of Byte;
+
+  procedure Local(Expected: Integer; Actual: Byte);
+  begin
+    Assert(Expected = Actual);
+  end;
+
+begin
+  WriteLn('--- TestTypeChecks ---');
+
+  B := 255;
+  Assert(B = 255);
+
+  B := 513;
+  Assert(B = 1);
+
+  I := 255;
+  Assert(I = 255);
+
+  I := 513;
+  Assert(I = 513);
+
+  I := 255;
+  B := I;
+  I := B;
+  Assert(B = 255);
+  Assert(I = 255);
+
+  I := 513;
+  B := I;
+  I := B;
+  Assert(B = 1);
+  Assert(I = 1);
+
+  for I := 0 to 4 do
+    A[I] := 10 * I;
+
+  for I := 0 to 4 do
+    Assert(A[I] = 10 * I);
+
+  for I := 0 to 4 do
+    A[I] := 1024 + 10 * I;
+
+  for I := 0 to 4 do
+    Assert(A[I] = 10 * I);
+
+  Local(255, 255);
+  Local(1, 513);
+end;
+
 procedure TestIfThen;
 var
   I, J: Integer;
@@ -1198,6 +1252,8 @@ begin
   TestProcFunc;
   TestVarParams;
   TestRecursion;
+  
+  TestTypeChecks;
 
   TestIfThen;
   TestIfThenElse;
@@ -1215,4 +1271,7 @@ begin
   TestWriteByte;
   TestWriteString;
   TestWriteEnums;
+
+  WriteLn(Mem[0]);
+  Mem[32767] := 123;
 end.

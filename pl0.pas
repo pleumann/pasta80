@@ -497,7 +497,10 @@ begin
   end
   else
   begin
-    Offset := Offset - DataType^.Value;
+    if DataType^.Value = 1 then 
+      Offset := Offset - 2 (* Boolean, Char and Byte take 2 bytes on stack. *)
+    else
+      Offset := Offset - DataType^.Value;
     Sym^.Value := Offset;
   end;
 end;
@@ -517,7 +520,7 @@ var
   Sym: PSymbol;
 begin
   Sym := CreateSymbol(scEnumType, Name, 0);
-  Sym^.Value := 2;
+  Sym^.Value := 1;
   NewEnumType := Sym;
 end;
 
@@ -555,9 +558,9 @@ begin
   NewConst('True', dtBoolean, 1);
 
   dtChar := RegisterType('Char', 1);
-  dtChar^.Value := 2;
+  dtChar^.Value := 1;
   dtByte := RegisterType('Byte', 1);
-  dtByte^.Value := 2;
+  dtByte^.Value := 1;
   dtString := RegisterType('String', 2);
   dtString^.Value := 2;
 
@@ -1351,11 +1354,11 @@ begin
     EmitI('add ix,sp');
 
     EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
-(*
+
     EmitI('ld hl,' + Int2Str(Offset));
     EmitI('add hl,sp');
     EmitI('ld sp,hl');
-*)
+(*
     I := Offset;
     if I < 0 then
     begin
@@ -1366,7 +1369,7 @@ begin
         I := I + 2;
       end;
     end;
-
+*)
   end;
 end;
 
@@ -1436,7 +1439,14 @@ begin
   if not (DataType^.Kind in [scArrayType, scRecordType]) then
   begin
     EmitI('pop hl');
-    EmitI('ld de,(hl)');
+    case DataType^.Value of
+      1: begin
+           EmitI('ld d,0');
+           EmitI('ld e,(hl)');
+          end;
+      2: EmitI('ld de,(hl)');
+      else Error('Cannot load data type of size ' + Int2Str(DataType^.Value));
+    end;
     EmitI('push de');
   end;
 end;
@@ -1447,7 +1457,12 @@ begin
   begin
     EmitI('pop de');
     EmitI('pop hl');
-    EmitI('ld (hl), de');
+
+    case DataType^.Value of
+      1: EmitI('ld (hl),e');
+      2: EmitI('ld (hl),de');
+      else Error('Cannot store data type of size ' + Int2Str(DataType^.Value));
+    end;
   end
   else
   begin
@@ -1705,10 +1720,26 @@ begin
     Exit;
   end;
 
-  if (Left = dtInteger) and (Right = dtByte) or (Left = dtByte) and (Right = dtInteger) then
+  if Check = tcExpr then
   begin
-    TypeCheck := dtInteger;
-    Exit;
+    if (Left = dtInteger) and (Right = dtByte) or (Left = dtByte) and (Right = dtInteger) then
+    begin
+      TypeCheck := dtInteger;
+      Exit;
+    end;
+  end
+  else if Check = tcAssign then
+  begin
+    if (Left = dtInteger) and (Right = dtByte) then
+    begin
+      TypeCheck := dtInteger;
+      Exit;
+    end
+    else if (Left = dtByte) and (Right = dtInteger) then
+    begin
+      TypeCheck := dtByte;
+      Exit;
+    end;
   end;
 
   Error('Type error, expected ' + Left^.Name + ', got ' + Right^.Name);
@@ -2596,7 +2627,7 @@ begin
   begin
     DataType := CreateSymbol(scEnumType, '', 0);
     DataType^.Tag := GetLabel('enumlit');
-    DataType^.Value := 2; // TODO Should be 1
+    DataType^.Value := 1;
     I := 0;
 
     Emit(DataType^.Tag, '', '');
@@ -2998,7 +3029,6 @@ end.
 TODO
 - Record typed constants
 - Too many arguments
-- Load/Store correct size
 - var X absolute $1234
 - var X absolute Y;
 - Complex types on the stack (parameters, locals), what does Turbo 3 allow?
