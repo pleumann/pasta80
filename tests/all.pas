@@ -1219,6 +1219,27 @@ begin
   WriteLn;
 end;
 
+procedure TestSizeOf;
+begin
+  WriteLn('--- TestSizeOf ---');
+  
+  Assert(SizeOf(Integer) = 2);
+  Assert(SizeOf(Boolean) = 1);
+  Assert(SizeOf(Char) = 1);
+
+  Assert(SizeOf(Color) = 1);
+  Assert(SizeOf(TIntArray100) = 200);
+  Assert(SizeOf(TPoint) = 4);
+
+  Assert(SizeOf(X) = 2);
+  Assert(SizeOf(B) = 1);
+  Assert(SizeOf(C) = 1);
+
+  Assert(SizeOf(CA) = 3);
+
+  Assert(SizeOf(GlobalIntArray) = 200);
+end;
+
 begin
   TestComment;
 
@@ -1248,6 +1269,8 @@ begin
   TestArraysOfArrays;
 
   TestEnums;
+  
+  TestSizeOf;
 
   TestProcFunc;
   TestVarParams;

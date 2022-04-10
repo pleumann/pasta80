@@ -319,7 +319,7 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString: PSymbol;
 
-  AddrFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc: PSymbol;
+  AddrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -574,6 +574,9 @@ begin
 
   AddrFunc := RegisterBuiltIn(scFunc, 'Addr', 1, '');
   AddrFunc^.IsMagic := True;
+
+  SizeFunc := RegisterBuiltIn(scFunc, 'SizeOf', 1, '');
+  SizeFunc^.IsMagic := True;
 
   OrdFunc := RegisterBuiltIn(scFunc, 'Ord', 1, '');
   OrdFunc^.IsMagic := True;
@@ -1882,6 +1885,22 @@ begin
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     NextToken;
     ParseVariableAccess(Sym);
+    ParseBuiltInFunction := dtInteger;
+  end
+  else if Func = SizeFunc then
+  begin
+    Expect(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    NextToken;
+
+    if Sym^.Kind = scVar then
+      EmitLiteral(Sym^.DataType^.Value)
+    else if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType] then
+      EmitLiteral(Sym^.Value)
+    else
+      Error('Cannot apply SizeOf to ' + Sym^.Name);
+
     ParseBuiltInFunction := dtInteger;
   end
   else if Func = OrdFunc then
