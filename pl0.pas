@@ -497,7 +497,9 @@ begin
   end
   else
   begin
-    if DataType^.Value = 1 then 
+    if Sym^.IsRef then
+      Offset := Offset - 2 (* var parameters *)
+    else if DataType^.Value = 1 then 
       Offset := Offset - 2 (* Boolean, Char and Byte take 2 bytes on stack. *)
     else
       Offset := Offset - DataType^.Value;
@@ -1149,9 +1151,11 @@ begin
   EmitI('include "' +  S + '"');
 end;
 
+procedure EmitClear(Bytes: Integer); forward;
+
 procedure EmitCall(Sym: PSymbol);
 var
-  I: Integer;
+  I, J: Integer;
 begin
   if Sym^.Level = 0 then
   begin
@@ -1172,8 +1176,13 @@ begin
   end
   else
   begin
-  for I := 1 to Sym^.Value do
-    Emit('', 'pop hl', 'Cleanup arguments');
+    for I := 0 to Sym^.Value - 1 do
+    begin
+      J := Sym^.ArgTypes[I]^.Value;
+      EmitC('Cleanup ' + Int2Str(J) + ' bytes');
+      if Sym^.ArgIsRef[I] or (J < 2) then J := 2;
+      EmitClear(J);
+    end;
   end;
 end;
 
@@ -1439,40 +1448,56 @@ end;
 
 procedure EmitLoad(DataType: PSymbol);
 begin
-  if not (DataType^.Kind in [scArrayType, scRecordType]) then
-  begin
-    EmitI('pop hl');
-    case DataType^.Value of
-      1: begin
-           EmitI('ld d,0');
-           EmitI('ld e,(hl)');
-          end;
-      2: EmitI('ld de,(hl)');
-      else Error('Cannot load data type of size ' + Int2Str(DataType^.Value));
-    end;
-    EmitI('push de');
+  case DataType^.Value of
+    1: begin
+          EmitI('pop hl');
+          EmitI('ld d,0');
+          EmitI('ld e,(hl)');
+          EmitI('push de');
+        end;
+    2: begin
+          EmitI('pop hl');
+          EmitI('ld de,(hl)');
+          EmitI('push de');
+       end;
+    else
+    begin
+      Emit('', 'pop de', 'Load');
+      EmitI('ld hl,-' + Int2Str(DataType^.Value));
+      EmitI('add hl,sp');
+      EmitI('ld sp,hl');
+      EmitI('ex hl,de');
+      EmitI('ld bc,' + Int2Str(DataType^.Value));
+      Emit('', 'ldir', 'Load end');
+    end
   end;
 end;
 
 procedure EmitStore(DataType: PSymbol);
 begin
-  if not (DataType^.Kind in [scArrayType, scRecordType]) then
-  begin
-    EmitI('pop de');
-    EmitI('pop hl');
-
-    case DataType^.Value of
-      1: EmitI('ld (hl),e');
-      2: EmitI('ld (hl),de');
-      else Error('Cannot store data type of size ' + Int2Str(DataType^.Value));
+  case DataType^.Value of
+    1: begin
+          EmitI('pop de');
+          EmitI('pop hl');
+          EmitI('ld (hl),e');
+        end;
+    2: begin
+          EmitI('pop de');
+          EmitI('pop hl');
+          EmitI('ld (hl),de');
+        end;
+    else
+    begin
+      Emit('', 'ld bc,' + Int2Str(DataType^.Value), 'Store');
+      EmitI('ld hl,bc');
+      EmitI('add hl,sp');
+      EmitI('ld de,(hl)');
+      EmitI('ld hl,0');
+      EmitI('add hl,sp');
+      EmitI('ldir');
+      EmitI('ld sp,hl');
+      Emit('', 'pop hl', 'Store end');
     end;
-  end
-  else
-  begin
-    EmitI('pop hl');
-    EmitI('pop de');
-    EmitI('ld bc,' + Int2Str(DataType^.Value));
-    EmitI('ldir');
   end;
 end;
 
@@ -1480,6 +1505,20 @@ procedure EmitLiteral(Value: Integer);
 begin
   Emit('', 'ld de,' + Int2Str(Value), 'Literal ' + Int2Str(Value));
   EmitI('push de');
+end;
+
+procedure EmitSpace(Bytes: Integer);
+begin
+  Emit('', 'ld hl,-' + Int2Str(Bytes), 'Space');
+  EmitI('add hl,sp');
+  EmitI('ld sp,hl');
+end;
+
+procedure EmitClear(Bytes: Integer);
+begin
+  Emit('', 'ld hl,' + Int2Str(Bytes), 'Clear');
+  EmitI('add hl,sp');
+  EmitI('ld sp,hl');
 end;
 
 procedure EmitRelOp(Op: TToken);
@@ -1896,7 +1935,7 @@ begin
 
     if Sym^.Kind = scVar then
       EmitLiteral(Sym^.DataType^.Value)
-    else if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType] then
+    else if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType] then
       EmitLiteral(Sym^.Value)
     else
       Error('Cannot apply SizeOf to ' + Sym^.Name);
@@ -1989,7 +2028,7 @@ begin
     else if Sym^.Kind = scFunc then
     begin
       T := Sym^.DataType; (* Type = Type(func) *)
-      if Sym^.Level <> 0 then EmitLiteral(0); (* Result *)
+      if Sym^.Level <> 0 then EmitSpace(T.Value); (* Result *)
       NextToken;
       ParseArguments(Sym);
       EmitCall(Sym);     
@@ -2771,8 +2810,8 @@ begin
 
   DataType := ParseTypeDef;
 
-  if (DataType^.Kind in [scArrayType, scRecordType]) and not isRef then
-    Error('Structured parameters must be passed by reference');
+  (*if (DataType^.Kind in [scArrayType, scRecordType]) and not isRef then
+    Error('Structured parameters must be passed by reference');*)
 
   while Old<>SymbolTable do
   begin

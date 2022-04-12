@@ -28,7 +28,7 @@ var
   C: Char;
 
   BeforeA: Integer;
-  A: array[100] of Integer;
+  A: TIntArray100;
   AfterA: Integer;
 
   AA: array[10] of array[10] of Integer;
@@ -515,6 +515,7 @@ end;
 procedure TestArrays;
 var
   I: Integer;
+  B: TIntArray100;
 begin
   WriteLn('--- TestArrays ---');
   
@@ -531,6 +532,68 @@ begin
     Assert(A[I] = I * I);
 
   Assert(AfterA = 32767);
+
+  B := A;
+
+  for I := 0 to 99 do
+    Assert(B[I] = A[I]);
+
+  for I := 0 to 99 do
+    B[I] := B[I] + 1;
+
+  for I := 0 to 99 do
+    Assert(B[I] = A[I] + 1);
+end;
+
+procedure SwapPointProc(var P: TPoint);
+var
+  I: Integer;
+begin
+  I := P.X;
+  P.X := P.Y;
+  P.Y := I;
+end;
+
+function SwapPointFunc(P: TPoint): TPoint;
+begin
+  SwapPointFunc.X := P.Y;
+  SwapPointFunc.Y := P.X;
+end;
+
+procedure TestRecords;
+var
+  P, Q: TPoint;
+begin
+  WriteLn('--- TestRecords ---');
+
+  P.X := 100;
+  P.Y := 200;
+
+  Assert(P.X = 100);
+  Assert(P.Y = 200);
+
+  Q := P;
+
+  P.X := 0;
+  P.Y := 0;
+
+  Assert(Q.X = 100);
+  Assert(Q.Y = 200);
+
+  P := Q;
+
+  Assert(P.X = 100);
+  Assert(P.Y = 200);
+
+  SwapPointProc(P);
+
+  Assert(P.X = 200);
+  Assert(P.Y = 100);
+
+  Q := SwapPointFunc(P);
+
+  Assert(Q.X = 100);
+  Assert(Q.Y = 200);
 end;
 
 procedure NoParamProc;
@@ -563,6 +626,8 @@ var
   end;
 
 begin
+  WriteLn('--- TestProcFunc ---');
+
   NoParamProc;
   Assert(X = 1234);
 
@@ -577,6 +642,89 @@ begin
 
   J := MulFunc(100, 200);
   Assert(J = 20000);
+end;
+
+procedure AddPoints1(P, Q: TPoint; var R: TPoint);
+begin
+  WriteLn(P.X, P.Y, Q.X, Q.Y, R.X, R.Y);
+
+  R.X := P.X + Q.X;
+  R.Y := P.Y + Q.Y;
+
+  P.X := 0;
+  P.Y := 0;
+  Q.X := 0;
+  Q.Y := 0;
+end;
+
+function AddPoints2(P, Q: TPoint): TPoint;
+begin
+  AddPoints2.X := P.X + Q.X;
+  AddPoints2.Y := P.Y + Q.Y;
+
+  P.X := 0;
+  P.Y := 0;
+  Q.X := 0;
+  Q.Y := 0;
+end;
+
+function ReverseArray(A: TIntArray100; Count: Integer): TIntArray100;
+var
+  I: Integer;
+begin
+  for I := 0 to Count - 1 do
+  begin
+    ReverseArray[I] := A[Count - I - 1];
+    A[Count - I - 1] := 0;
+  end;
+end;
+
+procedure TestComplexParams;
+var
+  P, Q, R: TPoint;
+  A, B: TIntArray100;
+  I: Integer;
+begin
+  WriteLn('--- TestComplexParams ---');
+
+  P.X := 1;
+  P.Y := 2;
+  Q.X := 3;
+  Q.Y := 4;
+
+  AddPoints1(P, Q, R);
+
+  Assert(R.X = 4);
+  Assert(R.Y = 6);
+
+  Assert(P.X = 1);
+  Assert(P.Y = 2);
+  Assert(Q.X = 3);
+  Assert(Q.Y = 4);
+
+  R.X := 0;
+  R.Y := 0;
+
+  R := AddPoints2(P, Q);
+
+  Assert(R.X = 4);
+  Assert(R.Y = 6);
+
+  Assert(P.X = 1);
+  Assert(P.Y = 2);
+  Assert(Q.X = 3);
+  Assert(Q.Y = 4);
+
+  for I := 0 to 99 do
+    A[I] :=  2 * I;
+
+  B := ReverseArray(A, 100);
+
+  for I := 0 to 99 do
+  begin
+    Assert(A[I] = 2 * I);
+    Assert(B[99 - I] = 2 * I);
+  end;
 end;
 
 procedure SwapInteger(var X, Y: Integer);
@@ -1266,13 +1414,15 @@ begin
   TestVarLocal;
   TestVarNested;
   TestArrays;
+  TestRecords;
   TestArraysOfArrays;
-
+  
   TestEnums;
   
   TestSizeOf;
 
   TestProcFunc;
+  TestComplexParams;
   TestVarParams;
   TestRecursion;
   
@@ -1294,7 +1444,4 @@ begin
   TestWriteByte;
   TestWriteString;
   TestWriteEnums;
-
-  WriteLn(Mem[0]);
-  Mem[32767] := 123;
 end.
