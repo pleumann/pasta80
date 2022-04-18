@@ -286,6 +286,548 @@ seed2=$+1
 seed1:              dw 1234
 seed2:              dw 5678
 
+; String Compare Leventhal Saville P.290
+;
+; HL string 1
+; DE string 2
+; Result: Z=1, C=0 1<2
+; Z =0, C=0 1>2
+; Z=0, C=1 1<2
+
+
+__strcmp:
+        ld      a,(hl)
+        ld      (__lens1),a
+        ld      a,(de)
+        ld      (__lens2),a
+        cp      (hl)
+        jr      c,__begcmp
+        ld      a,(hl)
+__begcmp:
+        or      a
+        jr      z,__cmplen
+        ld      b,a
+        ex      de,hl
+__cmplp:
+        inc     hl
+        inc     de
+        ld      a,(de)
+        cp      (hl)
+        ret     nz
+        djnz    __cmplp
+__cmplen:
+        ld      a,(__lens1)
+        ld      hl,__lens2
+        cp      (hl)
+        ret
+__lens1:
+        ds      1
+__lens2:
+        ds      1
+
+; String concatenate
+; HL = String 1, DE = String 2, B = max len, CF=1 if shortened
+__strcat:
+        ld      (__s1adr),hl
+        push    bc
+        ld      a,(hl)
+        ld      (__s1len),a
+        ld      c,a
+        ld      b,0
+        add     hl,bc
+        inc     hl
+        ld      a,(de)
+        ld      (__s2len),A
+        inc     de
+        pop     bc
+        ld      c,a
+        ld      a,(__s1len)
+        add     a,c
+        jr      c,__toolng
+        cp      b
+        jr      z,__lenok
+        jr      c,__lenok
+__toolng:
+        ld      a,255
+        ld      (__strgov),a
+        ld      a,(__s1len)
+        ld      c,a
+        ld      a,b
+        sub     c
+        ret     c
+        ld      (__s2len),a
+        ld      a,b
+        ld      (__s1len),a
+        jr      __docat
+__lenok:
+        ld      (__s1len),a
+        sub     a
+        ld      (__strgov),a
+__docat:
+        ld      a,(__s2len)
+        or      a
+        jr      z,__exit
+        ld      c,a
+        ld      b,0
+        ex      de,hl
+        ldir
+__exit:
+        ld      a,(__s1len)
+        ld      hl,(__s1adr)
+        ld      (hl),a
+        ld      a,(__strgov)
+        rra
+        ret
+__s1adr:
+        ds      2
+__s1len:
+        ds      1
+__s2len:
+        ds      1
+__strgov:
+        ds      1
+
+; String pos
+__strpos:
+        ld      (__string),hl
+        ex      de,hl
+        ld      a,(hl)
+        or      a
+        jr      z,__notfnd
+        inc     hl
+        ld      (__substg),hl
+        ld      (__sublen),a
+        ld      c,a
+        ld      a,(de)
+        or      a
+        jr      z,__notfnd
+        sub     c
+        jr      c,__notfnd
+        inc     a
+        ld      b,a
+        sub     a
+        ld      (__index),a
+__slp1:
+        ld      hl,__index
+        inc     (hl)
+        ld      hl,__sublen
+        ld      c,(hl)
+        ld      hl,(__string)
+        inc     hl
+        ld      (__string),hl
+        ld      de,(__substg)
+__cmplp2:
+        ld      a,(de)
+        cp      (hl)
+        jr      nz,__slp2
+        dec     c
+        jr      z,__found
+        inc     hl
+        inc     de
+        jr      __cmplp2
+__slp2:
+        djnz    __slp1
+        jr      __notfnd
+__found:
+        ld      a,(__index)
+        ret
+__notfnd:
+        sub     a
+        ret
+__string:
+        ds      2
+__substg:
+        ds      2
+__slen:
+        ds      1
+__sublen:
+        ds      1
+__index:
+        ds      1
+
+
+; strcpy
+__strcpy:
+        ld      (__maxlen),a
+        sub     a
+        ld      (de),a
+        ld      (__cpyerr),a
+        or      b
+        ret     z
+        ld      a,(__maxlen)
+        or      a
+        jr      z,__erexit
+        ld      a,c
+        or      a
+        jr      z,__erexit
+        ld      a,(hl)
+        cp      c
+        ret     c
+        ld      a,c
+        add     a,b
+        jr      c,__recalc
+        dec     a
+        cp      (hl)
+        jr      c,__cnt1ok
+        jr      z,__cnt1ok
+__recalc:
+        ld      a,255
+        ld      (__cpyerr),a
+        ld      a,(hl)
+        sub     c
+        inc     a
+        ld      b,a
+__cnt1ok:
+        ld      a,(__maxlen)
+        cp      b
+        jr      nc,__cnt2ok
+        ld      b,a
+        ld      a,255
+        ld      (__cpyerr),a
+__cnt2ok:
+        ld      a,b
+        or      a
+        jr      z,__erexit
+        ld      b,0
+        add     hl,bc
+        ld      (de),a
+        ld      c,a
+        inc     de
+        ldir
+        ld      a,(__cpyerr)
+__okexit:
+        or      a
+        ret     z
+__erexit:
+        scf
+        ret
+__maxlen:
+        ds      1
+__cpyerr:
+        ds      1
+
+;Insert
+__strins:
+        sub     a
+        ld      (__inserr),a
+        ld      a,(de)
+        or      a
+        ret     z
+__idx0:
+        ld      a,c
+        or      a
+        scf
+        ret     z
+__chklen:
+        ld      a,(de)
+        add     a,(hl)
+        jr      c,__trunc
+        cp      b
+        ld      a,(de)
+        jr      c,__idxlen
+        jr      z,__idxlen
+__trunc:
+        ld      a,255
+        ld      (__inserr),a
+        ld      a,b
+        sub     (hl)
+        ret     c
+        scf
+        ret     z
+__idxlen:
+        ld      b,a
+        ld      a,(hl)
+        cp      c
+        jr      nc,__lenok2
+        ld      c,a
+        add     a,b
+        ld      (hl),a
+        ex      de,hl
+        ld      a,c
+        inc     a
+        add     a,e
+        ld      e,a
+        jr      nc,__idxl1
+        inc     d
+__idxl1:
+        ld      a,255
+        ld      (__inserr),a
+        jr      __mvesub
+__lenok2:
+        push    bc
+        push    de
+        ld      e,a
+        ld      d,0
+        add     a,b
+        ld      (hl),a
+        ld      a,e
+        sub     c
+        inc     a
+        add     hl,de
+        ld      e,l
+        ld      d,h
+        ld      c,b
+        ld      b,0
+        add     hl,bc
+        ex      de,hl
+        ld      c,a
+        lddr
+        ex      de,hl
+        inc     de
+        pop     hl
+        pop     bc
+__mvesub:
+        inc     hl
+        ld      c,b
+        ld      b,0
+        ldir
+        ld      a,(__inserr)
+        rra
+        ret
+__inserr:
+        ds      1
+
+; Delete
+__strdel:
+        sub     a
+        ld      (__delerr),a
+        or      b
+        ret     z
+        ld      a,c
+        or      a
+        scf
+        ret     z
+        ld      a,(hl)
+        cp      c
+        ret     c
+        ld      a,c
+        add     a,b
+        jr      c,__trunc2
+        ld      e,a
+        dec     a
+        cp      (hl)
+        jr      c,__cntok
+        jr      z,__trunc2
+        ld      a,255
+        ld      (__delerr),a
+__trunc2:
+        ld      a,c
+        dec     a
+        ld      (hl),a
+        ld      a,(__delerr)
+        rra
+        ret
+__cntok:
+        ld      a,(hl)
+        ld      d,a
+        sub     b
+        ld      (hl),a
+        ld      a,d
+        sub     e
+        inc     a
+        push    hl
+        ld      b,0
+        add     hl,bc
+        ex      (sp),hl
+        ld      d,0
+        add     hl,de
+        pop     de
+        ld      c,a
+        ldir
+__okexit2:
+        or      a
+        ret
+__delerr:
+        ds      1        
+;
+; String "equal" check. Arguments and result on stack.
+;
+; Entry:    -
+; Exit:     -
+; Uses:     HL,DE,BC,AF
+;
+__streq:
+        ld      hl,514
+        add     hl,sp
+        push    hl
+        dec     h
+        ld      de,hl
+        dec     h
+        ld      a,(de)
+        cp      (hl)
+        jr      nz,__streq0     ; Fast track if lengths differ
+        call    __strcmp
+        jr      z,__streq1
+__streq0:
+        pop     hl
+        ld      de,0
+        ld      (hl),de
+        ret
+__streq1:
+        pop     hl
+        ld      de,1
+        ld      (hl),de
+        ret
+
+;
+; String "less than" check. Arguments and result on stack.
+;
+; Entry:    -
+; Exit:     -
+; Uses:     HL,DE,BC,AF
+;
+__strlt:
+        ld      hl,514
+        add     hl,sp
+        push    hl
+        dec     h
+        ld      de,hl
+        dec     d
+        call    __strcmp
+        pop     hl
+        jr      c,__strlt1
+__strlt0:
+        ld      de,0
+        ld      (hl),de
+        ret
+__strlt1:
+        ld      de,1
+        ld      (hl),de
+        ret
+
+;
+; String "less than or equal" check. Arguments and result on stack.
+;
+; Entry:    -
+; Exit:     -
+; Uses:     HL,DE,BC,AF
+;
+__strleq:
+        ld      hl,514
+        add     hl,sp
+        push    hl
+        dec     h
+        ld      de,hl
+        dec     d
+        call    __strcmp
+        pop     hl
+        jr      z,__strleq1
+        jr      c,__strleq1
+__strleq0:
+        ld      de,0
+        ld      (hl),de
+        ret
+__strleq1:
+        ld      de,1
+        ld      (hl),de
+        ret
+
+; Concat
+__concat:
+        ld      hl,514
+        add     hl,sp
+        ld      (hl),0
+        ld      de,hl
+        dec     d
+        push    hl
+        push    de
+        ld      b,255
+        call    __strcat
+        pop     de
+        dec     d
+        pop     hl
+        ld      b,255
+        call    __strcat
+        ret
+
+; Concat
+__stradd:
+        ld      hl,258
+        add     hl,sp
+        ld      de,hl
+        dec     d
+        ld      b,255
+        call    __strcat
+        ret
+
+__pos:
+        ld      hl,514
+        add     hl,sp
+        push    hl
+        dec     h
+        ld      de,hl
+        dec     d
+        ex      de,hl
+        call    __strpos
+        pop     hl
+        ld      (hl),a
+        inc     hl
+        ld      (hl),0
+        ret
+
+__copy:
+        ld      hl,2
+        add     hl,sp
+        ld      b,(hl)
+        inc     hl
+        inc     hl
+        ld      c,(hl)
+        inc     hl
+        inc     hl
+        ld      de,hl
+        inc     d
+        ld      a,255
+        call    __strcpy
+        ret
+
+__insert:
+        ld      hl,2
+        add     hl,sp
+        ld      c,(hl)
+        inc     hl
+        inc     hl
+        ld      a,(hl)
+        inc     hl
+        ld      de,hl
+        ld      h,(hl)
+        ld      l,a
+        inc     de
+
+        ld      b,255
+        call    __strins
+        ret
+
+__delete:
+        ld      hl,2
+        add     hl,sp
+        ld      b,(hl)
+        inc     hl
+        inc     hl
+        ld      c,(hl)
+        inc     hl
+        inc     hl
+        ld      a,(hl)
+        inc     hl
+        ld      h,(hl)
+        ld      l,a
+        call    __strdel
+        ret
+;
+; String length. Arguments and result on stack.
+;
+; Entry:    -
+; Exit:     -
+; Uses:     HL,DE
+;
+__length:
+        ld      hl,2
+        add     hl,sp
+        ld      d,0
+        ld      e,(hl)
+        inc     h
+        ld      (hl),de
+        ret
+
 ;
 ; Print character to screen
 ;

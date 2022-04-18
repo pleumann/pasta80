@@ -1388,6 +1388,141 @@ begin
   Assert(SizeOf(GlobalIntArray) = 200);
 end;
 
+procedure TestStrings;
+type
+  TStr255 = string[255];
+  TStr15  = string[15];
+  TStr0   = string[0];
+
+  TStringArray = array[8] of String[31];
+
+var
+  MyStr255: TStr255;
+  MyStr15: TStr15;
+  MyStr0: TStr0;
+  S, T: String;
+  I: Integer;
+
+  A: TStringArray;
+
+  function ReverseFunc(S: TStr255): TStr255;
+  var
+    I, L: Integer;
+  begin
+    ReverseFunc[0] := S[0];
+    L := Length(S);
+    for I := 1 to L do
+      ReverseFunc[I] := S[L - I + 1];
+  end;
+
+  procedure ReverseProc(var S: TStr255);
+  var
+    I, L: Integer;
+    C: Char;
+  begin
+    L := Length(S);
+    for I := 1 to L / 2 do
+    begin
+      C := S[I];
+      S[I] := S[L - I + 1];
+      S[L - I + 1] := C;
+    end;
+  end;
+
+begin
+  WriteLn('--- TestStrings ---');
+  WriteLn;
+
+  Assert(SizeOf(TStr255) = 256);
+  Assert(SizeOf(TStr15) = 16);
+  Assert(SizeOf(TStr0) = 1);
+
+  Assert(SizeOf(MyStr255) = 256);
+  Assert(SizeOf(MyStr15) = 16);
+  Assert(SizeOf(MyStr0) = 1);
+
+  MyStr255 := 'Hello, ZX Spectrum Next!';
+  Assert(Length(MyStr255) = 24);
+  
+  MyStr15 := 'Hello, ZX Spectrum Next!';
+  Assert(Length(MyStr15) = 15);
+
+  MyStr0 := 'Hello, ZX Spectrum Next!';
+  Assert(Length(MyStr0) = 0);
+
+  Assert('ZX Spectrum' = 'ZX Spectrum');
+  Assert('ZX Spectrum' <> 'ZX Spectrum+');
+
+  Assert('ZX Spectrum' < 'ZX Spectrum+');
+  Assert('ZX Spectrum' <= 'ZX Spectrum+');
+  Assert('ZX Spectrum' <= 'ZX Spectrum');
+
+  Assert('ZX Spectrum 128' > 'ZX Spectrum');
+  Assert('ZX Spectrum 128' >= 'ZX Spectrum');
+  Assert('ZX Spectrum 128' >= 'ZX Spectrum 128');
+
+  S := 'ZX 80';
+  Assert(S[5] = '0');
+  S[5] := '1';
+  Assert(S = 'ZX 81');
+
+  S := 'ZX Spectrum';
+  T := ReverseFunc(S);
+
+  Assert(T <> S);
+  Assert(T = 'murtcepS XZ');
+  Assert(ReverseFunc(T) = S);
+
+  T := S;
+  ReverseProc(T);
+  Assert(T <> S);
+  Assert(T = 'murtcepS XZ');
+  ReverseProc(T);
+  Assert(T = S);
+
+  Assert(('ZX' + ' Spectrum ' + 'Next') = 'ZX Spectrum Next');
+
+  Assert(Concat('ZX', Concat(' Spectrum ', 'Next')) = 'ZX Spectrum Next');
+
+  Assert(Copy(S, 5, 0) = '');
+  Assert(Copy(S, 1, 2) = 'ZX');
+  Assert(Copy(S, 4, 10) = 'Spectrum');
+  Assert(Copy(S, 1, 255) = 'ZX Spectrum');
+
+  Assert(Pos('Spectrum', 'ZX Spectrum Next') = 4);
+  Assert(Pos('Sinclair', 'ZX Spectrum Next') = 0);
+
+  S := 'ZX Next';
+  Insert('Spectrum ', S, 4);
+  Assert(S = 'ZX Spectrum Next');
+
+  Delete(S, 12, 5);
+  Assert(S = 'ZX Spectrum');
+
+  A[7] := 'ZX Spectrum+';
+  A[6] := 'ZX Spectrum 128 +3';
+  A[5] := 'ZX Spectrum Next';
+  A[4] := 'ZX 81';
+  A[3] := 'ZX Spectrum 128';
+  A[2] := 'ZX 80';
+  A[1] := 'ZX Spectrum';
+  A[0] := 'ZX Spectrum 128 +2';
+
+  for I := 0 to 7 do
+    WriteLn(A[I]);
+
+  Assert(A[7] = 'ZX Spectrum+');
+  Assert(A[6] = 'ZX Spectrum 128 +3');
+  Assert(A[5] = 'ZX Spectrum Next');
+  Assert(A[4] = 'ZX 81');
+  Assert(A[3] = 'ZX Spectrum 128');
+  Assert(A[2] = 'ZX 80');
+  Assert(A[1] = 'ZX Spectrum');
+  Assert(A[0] = 'ZX Spectrum 128 +2');
+
+  WriteLn;
+end;
+
 begin
   TestComment;
 
@@ -1416,9 +1551,11 @@ begin
   TestArrays;
   TestRecords;
   TestArraysOfArrays;
-  
+
   TestEnums;
-  
+
+  TestStrings;
+
   TestSizeOf;
 
   TestProcFunc;

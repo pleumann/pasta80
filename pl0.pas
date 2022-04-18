@@ -295,7 +295,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -434,9 +434,12 @@ begin
   Sym2 := SymbolTable;
   while I > 0 do
   begin
+    if Sym2^.Kind = scVar then
+    begin
     Sym^.ArgTypes[I-1] := Sym2^.DataType;
     Sym^.ArgIsRef[I-1] := Sym2^.IsRef;
     I := I - 1;
+    end;
     Sym2 := Sym2^.Prev;
   end;
 
@@ -456,6 +459,7 @@ begin
   Sym^.Kind := Kind;
   Sym^.Name := Name;
   Sym^.Level := Level;
+  Sym^.Value := 0;
   Sym^.Prev := SymbolTable;
   Sym^.Bounds := Bounds;
   Sym^.Tag := '';
@@ -565,8 +569,9 @@ begin
   dtChar^.Value := 1;
   dtByte := RegisterType('Byte', 1);
   dtByte^.Value := 1;
-  dtString := RegisterType('String', 2);
-  dtString^.Value := 2;
+
+  dtString := CreateSymbol(scStringType, 'String', 256);
+  dtString^.Value := 256;
 
   Sym := CreateSymbol(scArrayType, '', 65536);
   Sym^.DataType := dtByte;
@@ -596,6 +601,46 @@ begin
 
   SuccFunc := RegisterBuiltIn(scFunc, 'Succ', 1, '');
   SuccFunc^.IsMagic := True;
+
+  Sym := RegisterBuiltIn(scFunc, 'Length', 1, '__length');
+  Sym^.ArgTypes[0] := dtString;
+  Sym^.DataType := dtInteger;
+  Sym^.IsStdCall := True;
+
+  Sym := RegisterBuiltIn(scFunc, 'Concat', 2, '__concat');
+  Sym^.ArgTypes[0] := dtString;
+  Sym^.ArgTypes[1] := dtString;
+  Sym^.DataType := dtString;
+  Sym^.IsStdCall := True;
+
+  Sym := RegisterBuiltIn(scFunc, 'Pos', 2, '__pos');
+  Sym^.ArgTypes[0] := dtString;
+  Sym^.ArgTypes[1] := dtString;
+  Sym^.DataType := dtInteger;
+  Sym^.IsStdCall := True;
+
+  Sym := RegisterBuiltIn(scFunc, 'Copy', 3, '__copy');
+  Sym^.ArgTypes[0] := dtString;
+  Sym^.ArgTypes[1] := dtInteger;
+  Sym^.ArgTypes[2] := dtInteger;
+  Sym^.DataType := dtString;
+  Sym^.IsStdCall := True;
+
+  Sym := RegisterBuiltIn(scProc, 'Insert', 3, '__insert');
+  Sym^.ArgTypes[0] := dtString;
+  Sym^.ArgTypes[1] := dtString;
+  Sym^.ArgTypes[1].IsRef := True;
+  Sym^.ArgIsRef[1] := True;
+  Sym^.ArgTypes[2] := dtInteger;
+  Sym^.IsStdCall := True;
+
+  Sym := RegisterBuiltIn(scProc, 'Delete', 3, '__delete');
+  Sym^.ArgTypes[0] := dtString;
+  Sym^.ArgTypes[0].IsRef := True;
+  Sym^.ArgIsRef[0] := True;
+  Sym^.ArgTypes[1] := dtInteger;
+  Sym^.ArgTypes[2] := dtInteger;
+  Sym^.IsStdCall := True;
 
   Sym := RegisterBuiltIn(scProc, 'Poke', 2, '__poke');
   Sym^.ArgTypes[0] := dtInteger;
@@ -648,7 +693,8 @@ type
             toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
             toAnd, toOr, toXor, toNot, toMod,
             toArray, toOf,
-            toProgram, toBegin, toEnd, toConst, toType, toVar, toRecord, toProcedure, toFunction,
+            toProgram, toBegin, toEnd, toConst, toType, toVar,
+            toStringKw, toRecord, toProcedure, toFunction,
             toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
@@ -669,7 +715,8 @@ const
             ':=', ',', ':', ';', '.', '..',
             'and', 'or', 'xor', 'not', 'mod',
             'array', 'of',
-            'program', 'begin', 'end', 'const', 'type', 'var', 'record', 'procedure', 'function',
+            'program', 'begin', 'end', 'const', 'type', 'var',
+            'string', 'record', 'procedure', 'function',
             'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
@@ -1450,6 +1497,20 @@ end;
 
 procedure EmitLoad(DataType: PSymbol);
 begin
+  if DataType^.Kind = scStringType then
+  begin
+    EmitI('pop de');
+    EmitI('ld hl,-256');
+    EmitI('add hl,sp');
+    EmitI('ld sp,hl');
+    EmitI('ex hl,de');
+    EmitI('ld b,0');
+    EmitI('ld c,(hl)');
+    EmitI('inc c');
+    EmitI('ldir');
+    Exit;
+  end;
+
   case DataType^.Value of
     1: begin
           EmitI('pop hl');
@@ -1476,7 +1537,36 @@ begin
 end;
 
 procedure EmitStore(DataType: PSymbol);
+var
+  Tag, Len: String;
 begin
+  if DataType^.Kind = scStringType then
+begin
+    Tag := GetLabel('ok');
+    Len := Int2Str(DataType^.Value - 1);
+
+    EmitI('ld hl,0');
+    EmitI('add hl,sp');
+    EmitI('ld a,(hl)');
+    EmitI('cp ' + Len);
+    EmitI('jp c,' + Tag);
+    EmitI('ld a,' + Len);
+    EmitI('ld (hl),a');
+    Emit(Tag, '', '');
+    EmitI('inc a');
+    EmitI('inc h');
+    EmitI('ld de,(hl)');
+    EmitI('dec h');
+    EmitI('ld b,0');
+    EmitI('ld c,a');
+    EmitI('ldir');
+
+    EmitI('inc hl');
+    EmitI('inc hl');
+    EmitI('ld sp,hl');
+    Exit;
+  end;
+
   case DataType^.Value of
     1: begin
           EmitI('pop de');
@@ -1551,6 +1641,28 @@ begin
   Emit('', 'ld h,0', '');
   Emit('', 'ld l,a', '');
   Emit('', 'push hl', '');
+end;
+
+procedure EmitUnOp(Op: TToken; DataType: PSymbol); forward;
+
+procedure EmitStrOp(Op: TToken);
+var
+  Invert: Boolean;
+begin
+//  EmitI('pop de');
+//  EmitI('pop hl');
+
+  Invert := (Op = toNeq) or (Op = toGt) or (Op = toGeq);
+
+  case Op of
+    toEq, toNeq: EmitI('call __streq');
+    toLt, toGeq: EmitI('call __strlt');
+    toGt, toLeq: EmitI('call __strleq');
+  end;
+
+  EmitClear(512);
+
+  if Invert then EmitUnOp(toNot, dtBoolean);
 end;
 
 procedure EmitJump(Target: String);
@@ -1684,22 +1796,34 @@ end;
 
 procedure EmitWrite(DataType: PSymbol);
 begin
-  Emit('', 'pop hl', '');
   if (DataType = dtInteger) or (DataType = dtByte) then
-    EmitI('call __putn')
+  begin
+    Emit('', 'pop hl', '');
+    EmitI('call __putn');
+  end
   else if DataType = dtBoolean then
+  begin
+    Emit('', 'pop hl', '');
     EmitI('call __putb')
+  end
   else if DataType = dtChar then
   begin
+    Emit('', 'pop hl', '');
     EmitI('ld a,l');
     EmitI('call __putc');
   end
-  else if DataType = dtString then
+  else if DataType^.Kind = scStringType then
   begin
+    EmitI('ld hl,0');
+    EmitI('add hl,sp');
     EmitI('call __puts');
+    EmitI('ld hl,256');
+    EmitI('add hl,sp');
+    EmitI('ld sp,hl');
   end
   else if DataType^.Kind = scEnumType then
   begin
+    Emit('', 'pop hl', '');
     EmitI('ld de,' + DataType^.Tag);
     EmitI('add hl,hl');
     EmitI('add hl,de');
@@ -1758,6 +1882,9 @@ type
  *)
 function TypeCheck(Left, Right: PSymbol; Check: TTypeCheck): PSymbol;
 begin
+  if Left = nil then Error('Error in TypeCheck: Left = nil');
+  if Right = nil then Error('Error in TypeCheck: Right = nil');
+
   if Left = Right then
   begin
     TypeCheck := Left;
@@ -1766,6 +1893,12 @@ begin
 
   if Check = tcExpr then
   begin
+    if (Left^.Kind = scStringType) and (Right^.Kind = scStringType) then
+    begin
+      TypeCheck := dtString;
+      Exit;
+    end;
+
     if (Left = dtInteger) and (Right = dtByte) or (Left = dtByte) and (Right = dtInteger) then
     begin
       TypeCheck := dtInteger;
@@ -1774,6 +1907,12 @@ begin
   end
   else if Check = tcAssign then
   begin
+    if (Left^.Kind = scStringType) and (Right^.Kind = scStringType) then
+    begin
+      TypeCheck := Left;
+      Exit;
+    end;
+
     if (Left = dtInteger) and (Right = dtByte) then
     begin
       TypeCheck := dtInteger;
@@ -1804,9 +1943,8 @@ begin
   begin
     if Scanner.Token = toLBrack then
     begin
-      if DataType^.Kind <> scArrayType then
-        Error('Not an array');
-
+      if DataType^.Kind = scArrayType then
+      begin
       NextToken;
 
       TypeCheck(dtInteger, ParseExpression(), tcExpr);
@@ -1826,6 +1964,17 @@ begin
         end;
       end;
       EmitBinOp(toAdd, dtInteger);
+      end
+      else if DataType^.Kind = scStringType then
+      begin
+        NextToken;
+
+        TypeCheck(dtInteger, ParseExpression(), tcExpr);
+
+        DataType := dtChar;
+        EmitBinOp(toAdd, dtInteger);
+      end
+      else Error('Not an array or a string');
       
       Expect(toRBrack);
 
@@ -1937,7 +2086,7 @@ begin
 
     if Sym^.Kind = scVar then
       EmitLiteral(Sym^.DataType^.Value)
-    else if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType] then
+    else if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType] then
       EmitLiteral(Sym^.Value)
     else
       Error('Cannot apply SizeOf to ' + Sym^.Name);
@@ -2064,6 +2213,7 @@ begin
       Tag := AddString(Scanner.StrValue);
       EmitI('ld hl,' + Tag);
       EmitI('push hl');
+      EmitLoad(T);
     end;
     NextToken;
   end
@@ -2168,7 +2318,18 @@ begin
       NextToken;
       T := TypeCheck(T, ParseTerm, tcExact);
       EmitBinOp(Op, T);
+    end
+  else if T = dtString then
+    while Scanner.Token = toAdd do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := TypeCheck(T, ParseTerm, tcExact);
+      EmitI('call __stradd');
+      EmitClear(256);
     end;
+
+(* TODO Error case? *)
 
   (* WriteLn('Type of SimpleExpression is ', T); *)
 
@@ -2189,8 +2350,11 @@ begin
       * ii ib bi bb zz cc 
       *)
     TypeCheck(T, ParseSimpleExpression, tcExpr); // Check type, but ignore result.
+    if T^.Kind = scStringType then
+      EmitStrOp(Op)
+    else
+      EmitRelOp(Op);
     T := dtBoolean;                       // We know it will be Boolean.
-    EmitRelOp(Op);
   end;
 
   (* WriteLn('Type of Expression is ', T); *)
@@ -2666,6 +2830,23 @@ begin
     DataType^.DataType := ParseTypeDef();
     DataType^.Value := DataType^.Bounds * DataType^.DataType^.Value;
   end
+  else if Scanner.Token = toStringKW then
+  begin
+    NextToken;
+
+    DataType := CreateSymbol(scStringType, '', 0);
+
+    if Scanner.Token = toLBrack then
+    begin
+      NextToken;
+      Expect(toNumber);
+      DataType^.Value := Scanner.NumValue + 1;
+      NextToken;
+      Expect(toRBrack);
+      NextToken;
+    end
+    else DataType^.Value := 256;
+  end
   else if Scanner.Token = toRecord then
   begin
     DataType := CreateSymbol(scRecordType, '', 0);
@@ -2717,7 +2898,7 @@ begin
 
     if DataType = nil then
       Error('Type not found: ' + Scanner.StrValue);
-    if not (DataType^.Kind in [scType, scArrayType, scRecordType, scEnumType]) then
+    if not (DataType^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType]) then
       Error('Not a type: ' + Scanner.StrValue);
 
     NextToken;
@@ -2898,7 +3079,7 @@ begin
     if Token = toFunction then
     begin
       CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
-      SetDataType(SymbolTable, dtInteger, 0);
+      //SetDataType(SymbolTable, dtInteger, 0);
       ResVar := SymbolTable;
     end;
     NextToken; 
