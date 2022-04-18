@@ -786,8 +786,8 @@ begin
           C := GetChar;
           if C = '''' then
           begin
-            StrValue := StrValue + '''';
             C := GetChar;
+            if S = '''' then StrValue := StrValue + '''';
           end
           else
           begin

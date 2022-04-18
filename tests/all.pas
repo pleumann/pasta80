@@ -1290,7 +1290,7 @@ begin
   WriteLn('(No arguments)');
   WriteLn;      (* TODO Want empty arguments here *)
   WriteLn('(Empty string)');
-  WriteLn(' '); (* TODO: Want empty string here *)
+  WriteLn('');
   WriteLn('(Some text)');
   WriteLn('The quick brown fox jumped over the lazy dog');
   WriteLn;
