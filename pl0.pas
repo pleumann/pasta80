@@ -312,6 +312,7 @@ type
     Prev, Next: PSymbol;
     IsMagic: Boolean;
     IsRef: Boolean;
+    IsStdCall: Boolean;
   end;
 
 var
@@ -544,6 +545,7 @@ begin
   Sym^.Level := 0;
   Sym^.Value := Args;
   Sym^.Tag := Tag;
+  Sym^.IsStdCall := False;
 
   RegisterBuiltIn := Sym;
 end;
@@ -1157,7 +1159,7 @@ procedure EmitCall(Sym: PSymbol);
 var
   I, J: Integer;
 begin
-  if Sym^.Level = 0 then
+  if not Sym^.IsStdCall then
   begin
     if Sym^.Value >= 3 then
       EmitI('pop bc');    
@@ -1169,7 +1171,7 @@ begin
 
   EmitI('call ' + Sym^.Tag);
 
-  if Sym^.Level = 0 then
+  if not Sym^.IsStdCall then
   begin
     if Sym^.Kind = scFunc then
       EmitI('push hl');
@@ -2028,7 +2030,7 @@ begin
     else if Sym^.Kind = scFunc then
     begin
       T := Sym^.DataType; (* Type = Type(func) *)
-      if Sym^.Level <> 0 then EmitSpace(T.Value); (* Result *)
+      if Sym^.IsStdCall then EmitSpace(T.Value); (* Result *)
       NextToken;
       ParseArguments(Sym);
       EmitCall(Sym);     
@@ -2891,6 +2893,7 @@ begin
       NewSym^.Tag := GetLabel('func');
     end;
 
+    NewSym^.IsStdCall := True;
     OpenScope;
     if Token = toFunction then
     begin
