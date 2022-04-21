@@ -647,10 +647,8 @@ __delerr:
 ; Uses:     HL,DE,BC,AF
 ;
 __streq:
-        ld      hl,514
+        ld      hl,258
         add     hl,sp
-        push    hl
-        dec     h
         ld      de,hl
         dec     h
         ld      a,(de)
@@ -659,14 +657,13 @@ __streq:
         call    __strcmp
         jr      z,__streq1
 __streq0:
-        pop     hl
         ld      de,0
-        ld      (hl),de
+;        ld      (hl),de
         ret
 __streq1:
-        pop     hl
         ld      de,1
-        ld      (hl),de
+;        ld      (hl),de
+;        ld      a,1
         ret
 
 ;
@@ -677,22 +674,21 @@ __streq1:
 ; Uses:     HL,DE,BC,AF
 ;
 __strlt:
-        ld      hl,514
+        ld      hl,258
         add     hl,sp
-        push    hl
-        dec     h
         ld      de,hl
         dec     d
         call    __strcmp
-        pop     hl
         jr      c,__strlt1
 __strlt0:
+;        ld      a,0
         ld      de,0
-        ld      (hl),de
+;        ld      (hl),de
         ret
 __strlt1:
         ld      de,1
-        ld      (hl),de
+;        ld      (hl),de
+;        ld      a,1
         ret
 
 ;
@@ -703,23 +699,22 @@ __strlt1:
 ; Uses:     HL,DE,BC,AF
 ;
 __strleq:
-        ld      hl,514
+        ld      hl,258
         add     hl,sp
-        push    hl
-        dec     h
         ld      de,hl
         dec     d
         call    __strcmp
-        pop     hl
         jr      z,__strleq1
         jr      c,__strleq1
 __strleq0:
         ld      de,0
-        ld      (hl),de
+;        ld      (hl),de
+;        ld      a,0
         ret
 __strleq1:
         ld      de,1
-        ld      (hl),de
+;        ld      (hl),de
+;        ld      a,1
         ret
 
 ; Concat

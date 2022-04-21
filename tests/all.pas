@@ -1170,6 +1170,13 @@ begin
 
   Assert(I = 24);
   Assert(J = 8);
+
+  K := 0;
+  for I := 10 downto 1 do
+    for J := 0 to I - 1 do
+      K := K + I * J;
+
+  WriteLn(K);
 end;
 
 procedure TestForBoolean;
@@ -1391,6 +1398,7 @@ end;
 procedure TestStrings;
 type
   TStr255 = string[255];
+  TStr31  = string[31];
   TStr15  = string[15];
   TStr0   = string[0];
 
@@ -1402,7 +1410,6 @@ var
   MyStr0: TStr0;
   S, T: String;
   I: Integer;
-
   A: TStringArray;
 
   function ReverseFunc(S: TStr255): TStr255;
@@ -1429,6 +1436,36 @@ var
     end;
   end;
 
+  procedure SwapString(var S, T: TStr31);
+  var
+    U: String[31];
+  begin
+    U := S;
+    S := T;
+    T := U;
+  end;
+
+  procedure Sort(var A: TStringArray; Count: Integer);
+  var
+    I, J: Integer;
+    T: String;
+    Changed: Boolean;
+  begin
+    for I := Count - 1 downto 1 do
+    begin
+      Changed := False;
+      for J := 0 to I - 1 do
+      begin
+        if A[J] > A[J + 1] then
+        begin
+          SwapString(A[J], A[J + 1]);
+          Changed := True;
+        end;
+      end;
+      if not Changed then Exit;
+    end;
+  end;
+
 begin
   WriteLn('--- TestStrings ---');
   WriteLn;
@@ -1450,11 +1487,15 @@ begin
   MyStr0 := 'Hello, ZX Spectrum Next!';
   Assert(Length(MyStr0) = 0);
 
-  Assert('ZX Spectrum' = 'ZX Spectrum');
-  Assert('ZX Spectrum' <> 'ZX Spectrum+');
+  S := 'XYZ';
+  Assert(Length(S) = 3);
+  Assert(Ord(S[0]) = 3);
 
-  Assert('ZX Spectrum' < 'ZX Spectrum+');
-  Assert('ZX Spectrum' <= 'ZX Spectrum+');
+  Assert('ZX Spectrum' = 'ZX Spectrum');
+  Assert('ZX Spectrum' <> 'ZX Spectrum +');
+
+  Assert('ZX Spectrum' < 'ZX Spectrum +');
+  Assert('ZX Spectrum' <= 'ZX Spectrum +');
   Assert('ZX Spectrum' <= 'ZX Spectrum');
 
   Assert('ZX Spectrum 128' > 'ZX Spectrum');
@@ -1466,7 +1507,46 @@ begin
   S[5] := '1';
   Assert(S = 'ZX 81');
 
-  S := 'ZX Spectrum';
+  A[7] := 'ZX Spectrum +';
+  A[6] := 'ZX Spectrum 128 +3';
+  A[5] := 'ZX Spectrum Next';
+  A[4] := 'ZX 81';
+  A[3] := 'ZX Spectrum 128';
+  A[2] := 'ZX 80';
+  A[1] := 'ZX Spectrum';
+  A[0] := 'ZX Spectrum 128 +2';
+
+  Assert(A[7] = 'ZX Spectrum +');
+  Assert(A[6] = 'ZX Spectrum 128 +3');
+  Assert(A[5] = 'ZX Spectrum Next');
+  Assert(A[4] = 'ZX 81');
+  Assert(A[3] = 'ZX Spectrum 128');
+  Assert(A[2] = 'ZX 80');
+  Assert(A[1] = 'ZX Spectrum');
+  Assert(A[0] = 'ZX Spectrum 128 +2');
+
+  for I := 0 to 7 do
+    WriteLn('#', I, ': ', A[I]);
+
+  WriteLn;
+  WriteLn('Sorting...');
+  WriteLn;
+
+  Sort(A, 8);
+  
+  for I := 0 to 7 do
+    WriteLn('#', I, ': ', A[I]);
+
+  Assert(A[7] = 'ZX Spectrum Next');
+  Assert(A[6] = 'ZX Spectrum 128 +3');
+  Assert(A[5] = 'ZX Spectrum 128 +2');
+  Assert(A[4] = 'ZX Spectrum 128');
+  Assert(A[3] = 'ZX Spectrum +');
+  Assert(A[2] = 'ZX Spectrum');
+  Assert(A[1] = 'ZX 81');
+  Assert(A[0] = 'ZX 80');
+
+ S := 'ZX Spectrum';
   T := ReverseFunc(S);
 
   Assert(T <> S);
@@ -1498,27 +1578,6 @@ begin
 
   Delete(S, 12, 5);
   Assert(S = 'ZX Spectrum');
-
-  A[7] := 'ZX Spectrum+';
-  A[6] := 'ZX Spectrum 128 +3';
-  A[5] := 'ZX Spectrum Next';
-  A[4] := 'ZX 81';
-  A[3] := 'ZX Spectrum 128';
-  A[2] := 'ZX 80';
-  A[1] := 'ZX Spectrum';
-  A[0] := 'ZX Spectrum 128 +2';
-
-  for I := 0 to 7 do
-    WriteLn(A[I]);
-
-  Assert(A[7] = 'ZX Spectrum+');
-  Assert(A[6] = 'ZX Spectrum 128 +3');
-  Assert(A[5] = 'ZX Spectrum Next');
-  Assert(A[4] = 'ZX 81');
-  Assert(A[3] = 'ZX Spectrum 128');
-  Assert(A[2] = 'ZX 80');
-  Assert(A[1] = 'ZX Spectrum');
-  Assert(A[0] = 'ZX Spectrum 128 +2');
 
   WriteLn;
 end;

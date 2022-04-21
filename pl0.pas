@@ -436,9 +436,9 @@ begin
   begin
     if Sym2^.Kind = scVar then
     begin
-    Sym^.ArgTypes[I-1] := Sym2^.DataType;
-    Sym^.ArgIsRef[I-1] := Sym2^.IsRef;
-    I := I - 1;
+      Sym^.ArgTypes[I-1] := Sym2^.DataType;
+      Sym^.ArgIsRef[I-1] := Sym2^.IsRef;
+      I := I - 1;
     end;
     Sym2 := Sym2^.Prev;
   end;
@@ -1506,7 +1506,7 @@ begin
     EmitI('ex hl,de');
     EmitI('ld b,0');
     EmitI('ld c,(hl)');
-    EmitI('inc c');
+    EmitI('inc bc');
     EmitI('ldir');
     Exit;
   end;
@@ -1541,31 +1541,31 @@ var
   Tag, Len: String;
 begin
   if DataType^.Kind = scStringType then
-begin
-    Tag := GetLabel('ok');
-    Len := Int2Str(DataType^.Value - 1);
+  begin
+      Tag := GetLabel('ok');
+      Len := Int2Str(DataType^.Value - 1);
 
-    EmitI('ld hl,0');
-    EmitI('add hl,sp');
-    EmitI('ld a,(hl)');
-    EmitI('cp ' + Len);
-    EmitI('jp c,' + Tag);
-    EmitI('ld a,' + Len);
-    EmitI('ld (hl),a');
-    Emit(Tag, '', '');
-    EmitI('inc a');
-    EmitI('inc h');
-    EmitI('ld de,(hl)');
-    EmitI('dec h');
-    EmitI('ld b,0');
-    EmitI('ld c,a');
-    EmitI('ldir');
+      EmitI('ld hl,0');
+      EmitI('add hl,sp');
+      EmitI('ld a,' + Len);
+      EmitI('cp (hl)');
+      EmitI('jp nc,' + Tag);
+      EmitI('ld (hl),a');
+      Emit(Tag, '', '');
+      //EmitI('inc a');
+      EmitI('inc h');
+      EmitI('ld de,(hl)');
+      EmitI('dec h');
+      EmitI('ld b,0');
+      EmitI('ld c,a');
+      EmitI('inc bc');
+      EmitI('ldir');
 
-    EmitI('inc hl');
-    EmitI('inc hl');
-    EmitI('ld sp,hl');
-    Exit;
-  end;
+      EmitI('ld hl,258');
+      EmitI('add hl,sp');
+      EmitI('ld sp,hl');
+      Exit;
+    end;
 
   case DataType^.Value of
     1: begin
@@ -1662,6 +1662,7 @@ begin
 
   EmitClear(512);
 
+  EmitI('push de');
   if Invert then EmitUnOp(toNot, dtBoolean);
 end;
 
@@ -2972,7 +2973,7 @@ end;
 
 procedure ParseParamList(IsRef: Boolean);
 var
-  Old: PSymbol;
+  Old, Sym: PSymbol;
   DataType: PSymbol;
   Low, High: Integer;
 begin
@@ -2991,18 +2992,26 @@ begin
   Expect(toColon);
   NextToken;
 
-  DataType := ParseTypeDef;
+  Expect(toIdent);
+
+  DataType := LookupGlobal(Scanner.StrValue);
+
+  if DataType = nil then Error('Unknown identifier');
+  if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType]) then Error('Type expected');
+
+  NextToken;
 
   (*if (DataType^.Kind in [scArrayType, scRecordType]) and not isRef then
     Error('Structured parameters must be passed by reference');*)
 
-  while Old<>SymbolTable do
+  Sym := SymbolTable;
+  while Sym<>Old do
   begin
-    Old := Old^.Next;
-    if Old^.Kind = scVar then
+    if Sym^.Kind = scVar then
     begin
-      SetDataType(Old, DataType, High - Low + 1);
+      SetDataType(Sym, DataType, High - Low + 1);
     end;
+    Sym := Sym^.Prev;
   end;
 end;
 
