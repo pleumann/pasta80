@@ -646,8 +646,6 @@ end;
 
 procedure AddPoints1(P, Q: TPoint; var R: TPoint);
 begin
-  WriteLn(P.X, P.Y, Q.X, Q.Y, R.X, R.Y);
-
   R.X := P.X + Q.X;
   R.Y := P.Y + Q.Y;
 
@@ -1176,7 +1174,7 @@ begin
     for J := 0 to I - 1 do
       K := K + I * J;
 
-  WriteLn(K);
+  Assert(K = 1320);
 end;
 
 procedure TestForBoolean;
@@ -1546,7 +1544,7 @@ begin
   Assert(A[1] = 'ZX 81');
   Assert(A[0] = 'ZX 80');
 
- S := 'ZX Spectrum';
+  S := 'ZX Spectrum';
   T := ReverseFunc(S);
 
   Assert(T <> S);
@@ -1578,6 +1576,71 @@ begin
 
   Delete(S, 12, 5);
   Assert(S = 'ZX Spectrum');
+
+  WriteLn;
+end;
+
+procedure TestReal;
+const
+  Pi = 3.14159265359;
+var
+  X, Y, Z: Real;
+  I: Integer;
+begin
+  WriteLn('--- TestReal ---');
+  WriteLn;
+
+  WriteLn(' 0.0=', 0.0);
+  WriteLn(' 1.0=', 1.0);
+  WriteLn('-1.0=', -1.0);
+  WriteLn;
+  WriteLn('Rmin=', -1.0E37);
+  WriteLn('Rmax=', 1.0E37);
+  WriteLn;
+
+  Assert(0.0 = 0.0);
+  Assert(0.0 <> 1.0);
+
+  Assert(0.0 <= 0.0);
+  Assert(0.0 <= 1.0);
+  Assert(0.0 < 1.0);
+
+  Assert(1.0 >= 1.0);
+  Assert(1.0 >= 0.0);
+  Assert(1.0 > 0.0);
+
+  Assert(-1.0 < 1.0);
+
+  Assert(1.0E37 > 1.0E36);
+  Assert(-1.0E37 < -1.0E36);
+
+  Assert(4.0 - 4.0 - 4.0 = -4.0);
+
+  X := Pi;
+  WriteLn('X=', X);
+  Assert(X = 3.14159265359);
+
+  Y := (1.5 + 0.5) * Pi;
+  WriteLn('Y=', Y);
+  Assert((Y > 6.28) and (Y < 6.29));
+
+  Z := Pi / 8.0;
+  WriteLn('Z=', Z);
+  Assert((Z > 0.39) and (Z < 0.40));
+
+  Writeln;
+
+  X := 0.0;
+  I := 0;
+  while X <= Y do
+  begin
+    WriteLn('| X=', X, ' | Sin(X)=', Sin(X), ' | Cos(X)=', Cos(X), ' |');
+    X := X + Z;
+    I := I + 1;
+  end;
+
+  Assert(X > Y);
+  Assert(I = 17);
 
   WriteLn;
 end;
@@ -1614,6 +1677,7 @@ begin
   TestEnums;
 
   TestStrings;
+  TestReal;
 
   TestSizeOf;
 

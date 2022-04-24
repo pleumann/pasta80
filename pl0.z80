@@ -823,6 +823,93 @@ __length:
         ld      (hl),de
         ret
 
+
+#include "math48.z80"
+
+__flteq:
+        call    CMP
+        jr      z,__flteq1
+__flteq0:
+        ld      de,0
+        ret
+__flteq1:
+        ld      de,1
+        ret
+
+__fltneq:
+        call    CMP
+        jr      nz,__fltneq1
+__fltneq0:
+        ld      de,0
+        ret
+__fltneq1:
+        ld      de,1
+        ret
+
+__fltlt:
+        call    CMP
+        jr      c,__fltlt1
+__fltlt0:
+        ld      de,0
+        ret
+__fltlt1:
+        ld      de,1
+        ret
+
+__fltleq:
+        call    CMP
+        jr      c,__fltleq1
+        jr      z,__fltleq1
+__fltleq0:
+        ld      de,0
+        ret
+__fltleq1:
+        ld      de,1
+        ret
+
+__atof:
+        push    ix
+        ld      de,hl
+        ld      ix,de
+        inc     ix
+        call    CNVN
+        pop     ix
+        ret
+
+__ftoa:
+        push    ix
+        ld      ix,__ftoatmp + 1
+        exx
+        ld      hl,$0a0d
+        exx
+        call    FSTRR
+        jr      nc,__ftoaok
+        ld      hl,__ftoaerr
+        pop     ix
+        ret
+__ftoaok:
+        ld      ix,__ftoatmp
+        ld      b,255
+__ftoalp:
+        inc     ix
+        inc     b
+        ld      a,(ix)
+        cp      0
+        jr      nz, __ftoalp
+        ld      a,b
+        ld      (__ftoatmp),a
+        ld      hl,__ftoatmp
+        pop     ix
+        ret
+__ftoatmp:
+        db 31,  "                                "
+__ftoaerr:
+        db      5,"ERROR"
+
+__putf:
+        call __ftoa
+        call __puts
+        ret
 ;
 ; Print character to screen
 ;

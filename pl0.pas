@@ -67,6 +67,51 @@ begin
   HexStr := S;
 end;
 
+(*
+function EncodeReal(R: Real): String;
+var
+  S: Boolean;
+  E, D, I: LongInt;
+  M: Real;
+  Res: String;
+begin
+  S := False;
+  E := 0;
+  M := 0;
+
+  if R <> 0 then
+  begin
+    if R < 0 then
+    begin
+        S := True;
+        R := -R;
+    end;
+
+    FRExp(R, M, E);
+  end;
+
+  E := E + 128;
+
+  M := M * 256;
+  D := Floor(M);
+  if not S then D := D and not 128;
+  M := Frac(M);
+  Res := HexStr(D, 2);
+
+  for I := 1 to 4 do
+  begin
+    M := M * 256;
+    D := Floor(M);
+    M := Frac(M);
+    Res := HexStr(D, 2) + Res;
+  end;
+
+  Res := HexStr(E, 2) + Res;
+
+  EncodeReal := Res;
+end;
+*)
+
 function AlignStr(S: String; N: Integer): String;
 const
   Spaces = '                ';
@@ -318,9 +363,9 @@ type
 var
   SymbolTable: PSymbol = nil;
   Level, Offset: Integer;
-  dtInteger, dtBoolean, dtChar, dtByte, dtString: PSymbol;
+  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal: PSymbol;
 
-  AddrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc: PSymbol;
+  AddrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -573,6 +618,9 @@ begin
   dtString := CreateSymbol(scStringType, 'String', 256);
   dtString^.Value := 256;
 
+  dtReal := CreateSymbol(scType, 'Real', 6);
+  dtReal^.Value := 6;
+
   Sym := CreateSymbol(scArrayType, '', 65536);
   Sym^.DataType := dtByte;
 
@@ -601,6 +649,12 @@ begin
 
   SuccFunc := RegisterBuiltIn(scFunc, 'Succ', 1, '');
   SuccFunc^.IsMagic := True;
+
+  SinFunc := RegisterBuiltIn(scFunc, 'Sin', 1, '');
+  SinFunc^.IsMagic := True;
+
+  CosFunc := RegisterBuiltIn(scFunc, 'Cos', 1, '');
+  CosFunc^.IsMagic := True;
 
   Sym := RegisterBuiltIn(scFunc, 'Length', 1, '__length');
   Sym^.ArgTypes[0] := dtString;
@@ -686,7 +740,7 @@ end;
 
 type
   TToken = (toNone,
-            toIdent, toNumber, toString,
+            toIdent, toNumber, toString, toFloat,
             toAdd, toSub, toMul, toDiv,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
@@ -708,7 +762,7 @@ type
 const
   TokenStr: array[TToken] of String = 
            ('<nul>',
-            'Identifier', 'Number', 'String',
+            'Identifier', 'Number', 'String', 'Real',
             '+', '-', '*', '/',
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
@@ -796,13 +850,52 @@ begin
     else if IsDecDigit(C) then
     begin
       Token := toNumber;
+      StrValue := C;
       NumValue := Ord(C) - Ord('0');
       C := GetChar;
       while IsDecDigit(C) do
       begin
+        StrValue := StrValue + C;
         NumValue := 10 * NumValue + (Ord(C) - Ord('0'));
         C := GetChar;
       end;
+
+      if C = '.' then
+      begin
+        Token := toFloat;
+
+        StrValue := StrValue + C;
+        C := GetChar;
+
+        while IsDecDigit(C) do
+        begin
+          StrValue := StrValue + C;
+          C := GetChar;
+        end;
+      end;
+
+      if (C = 'E') or (C = 'e') then
+      begin
+        Token := toFloat;
+
+        StrValue := StrValue + C;
+        C := GetChar;
+
+        if (C = '+') or (C = '-') then
+        begin
+          StrValue := StrValue + C;
+          C := GetChar;
+        end;
+
+        if not IsDecDigit(C) then Error('Digit expected');
+
+        while IsDecDigit(C) do
+        begin
+          StrValue := StrValue + C;
+          C := GetChar;
+        end;
+      end;
+
     end
     else if C = '$' then
     begin
@@ -1666,6 +1759,42 @@ begin
   if Invert then EmitUnOp(toNot, dtBoolean);
 end;
 
+procedure EmitFloatOp(Op: TToken);
+var
+  Invert: Boolean;
+begin
+  EmitI('pop hl');
+  EmitI('pop de');
+  EmitI('pop bc');
+  EmitI('exx');
+  EmitI('pop hl');
+  EmitI('pop de');
+  EmitI('pop bc');
+
+  Invert := (Op = toNeq) or (Op = toGt) or (Op = toGeq);
+
+  case Op of
+    toAdd: EmitI('call FPADD');
+    toSub: EmitI('call FPSUB');
+    toMul: EmitI('call FPMUL');
+    toDiv: EmitI('call FPDIV');
+
+    toEq, toNeq: EmitI('call __flteq');
+    toLt, toGeq: EmitI('call __fltlt');
+    toGt, toLeq: EmitI('call __fltleq');
+  end;
+
+  if Op in [toAdd, toSub, toMul, toDiv] then
+  begin
+    EmitI('push bc');
+    EmitI('push de');
+    EmitI('push hl');
+  end
+  else EmitI('push de');
+
+  if Invert then EmitUnOp(toNot, dtBoolean);
+end;
+
 procedure EmitJump(Target: String);
 begin
     EmitI('jp ' + Target);
@@ -1749,6 +1878,33 @@ begin
   end;
 end;
 
+procedure EmitNeg(DataType: PSymbol);
+begin
+  if (DataType = dtInteger) or (DataType = dtByte) then
+  begin
+    EmitI('pop de');
+    EmitI('ld hl,0');
+    EmitI('xor a');
+    EmitI('sbc hl,de');
+    EmitI('push hl');
+  end
+  else if DataType = dtReal then
+  begin
+    EmitI('pop hl');
+    EmitI('pop de');
+    EmitI('pop bc');
+    
+    EmitI('ld a,b');
+    EmitI('xor a,128');
+    EmitI('ld b,a');
+
+    EmitI('push bc');
+    EmitI('push de');
+    EmitI('push hl');
+  end
+  else Error('Invalid type ' + DataType^.Name);  
+end;
+
 procedure EmitInc(DataType: PSymbol);
 begin
   EmitI('pop hl');
@@ -1821,6 +1977,13 @@ begin
     EmitI('ld hl,256');
     EmitI('add hl,sp');
     EmitI('ld sp,hl');
+  end
+  else if DataType = dtReal then
+  begin
+    EmitI('pop hl');
+    EmitI('pop de');
+    EmitI('pop bc');
+    EmitI('call __putf');
   end
   else if DataType^.Kind = scEnumType then
   begin
@@ -2138,6 +2301,30 @@ begin
     EmitI('inc de');
     EmitI('push de');
   end
+  else if Func = SinFunc then
+  begin
+    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
+    // This should probably go elsewhere.
+    EmitI('pop hl');
+    EmitI('pop de');
+    EmitI('pop bc');
+    EmitI('call SIN');
+    EmitI('push bc');
+    EmitI('push de');
+    EmitI('push hl');
+  end
+  else if Func = CosFunc then
+  begin
+    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
+    // This should probably go elsewhere.
+    EmitI('pop hl');
+    EmitI('pop de');
+    EmitI('pop bc');
+    EmitI('call COS');
+    EmitI('push bc');
+    EmitI('push de');
+    EmitI('push hl');
+  end
   else
     Error('Cannot handle: ' + Func^.Name);
 
@@ -2170,7 +2357,18 @@ begin
     else if Sym^.Kind = scConst then
     begin
       T := Sym^.DataType;
-      EmitLiteral(Sym^.Value);
+      if T = dtReal then
+      begin
+        EmitI('ld hl,' + Sym^.Tag);
+        EmitI('call __atof');
+        EmitI('push bc');
+        EmitI('push de');
+        EmitI('push hl');
+      end
+      else
+      begin
+        EmitLiteral(Sym^.Value);
+      end;
       NextToken;
     end
     else if (Sym^.Kind = scFunc) and (Sym^.IsMagic) then
@@ -2216,6 +2414,17 @@ begin
       EmitI('push hl');
       EmitLoad(T);
     end;
+    NextToken;
+  end
+  else if Scanner.Token = toFloat then
+  begin
+    T := dtReal;
+    Tag := AddString(Scanner.StrValue + ' ');
+    EmitI('ld hl,' + Tag);
+    EmitI('call __atof');
+    EmitI('push bc');
+    EmitI('push de');
+    EmitI('push hl');
     NextToken;
   end
   else if Scanner.Token = toNumber then
@@ -2277,6 +2486,14 @@ begin
       NextToken;
       T := TypeCheck(T, ParseFactor, tcExact);
       EmitBinOp(Op, T);
+    end
+  else if T = dtReal then
+    while Scanner.Token in [toMul, toDiv] do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := TypeCheck(T, ParseTerm, tcExpr);
+      EmitFloatOp(Op);
     end;
 
   ParseTerm := T;
@@ -2296,13 +2513,18 @@ begin
     NextToken;
   end;
 
-  if Op = toSub then EmitLiteral(0);
+  // if Op = toSub then EmitLiteral(0);
 
   T := ParseTerm;
 
-  if Op <> toNone then T := TypeCheck(dtInteger, T, tcExpr); // +=Byte, -=Integer
+  if (Op <> toNone) then
+  begin
+    if (T <> dtInteger) and (T <> dtByte) and (T <> dtReal) then
+      Error('Number expected.'); // T := TypeCheck(dtInteger, T, tcExpr); // +=Byte, -=Integer
 
-  if Op = toSub then EmitBinOp(toSub, T);
+    if Op = toSub then EmitNeg(T);
+  //if Op = toSub then EmitBinOp(toSub, T);
+  end;
 
   if (T = dtInteger) or (T = dtByte) then
     while Scanner.Token in [toAdd, toSub, toOr, toXor] do
@@ -2328,7 +2550,16 @@ begin
       T := TypeCheck(T, ParseTerm, tcExact);
       EmitI('call __stradd');
       EmitClear(256);
+    end
+  else if T = dtReal then
+    while Scanner.Token in [toAdd, toSub] do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := TypeCheck(T, ParseTerm, tcExpr);
+      EmitFloatOp(Op);
     end;
+
 
 (* TODO Error case? *)
 
@@ -2353,6 +2584,8 @@ begin
     TypeCheck(T, ParseSimpleExpression, tcExpr); // Check type, but ignore result.
     if T^.Kind = scStringType then
       EmitStrOp(Op)
+    else if T = dtReal then
+      EmitFloatOp(Op)
     else
       EmitRelOp(Op);
     T := dtBoolean;                       // We know it will be Boolean.
@@ -2716,6 +2949,11 @@ begin
     begin
       Sym^.DataType := dtString;
       Sym^.Tag := AddString(Scanner.StrValue);
+    end
+    else if Scanner.Token = toFloat then
+    begin
+      Sym^.DataType := dtReal;
+      Sym^.Tag := AddString(Scanner.StrValue + ' ');
     end
     else if Scanner.Token = toIdent then
     begin
