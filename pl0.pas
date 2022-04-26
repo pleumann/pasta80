@@ -3,7 +3,7 @@ program PL0;
 {$Mode delphi}
 
 uses
-  Dos;
+  Dos, Math;
 
 (* -------------------------------------------------------------------------- *)
 (* --- Utility functions ---------------------------------------------------- *)
@@ -68,13 +68,14 @@ begin
 end;
 
 (*
-function EncodeReal(R: Real): String;
+function EncodeReal(Src: String): String;
 var
   S: Boolean;
   E, D, I: LongInt;
-  M: Real;
+  R, M: Real;
   Res: String;
 begin
+  Val(Src, R);
   S := False;
   E := 0;
   M := 0;
@@ -103,12 +104,12 @@ begin
     M := M * 256;
     D := Floor(M);
     M := Frac(M);
-    Res := HexStr(D, 2) + Res;
+    Res := Res + HexStr(D, 2);
   end;
 
-  Res := HexStr(E, 2) + Res;
+  Res := Res + HexStr(E, 2);
 
-  EncodeReal := Res;
+  EncodeReal := '0x' + Copy(Res, 1, 4) + ',0x' + Copy(Res, 5, 4) + ',0x' + Copy(Res, 9, 4);
 end;
 *)
 
@@ -1238,6 +1239,13 @@ begin
       // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
       Exit;
     end
+    else if TwoOp = 'pushfp/popfp' then
+    begin
+      RemoveCode;
+      RemoveCode;
+      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
+      Exit;
+    end
     (*
     else if StartsWith(TwoOp, 'push hl/ld de,') then
     begin
@@ -1604,6 +1612,14 @@ begin
     Exit;
   end;
 
+  if DataType = dtReal then
+  begin
+    EmitI('pop hl');
+    EmitI('call __loadfp');
+    EmitI('pushfp');
+    Exit;
+  end;
+
   case DataType^.Value of
     1: begin
           EmitI('pop hl');
@@ -1659,6 +1675,16 @@ begin
       EmitI('ld sp,hl');
       Exit;
     end;
+
+  if DataType = dtReal then
+  begin
+    EmitI('popfp');
+    EmitI('exx');
+    EmitI('pop hl');
+    EmitI('call __storefp');
+    Exit;
+  end;
+
 
   case DataType^.Value of
     1: begin
@@ -1763,13 +1789,9 @@ procedure EmitFloatOp(Op: TToken);
 var
   Invert: Boolean;
 begin
-  EmitI('pop hl');
-  EmitI('pop de');
-  EmitI('pop bc');
+  EmitI('popfp');
   EmitI('exx');
-  EmitI('pop hl');
-  EmitI('pop de');
-  EmitI('pop bc');
+  EmitI('popfp');
 
   Invert := (Op = toNeq) or (Op = toGt) or (Op = toGeq);
 
@@ -1786,9 +1808,7 @@ begin
 
   if Op in [toAdd, toSub, toMul, toDiv] then
   begin
-    EmitI('push bc');
-    EmitI('push de');
-    EmitI('push hl');
+    EmitI('pushfp');
   end
   else EmitI('push de');
 
@@ -1890,17 +1910,13 @@ begin
   end
   else if DataType = dtReal then
   begin
-    EmitI('pop hl');
-    EmitI('pop de');
-    EmitI('pop bc');
+    EmitI('popfp');
     
     EmitI('ld a,b');
     EmitI('xor a,128');
     EmitI('ld b,a');
 
-    EmitI('push bc');
-    EmitI('push de');
-    EmitI('push hl');
+    EmitI('pushfp');
   end
   else Error('Invalid type ' + DataType^.Name);  
 end;
@@ -1980,9 +1996,7 @@ begin
   end
   else if DataType = dtReal then
   begin
-    EmitI('pop hl');
-    EmitI('pop de');
-    EmitI('pop bc');
+    EmitI('popfp');
     EmitI('call __putf');
   end
   else if DataType^.Kind = scEnumType then
@@ -2305,25 +2319,17 @@ begin
   begin
     ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
     // This should probably go elsewhere.
-    EmitI('pop hl');
-    EmitI('pop de');
-    EmitI('pop bc');
+    EmitI('popfp');
     EmitI('call SIN');
-    EmitI('push bc');
-    EmitI('push de');
-    EmitI('push hl');
+    EmitI('pushfp');
   end
   else if Func = CosFunc then
   begin
     ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
     // This should probably go elsewhere.
-    EmitI('pop hl');
-    EmitI('pop de');
-    EmitI('pop bc');
+    EmitI('popfp');
     EmitI('call COS');
-    EmitI('push bc');
-    EmitI('push de');
-    EmitI('push hl');
+    EmitI('pushfp');
   end
   else
     Error('Cannot handle: ' + Func^.Name);
@@ -2359,11 +2365,8 @@ begin
       T := Sym^.DataType;
       if T = dtReal then
       begin
-        EmitI('ld hl,' + Sym^.Tag);
-        EmitI('call __atof');
-        EmitI('push bc');
-        EmitI('push de');
-        EmitI('push hl');
+        EmitI('constfp ' + Sym^.Tag);
+        EmitI('pushfp');
       end
       else
       begin
@@ -2420,11 +2423,8 @@ begin
   begin
     T := dtReal;
     Tag := AddString(Scanner.StrValue + ' ');
-    EmitI('ld hl,' + Tag);
-    EmitI('call __atof');
-    EmitI('push bc');
-    EmitI('push de');
-    EmitI('push hl');
+    EmitI('constfp ' + Tag);
+    EmitI('pushfp');
     NextToken;
   end
   else if Scanner.Token = toNumber then

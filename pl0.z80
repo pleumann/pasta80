@@ -826,6 +826,58 @@ __length:
 
 #include "math48.z80"
 
+.macro __constfp %xx,%yy,%zz
+        ld      bc,%xx
+        ld      de,%yy
+        ld      hl,%zz
+.endm
+
+.macro constfp %x
+        ld      hl,%x
+        call    __atof
+.endm
+
+.macro pushfp
+        push    bc
+        push    de
+        push    hl
+.endm
+
+.macro popfp
+        pop     hl
+        pop     de
+        pop     bc
+.endm
+
+; Load FP at address HL into BCDEHL
+__loadfp:
+        push    ix
+        push    hl
+        pop     ix
+        ld      l,(ix+0)
+        ld      h,(ix+1)
+        ld      e,(ix+2)
+        ld      d,(ix+3)
+        ld      c,(ix+4)
+        ld      b,(ix+5)
+        pop     ix
+        ret
+
+; Store FP into BCDEHL into address HL
+__storefp:
+        push    ix
+        push    hl
+        pop     ix
+        exx
+        ld      (ix+0),l
+        ld      (ix+1),h
+        ld      (ix+2),e
+        ld      (ix+3),d
+        ld      (ix+4),c
+        ld      (ix+5),b
+        pop     ix
+        ret
+
 __flteq:
         call    CMP
         jr      z,__flteq1
