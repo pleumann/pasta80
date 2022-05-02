@@ -281,6 +281,11 @@ begin
   end;
 end;
 
+procedure UngetChar();
+begin
+  Source[Include].Column := Source[Include].Column - 1;
+end; 
+    
 (* -------------------------------------------------------------------------- *)
 (* --- String table --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
@@ -341,7 +346,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -749,7 +754,7 @@ type
             toAnd, toOr, toXor, toNot, toMod,
             toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar,
-            toStringKw, toRecord, toProcedure, toFunction,
+            toStringKw, toRecord, toSet, toProcedure, toFunction,
             toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
@@ -771,7 +776,7 @@ const
             'and', 'or', 'xor', 'not', 'mod',
             'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var',
-            'string', 'record', 'procedure', 'function',
+            'string', 'record', 'set', 'procedure', 'function',
             'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
@@ -863,10 +868,15 @@ begin
 
       if C = '.' then
       begin
-        Token := toFloat;
-
-        StrValue := StrValue + C;
         C := GetChar;
+        if C = '.' then
+        begin
+          UngetChar;
+          Exit;
+        end;
+
+        Token := toFloat;
+        StrValue := StrValue + '.';
 
         while IsDecDigit(C) do
         begin
@@ -3103,6 +3113,23 @@ begin
 
     if DataType^.DataType <> nil then DataType^.Value := GetFieldOffset(DataType^.DataType);
   end
+  else if Scanner.Token = toSet then
+  begin
+    NextToken;
+    Expect(toOf);
+    NextToken;
+
+    DataType := CreateSymbol(scSetType, '', 0);
+    DataType^.DataType := ParseTypeDef;
+
+    if not (DataType^.DataType^.Kind in [scType, scEnumType, scSubrangeType]) then
+      Error('Scalar type required');
+
+    if DataType^.DataType^.Value > 1 then
+      Error('Base type too large');
+
+    DataType^.Value := 32;
+  end
   else if Scanner.Token = toLParen then
   begin
     DataType := CreateSymbol(scEnumType, '', 0);
@@ -3130,17 +3157,46 @@ begin
     Expect(toRParen);
     NextToken;
   end
-  else
+  else if Scanner.Token = toNumber then
   begin
-    Expect(toIdent);
-    DataType := LookupGlobal(Scanner.StrValue);
-
-    if DataType = nil then
-      Error('Type not found: ' + Scanner.StrValue);
-    if not (DataType^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType]) then
-      Error('Not a type: ' + Scanner.StrValue);
+    DataType := CreateSymbol(scSubrangeType, '', 0);
+    DataType^.DataType := dtInteger;
+    DataType^.Value := 2;
 
     NextToken;
+    Expect(toRange);
+    NextToken;
+    Expect(toNumber);
+    NextToken;
+  end
+  else begin
+    Expect(toIdent);
+
+    Sym := LookupGlobal(Scanner.StrValue);
+
+    if Sym = nil then
+      Error('Identifier not found: ' + Scanner.StrValue);
+
+    if Sym^.Kind = scConst then
+    begin
+      DataType := CreateSymbol(scSubrangeType, '', 0);
+      DataType^.DataType := Sym^.DataType;
+      DataType^.Value := 1;
+
+      NextToken;
+      Expect(toRange);
+      NextToken;
+      Expect(toIdent);
+      NextToken;
+    end
+    else
+    begin
+      if not (Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType]) then
+        Error('Not a type: ' + Scanner.StrValue);
+
+      DataType := Sym;
+      NextToken;
+    end;
   end;
 
   ParseTypeDef := DataType;
