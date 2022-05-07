@@ -962,6 +962,210 @@ __putf:
         call __ftoa
         call __puts
         ret
+
+; ========================================================================
+; Set support
+; ========================================================================
+
+;
+; Set membership test
+;
+; Entry: (SP+2) 32 bytes set, (SP+34) 1 byte element
+; Exit:  DE=1 if element in set, 0 otherwise
+; Uses:  AF, HL, DE, BC
+;
+__setin:
+        ld      hl,34
+        add     hl,sp
+        ld      a,(hl)
+        ld      d,0
+        ld      e,a
+        srl     e
+        srl     e
+        srl     e
+        inc     e
+        inc     e
+        ld      b,a
+        ld      a,1
+        bit     0,b
+        jr      z,__setin1
+        sla     a
+__setin1:
+        bit     1,b
+        jr      z,__setin2
+        sla     a
+        sla     a
+__setin2:
+        bit     2,b
+        jr      z,__setin3
+        sla     a
+        sla     a
+        sla     a
+        sla     a
+__setin3:
+        ld      hl,0
+        ex      hl,de
+        add     hl,sp
+        and     (hl)
+        ret     z
+        ld      de,1
+        ret
+
+;
+; Superset of two sets
+;
+; Entry: (SP+2) 32 bytes set 2, (SP+34) 32 byte set 1
+; Exit:  Result in set 2, SP is unchanged
+; Uses:  AF, HL, DE, BC
+;
+__setadd:
+        ld      hl,2
+        add     hl,sp
+        ld      de,hl
+        ld      bc,32
+        add     hl,bc
+        ld      b,c
+__setadd1:
+        ld      a,(de)
+        or      (hl)
+        ld      (hl),a
+        inc     hl
+        inc     de
+        djnz    __setadd1
+        ret
+
+;
+; Difference of two sets
+;
+; Entry: (SP+2) 32 bytes set 2, (SP+34) 32 byte set 1
+; Exit:  Result in set 1, SP is unchanged
+; Uses:  AF, HL, DE, BC
+;
+__setsub:
+        ld      hl,2
+        add     hl,sp
+        ld      de,hl
+        ld      bc,32
+        add     hl,bc
+        ld      b,c
+__setsub1:
+        ld      a,(de)
+        xor     255
+        and     (hl)
+        ld      (hl),a
+        inc     hl
+        inc     de
+        djnz    __setsub1
+        ret
+
+;
+; Intersection of two sets
+;
+; Entry: (SP+2) 32 bytes set 2, (SP+34) 32 byte set 1
+; Exit:  Result in set 1, SP is unchanged
+; Uses:  AF, HL, DE, BC
+;
+__setmul:
+        ld      hl,2
+        add     hl,sp
+        ld      de,hl
+        ld      bc,32
+        add     hl,bc
+        ld      b,c
+__setmul1:
+        ld      a,(de)
+        and     (hl)
+        ld      (hl),a
+        inc     hl
+        inc     de
+        djnz    __setmul1
+        ret
+
+;
+; Set equality test (i.e. set 1 = set 2)
+;
+; Entry: (SP+2) 32 bytes set 2, (SP+34) 32 byte set 1
+; Exit:  DE=1 if equal, 0 otherwise, SP is unchanged
+; Uses:  AF, HL, DE, BC
+;
+__seteq:
+        ld      hl,2
+        add     hl,sp
+        ld      de,hl
+        ld      bc,32
+        add     hl,bc
+        ld      b,c
+__seteq1:
+        ld      a,(de)
+        cp      (hl)
+        jr      nz,__seteq2
+        inc     hl
+        inc     de
+        djnz    __seteq1
+        ld      de,1
+        ret
+__seteq2:
+        ld      de,0
+        ret
+
+;
+; Subset-or-equal test (i.e. set 1 <= set 2)
+;
+; Entry: (SP+2) 32 bytes set 2, (SP+34) 32 byte set 1
+; Exit:  DE=1 if set 1 <= set 2, 0 otherwise, SP is unchanged
+; Uses:  AF, HL, DE, BC
+;
+__setleq:
+        ld      hl,2
+        add     hl,sp
+        ld      de,hl
+        ld      bc,32
+        add     hl,bc
+        ld      b,c
+__setleq1:
+        ld      a,(de)
+        ld      c,a
+        or      (hl)
+        cp      c
+        jr      nz,__setleq2
+        inc     hl
+        inc     de
+        djnz    __setleq1
+        ld      de,1
+        ret
+__setleq2:
+        ld      de,0
+        ret
+
+;
+; Superset-or-equal test (i.e. set 1 >= set 2)
+;
+; Entry: (SP+2) 32 bytes set 2, (SP+34) 32 byte set 1
+; Exit:  DE=1 if set 1 >= set 2, 0 otherwise, SP is unchanged
+; Uses:  AF, HL, DE, BC
+;
+__setgeq:
+        ld      hl,2
+        add     hl,sp
+        ld      de,hl
+        ld      bc,32
+        add     hl,bc
+        ex      de,hl           ; Swap arguments
+        ld      b,c
+        jr      __setleq1       ; Let __setleq do the actual work
+
+; +  ... a := a or b
+; -  ... a := a and not b
+; *  ... a := a and b
+
+; =  ... a = b
+; >= ... a or b = a 
+; <= ... a or b = b
+
+; Include shared with in
+; Exclude shared with in
+                
+
 ;
 ; Print character to screen
 ;

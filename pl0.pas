@@ -751,7 +751,7 @@ type
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
             toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
-            toAnd, toOr, toXor, toNot, toMod,
+            toAnd, toOr, toXor, toNot, toMod, toIn,
             toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar,
             toStringKw, toRecord, toSet, toProcedure, toFunction,
@@ -773,7 +773,7 @@ const
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
             ':=', ',', ':', ';', '.', '..',
-            'and', 'or', 'xor', 'not', 'mod',
+            'and', 'or', 'xor', 'not', 'mod', 'in',
             'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var',
             'string', 'record', 'set', 'procedure', 'function',
@@ -1798,6 +1798,47 @@ begin
   if Invert then EmitUnOp(toNot, dtBoolean);
 end;
 
+procedure EmitNeg(DataType: PSymbol); forward;
+
+procedure EmitSetOp(Op: TToken);
+var
+  Invert: Boolean;
+begin
+//  EmitI('pop de');
+//  EmitI('pop hl');
+
+  Invert := Op = toNeq;
+
+  if Op = toIn then
+  begin
+    EmitI('call __setin');
+    EmitClear(34);
+    EmitI('push de');
+  end
+  else
+  begin
+    case Op of
+      toAdd: EmitI('call __setadd');
+      toSub: EmitI('call __setsub');
+      toMul: EmitI('call __setmul');
+
+      toEq, toNeq: EmitI('call __seteq');
+      toLeq: EmitI('call __setleq');
+      toGeq: EmitI('call __setgeq');
+    end;
+
+    if Op in [toAdd, toSub, toMul] then
+      EmitClear(32)
+    else
+    begin
+      EmitClear(64);
+      EmitI('push de');
+    end;
+
+    if Invert then EmitUnOp(toNot, dtBoolean);
+  end;
+end;
+
 procedure EmitFloatOp(Op: TToken);
 var
   Invert: Boolean;
@@ -2104,6 +2145,15 @@ begin
       Exit;
     end;
 
+    if (Left^.Kind = scSetType) and (Right^.Kind = scSetType) then
+    begin
+(*      if (Right^.DataType <> nil) and (Left^.DataType <> Right^.DataType) then
+        Error('Sets not compatible'); *)
+
+      TypeCheck := Left;
+      Exit;
+    end;
+
     if (Left = dtInteger) and (Right = dtByte) then
     begin
       TypeCheck := dtInteger;
@@ -2352,9 +2402,11 @@ end;
 
 function ParseFactor: PSymbol;
 var
-  Sym: PSymbol;T: PSymbol;
+  Sym: PSymbol; T: PSymbol;
   Op: TToken;
-  Tag: String;
+  S1, S2, S3, Tag: String;
+  I, J, K: Integer;
+  BA: array[0..31] of Byte;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -2451,6 +2503,109 @@ begin
   begin
     NextToken; T := ParseExpression; Expect(toRParen); NextToken;
   end
+  else if Scanner.Token = toLBrack then
+  begin
+    for I := 0 to 31 do BA[I] := 0;
+
+    T := nil;
+    NextToken;
+    while Scanner.Token <> toRBrack do
+    begin
+      if Scanner.Token = toNumber then
+      begin
+        if (T <> nil) and (T <> dtInteger) then Error('Integer expected');
+
+        T := dtInteger;
+
+        I := Scanner.NumValue;
+        J := I;
+        NextToken;
+        if Scanner.Token = toRange then
+        begin
+          NextToken;
+          Expect(toNumber);
+          J := Scanner.NumValue;
+          NextToken;
+        end
+      end
+      else if Scanner.Token = toString then
+      begin
+        if (T <> nil) and (T <> dtChar) then Error('Char expected');
+        if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+
+        T := dtChar;
+
+        I := Ord(Scanner.StrValue[1]);
+        J := I;
+        NextToken;
+        if Scanner.Token = toRange then
+        begin
+          NextToken;
+          Expect(toString);
+          if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+          J := Ord(Scanner.StrValue[1]);
+          NextToken;
+        end
+      end
+      else if Scanner.Token = toIdent then
+      begin
+        Sym := LookupGlobal(Scanner.StrValue);
+        if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
+        if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
+
+        if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
+        T := Sym^.DataType;
+
+        I := Sym^.Value;
+        J := I;
+        NextToken;
+        if Scanner.Token = toRange then
+        begin
+          NextToken;
+          Expect(toIdent);
+          Sym := LookupGlobal(Scanner.StrValue);
+          if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
+          if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
+          if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
+
+          J := Sym^.Value;
+          NextToken;
+        end
+      end
+      else Error('Scalar expected');
+
+      //WriteLn('Adding: ', I, ' to ', J);
+      for K := I to J do
+      begin
+        BA[K shr 3] := BA[K shr 3] or (1 shl (K and 7));
+      end;
+      if Scanner.Token = toComma then NextToken;
+    end;
+    NextToken;
+
+    //for K := 0 to 31 do Write(BA[K], ' ');
+
+    EmitSpace(32); // EmitBytes
+
+    S1 := GetLabel('set');
+    S2 := GetLabel('set');
+    EmitI('jr ' + S2);
+    Emit(S1, '', '');
+    S3 := '';
+    for K := 0 to 31 do S3 := S3 + HexStr(BA[K], 2);
+    EmitI('dm $' + S3);
+    Emit(S2, '', '');
+    EmitI('ld hl,0');
+    EmitI('add hl,sp');
+    EmitI('ld de,' + S1);
+    EmitI('ex de,hl');
+    EmitI('ld bc,32');
+    EmitI('ldir');
+
+    Sym := CreateSymbol(scSetType, '', 32);
+    Sym^.DataType := T;
+    T := Sym;
+  end
   else if Scanner.Token = toNot then
   begin
     NextToken;
@@ -2507,6 +2662,14 @@ begin
       NextToken;
       T := TypeCheck(T, ParseTerm, tcExpr);
       EmitFloatOp(Op);
+    end
+  else if T^.Kind = scSetType then
+    while Scanner.Token in [toMul] do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := ParseFactor; (* TypeCheck(T, , tcExpr); *)
+      EmitSetOp(Op);
     end;
 
   ParseTerm := T;
@@ -2571,6 +2734,14 @@ begin
       NextToken;
       T := TypeCheck(T, ParseTerm, tcExpr);
       EmitFloatOp(Op);
+    end
+  else if T^.Kind = scSetType then
+    while Scanner.Token in [toAdd, toSub] do
+    begin
+      Op := Scanner.Token;
+      NextToken;
+      T := ParseTerm; (* TypeCheck(T, , tcExpr); *)
+      EmitSetOp(Op);
     end;
 
 
@@ -2584,10 +2755,38 @@ end;
 function ParseExpression: PSymbol;
 var
   Op: TToken;
-  T: PSymbol;
+  T, U: PSymbol;
 begin
   T := ParseSimpleExpression;
-  if (Scanner.Token >= toEq) and (Scanner.Token <= toGeq) then
+  if Scanner.Token = toIn then
+  begin
+    if not (T^.Kind in [scType, scEnumType, scSubrangeType]) then Error('Scalar needed');
+    if T^.Value <> 1 then Error('8 bit needed');
+
+    NextToken;
+    U := ParseExpression;
+    if U^.Kind <> scSetType then Error('Set needed');    
+    if U^.DataType <> T then Error('Incompatible');    
+
+    EmitSetOp(toIn);
+
+    T := dtBoolean;
+  end
+  else if (T^.Kind = scSetType) and (Scanner.Token in [toEq, toNeq, toLeq, toGeq]) then
+  begin
+    Op := Scanner.Token;
+    //WriteLn(Op);
+    NextToken;
+
+    U := ParseExpression;
+    if U^.Kind <> scSetType then Error('Set needed');    
+    if U^.DataType <> T^.DataType then Error('Incompatible');    
+
+    EmitSetOp(Op);
+
+    T := dtBoolean;
+  end
+  else if (Scanner.Token >= toEq) and (Scanner.Token <= toGeq) then
   begin
     Op := Scanner.Token;
     NextToken;
@@ -3164,12 +3363,31 @@ begin
   begin
     DataType := CreateSymbol(scSubrangeType, '', 0);
     DataType^.DataType := dtInteger;
-    DataType^.Value := 2;
 
     NextToken;
     Expect(toRange);
     NextToken;
     Expect(toNumber);
+
+    if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+
+    NextToken;
+  end
+  else if Scanner.Token = toString then
+  begin
+    if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+
+    DataType := CreateSymbol(scSubrangeType, '', 0);
+    DataType^.DataType := dtChar;
+
+    NextToken;
+    Expect(toRange);
+    NextToken;
+    Expect(toString);
+    if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+
+    DataType^.Value := 1;
+
     NextToken;
   end
   else begin
@@ -3294,7 +3512,7 @@ begin
   DataType := LookupGlobal(Scanner.StrValue);
 
   if DataType = nil then Error('Unknown identifier');
-  if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType]) then Error('Type expected');
+  if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType]) then Error('Type expected');
 
   NextToken;
 
