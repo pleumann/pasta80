@@ -1071,7 +1071,7 @@ type
 
   PCode = ^TCode;
   TCode = record
-    Tag, Instruction, Comment: String[64];
+    Tag, Instruction, Comment: String;
     Next, Prev: PCode;
   end;
 
