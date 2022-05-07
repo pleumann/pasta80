@@ -937,19 +937,22 @@ begin
         if C = '''' then
         begin
           C := GetChar;
-          if C = '''' then
-          begin
-            C := GetChar;
-            if S = '''' then StrValue := StrValue + '''';
-          end
-          else
+          while True do
           begin
             while (C <> '''') and (C <> #26) do
             begin
               StrValue := StrValue + C;
               C := GetChar;
             end;
-            if C = #26 then Error('Unterminated String') else C := GetChar;
+
+            if C = #26 then Error('Unterminated String') else C := GetChar; (* ??? *)
+
+            if C = '''' then
+            begin
+              StrValue := StrValue + '''';
+              C := GetChar;
+            end
+            else Break;
           end;
         end
         else
