@@ -2460,7 +2460,10 @@ begin
     else if Sym^.Kind = scFunc then
     begin
       T := Sym^.DataType; (* Type = Type(func) *)
-      if Sym^.IsStdCall then EmitSpace(T.Value); (* Result *)
+      if Sym^.IsStdCall then
+      begin
+        if T.Value = 1 then EmitSpace(2) else EmitSpace(T.Value); (* Result *)
+      end;
       NextToken;
       ParseArguments(Sym);
       EmitCall(Sym);     
