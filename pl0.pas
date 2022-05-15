@@ -2166,6 +2166,20 @@ begin
     end;
   end;
 
+  if (Left^.Kind = scStringType) and (Right = dtChar) then
+  begin
+    TypeCheck := Left;
+    EmitI('pop de');
+    EmitI('ld hl,-254');
+    EmitI('add hl,sp');
+    EmitI('ld sp,hl');
+    EmitI('ld d,e');
+    EmitI('ld e,1');
+    EmitI('push de');
+
+    Exit;
+  end;
+
   Error('Type error, expected ' + Left^.Name + ', got ' + Right^.Name);
 end;
 
@@ -2718,7 +2732,7 @@ begin
       T := TypeCheck(T, ParseTerm, tcExact);
       EmitBinOp(Op, T);
     end
-  else if T = dtString then
+  else if T^.Kind = scStringType then
     while Scanner.Token = toAdd do
     begin
       Op := Scanner.Token;
