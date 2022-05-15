@@ -371,7 +371,7 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal: PSymbol;
 
-  AddrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc: PSymbol;
+  AddrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -721,6 +721,11 @@ begin
 
   RegisterBuiltIn(scProc, 'CursorOn', 0, '__cursor_on');
   RegisterBuiltIn(scProc, 'CursorOff', 0, '__cursor_off');
+
+  BDosFunc := RegisterBuiltIn(scFunc, 'Bdos', 0, '');
+  BDosFunc^.IsMagic := True;
+  BDosHLFunc := RegisterBuiltIn(scFunc, 'BdosHL', 0, '');
+  BDosHLFunc^.IsMagic := True;
 
   if Graphics then
   begin
@@ -2407,6 +2412,33 @@ begin
     EmitI('popfp');
     EmitI('call COS');
     EmitI('pushfp');
+  end
+  else if (Func = BdosFunc) or (Func = BDosHLFunc) then
+  begin
+    TypeCheck(dtInteger, ParseExpression, tcAssign);
+    if Scanner.Token = toComma then
+    begin
+      NextToken;
+      TypeCheck(dtInteger, ParseExpression, tcAssign);
+    end
+    else EmitLiteral(0);
+
+    EmitI('pop de');
+    EmitI('pop hl');
+    EmitI('push ix');
+    EmitI('ld c,l');
+    EmitI('call 5');
+    EmitI('pop ix');
+
+    if Func = BdosFunc then
+    begin
+      EmitI('ld l,a');
+      EmitI('ld h,0');
+    end;
+
+    EmitI('push hl');
+
+    ParseBuiltInFunction := dtByte;
   end
   else
     Error('Cannot handle: ' + Func^.Name);
