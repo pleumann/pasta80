@@ -3681,97 +3681,89 @@ begin
   end;
 end;
 
-procedure ParseBlock(Sym: PSymbol);
+procedure ParseBlock(Sym: PSymbol); forward;
+
+procedure ParseDeclarations(Sym: PSymbol);
 var
   NewSym, ResVar: PSymbol;
   Token: TToken;
   Name: String;
   IsRef: Boolean;
 begin
-  if Scanner.Token = toConst then
+  while Scanner.Token in [toConst, toType, toVar, toProcedure, toFunction] do
   begin
-    NextToken;
-    repeat
-      ParseConst;
-      while Scanner.Token = toComma do
-      begin
-        NextToken; ParseConst;
-      end;
-      Expect(toSemicolon);
-      NextToken;
-    until Scanner.Token <> toIdent;
-  end;
-
-  if Scanner.Token = toType then
-  begin
-    NextToken;
-    Expect(toIdent);
-
-    repeat
-      Name := Scanner.StrValue;
-
-      if LookupLocal(Name) <> nil then Error('Duplicate identifier ' + Name);
-
-      NextToken;
-      Expect(toEq);
-      NextToken;
-
-      ParseTypeDef^.Name := Name;
-
-      Expect(toSemicolon);
-      NextToken;
-    until Scanner.Token <> toIdent;
-  end;
-
-  if Scanner.Token = toVar then
-  begin
-    NextToken;
-    repeat
-      parseVarList();
-      Expect(toSemicolon);
-      NextToken;
-    until Scanner.Token <> toIdent;
-  end;
-
-  while (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) do
-  begin
-    Token := Scanner.Token;
-    NextToken; Expect(toIdent);
-
-    if Token = toProcedure then
-    begin
-      NewSym := CreateSymbol(scProc, Scanner.StrValue, 0);
-      NewSym^.Tag := GetLabel('proc');
-    end
-    else
-    begin
-      NewSym := CreateSymbol(scFunc, Scanner.StrValue, 0);
-      NewSym^.Tag := GetLabel('func');
-    end;
-
-    NewSym^.IsStdCall := True;
-    OpenScope;
-    if Token = toFunction then
-    begin
-      CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
-      //SetDataType(SymbolTable, dtInteger, 0);
-      ResVar := SymbolTable;
-    end;
-    NextToken; 
-    
-    if Scanner.Token = toLParen then
+    if Scanner.Token = toConst then
     begin
       NextToken;
-
-      IsRef := False;
-      if Scanner.Token = toVar then
-      begin
-        IsRef := True;
+      repeat
+        ParseConst;
+        while Scanner.Token = toComma do
+        begin
+          NextToken; ParseConst;
+        end;
+        Expect(toSemicolon);
         NextToken;
+      until Scanner.Token <> toIdent;
+    end
+
+    else if Scanner.Token = toType then
+    begin
+      NextToken;
+      Expect(toIdent);
+
+      repeat
+        Name := Scanner.StrValue;
+
+        if LookupLocal(Name) <> nil then Error('Duplicate identifier ' + Name);
+
+        NextToken;
+        Expect(toEq);
+        NextToken;
+
+        ParseTypeDef^.Name := Name;
+
+        Expect(toSemicolon);
+        NextToken;
+      until Scanner.Token <> toIdent;
+    end
+
+    else if Scanner.Token = toVar then
+    begin
+      NextToken;
+      repeat
+        parseVarList();
+        Expect(toSemicolon);
+        NextToken;
+      until Scanner.Token <> toIdent;
+    end
+
+    else if (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
+    begin
+      Token := Scanner.Token;
+      NextToken; Expect(toIdent);
+
+      if Token = toProcedure then
+      begin
+        NewSym := CreateSymbol(scProc, Scanner.StrValue, 0);
+        NewSym^.Tag := GetLabel('proc');
+      end
+      else
+      begin
+        NewSym := CreateSymbol(scFunc, Scanner.StrValue, 0);
+        NewSym^.Tag := GetLabel('func');
       end;
 
-      ParseParamList(IsRef);
-      while Scanner.Token = toSemicolon do
+      NewSym^.IsStdCall := True;
+      OpenScope;
+      if Token = toFunction then
+      begin
+        CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
+        //SetDataType(SymbolTable, dtInteger, 0);
+        ResVar := SymbolTable;
+      end;
+      NextToken; 
+      
+      if Scanner.Token = toLParen then
       begin
         NextToken;
 
@@ -3782,31 +3774,49 @@ begin
           NextToken;
         end;
 
-        ParseParamList(IsRef); (* ParamGroup *)
+        ParseParamList(IsRef);
+        while Scanner.Token = toSemicolon do
+        begin
+          NextToken;
+
+          IsRef := False;
+          if Scanner.Token = toVar then
+          begin
+            IsRef := True;
+            NextToken;
+          end;
+
+          ParseParamList(IsRef); (* ParamGroup *)
+        end;
+        Expect(toRParen);
+        NextToken;
       end;
-      Expect(toRParen);
+
+      if NewSym^.Kind = scFunc then
+      begin
+        Expect(toColon);
+        NextToken;
+
+        NewSym^.DataType := ParseTypeDef();
+        ResVar^.DataType := NewSym^.DataType;
+      end;
+      
+      AdjustOffsets;
+
+      Expect(toSemicolon);
+      NextToken; ParseBlock(NewSym);
+      CloseScope;
+      Expect(toSemicolon);
       NextToken;
+
+      EmitC('');
     end;
-
-    if NewSym^.Kind = scFunc then
-    begin
-      Expect(toColon);
-      NextToken;
-
-      NewSym^.DataType := ParseTypeDef();
-      ResVar^.DataType := NewSym^.DataType;
-    end;
-    
-    AdjustOffsets;
-
-    Expect(toSemicolon);
-    NextToken; ParseBlock(NewSym);
-    CloseScope;
-    Expect(toSemicolon);
-    NextToken;
-
-    EmitC('');
   end;
+end;
+
+procedure ParseBlock(Sym: PSymbol);
+begin
+  ParseDeclarations(Sym);
 
   ExitTarget := GetLabel('exit');
   EmitPrologue(Sym);
