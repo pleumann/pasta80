@@ -3810,7 +3810,20 @@ begin
 
   ExitTarget := GetLabel('exit');
   EmitPrologue(Sym);
-  parseStatement('', '');
+
+  Expect(toBegin);
+  NextToken;
+
+  ParseStatement('', '');
+  while Scanner.Token = toSemicolon do
+  begin
+    NextToken;
+    ParseStatement('', '');
+  end;
+
+  Expect(toEnd);
+  NextToken;
+
   EmitEpilogue(Sym);
 end;
 
