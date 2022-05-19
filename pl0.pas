@@ -760,7 +760,7 @@ type
             toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar,
             toStringKw, toRecord, toSet, toProcedure, toFunction,
-            toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil,
+            toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil, toInline,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
             toEof);
 
@@ -782,7 +782,7 @@ const
             'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var',
             'string', 'record', 'set', 'procedure', 'function',
-            'if', 'then', 'else', 'while', 'do', 'repeat', 'until',
+            'if', 'then', 'else', 'while', 'do', 'repeat', 'until', 'inline',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
             '<eof>');
 
@@ -2876,6 +2876,103 @@ begin
   EmitStore(T); (* T? *)
 end;
 
+procedure ParseInlineTerm(var S: String; var W: Boolean);
+var
+  Sym: PSymbol;
+begin
+  if Scanner.Token = toNumber then
+  begin
+    S := S + Int2Str(Scanner.NumValue);
+    if Scanner.NumValue > 255 then W := True;
+    NextToken;
+  end
+  else if Scanner.Token = toIdent then
+  begin
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Unknown identifier: ' + Scanner.StrValue);
+
+    if (Sym^.Kind = scConst) and (Sym^.DataType = dtInteger) then
+    begin
+      S := S + Int2Str(Sym^.Value);
+      if Sym^.Value > 255 then W := True;
+    end
+    else if (Sym^.Kind = scVar) and (Sym^.Level = 1) then
+    begin
+      S := S + Sym^.Tag;
+      W := True;
+    end
+    else if (Sym^.Kind = scVar) and (Sym^.Level > 1) then
+    begin
+      S := S + Int2Str(Sym^.Value);
+      W := True;
+    end
+    else if (Sym^.Kind = scProc) or (Sym^.Kind = scFunc) then
+    begin
+      S := S + Sym^.Tag;
+      W := True;
+    end
+    else
+      Error(S + ' not allowed here');
+
+    NextToken;
+  end
+  else if Scanner.Token = toMul then
+  begin
+    S := S + '$';
+    W := True;
+    NextToken;
+  end
+  else Error('Invalid inline code');
+end;
+
+procedure ParseInlineExpr;
+var
+  S: String;
+  W: Boolean;
+  O: TToken;
+begin
+  S := '';
+  W := False;
+  O := toNone;
+
+  if Scanner.Token in [toLt, toGt] then
+  begin
+    O := Scanner.Token;
+    NextToken;
+  end;
+
+  ParseInlineTerm(S, W);
+  while Scanner.Token in [toAdd, toSub] do
+  begin
+    W := True;
+    if Scanner.Token = toAdd then S := S + '+' else S := S + '-';
+    NextToken;
+    ParseInlineTerm(S, W);
+  end;
+
+  if O = toLt then
+    EmitI('db lo(' + S + ')')
+  else if (O = toGt) or W then
+    EmitI('dw ' + S)
+  else EmitI('db ' + S);
+end;
+
+procedure ParseInline;
+begin
+  Expect(toLParen);
+  NextToken;
+
+  ParseInlineExpr;
+  while Scanner.Token = toDiv do
+  begin
+    NextToken;
+    ParseInlineExpr;
+  end;
+
+  Expect(toRParen);
+  NextToken;
+end;
+
 procedure ParseStatement(ContTarget, BreakTarget: String);
 var
   Sym: PSymbol;
@@ -3102,6 +3199,11 @@ begin
     end;
 
     if NewLine then EmitPrintNewLine;
+  end
+  else if Scanner.Token = toInline then
+  begin
+    NextToken;
+    ParseInline;
   end;
 
 end;
