@@ -7,10 +7,8 @@ var
 procedure UpperCase(var Strg: Str);
 begin
   inline(
-    $dd/$7e/<Strg/      (* ld a,[ix+Strg]    *)
-    $6f/                (* ld l,a            *)
-    $dd/$7e/<Strg+1/    (* ld a,[ix+Strg+1]  *)
-    $67/                (* ld h,a            *)
+    $dd/$6e/<Strg/      (* ld l,[ix+Strg]    *)
+    $dd/$66/<Strg+1/    (* ld h,[ix+Strg+1]  *)
     $46/                (* ld b,(hl)         *)
     $04/                (* inc b             *)
                         (* l1:               *)
