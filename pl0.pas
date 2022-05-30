@@ -3,7 +3,7 @@ program PL0;
 {$Mode delphi}
 
 uses
-  Dos, Math;
+  Keyboard, Dos, Math;
 
 (* -------------------------------------------------------------------------- *)
 (* --- Utility functions ---------------------------------------------------- *)
@@ -199,6 +199,10 @@ type
 var
   Source: array[Boolean] of TSource;
   Include: Boolean = False;
+  StoredState: Jmp_Buf;
+  ErrorLine, ErrorColumn: Integer;
+
+  AltEditor: Boolean;
 
 procedure Error(Message: String);
 var  I: Integer;
@@ -210,9 +214,12 @@ begin
     for I := 1 to Column - 1 do Write(' ');
     WriteLn('^');
     WriteLn('*** Error: ', Message, ' in line ', Line, ', column ', Column);
+    ErrorLine := Line;
+    ErrorColumn := Column;
     WriteLn();
-    Halt(1);
   end;
+
+  LongJmp(StoredState, 1);
 end;
 
 procedure OpenInput(FileName: String);
@@ -3861,25 +3868,66 @@ begin
   CloseScope;
 end;
 
-(* -------------------------------------------------------------------------- *)
-(* --- Main program --------------------------------------------------------- *)
-(* -------------------------------------------------------------------------- *)
-
 var
-  SrcFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
+  SrcFile, WrkFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
   I: Integer;
 
+function Build: Integer;
 begin
-  WriteLn('PL/0 Compiler for Z80 Version 1.0');
-  WriteLn('Copyright (c) 2020 by Joerg Pleumann');
-  WriteLn;
+  AsmFile := ChangeExt(SrcFile, '.z80');
 
-  HomeDir := GetEnv('PL0_HOME');
-  if HomeDir = '' then
-    HomeDir := ParentDir(FExpand(ParamStr(0)));
+  WriteLn('Compiling...');
+  WriteLn('  ', SrcFile, ' -> ', AsmFile);
 
-  AsmTool := GetEnv('PL0_ASM');
+  if Binary = btCom then
+    BinFile := ChangeExt(SrcFile, '.com')
+  else if Binary = btDot then
+    BinFile := ChangeExt(SrcFile, '.dot');
 
+  if SetJmp(StoredState) = 0 then
+  begin
+    Build := 1;
+
+    ErrorLine := 0;
+    ErrorColumn := 0;
+    Level := 0;
+    Offset := 0;
+    Scanner.Token := toNone;
+    Include := False;
+    C := #0;
+
+    while SymbolTable <> nil do CloseScope;
+
+    OpenInput(SrcFile);
+    OpenTarget(AsmFile);
+    EmitHeader(HomeDir, SrcFile);  (* TODO Move this elsewhere. *)
+    NextToken;
+
+    ParseProgram;
+
+    EmitFooter();                  (* TODO Move this elsewhere. *)
+    CloseTarget();
+    CloseInput();
+
+    Build := 2;
+
+    WriteLn('Assembling...');
+    WriteLn('  ', AsmFile, ' -> ', BinFile);
+
+    Exec(AsmTool,  '-v0 ' + AsmFile + ' ' + BinFile);
+    if DosError <> 0 then
+      Error('Error ' + Int2Str(DosError) + ' starting ' + AsmTool);
+    if DosExitCode <> 0 then
+      Error('Failure! :(');
+
+    WriteLn('Success! :)');
+
+    Build := 0;
+  end;
+end;
+
+procedure Parameters;
+begin
   I := 1;  
   SrcFile := ParamStr(I);
   while Copy(SrcFile, 1, 2) = '--' do
@@ -3935,34 +3983,182 @@ begin
 
   AsmFile := ChangeExt(SrcFile, '.z80');
 
-  if Binary = btCom then
-    BinFile := ChangeExt(SrcFile, '.com')
-  else if Binary = btDot then
-    BinFile := ChangeExt(SrcFile, '.dot');
+  Build;
+end;
 
-  WriteLn('Compiling...');
+(* --- Interactive Menu --- *)
 
-  OpenInput(SrcFile);
-  OpenTarget(AsmFile);
-  EmitHeader(HomeDir, SrcFile);  (* TODO Move this elsewhere. *)
-  NextToken;
-  ParseProgram;
-  EmitFooter();                  (* TODO Move this elsewhere. *)
-  CloseTarget();
-  CloseInput();
+type
+  TCharSet = set of Char;
 
-  if AsmTool <> '' then
+function GetKey: Char;
+var
+  C: Char;
+  K: TKeyEvent;
+begin
+  InitKeyboard;
+  WriteLn;
+  Write('>');
+
+  repeat
+    K:=GetKeyEvent;
+    K:=TranslateKeyEvent(K);
+  until GetKeyEventFlags(K) = kbASCII;
+  
+  C := GetKeyEventChar(K);
+
+  WriteLn(C);
+  GetKey := C;
+  DoneKeyboard;
+end;
+
+function GetFile(const S: String): String;
+var
+  T: String;
+begin
+  Write(S);
+  ReadLn(T);
+  if (Length(T) <> 0) and (Pos('.', T) = 0) then T := T + '.pas';
+  GetFile := T;
+end;
+
+procedure DoMainFile;
+begin
+  SrcFile := GetFile('Main file name: ');
+end;
+
+procedure DoWorkFile;
+begin
+  WrkFile := GetFile('Work file name: ');
+end;
+
+procedure DoEdit(Line, Column: Integer);
+var
+  S: String;
+begin
+  if Length(WrkFile) = 0 then WrkFile := SrcFile;
+  if Length(WrkFile) = 0 then DoWorkFile;
+  if Length(WrkFile) <> 0 then
   begin
-    WriteLn('Assembling...');
+    if AltEditor then
+    begin
+      if (Line <> 0) and (Column <> 0) then
+        Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', '-g ' + WrkFile + ':' + Int2Str(Line) + ':' + Int2Str(Column))
+      else
+        Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', WrkFile)
+    end
+    else
+    begin
+      if (Line <> 0) and (Column <> 0) then
+        Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + Int2Str(Line) + ',' + Int2Str(Column) + ' ' + WrkFile)
+      else
+        Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + WrkFile);
+    end;
+  end;
+end;
 
-    Exec(AsmTool, AsmFile + ' ' + BinFile);
-    if DosError <> 0 then
-      Error('Error ' + Int2Str(DosError) + ' starting ' + AsmTool);
-    if DosExitCode <> 0 then
-      Error('Failure! :(')
+procedure DoCompile;
+var
+  I: Integer;
+begin
+  if Length(SrcFile) = 0 then SrcFile := WrkFile;
+  if Length(SrcFile) = 0 then DoMainFile;
+  if Length(SrcFile) <> 0 then
+    if Build = 1 then
+    begin
+      if not AltEditor then GetKey;
+      DoEdit(ErrorLine, ErrorColumn);
+    end;
+end;
+
+procedure DoRun(Alt: Boolean);
+begin
+  if Length(BinFile) <> 0 then
+  begin
+    if Alt then
+      Exec('/Users/joerg/Library/bin/tnylpo', '-soy -t @ ' + BinFile)
+    else
+      Exec('/Users/joerg/Library/bin/tnylpo', BinFile)
+  end;
+end;
+
+function TermStr(S: String): String;
+var
+  P: Integer;
+  T: String;
+begin
+  T := '';
+  I := 1;
+  while I <= Length(S) do
+  begin
+    C := S[I];
+    if C = '~' then
+    begin
+      T := T + #27'[1m' + S[I + 1] + #27'[m';
+      Inc(I);
+    end
+    else T := T + C;
+    
+    Inc(I);
   end;
 
-  WriteLn('Success! :)');
+  TermStr := T;
+end;
+
+procedure Interactive;
+var
+  C: Char;
+begin
+  while True do
+  begin
+    Write(#27'[2J'#27'[H');
+
+    WriteLn('----------------------------------------');
+    WriteLn('PL/0 Compiler for Z80       Version 1.50');
+    WriteLn;
+    WriteLn('Copyright (C) 2020-2022 by Jörg Pleumann');
+    WriteLn('----------------------------------------');
+    WriteLn;
+    WriteLn(TermStr('~Main file: '), SrcFile);
+    WriteLn(TermStr('~Work file: '), WrkFile);
+    WriteLn;
+    WriteLn(TermStr('~Edit      ~Compile   ~Run       ~Quit'));
+
+    while True do
+    begin
+      C := GetKey;
+
+      case C of
+        'm': DoMainFile;
+        'w': DoWorkFile;
+        'e': DoEdit(0, 0);
+        'c': DoCompile;
+        'r', 'R': DoRun(C = 'R');
+        'q': Halt(0);
+        else Break;
+      end;
+    end;
+  end;
+end;
+
+(* -------------------------------------------------------------------------- *)
+(* --- Main program --------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+begin
+  WriteLn('PL/0 Compiler for Z80 Version 1.5');
+  WriteLn('Copyright (c) 2020-2022 Joerg Pleumann');
+  WriteLn;
+
+  HomeDir := GetEnv('PL0_HOME');
+  if HomeDir = '' then
+    HomeDir := ParentDir(FExpand(ParamStr(0)));
+
+  AsmTool := GetEnv('PL0_ASM');
+
+  AltEditor := GetEnv('TERM_PROGRAM') = 'vscode';
+
+  if ParamCount <> 0 then Parameters else Interactive;
 end.
 
 (*
