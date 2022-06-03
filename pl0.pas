@@ -200,24 +200,21 @@ var
   Source: array[Boolean] of TSource;
   Include: Boolean = False;
   StoredState: Jmp_Buf;
-  ErrorLine, ErrorColumn: Integer;
+  TokenLine, TokenColumn, ErrorLine, ErrorColumn: Integer;
 
   AltEditor: Boolean;
 
 procedure Error(Message: String);
-var  I: Integer;
+var  I, L, C: Integer;
 begin
-  with Source[Include] do
-  begin
-    WriteLn;
-    WriteLn(Buffer);
-    for I := 1 to Column - 1 do Write(' ');
-    WriteLn('^');
-    WriteLn('*** Error: ', Message, ' in line ', Line, ', column ', Column);
-    ErrorLine := Line;
-    ErrorColumn := Column;
-    WriteLn();
-  end;
+  WriteLn;
+  WriteLn(Source[Include].Buffer);
+  for I := 1 to TokenColumn - 1 do Write(' ');
+  WriteLn('^');
+  WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
+  ErrorLine := TokenLine;
+  ErrorColumn := TokenColumn;
+  WriteLn();
 
   LongJmp(StoredState, 1);
 end;
@@ -853,6 +850,8 @@ begin
     Token := toNone;
     StrValue := '';
     NumValue := 0;
+    TokenLine := Source[Include].Line;
+    TokenColumn := Source[Include].Column - 1;
 
     if IsIdentHead(C) then
     begin
