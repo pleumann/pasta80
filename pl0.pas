@@ -180,6 +180,31 @@ begin
     ChangeExt := Copy(Name, 1, I-1) + Ext;
 end;
 
+function FRelative(Name, Dir: String): String;
+begin
+  Dir := Dir + '/';
+  if Copy(Name, 1, Length(Dir)) = Dir then
+    FRelative := Copy(Name, Length(Dir) + 1, 255)
+  else
+    FRelative := Name;  
+end;
+
+function FSize(Name: String): Integer;
+var
+  F: File;
+begin
+  {$I-}
+  Assign(F, Name);
+  Reset(F, 1);
+  if IOResult = 0 then
+  begin
+    FSize := FileSize(F);
+    Close(F);
+  end
+  else FSize := -1;
+  {$I+}
+end;
+
 // Debug / Warning / Error
 
 (* -------------------------------------------------------------------------- *)
@@ -1085,6 +1110,11 @@ type
     Tag, Instruction, Comment: String;
     Next, Prev: PCode;
   end;
+
+const
+  BinaryStr: array[TBinaryType] of String = ('CP/M COM', 'Next DOT');
+  GraphicsStr: array[TGraphicsMode] of String = ('None', 'Lo-res', 'Hi-res');
+  YesNoStr: array[Boolean] of String = ('No ', 'Yes');
 
 var
   Binary: TBinaryType;
@@ -3868,15 +3898,20 @@ begin
 end;
 
 var
-  SrcFile, WrkFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
+  SrcFile, MainFile, WorkFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
   I: Integer;
 
 function Build: Integer;
+var
+  Dir: String;
+  Org, Len: Integer;
 begin
+  Dir := FExpand('.');
+
   AsmFile := ChangeExt(SrcFile, '.z80');
 
   WriteLn('Compiling...');
-  WriteLn('  ', SrcFile, ' -> ', AsmFile);
+  WriteLn('  ', FRelative(SrcFile, Dir), ' -> ', FRelative(AsmFile, Dir));
 
   if Binary = btCom then
     BinFile := ChangeExt(SrcFile, '.com')
@@ -3911,15 +3946,18 @@ begin
     Build := 2;
 
     WriteLn('Assembling...');
-    WriteLn('  ', AsmFile, ' -> ', BinFile);
+    WriteLn('  ', FRelative(AsmFile, Dir), ' -> ', FRelative(BinFile, Dir));
 
-    Exec(AsmTool,  '-v0 ' + AsmFile + ' ' + BinFile);
+    Exec(AsmTool,  '-v0 -w ' + AsmFile + ' ' + BinFile);
     if DosError <> 0 then
       Error('Error ' + Int2Str(DosError) + ' starting ' + AsmTool);
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
-    WriteLn('Success! :)');
+    if Binary = btCom then Org := 256 else Org := 8192;
+    Len := FSize(BinFile);
+    WriteLn;
+    WriteLn(Len, ' bytes (', HexStr(Org, 4), '-', HexStr(Org + Len - 1, 4), ')');
 
     Build := 0;
   end;
@@ -4017,68 +4055,144 @@ var
 begin
   Write(S);
   ReadLn(T);
-  if (Length(T) <> 0) and (Pos('.', T) = 0) then T := T + '.pas';
-  GetFile := T;
+  if Length(T) <> 0 then
+  begin
+    if Pos('.', T) = 0 then T := T + '.pas';
+    GetFile := FExpand(T);
+  end;
+end;
+
+procedure DoDirectory;
+var
+  Dir: String;
+begin
+  Write('New directory: ');
+  ReadLn(Dir);
+  ChDir(Dir);  
 end;
 
 procedure DoMainFile;
 begin
-  SrcFile := GetFile('Main file name: ');
+  MainFile := GetFile('Main file name: ');
 end;
 
 procedure DoWorkFile;
 begin
-  WrkFile := GetFile('Work file name: ');
+  WorkFile := GetFile('Work file name: ');
 end;
 
 procedure DoEdit(Line, Column: Integer);
 var
   S: String;
 begin
-  if Length(WrkFile) = 0 then WrkFile := SrcFile;
-  if Length(WrkFile) = 0 then DoWorkFile;
-  if Length(WrkFile) <> 0 then
+  if (WorkFile = '') and (MainFile = '') then DoWorkFile;
+
+  if WorkFile <> '' then
+    S := WorkFile
+  else if MainFile <> '' then
+    S := MainFile
+  else
+    Exit;
+
+  if AltEditor then
   begin
-    if AltEditor then
-    begin
-      if (Line <> 0) and (Column <> 0) then
-        Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', '-g ' + WrkFile + ':' + Int2Str(Line) + ':' + Int2Str(Column))
-      else
-        Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', WrkFile)
-    end
+    if (Line <> 0) and (Column <> 0) then
+      Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', '-g ' + S + ':' + Int2Str(Line) + ':' + Int2Str(Column))
     else
-    begin
-      if (Line <> 0) and (Column <> 0) then
-        Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + Int2Str(Line) + ',' + Int2Str(Column) + ' ' + WrkFile)
-      else
-        Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + WrkFile);
-    end;
+      Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', S)
+  end
+  else
+  begin
+    if (Line <> 0) and (Column <> 0) then
+      Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + Int2Str(Line) + ',' + Int2Str(Column) + ' ' + S)
+    else
+      Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + S);
   end;
 end;
 
 procedure DoCompile;
 var
-  I: Integer;
+  I, Org, Len: Integer;
 begin
-  if Length(SrcFile) = 0 then SrcFile := WrkFile;
-  if Length(SrcFile) = 0 then DoMainFile;
-  if Length(SrcFile) <> 0 then
-    if Build = 1 then
-    begin
-      if not AltEditor then GetKey;
-      DoEdit(ErrorLine, ErrorColumn);
-    end;
+  if (WorkFile = '') and (MainFile = '') then DoWorkFile;
+
+  if MainFile <> '' then
+    SrcFile := MainFile
+  else if WorkFile <> '' then
+    SrcFile := WorkFile
+  else
+    Exit;
+
+  if Build = 1 then
+  begin
+    if not AltEditor then GetKey;
+    DoEdit(ErrorLine, ErrorColumn);
+  end
 end;
 
 procedure DoRun(Alt: Boolean);
 begin
   if Length(BinFile) <> 0 then
   begin
-    if Alt then
-      Exec('/Users/joerg/Library/bin/tnylpo', '-soy -t @ ' + BinFile)
+    if Binary = btCom then
+    begin
+      if Alt then
+        Exec('/Users/joerg/Library/bin/tnylpo', '-soy -t @ ' + BinFile)
+      else
+        Exec('/Users/joerg/Library/bin/tnylpo', BinFile)
+    end
     else
-      Exec('/Users/joerg/Library/bin/tnylpo', BinFile)
+    begin
+      Exec('/Users/joerg/Library/bin/hdfmonkey', 'put /Users/joerg/Downloads/tbblue.mmc ' + BinFile + ' /autoexec.dot');
+      if Alt then
+        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+      else
+        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+    end;
   end;
+end;
+
+procedure DoShell(Alt: Boolean);
+var
+  Cmd: String;
+begin
+  if Alt then Exec('/bin/bash', '')
+  else
+  begin
+    Write('Command: ');
+    ReadLn(Cmd);
+    WriteLn;
+    Exec('/bin/bash', '-c "' + Cmd + '"');
+  end;
+end;
+
+procedure DoFiles;
+var
+  Pattern, S: String;
+  Dir: SearchRec;
+  I: Integer;
+begin
+  Write('Mask: ');
+  ReadLn(Pattern);
+  if Pattern = '' then Pattern := '*';
+
+  I := 0;
+  FindFirst(Pattern, Archive + Directory, Dir);
+  while DosError = 0 do
+  begin
+    if I = 0 then WriteLn;
+    I := I + 1;
+    if I = 5 then I := 0;
+
+    S := Dir.Name;
+    if Dir.Attr and Directory <> 0 then
+      S := #27'[1m' + S + #27'[m';
+    Write(S + Space(15 - Length(Dir.Name)) + ' ');
+    FindNext(Dir);
+  end;
+
+  FindClose(Dir);
+  WriteLn;
 end;
 
 function TermStr(S: String): String;
@@ -4104,9 +4218,28 @@ begin
   TermStr := T;
 end;
 
+procedure DoOptions;
+var
+  C: Char;
+begin
+  repeat
+    Write(TermStr('~Target:   '), BinaryStr[Binary]);
+    if Binary = btDot then WriteLn('  ', TermStr('~Graphics: '), GraphicsStr[Graphics]) else WriteLn;
+    WriteLn(TermStr('~Optimize: '), YesNoStr[Optimize], '       ', TermStr('~Back'));
+
+    C := GetKey;
+    case C of
+      't': if Binary = btCom then Binary := btDot else Binary := btCom;
+      'g': if Graphics = gmHighRes then Graphics := gmNone else Inc(Graphics);
+      'o': Optimize := not Optimize;
+    end;
+  until C = 'b';
+end;
+
 procedure Interactive;
 var
   C: Char;
+  I: Integer;
 begin
   while True do
   begin
@@ -4118,22 +4251,44 @@ begin
     WriteLn('Copyright (C) 2020-2022 by Jörg Pleumann');
     WriteLn('----------------------------------------');
     WriteLn;
-    WriteLn(TermStr('~Main file: '), SrcFile);
-    WriteLn(TermStr('~Work file: '), WrkFile);
+    WriteLn(TermStr('~Directory: '), FExpand('.'));
     WriteLn;
-    WriteLn(TermStr('~Edit      ~Compile   ~Run       ~Quit'));
+    
+    Write(TermStr('~Work file: '), FRelative(WorkFile, FExpand('.')));
+    if WorkFile <> '' then
+    begin
+      I := FSize(WorkFile);
+      if I = -1 then WriteLn(' (new file)') else WriteLn(' (', I, ' bytes)');
+    end
+    else WriteLn;
+
+    Write(TermStr('~Main file: '), FRelative(MainFile, FExpand('.')));
+    if MainFile <> '' then
+    begin
+      I := FSize(MainFile);
+      if I = -1 then WriteLn(' (new file)') else WriteLn(' (', I, ' bytes)');
+    end
+    else WriteLn;
+
+    WriteLn;
+    WriteLn(TermStr('~Edit      ~Compile   ~Run       '));
+    WriteLn(TermStr('~Shell     ~Files     ~Options   ~Quit'));
 
     while True do
     begin
       C := GetKey;
 
       case C of
+        'd': DoDirectory;
         'm': DoMainFile;
         'w': DoWorkFile;
         'e': DoEdit(0, 0);
         'c': DoCompile;
         'r', 'R': DoRun(C = 'R');
-        'q': Halt(0);
+        's', 'S': DoShell(C = 'S');
+        'f': DoFiles;
+        'o', 'O': DoOptions;
+        'q': begin WriteLn('Bye!'); WriteLn; Halt(0); end;
         else Break;
       end;
     end;
