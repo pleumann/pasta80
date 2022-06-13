@@ -3963,66 +3963,6 @@ begin
   end;
 end;
 
-procedure Parameters;
-begin
-  I := 1;  
-  SrcFile := ParamStr(I);
-  while Copy(SrcFile, 1, 2) = '--' do
-  begin
-    if SrcFile = '--asm' then
-    begin
-      AsmTool := ParamStr(I + 1);
-      I := I + 1;
-    end
-    else if SrcFile = '--com' then
-      Binary := btCom
-    else if SrcFile = '--dot' then
-      Binary := btDot
-    else if SrcFile = '--gfx' then
-    begin
-      S := LowerStr(ParamStr(I + 1));
-
-      if S = 'lo' then
-        Graphics := gmLowRes
-      else if S = 'hi' then
-        Graphics := gmHighRes
-      else
-        Error('Invalid graphics mode: ' + S);
-
-      I := I + 1;
-    end
-    else if SrcFile = '--opt' then
-      Optimize := True
-    else
-      Error('Invalid option: ' + SrcFile);
-
-    I := I + 1;
-    SrcFile := ParamStr(I);
-  end;
-
-  if SrcFile = '' then
-  begin
-    WriteLn('Usage:');
-    WriteLn('  pl0 { <option> } <input>');
-    WriteLn;
-    WriteLn('Options:');
-    WriteLn('  --asm <path>   sets assembler binary');
-    WriteLn('  --com          selects CP/M .com target');
-    WriteLn('  --dot          selects Next .dot target');
-    WriteLn('  --gfx <lo|hi>  enables graphics mode');
-    WriteLn('  --opt          enables optimizations');
-(*  WriteLn('  --chk          enables run-time checks'); *)
-    WriteLn;
-    Halt(1);
-  end;
-
-  if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pas';
-
-  AsmFile := ChangeExt(SrcFile, '.z80');
-
-  Build;
-end;
-
 (* --- Interactive Menu --- *)
 
 type
@@ -4161,7 +4101,6 @@ begin
   begin
     Write('Command: ');
     ReadLn(Cmd);
-    WriteLn;
     Exec('/bin/bash', '-c "' + Cmd + '"');
   end;
 end;
@@ -4180,14 +4119,17 @@ begin
   FindFirst(Pattern, Archive + Directory, Dir);
   while DosError = 0 do
   begin
-    if I = 0 then WriteLn;
     I := I + 1;
-    if I = 5 then I := 0;
+    if I = 5 then
+    begin
+      WriteLn;
+      I := 0;
+    end;
 
     S := Dir.Name;
     if Dir.Attr and Directory <> 0 then
-      S := #27'[1m' + S + #27'[m';
-    Write(S + Space(15 - Length(Dir.Name)) + ' ');
+      S := '[' + S + ']';
+    Write(S + Space(15 - Length(S)) + ' ');
     FindNext(Dir);
   end;
 
@@ -4236,6 +4178,16 @@ begin
   until C = 'b';
 end;
 
+procedure Copyright;
+begin
+  WriteLn('----------------------------------------');
+  WriteLn('PL/0 Compiler for Z80       Version 1.50');
+  WriteLn;
+  WriteLn('Copyright (C) 2020-2022 by Jörg Pleumann');
+  WriteLn('----------------------------------------');
+  WriteLn;
+end;
+
 procedure Interactive;
 var
   C: Char;
@@ -4245,12 +4197,8 @@ begin
   begin
     Write(#27'[2J'#27'[H');
 
-    WriteLn('----------------------------------------');
-    WriteLn('PL/0 Compiler for Z80       Version 1.50');
-    WriteLn;
-    WriteLn('Copyright (C) 2020-2022 by Jörg Pleumann');
-    WriteLn('----------------------------------------');
-    WriteLn;
+    Copyright;
+
     WriteLn(TermStr('~Directory: '), FExpand('.'));
     WriteLn;
     
@@ -4295,14 +4243,93 @@ begin
   end;
 end;
 
+procedure Parameters;
+var
+  Ide: Boolean;
+begin
+  if ParamCount = 0 then
+  begin
+    WriteLn('Usage:');
+    WriteLn('  pl0 { <option> } <input>');
+    WriteLn;
+    WriteLn('Options:');
+(*    WriteLn('  --asm <path>   sets assembler binary'); *)
+    WriteLn('  --com          compiles to CP/M ''.com''');
+    WriteLn('  --dot          compiles to Next ''.dot''');
+    WriteLn('  --gfx <lo|hi>  enables graphics mode');
+    WriteLn('  --opt          enables optimizations');
+(*  WriteLn('  --chk          enables run-time checks'); *)
+    WriteLn('  --ide          starts interactive mode');
+    WriteLn;
+    Halt(1);
+  end;
+
+  Ide := False;
+
+  I := 1;  
+  SrcFile := ParamStr(I);
+  while Copy(SrcFile, 1, 2) = '--' do
+  begin
+    if SrcFile = '--asm' then
+    begin
+      AsmTool := ParamStr(I + 1);
+      I := I + 1;
+    end
+    else if SrcFile = '--com' then
+      Binary := btCom
+    else if SrcFile = '--dot' then
+      Binary := btDot
+    else if SrcFile = '--gfx' then
+    begin
+      S := LowerStr(ParamStr(I + 1));
+
+      if S = 'lo' then
+        Graphics := gmLowRes
+      else if S = 'hi' then
+        Graphics := gmHighRes
+      else
+        Error('Invalid graphics mode: ' + S);
+
+      I := I + 1;
+    end
+    else if SrcFile = '--opt' then
+      Optimize := True
+    else if SrcFile = '--ide' then
+      Ide := True
+    else
+      Error('Invalid option: ' + SrcFile);
+
+    I := I + 1;
+    SrcFile := ParamStr(I);
+  end;
+
+  if SrcFile = '' then
+  begin
+    if not Ide then Error('No input file');
+  end
+  else
+  begin
+    if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pas';
+    if FSize(SrcFile) < 0 then Error('Input file does not exist');
+    AsmFile := ChangeExt(SrcFile, '.z80');
+  end;
+
+  if Ide then
+  begin
+    WorkFile := SrcFile;
+    Interactive;
+  end
+  else Build;
+
+  WriteLn;
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Main program --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
 begin
-  WriteLn('PL/0 Compiler for Z80 Version 1.5');
-  WriteLn('Copyright (c) 2020-2022 Joerg Pleumann');
-  WriteLn;
+  Copyright;
 
   HomeDir := GetEnv('PL0_HOME');
   if HomeDir = '' then
@@ -4312,7 +4339,7 @@ begin
 
   AltEditor := GetEnv('TERM_PROGRAM') = 'vscode';
 
-  if ParamCount <> 0 then Parameters else Interactive;
+  Parameters;
 end.
 
 (*
