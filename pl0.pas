@@ -545,6 +545,7 @@ begin
   Sym^.Tag := '';
   Sym^.IsMagic := False;
   Sym^.IsRef := False;
+  Sym^.DataType := nil;
   SymbolTable^.Next := Sym;
   SymbolTable := Sym;
 
