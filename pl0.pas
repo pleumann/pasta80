@@ -4350,13 +4350,9 @@ TODO
 - var X absolute $1234
 - var X absolute Y;
 - Complex types on the stack (parameters, locals), what does Turbo 3 allow?
-- Proper strings
 - Enums as array indices
 - Alternative array syntax
 - Subrange types
-- Set types
-- Floating point type(s)
 - Pointers & heap management
 - Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
-- Integrate String literals as String data type, allow variables and parameters.
 *)
