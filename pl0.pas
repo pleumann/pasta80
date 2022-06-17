@@ -4086,9 +4086,9 @@ begin
     begin
       Exec('/Users/joerg/Library/bin/hdfmonkey', 'put /Users/joerg/Downloads/tbblue.mmc ' + BinFile + ' /autoexec.dot');
       if Alt then
-        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
       else
-        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
     end;
   end;
 end;
@@ -4317,7 +4317,7 @@ begin
 
   if Ide then
   begin
-    WorkFile := SrcFile;
+    if SrcFile <> '' then WorkFile := FExpand(SrcFile);
     Interactive;
   end
   else Build;
