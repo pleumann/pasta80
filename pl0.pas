@@ -375,7 +375,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scVar, scProc, scFunc, scScope);
 
   PSymbol = ^TSymbol;
   TSymbol = record
@@ -398,9 +398,9 @@ type
 var
   SymbolTable: PSymbol = nil;
   Level, Offset: Integer;
-  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal: PSymbol;
+  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
-  AddrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc, BDosFunc, BDosHLFunc: PSymbol;
+  AddrFunc, PtrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -657,6 +657,9 @@ begin
   dtReal := CreateSymbol(scType, 'Real', 6);
   dtReal^.Value := 6;
 
+  dtPointer := CreateSymbol(scPointerType, 'Pointer', 2);
+  dtPointer^.Value := 2;
+
   Sym := CreateSymbol(scArrayType, '', 65536);
   Sym^.DataType := dtByte;
 
@@ -667,6 +670,9 @@ begin
 
   AddrFunc := RegisterBuiltIn(scFunc, 'Addr', 1, '');
   AddrFunc^.IsMagic := True;
+
+  PtrFunc := RegisterBuiltIn(scFunc, 'Ptr', 1, '');
+  PtrFunc^.IsMagic := True;
 
   SizeFunc := RegisterBuiltIn(scFunc, 'SizeOf', 1, '');
   SizeFunc^.IsMagic := True;
@@ -785,7 +791,7 @@ type
             toAdd, toSub, toMul, toDiv,
             toEq, toNeq, toLt, toLeq, toGt, toGeq,
             toLParen, toRParen, toLBrack, toRBrack,
-            toBecomes, toComma, toColon, toSemicolon, toPeriod, toRange,
+            toBecomes, toComma, toColon, toSemicolon, toPeriod, toCaret, toRange,
             toAnd, toOr, toXor, toNot, toMod, toIn,
             toArray, toOf,
             toProgram, toBegin, toEnd, toConst, toType, toVar,
@@ -807,7 +813,7 @@ const
             '+', '-', '*', '/',
             '=', '#', '<', '<=', '>', '>=',
             '(', ')', '[', ']',
-            ':=', ',', ':', ';', '.', '..',
+            ':=', ',', ':', ';', '.', '^', '..',
             'and', 'or', 'xor', 'not', 'mod', 'in',
             'array', 'of',
             'program', 'begin', 'end', 'const', 'type', 'var',
@@ -1023,6 +1029,7 @@ begin
         ',': Token := toComma;
         ';': Token := toSemicolon;
         '.': Token := toPeriod;
+        '^': Token := toCaret;
         else Error('Invalid character "' + C + '"');
       end;
 
@@ -1421,6 +1428,8 @@ end;
 
 procedure EmitFooter();
 begin
+  EmitC('');
+  EmitC('HEAP:');
   EmitC('');
   EmitC('end');
   EmitC('');
@@ -2205,7 +2214,16 @@ begin
     begin
       TypeCheck := dtByte;
       Exit;
-    end;
+    end
+    else if (Left^.Kind = scPointerType) and (Right^.Kind = scPointerType) then
+    begin
+      if (Left^.DataType <> nil) and (Right^.DataType <> nil) and (Left^.DataType <> Right^.DataType) then
+        Error('Incompatible pointer types');
+
+      TypeCheck := Left;
+      Exit;
+    end
+
   end;
 
   if (Left^.Kind = scStringType) and (Right = dtChar) then
@@ -2236,7 +2254,7 @@ begin
 
   DataType := Symbol^.DataType;
 
-  while Scanner.Token in [toLBrack, toPeriod] do
+  while Scanner.Token in [toLBrack, toPeriod, toCaret] do
   begin
     if Scanner.Token = toLBrack then
     begin
@@ -2277,7 +2295,7 @@ begin
 
       NextToken;
     end
-    else
+    else if Scanner.Token = toPeriod then
     begin
       if DataType^.Kind <> scRecordType then
         Error('Not a record');
@@ -2293,7 +2311,23 @@ begin
       EmitBinOp(toAdd, dtInteger);
 
       NextToken;
+    end
+    else
+    begin
+      if DataType^.Kind <> scPointerType then
+        Error('Not a pointer');
+      
+      NextToken;
+
+      EmitI('pop hl');
+      EmitI('ld e,(hl)');
+      EmitI('inc hl');
+      EmitI('ld d,(hl)');
+      EmitI('push de');
+
+      DataType := DataType^.DataType;
     end;
+
   end;
   ParseVariableAccess := DataType;
 end;
@@ -2373,6 +2407,11 @@ begin
     NextToken;
     ParseVariableAccess(Sym);
     ParseBuiltInFunction := dtInteger;
+  end
+  else if Func = PtrFunc then
+  begin
+    TypeCheck(dtInteger, ParseExpression, tcAssign);
+    ParseBuiltInFunction := dtPointer;
   end
   else if Func = SizeFunc then
   begin
@@ -3520,6 +3559,20 @@ begin
 
     DataType^.Value := 32;
   end
+  else if Scanner.Token = toCaret then
+  begin
+    DataType := CreateSymbol(scPointerType, '', 0);
+    DataType^.Value := 2;
+    NextToken;
+
+    if Scanner.Token = toIdent then
+    begin
+      DataType^.DataType := LookupGlobal(Scanner.StrValue);
+      if DataType^.DataType = nil then DataType^.Tag := Scanner.StrValue;
+      NextToken;
+    end
+    else DataType^.DataType := ParseTypeDef;
+  end
   else if Scanner.Token = toLParen then
   begin
     DataType := CreateSymbol(scEnumType, '', 0);
@@ -3600,7 +3653,7 @@ begin
     end
     else
     begin
-      if not (Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType]) then
+      if not (Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType, scSubrangeType]) then
         Error('Not a type: ' + Scanner.StrValue);
 
       DataType := Sym;
@@ -3722,7 +3775,7 @@ procedure ParseBlock(Sym: PSymbol); forward;
 
 procedure ParseDeclarations(Sym: PSymbol);
 var
-  NewSym, ResVar: PSymbol;
+  NewSym, ResVar, OldSyms, P: PSymbol;
   Token: TToken;
   Name: String;
   IsRef: Boolean;
@@ -3745,6 +3798,8 @@ begin
 
     else if Scanner.Token = toType then
     begin
+      OldSyms := SymbolTable;
+
       NextToken;
       Expect(toIdent);
 
@@ -3762,6 +3817,19 @@ begin
         Expect(toSemicolon);
         NextToken;
       until Scanner.Token <> toIdent;
+
+      P := SymbolTable;
+      while P <> OldSyms do
+      begin
+        if (P^.Kind = scPointerType) and (P^.DataType = nil) then
+        begin
+          P^.DataType := LookupGlobal(P^.Tag);
+          if P^.DataType = nil then Error('Unresolved forward pointer ' + P^.Name);
+          P^.Tag := '';
+        end;
+
+        P := P^.Prev;
+      end;
     end
 
     else if Scanner.Token = toVar then
