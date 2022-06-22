@@ -94,3 +94,12 @@ begin
 
   MaxAvail := I;
 end;
+
+procedure InitHeap(Bytes: Integer);
+var
+  P: Pointer;
+begin
+  HeapPtr := nil;
+  P := GetHeapStart;
+  FreeMem(P, Bytes);
+end;

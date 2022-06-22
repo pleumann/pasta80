@@ -769,6 +769,9 @@ begin
   BDosHLFunc := RegisterBuiltIn(scFunc, 'BdosHL', 0, '');
   BDosHLFunc^.IsMagic := True;
 
+  RegisterBuiltIn(scFunc, 'GetHeapStart', 0, '__get_heap_start')^.DataType := dtPointer;
+//  RegisterBuiltIn(scFunc, 'GetHeapBytes', 0, '__get_heap_bytes')^.DataType := dtInteger;
+
   if Graphics then
   begin
     Sym := RegisterBuiltIn(scProc, 'SetPixel', 3, '__set_pixel');
@@ -4013,10 +4016,19 @@ begin
   EmitEpilogue(Sym);
 end;
 
+var
+  SrcFile, MainFile, WorkFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
+  I: Integer;
+
 procedure ParseProgram;
 begin
   OpenScope;
   RegisterAllBuiltIns((Binary = btDot) and (Graphics <> gmNone));
+
+  SetInclude(HomeDir + '/lib/system.pas');
+  NextToken;
+  ParseDeclarations(nil);
+
   if Scanner.Token = toProgram then
   begin
     NextToken;
@@ -4034,12 +4046,10 @@ begin
   EmitStrings();
   EmitC('');
   Emit('display', 'ds 32', 'Display');
+  EmitC('');
+  Emit('eof', '', 'End of file');
   CloseScope;
 end;
-
-var
-  SrcFile, MainFile, WorkFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
-  I: Integer;
 
 function Build: Integer;
 var
@@ -4075,7 +4085,6 @@ begin
     OpenInput(SrcFile);
     OpenTarget(AsmFile);
     EmitHeader(HomeDir, SrcFile);  (* TODO Move this elsewhere. *)
-    NextToken;
 
     ParseProgram;
 

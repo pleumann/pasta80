@@ -1673,6 +1673,17 @@ __get_pixel:    di
 ;__setpixel:
 ;__getpixel:
 
+__get_heap_start:
+                ld      hl, eof
+                ret
+
+__get_heap_bytes:
+                ld      hl, 57344
+                ld      de, eof
+                and     a
+                sbc     hl,de
+                ret
+
 ;
 ; Startup (with some help from Melissa O'Neill for NXT case)
 ;
