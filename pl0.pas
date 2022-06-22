@@ -400,7 +400,7 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
-  AddrFunc, PtrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc, BDosFunc, BDosHLFunc: PSymbol;
+  AddrFunc, PtrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc, BDosFunc, BDosHLFunc, NewProc, DisposeProc: PSymbol;
 
 procedure OpenScope();
 var
@@ -698,6 +698,12 @@ begin
   CosFunc := RegisterBuiltIn(scFunc, 'Cos', 1, '');
   CosFunc^.IsMagic := True;
 
+  NewProc := RegisterBuiltIn(scProc, 'New', 1, '');
+  NewProc^.IsMagic := True;
+
+  DisposeProc := RegisterBuiltIn(scProc, 'Dispose', 1, '');
+  DisposeProc^.IsMagic := True;
+
   Sym := RegisterBuiltIn(scFunc, 'Length', 1, '__length');
   Sym^.ArgTypes[0] := dtString;
   Sym^.DataType := dtInteger;
@@ -798,6 +804,7 @@ type
             toStringKw, toRecord, toSet, toProcedure, toFunction,
             toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil, toInline,
             toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
+            toNil,
             toEof);
 
   TScanner = record
@@ -820,10 +827,11 @@ const
             'string', 'record', 'set', 'procedure', 'function',
             'if', 'then', 'else', 'while', 'do', 'repeat', 'until', 'inline',
             'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
+            'nil',
             '<eof>');
 
   FirstKeyword = toAnd;
-  LastKeyword = toWriteLn;
+  LastKeyword = toNil;
 
 var
   Scanner: TScanner;
@@ -2174,6 +2182,15 @@ begin
     Exit;
   end;
 
+  if (Left^.Kind = scPointerType) and (Right^.Kind = scPointerType) then
+  begin
+    if (Left^.DataType <> nil) and (Right^.DataType <> nil) and (Left^.DataType <> Right^.DataType) then
+      Error('Incompatible pointer types');
+
+    TypeCheck := Left;
+    Exit;
+  end;
+
   if Check = tcExpr then
   begin
     if (Left^.Kind = scStringType) and (Right^.Kind = scStringType) then
@@ -2215,15 +2232,6 @@ begin
       TypeCheck := dtByte;
       Exit;
     end
-    else if (Left^.Kind = scPointerType) and (Right^.Kind = scPointerType) then
-    begin
-      if (Left^.DataType <> nil) and (Right^.DataType <> nil) and (Left^.DataType <> Right^.DataType) then
-        Error('Incompatible pointer types');
-
-      TypeCheck := Left;
-      Exit;
-    end
-
   end;
 
   if (Left^.Kind = scStringType) and (Right = dtChar) then
@@ -2316,7 +2324,10 @@ begin
     begin
       if DataType^.Kind <> scPointerType then
         Error('Not a pointer');
-      
+
+      if DataType = dtPointer then
+        Error('Cannot deref generic pointer');
+
       NextToken;
 
       EmitI('pop hl');
@@ -2522,6 +2533,56 @@ begin
     Expect(toRParen); NextToken;
 end;
 
+procedure ParseBuiltInProcedure(Proc: PSymbol);
+var
+  Sym, T: PSymbol;
+begin
+  if Proc^.Kind <> scProc then
+    Error('Not a built-in procedure: ' + Proc^.Name);
+
+  NextToken; Expect(toLParen); NextToken;
+
+  if Proc = NewProc then
+  begin
+    Expect(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    NextToken;
+    T := ParseVariableAccess(Sym);
+
+    // EmitI('pop hl');
+    // EmitI('ld e,(hl)');
+    // EmitI('inc hl');
+    // EmitI('ld d,(hl)');
+    // EmitI('push de');
+
+
+    EmitLiteral(T^.DataType^.Value);
+    EmitCall(LookupGlobal('GetMem'));
+  end
+  else if Proc = DisposeProc then
+  begin
+    Expect(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    NextToken;
+    T := ParseVariableAccess(Sym);
+
+    // EmitI('pop hl');
+    // EmitI('ld e,(hl)');
+    // EmitI('inc hl');
+    // EmitI('ld d,(hl)');
+    // EmitI('push de');
+
+    EmitLiteral(T^.DataType^.Value);
+    EmitCall(LookupGlobal('FreeMem'));
+  end
+  else
+    Error('Cannot handle: ' + Proc^.Name);
+
+    Expect(toRParen); NextToken;
+end;
+
 function ParseFactor: PSymbol;
 var
   Sym: PSymbol; T: PSymbol;
@@ -2621,6 +2682,12 @@ begin
   begin
     T := dtInteger;
     EmitLiteral(Scanner.NumValue);
+    NextToken;
+  end
+  else if Scanner.Token = toNil then
+  begin
+    T := dtPointer;
+    EmitLiteral(0);
     NextToken;
   end
   (* true false + String constants *)
@@ -3081,7 +3148,11 @@ begin
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
 
-    if Sym^.Kind = scProc then
+    if (Sym^.Kind = scProc) and (Sym^.IsMagic) then
+    begin
+      ParseBuiltInProcedure(Sym);
+    end
+    else if Sym^.Kind = scProc then
     begin
       NextToken;
       if Scanner.Token = toBecomes then Error('"' + Sym^.Name + '" not a var.');
@@ -3753,7 +3824,7 @@ begin
   DataType := LookupGlobal(Scanner.StrValue);
 
   if DataType = nil then Error('Unknown identifier');
-  if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType]) then Error('Type expected');
+  if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType]) then Error('Type expected');
 
   NextToken;
 
