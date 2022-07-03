@@ -807,6 +807,35 @@ __delete:
         ld      l,a
         call    __strdel
         ret
+
+__str_int:
+        ld      hl,2
+        add     hl,sp
+        ld      bc,(hl)
+        inc     hl
+        inc     hl
+        ld      de,(hl)
+        ld      hl,bc
+        push    hl
+        inc     hl
+        call    __itoa
+        pop     hl
+        ld      (hl),a
+        ret
+
+__val_int:
+        ld      hl,6
+        add     hl,sp
+        ld      a,(hl)
+        inc     hl
+        call    __atoi
+        ld      hl,4        
+        add     hl,sp
+        ld      bc,(hl)
+        ld      hl,bc
+        ld      (hl),de
+        ret                     ; FIXME: Error reporting 
+
 ;
 ; String length. Arguments and result on stack.
 ;

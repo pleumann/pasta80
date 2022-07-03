@@ -705,65 +705,9 @@ begin
   DisposeProc := RegisterBuiltIn(scProc, 'Dispose', 1, '');
   DisposeProc^.IsMagic := True;
 
-  Sym := RegisterBuiltIn(scFunc, 'Length', 1, '__length');
-  Sym^.ArgTypes[0] := dtString;
-  Sym^.DataType := dtInteger;
-  Sym^.IsStdCall := True;
-
-  Sym := RegisterBuiltIn(scFunc, 'Concat', 2, '__concat');
-  Sym^.ArgTypes[0] := dtString;
-  Sym^.ArgTypes[1] := dtString;
-  Sym^.DataType := dtString;
-  Sym^.IsStdCall := True;
-
-  Sym := RegisterBuiltIn(scFunc, 'Pos', 2, '__pos');
-  Sym^.ArgTypes[0] := dtString;
-  Sym^.ArgTypes[1] := dtString;
-  Sym^.DataType := dtInteger;
-  Sym^.IsStdCall := True;
-
-  Sym := RegisterBuiltIn(scFunc, 'Copy', 3, '__copy');
-  Sym^.ArgTypes[0] := dtString;
-  Sym^.ArgTypes[1] := dtInteger;
-  Sym^.ArgTypes[2] := dtInteger;
-  Sym^.DataType := dtString;
-  Sym^.IsStdCall := True;
-
-  Sym := RegisterBuiltIn(scProc, 'Insert', 3, '__insert');
-  Sym^.ArgTypes[0] := dtString;
-  Sym^.ArgTypes[1] := dtString;
-  Sym^.ArgTypes[1].IsRef := True;
-  Sym^.ArgIsRef[1] := True;
-  Sym^.ArgTypes[2] := dtInteger;
-  Sym^.IsStdCall := True;
-
-  Sym := RegisterBuiltIn(scProc, 'Delete', 3, '__delete');
-  Sym^.ArgTypes[0] := dtString;
-  Sym^.ArgTypes[0].IsRef := True;
-  Sym^.ArgIsRef[0] := True;
-  Sym^.ArgTypes[1] := dtInteger;
-  Sym^.ArgTypes[2] := dtInteger;
-  Sym^.IsStdCall := True;
-
   Sym := RegisterBuiltIn(scProc, 'Poke', 2, '__poke');
   Sym^.ArgTypes[0] := dtInteger;
   Sym^.ArgTypes[1] := dtInteger;
-
-  Sym := RegisterBuiltIn(scFunc, 'Random', 1, '__random');
-  Sym^.ArgTypes[0] := dtInteger;
-  Sym^.DataType := dtInteger;
-
-  RegisterBuiltIn(scProc, 'ClrScr', 0, '__clrscr');
-  
-  Sym := RegisterBuiltIn(scProc, 'GotoXY', 2, '__gotoxy');
-  Sym^.ArgTypes[0] := dtInteger;
-  Sym^.ArgTypes[1] := dtInteger;
-
-  RegisterBuiltIn(scProc, 'TextColor', 1, '__textfg')^.ArgTypes[0] := dtInteger;
-  RegisterBuiltIn(scProc, 'TextBackground', 1, '__textbg')^.ArgTypes[0] := dtInteger;
-
-  RegisterBuiltIn(scProc, 'CursorOn', 0, '__cursor_on');
-  RegisterBuiltIn(scProc, 'CursorOff', 0, '__cursor_off');
 
   BDosFunc := RegisterBuiltIn(scFunc, 'Bdos', 0, '');
   BDosFunc^.IsMagic := True;
@@ -2250,6 +2194,15 @@ begin
     EmitI('push de');
 
     Exit;
+  end;
+
+  if Check = tcExact then
+  begin
+    if (Left^.Kind = scStringType) and (Right^.Kind = scStringType) then
+    begin
+      TypeCheck := dtString;
+      Exit;
+    end;
   end;
 
   Error('Type error, expected ' + Left^.Name + ', got ' + Right^.Name);
@@ -3852,7 +3805,7 @@ procedure ParseDeclarations(Sym: PSymbol);
 var
   NewSym, ResVar, OldSyms, P: PSymbol;
   Token: TToken;
-  Name: String;
+  Name, S: String;
   IsRef: Boolean;
 begin
   while Scanner.Token in [toConst, toType, toVar, toProcedure, toFunction] do
@@ -3984,10 +3937,42 @@ begin
       AdjustOffsets;
 
       Expect(toSemicolon);
-      NextToken; ParseBlock(NewSym);
-      CloseScope;
-      Expect(toSemicolon);
       NextToken;
+
+      if Scanner.Token = toIdent then
+      begin
+        while Scanner.Token = toIdent do
+        begin
+          S := LowerStr(Scanner.StrValue);
+          NextToken;
+          if S = 'stdcall' then
+            NewSym^.IsStdCall := True
+          else if S = 'register' then
+            NewSym^.IsStdCall := False
+          else if S = 'external' then
+          begin
+            if Scanner.Token = toString then
+            begin
+              NewSym^.Tag := Scanner.StrValue;
+              NextToken;
+            end
+            else 
+              NewSym^.Tag := '__' + LowerStr(NewSym^.Name);
+          end
+          else Error('Unknown modifier ' + S);
+
+          Expect(toSemicolon);
+          NextToken;
+        end;
+      end
+      else
+      begin
+        ParseBlock(NewSym);
+        Expect(toSemicolon);
+        NextToken;
+      end;
+
+      CloseScope;
 
       EmitC('');
     end;

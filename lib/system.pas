@@ -1,3 +1,5 @@
+(* Built-ins that do not have to be defined in the compiler itself. *)
+
 type
   PBlock = ^TBlock;
   TBlock = record
@@ -61,6 +63,18 @@ begin
     Q := R;
     R := R^.Next;
   end;
+
+  WriteLn('Out of memory error');
+  while True do;
+end;
+
+procedure InitHeap(Bytes: Integer);
+var
+  P: Pointer;
+begin
+  HeapPtr := nil;
+  P := GetHeapStart;
+  FreeMem(P, Bytes);
 end;
 
 function MemAvail: Integer;
@@ -95,11 +109,24 @@ begin
   MaxAvail := I;
 end;
 
-procedure InitHeap(Bytes: Integer);
-var
-  P: Pointer;
-begin
-  HeapPtr := nil;
-  P := GetHeapStart;
-  FreeMem(P, Bytes);
-end;
+type
+  TString = String[255];
+
+function Random(Range: Integer): Integer; register; external '__random';
+
+function Length(S: TString): Integer; stdcall; external '__length';
+function Concat(S, T: TString): TString; stdcall; external '__concat';
+function Pos(S, T: TString): Integer; stdcall; external '__pos';
+function Copy(S: TString; Start: Integer; Count: Integer): TString; stdcall; external '__copy';
+procedure Insert(S: TString; var T: TString; Start: Integer); stdcall; external '__insert';
+procedure Delete(var S: TString; Start: Integer; Count: Integer); stdcall; external '__delete';
+
+procedure Val(S: TString; var I, Code: Integer); stdcall; external '__val_int';
+procedure Str(I: Integer; var S: TString); stdcall; external '__str_int';
+
+procedure ClrScr; register; external '__clrscr';
+procedure GotoXY(X, Y: Integer); register; external '__gotoxy';
+procedure TextColor(I: Integer); register; external '__textfg';
+procedure TextBackground(I: Integer); register; external '__textbg';
+procedure CursorOn; register; external '__cursor_on';
+procedure CursorOff; register; external '__cursor_off';
