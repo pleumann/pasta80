@@ -397,7 +397,7 @@ type
 
 var
   SymbolTable: PSymbol = nil;
-  Level, MaxLevel, Offset: Integer;
+  Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
   AddrFunc, PtrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc, BDosFunc, BDosHLFunc, NewProc, DisposeProc: PSymbol;
@@ -413,7 +413,6 @@ begin
   SymbolTable := Sym;
 
   Level := Level + 1;
-  if Level > MaxLevel then MaxLevel := Level;
   Offset := 0;
 end;
 
@@ -4031,7 +4030,7 @@ begin
 *)
   EmitStrings();
   EmitC('');
-  Emit('display', 'ds ' + Int2Str(2 * MaxLevel), 'Display');
+  Emit('display', 'ds 32', 'Display');
   EmitC('');
   Emit('eof', '', 'End of file');
   CloseScope;
@@ -4061,7 +4060,6 @@ begin
     ErrorLine := 0;
     ErrorColumn := 0;
     Level := 0;
-    MaxLevel := 0;
     Offset := 0;
     Scanner.Token := toNone;
     Include := False;
