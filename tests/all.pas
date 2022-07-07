@@ -1,5 +1,5 @@
 const
-  Pi = 31415;
+  MyPi = 31415;
 
   NotTrue = False;
 
@@ -76,7 +76,7 @@ var
 begin
   WriteLn('--- TestConst ---');
 
-  Assert(Pi = 31415);
+  Assert(MyPi = 31415);
   Assert(not NotTrue);
 
   Assert(not NotTrueEither);

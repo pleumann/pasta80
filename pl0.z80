@@ -237,6 +237,21 @@ __div10a:       add     hl,hl
 __div10b:       djnz __div10a
                 ret
 
+; Fallthrough intended
+__abs16:
+                bit     7,h
+                ret     z
+
+; Negation from Z80 Heaven
+__neg16:
+                xor     a
+                sub     l
+                ld      l,a
+                sbc     a,a
+                sub     h
+                ld      h,a
+                ret
+
 ;
 ;
 ;
@@ -946,6 +961,11 @@ __fltleq0:
         ret
 __fltleq1:
         ld      de,1
+        ret
+
+__fltpwr2:
+        call    EQUAL
+        call    FPMUL
         ret
 
 __atof:

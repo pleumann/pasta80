@@ -130,3 +130,28 @@ procedure TextColor(I: Integer); register; external '__textfg';
 procedure TextBackground(I: Integer); register; external '__textbg';
 procedure CursorOn; register; external '__cursor_on';
 procedure CursorOff; register; external '__cursor_off';
+
+(* Arithmetic functions *)
+
+(* function Abs(I: Integer): Integer  *) (* built-in *)
+(* function Abs(R: Real): Real        *) (* built-in *)
+function ArcTan(R: Real): Real; register; external 'ATN';
+function Cos(R: Real): Real; register; external 'COS';
+function Exp(R: Real): Real; register; external 'EXP';
+function Frac(R: Real): Real; register; external 'FRAC';
+function Int(R: Real): Real; register; external 'INT';
+function Ln(R: Real): Real; register; external 'LN';
+function Log(R: Real): Real; register; external 'LOG';
+function Pi: Real; register; external 'ACPI';
+function Sin(R: Real): Real; register; external 'SIN';
+function Sqr(R: Real): Real; register; external '__fltpwr2';
+function Sqrt(R: Real): Real; register; external 'SQR';
+function Tan(R: Real): Real; register; external 'TAN';
+
+(* Scalar functions *
+
+(* Pred, Succ, Odd *)
+
+(* Transfer functions *)
+
+(* Chr, Ord, Round, Trunc *)

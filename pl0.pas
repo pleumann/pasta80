@@ -400,7 +400,8 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
-  AddrFunc, PtrFunc, SizeFunc, OrdFunc, OddFunc, EvenFunc, PredFunc, SuccFunc, SinFunc, CosFunc, BDosFunc, BDosHLFunc, NewProc, DisposeProc: PSymbol;
+  AbsFunc, AddrFunc, DisposeProc, EvenFunc, NewProc, OddFunc, OrdFunc, PredFunc,
+  PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -635,6 +636,15 @@ begin
   RegisterBuiltIn := Sym;
 end;
 
+function RegisterMagic(Kind: TSymbolClass; Name: String): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Sym := CreateSymbol(Kind, Name, 0);
+  Sym^.IsMagic := True;
+  RegisterMagic := Sym;
+end;
+
 
 procedure RegisterAllBuiltIns(Graphics: Boolean);
 var
@@ -668,50 +678,24 @@ begin
   Sym2^.Tag := '0';
   Sym2^.Value := 0;
 
-  AddrFunc := RegisterBuiltIn(scFunc, 'Addr', 1, '');
-  AddrFunc^.IsMagic := True;
+  AbsFunc := RegisterMagic(scFunc, 'Abs');
+  AddrFunc := RegisterMagic(scFunc, 'Addr');
+  DisposeProc := RegisterMagic(scProc, 'Dispose');
+  EvenFunc := RegisterMagic(scFunc, 'Even');
+  NewProc := RegisterMagic(scProc, 'New');
+  OddFunc := RegisterMagic(scFunc, 'Odd');
+  OrdFunc := RegisterMagic(scFunc, 'Ord');
+  PredFunc := RegisterMagic(scFunc, 'Pred');
+  PtrFunc := RegisterMagic(scFunc, 'Ptr');
+  SizeFunc := RegisterMagic(scFunc, 'SizeOf');
+  SuccFunc := RegisterMagic(scFunc, 'Succ');
 
-  PtrFunc := RegisterBuiltIn(scFunc, 'Ptr', 1, '');
-  PtrFunc^.IsMagic := True;
-
-  SizeFunc := RegisterBuiltIn(scFunc, 'SizeOf', 1, '');
-  SizeFunc^.IsMagic := True;
-
-  OrdFunc := RegisterBuiltIn(scFunc, 'Ord', 1, '');
-  OrdFunc^.IsMagic := True;
-
-  OddFunc := RegisterBuiltIn(scFunc, 'Odd', 1, '');
-  OddFunc^.IsMagic := True;
-
-  EvenFunc := RegisterBuiltIn(scFunc, 'Even', 1, '');
-  EvenFunc^.IsMagic := True;
-
-  PredFunc := RegisterBuiltIn(scFunc, 'Pred', 1, '');
-  PredFunc^.IsMagic := True;
-
-  SuccFunc := RegisterBuiltIn(scFunc, 'Succ', 1, '');
-  SuccFunc^.IsMagic := True;
-
-  SinFunc := RegisterBuiltIn(scFunc, 'Sin', 1, '');
-  SinFunc^.IsMagic := True;
-
-  CosFunc := RegisterBuiltIn(scFunc, 'Cos', 1, '');
-  CosFunc^.IsMagic := True;
-
-  NewProc := RegisterBuiltIn(scProc, 'New', 1, '');
-  NewProc^.IsMagic := True;
-
-  DisposeProc := RegisterBuiltIn(scProc, 'Dispose', 1, '');
-  DisposeProc^.IsMagic := True;
+  BDosFunc := RegisterMagic(scFunc, 'Bdos');
+  BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
 
   Sym := RegisterBuiltIn(scProc, 'Poke', 2, '__poke');
   Sym^.ArgTypes[0] := dtInteger;
   Sym^.ArgTypes[1] := dtInteger;
-
-  BDosFunc := RegisterBuiltIn(scFunc, 'Bdos', 0, '');
-  BDosFunc^.IsMagic := True;
-  BDosHLFunc := RegisterBuiltIn(scFunc, 'BdosHL', 0, '');
-  BDosHLFunc^.IsMagic := True;
 
   RegisterBuiltIn(scFunc, 'GetHeapStart', 0, '__get_heap_start')^.DataType := dtPointer;
 //  RegisterBuiltIn(scFunc, 'GetHeapBytes', 0, '__get_heap_bytes')^.DataType := dtInteger;
@@ -1326,12 +1310,20 @@ var
 begin
   if not Sym^.IsStdCall then
   begin
-    if Sym^.Value >= 3 then
-      EmitI('pop bc');    
-    if Sym^.Value >= 2 then
-      EmitI('pop de');    
-    if Sym^.Value >= 1 then
-      EmitI('pop hl');
+    (* This is a bit broken. Checks should probably be done when parsing the
+       signatures. Also, what happens if we don't have enough (or the right)
+       registers for all parameters? *)
+    if (Sym^.Value = 1) and (Sym^.ArgTypes[0] = dtReal) then
+      EmitI('popfp')
+    else
+    begin
+      if Sym^.Value >= 3 then
+        EmitI('pop bc');    
+      if Sym^.Value >= 2 then
+        EmitI('pop de');    
+      if Sym^.Value >= 1 then
+        EmitI('pop hl');
+    end;
   end;
 
   EmitI('call ' + Sym^.Tag);
@@ -1339,7 +1331,12 @@ begin
   if not Sym^.IsStdCall then
   begin
     if Sym^.Kind = scFunc then
-      EmitI('push hl');
+    begin
+      if Sym^.DataType = dtReal then
+        EmitI('pushfp')
+      else
+        EmitI('push hl');
+    end;
   end
   else
   begin
@@ -2366,7 +2363,29 @@ begin
 
   NextToken; Expect(toLParen); NextToken;
 
-  if Func = AddrFunc then
+  if Func = AbsFunc then
+  begin
+    Sym := ParseExpression;
+
+    if Sym = dtInteger then
+    begin
+      EmitI('pop hl');
+      EmitI('call __abs16');
+      EmitI('push hl');
+
+      ParseBuiltInFunction := dtInteger;
+    end
+    else if Sym = dtReal then
+    begin
+      EmitI('popfp');
+      EmitI('res 7,b');
+      EmitI('pushfp');
+
+      ParseBuiltInFunction := dtReal;
+    end
+    else Error('Integer or Real expected');
+  end
+  else if Func = AddrFunc then
   begin
     Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
@@ -2439,22 +2458,6 @@ begin
     EmitI('pop de');
     EmitI('inc de');
     EmitI('push de');
-  end
-  else if Func = SinFunc then
-  begin
-    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
-    // This should probably go elsewhere.
-    EmitI('popfp');
-    EmitI('call SIN');
-    EmitI('pushfp');
-  end
-  else if Func = CosFunc then
-  begin
-    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
-    // This should probably go elsewhere.
-    EmitI('popfp');
-    EmitI('call COS');
-    EmitI('pushfp');
   end
   else if (Func = BdosFunc) or (Func = BDosHLFunc) then
   begin
@@ -4081,8 +4084,9 @@ begin
 
     WriteLn('Assembling...');
     WriteLn('  ', FRelative(AsmFile, Dir), ' -> ', FRelative(BinFile, Dir));
+    WriteLn;
 
-    Exec(AsmTool,  '-v0 -w ' + AsmFile + ' ' + BinFile);
+    Exec(AsmTool,  '-v1 -w ' + AsmFile + ' ' + BinFile);
     if DosError <> 0 then
       Error('Error ' + Int2Str(DosError) + ' starting ' + AsmTool);
     if DosExitCode <> 0 then
