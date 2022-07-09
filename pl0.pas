@@ -400,6 +400,8 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
+  AssertProc, WriteProc, WriteLnProc: PSymbol;
+
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
@@ -678,11 +680,15 @@ begin
   Sym2^.Tag := '0';
   Sym2^.Value := 0;
 
+  AssertProc := RegisterMagic(scProc, 'Assert');
+  DisposeProc := RegisterMagic(scProc, 'Dispose');
+  NewProc := RegisterMagic(scProc, 'New');
+  WriteProc := RegisterMagic(scProc, 'Write');
+  WriteLnProc := RegisterMagic(scProc, 'WriteLn');
+
   AbsFunc := RegisterMagic(scFunc, 'Abs');
   AddrFunc := RegisterMagic(scFunc, 'Addr');
-  DisposeProc := RegisterMagic(scProc, 'Dispose');
   EvenFunc := RegisterMagic(scFunc, 'Even');
-  NewProc := RegisterMagic(scProc, 'New');
   OddFunc := RegisterMagic(scFunc, 'Odd');
   OrdFunc := RegisterMagic(scFunc, 'Ord');
   PredFunc := RegisterMagic(scFunc, 'Pred');
@@ -734,7 +740,7 @@ type
             toProgram, toBegin, toEnd, toConst, toType, toVar,
             toStringKw, toRecord, toSet, toProcedure, toFunction,
             toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil, toInline,
-            toFor, toTo, toDownTo, toCont, toBreak, toExit, toWrite, toWriteLn,
+            toFor, toTo, toDownTo, toCont, toBreak, toExit,
             toNil,
             toEof);
 
@@ -757,7 +763,7 @@ const
             'program', 'begin', 'end', 'const', 'type', 'var',
             'string', 'record', 'set', 'procedure', 'function',
             'if', 'then', 'else', 'while', 'do', 'repeat', 'until', 'inline',
-            'for', 'to', 'downto', 'continue', 'break', 'exit', 'write', 'writeln',
+            'for', 'to', 'downto', 'continue', 'break', 'exit',
             'nil',
             '<eof>');
 
@@ -2367,18 +2373,6 @@ begin
   if I <> Sym^.Value then Error('Wrong number of arguments');
 end;
 
-
-procedure ParseWriteArgument;
-begin
-    if Scanner.Token = toString then
-    begin
-      EmitPrintStr(Scanner.StrValue);
-      NextToken;
-    end
-    else
-      EmitWrite(ParseExpression);
-end;
-
 function ParseBuiltInFunction(Func: PSymbol): PSymbol;
 var
   Sym: PSymbol;
@@ -2520,14 +2514,49 @@ end;
 procedure ParseBuiltInProcedure(Proc: PSymbol);
 var
   Sym, T: PSymbol;
+  Tag: String;
 begin
   if Proc^.Kind <> scProc then
     Error('Not a built-in procedure: ' + Proc^.Name);
 
-  NextToken; Expect(toLParen); NextToken;
-
-  if Proc = NewProc then
+  if Proc = AssertProc then
   begin
+    NextToken; Expect(toLParen); NextToken;
+
+    Tag := GetLabel('assert');
+    TypeCheck(dtBoolean, ParseExpression, tcExact);
+
+    EmitJumpIf(True, Tag);
+    EmitAssertFailed(AddString(Source[Include].Name), Source[Include].Line);
+    Emit(Tag, '', '');
+
+    Expect(toRParen); NextToken;
+  end
+  else if (Proc = WriteProc) or (Proc = WriteLnProc) then
+  begin
+    NextToken;
+
+    if Scanner.Token = toLParen then
+    begin
+      NextToken;
+      EmitWrite(ParseExpression);
+
+      while Scanner.Token = toComma do
+      begin
+        NextToken;
+        EmitWrite(ParseExpression);
+      end;
+
+      Expect(toRParen);
+      NextToken;
+    end;
+
+    if Proc = WriteLnProc then EmitPrintNewLine;
+  end
+  else if Proc = NewProc then
+  begin
+    NextToken; Expect(toLParen); NextToken;
+
     Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
@@ -2540,12 +2569,15 @@ begin
     // EmitI('ld d,(hl)');
     // EmitI('push de');
 
-
     EmitLiteral(T^.DataType^.Value);
     EmitCall(LookupGlobal('GetMem'));
+
+    Expect(toRParen); NextToken;
   end
   else if Proc = DisposeProc then
   begin
+    NextToken; Expect(toLParen); NextToken;
+
     Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
@@ -2560,11 +2592,11 @@ begin
 
     EmitLiteral(T^.DataType^.Value);
     EmitCall(LookupGlobal('FreeMem'));
+
+    Expect(toRParen); NextToken;
   end
   else
     Error('Cannot handle: ' + Proc^.Name);
-
-    Expect(toRParen); NextToken;
 end;
 
 function ParseFactor: PSymbol;
@@ -3110,25 +3142,6 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
-    if UpperStr(Scanner.StrValue) = 'ASSERT' then
-    begin
-      Tag := GetLabel('assert');
-      NextToken;
-      Expect(toLParen);
-
-      NextToken;
-      TypeCheck(dtBoolean, ParseExpression, tcExact);
-
-      EmitJumpIf(True, Tag);
-      EmitAssertFailed(AddString(Source[Include].Name), Source[Include].Line);
-      Emit(Tag, '', '');
-
-      Expect(toRParen);
-      NextToken;
-
-      Exit;
-    end;
-
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
 
@@ -3309,34 +3322,11 @@ begin
     NextToken;
     Emit('', 'jp ' + ExitTarget, 'Exit');    
   end
-  else if (Scanner.Token = toWrite) or (Scanner.Token = toWriteLn) then
-  begin
-    NewLine := Scanner.Token = toWriteLn;
-    NextToken;
-
-    if Scanner.Token = toLParen then
-    begin
-      NextToken;
-      EmitWrite(ParseExpression);
-
-      while Scanner.Token = toComma do
-      begin
-        NextToken;
-        EmitWrite(ParseExpression);
-      end;
-
-      Expect(toRParen);
-      NextToken;
-    end;
-
-    if NewLine then EmitPrintNewLine;
-  end
   else if Scanner.Token = toInline then
   begin
     NextToken;
     ParseInline;
   end;
-
 end;
 
 function ParseTypeDef: PSymbol; forward;
