@@ -60,6 +60,12 @@ begin
    I := 5;
   *)
   Assert(I = 4);
+  { I := 5 }
+  Assert(I = 4);
+  { (* Different comment types can be nested. *) }
+  (* { Different comment types can be nested. } *)
+  { *) Different comment types can't be mixed.   }
+  (* } Different comment types can't be mixed.  *)
 end;
 
 procedure TestConstHelp(Expected: Integer);

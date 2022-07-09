@@ -950,6 +950,21 @@ begin
         end;
       until (C <> '''') and (C <> '#');
     end
+    else if C = '{' then
+    begin
+      S := '{';
+      repeat
+        C := GetChar;
+        S := S + C;
+      until C = '}';
+      C := GetChar;
+
+      if LowerStr(Copy(S, 2, 2)) = '$i' then
+        SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)));
+
+      NextToken;
+      Exit;
+    end
     else 
     begin
       case C of 
@@ -995,7 +1010,12 @@ begin
           end;
 
         toLParen:
-          if C = '*' then
+          if C = '.' then
+          begin
+            Token := toLBrack;
+            C := GetChar;
+          end
+          else if C = '*' then
           begin
             C := GetChar;
             S := '(*' + C;
@@ -1025,7 +1045,12 @@ begin
           end;
 
         toPeriod:
-          if C = '.' then
+          if C = ')' then
+          begin
+            Token := toRBrack;
+            C := GetChar;
+          end
+          else if C = '.' then
           begin
             Token := toRange;
             C := GetChar;
