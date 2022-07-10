@@ -400,7 +400,7 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
-  AssertProc, WriteProc, WriteLnProc: PSymbol;
+  AssertProc, BreakProc, ContProc, ExitProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
@@ -681,7 +681,10 @@ begin
   Sym2^.Value := 0;
 
   AssertProc := RegisterMagic(scProc, 'Assert');
+  BreakProc := RegisterMagic(scProc, 'Break');
+  ContProc := RegisterMagic(scProc, 'Continue');
   DisposeProc := RegisterMagic(scProc, 'Dispose');
+  ExitProc := RegisterMagic(scProc, 'Exit');
   NewProc := RegisterMagic(scProc, 'New');
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
@@ -740,7 +743,7 @@ type
             toProgram, toBegin, toEnd, toConst, toType, toVar,
             toStringKw, toRecord, toSet, toProcedure, toFunction,
             toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil, toInline,
-            toFor, toTo, toDownTo, toCont, toBreak, toExit,
+            toFor, toTo, toDownTo,
             toNil,
             toEof);
 
@@ -763,7 +766,7 @@ const
             'program', 'begin', 'end', 'const', 'type', 'var',
             'string', 'record', 'set', 'procedure', 'function',
             'if', 'then', 'else', 'while', 'do', 'repeat', 'until', 'inline',
-            'for', 'to', 'downto', 'continue', 'break', 'exit',
+            'for', 'to', 'downto',
             'nil',
             '<eof>');
 
@@ -2511,7 +2514,7 @@ begin
     Expect(toRParen); NextToken;
 end;
 
-procedure ParseBuiltInProcedure(Proc: PSymbol);
+procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
   Sym, T: PSymbol;
   Tag: String;
@@ -2531,6 +2534,23 @@ begin
     Emit(Tag, '', '');
 
     Expect(toRParen); NextToken;
+  end
+  else if Proc = BreakProc then
+  begin
+    if BreakTarget = '' then Error('Not in loop');
+    Emit('', 'jp ' + BreakTarget, 'Break');    
+    NextToken;
+  end
+  else if Proc = ContProc then
+  begin
+    if ContTarget = '' then Error('Not in loop');
+    Emit('', 'jp ' + ContTarget, 'Continue');    
+    NextToken;
+  end
+  else if Proc = ExitProc then
+  begin
+    Emit('', 'jp ' + ExitTarget, 'Exit');    
+    NextToken;
   end
   else if (Proc = WriteProc) or (Proc = WriteLnProc) then
   begin
@@ -3147,7 +3167,7 @@ begin
 
     if (Sym^.Kind = scProc) and (Sym^.IsMagic) then
     begin
-      ParseBuiltInProcedure(Sym);
+      ParseBuiltInProcedure(Sym, BreakTarget, ContTarget);
     end
     else if Sym^.Kind = scProc then
     begin
@@ -3304,23 +3324,6 @@ begin
     EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
-  end
-  else if Scanner.Token = toCont then
-  begin
-    if ContTarget = '' then Error('Not in loop');
-    NextToken;
-    Emit('', 'jp ' + ContTarget, 'Continue');    
-  end
-  else if Scanner.Token = toBreak then
-  begin
-    if BreakTarget = '' then Error('Not in loop');
-    NextToken;
-    Emit('', 'jp ' + BreakTarget, 'Break');    
-  end
-  else if Scanner.Token = toExit then
-  begin
-    NextToken;
-    Emit('', 'jp ' + ExitTarget, 'Exit');    
   end
   else if Scanner.Token = toInline then
   begin
