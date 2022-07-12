@@ -1837,4 +1837,10 @@ begin
   TestWriteByte;
   TestWriteString;
   TestWriteEnums;
+
+  WriteLn('************************');
+  WriteLn('Passed assertions:', AssertPassed);
+  WriteLn('Failed assertions:', AssertFailed);
+  WriteLn('************************');
+  WriteLn;
 end.

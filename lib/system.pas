@@ -10,6 +10,9 @@ type
 var
   HeapPtr: PBlock;
 
+  AssertPassed: Integer absolute '__assertpassed';
+  AssertFailed: Integer absolute '__assertfailed';
+
 procedure FreeMem(var P: Pointer; Size: Integer);
 var
   Q: PBlock;

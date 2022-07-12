@@ -2534,12 +2534,12 @@ begin
   begin
     NextToken; Expect(toLParen); NextToken;
 
-    Tag := GetLabel('assert');
     TypeCheck(dtBoolean, ParseExpression, tcExact);
 
-    EmitJumpIf(True, Tag);
-    EmitAssertFailed(AddString(Source[Include].Name), Source[Include].Line);
-    Emit(Tag, '', '');
+    Emit('', 'pop bc', '');
+    Emit('', 'ld hl, ' + AddString(Source[Include].Name), '');
+    Emit('', 'ld de, ' + Int2Str(Source[Include].Line), '');
+    Emit('', 'call __assert', '');
 
     Expect(toRParen); NextToken;
   end

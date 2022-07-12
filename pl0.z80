@@ -1373,10 +1373,19 @@ __getn:
 ;
 ; Entry:  HL Source file
 ;         DE Source line
+;         BC Value
 ; Exit:   -
 ; Uses:   ?
 ;
-__assertfailed: push    de
+__assert:
+                ld      a,c
+                and     a
+                jr      z,__assert1
+                ld      hl,(__assertpassed);
+                inc     hl
+                ld      (__assertpassed), hl
+                ret
+__assert1:      push    de
                 push    hl
                 ld      hl, __assert_msg_1
                 call    __puts
@@ -1387,12 +1396,15 @@ __assertfailed: push    de
                 pop     hl
                 call    __putn
                 call    __newline
+                ld      hl,(__assertfailed)
+                inc     hl
+                ld      (__assertfailed), hl
                 ret
 __assert_msg_1: db 24,"*** Assertion failed in "
 __assert_msg_2: db 7,", line "
 
-
-
+__assertpassed: dw 0
+__assertfailed: dw 0
 
 ;
 ; Signed 16 bits integer to string
