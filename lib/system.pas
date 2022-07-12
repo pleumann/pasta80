@@ -158,3 +158,18 @@ function Tan(R: Real): Real; register; external 'TAN';
 (* Transfer functions *)
 
 (* Chr, Ord, Round, Trunc *)
+
+(* Miscellaneous functions *)
+
+(* 
+  Hi ld l,h, ld h,0
+  KeyPressed
+  Lo ld h,0
+  Random
+  Random(I)
+  ParamCount
+  ParamStr
+  SizeOf ok
+  Swap ld a,h, ld h,l, ld l,a
+  UpCase  -> lib z80
+*)
