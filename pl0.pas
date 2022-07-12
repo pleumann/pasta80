@@ -393,6 +393,9 @@ type
     IsMagic: Boolean;
     IsRef: Boolean;
     IsStdCall: Boolean;
+    IsForward: Boolean;
+    IsExternal: Boolean;
+    SavedParams: PSymbol;
   end;
 
 var
@@ -412,6 +415,7 @@ begin
   New(Sym);
   Sym^.Kind := scScope;
   Sym^.Prev := SymbolTable;
+  if SymbolTable <> nil then SymbolTable^.Next := Sym;
   Sym^.Value := Offset;
   SymbolTable := Sym;
 
@@ -428,6 +432,10 @@ var
 begin
   repeat
     Kind := SymbolTable^.Kind;
+
+    if ((Kind = scProc) or (Kind = scFunc)) and (SymbolTable^.IsForward) then
+      Error('Unimplemented forward proc/func: ' + SymbolTable^.Name);
+
     Sym := SymbolTable^.Prev;
     Offset := SymbolTable^.Value;
     Dispose(SymbolTable);
@@ -539,16 +547,14 @@ begin
   end;
 
   New(Sym);
+  FillChar(Sym^, SizeOf(TSymbol), 0);
   Sym^.Kind := Kind;
   Sym^.Name := Name;
   Sym^.Level := Level;
-  Sym^.Value := 0;
   Sym^.Prev := SymbolTable;
   Sym^.Bounds := Bounds;
   Sym^.Tag := '';
-  Sym^.IsMagic := False;
-  Sym^.IsRef := False;
-  Sym^.DataType := nil;
+
   SymbolTable^.Next := Sym;
   SymbolTable := Sym;
 
@@ -3823,7 +3829,7 @@ procedure ParseBlock(Sym: PSymbol); forward;
 
 procedure ParseDeclarations(Sym: PSymbol);
 var
-  NewSym, ResVar, OldSyms, P: PSymbol;
+  NewSym, ResVar, FwdSym, OldSyms, P: PSymbol;
   Token: TToken;
   Name, S: String;
   IsRef: Boolean;
@@ -3895,40 +3901,66 @@ begin
       Token := Scanner.Token;
       NextToken; Expect(toIdent);
 
-      if Token = toProcedure then
+      FwdSym := LookupLocal(Scanner.StrValue);
+      if (FwdSym <> nil) and (FwdSym^.IsForward) then
       begin
-        NewSym := CreateSymbol(scProc, Scanner.StrValue, 0);
-        NewSym^.Tag := GetLabel('proc');
+        if Token = toProcedure then
+          NewSym := CreateSymbol(scProc, '', 0)
+        else
+          NewSym := CreateSymbol(scFunc, '', 0);
+
+        if NewSym^.Kind <> FwdSym^.Kind then Error('Proc/Func mismatch');
+
+        FwdSym^.IsForward := False;
+
+        OpenScope;
+
+        NewSym^.Tag := FwdSym^.Tag;
+        if FwdSym^.SavedParams <> nil then
+        begin
+          P := FwdSym^.SavedParams;
+          while P^.Prev <> nil do 
+          begin
+            P := P^.Prev;
+          end;
+          P^.Prev := SymbolTable;
+          SymbolTable^.Next := P;
+          SymbolTable := FwdSym^.SavedParams;
+        end;
+
+        NextToken;
+        Expect(toSemicolon);
+        NextToken;
       end
       else
       begin
-        NewSym := CreateSymbol(scFunc, Scanner.StrValue, 0);
-        NewSym^.Tag := GetLabel('func');
+        if Token = toProcedure then
+        begin
+          NewSym := CreateSymbol(scProc, Scanner.StrValue, 0);
+          NewSym^.Tag := GetLabel('proc');
+        end
+        else
+        begin
+          NewSym := CreateSymbol(scFunc, Scanner.StrValue, 0);
+          NewSym^.Tag := GetLabel('func');
+        end;
+
+        OpenScope;
       end;
 
       NewSym^.IsStdCall := True;
-      OpenScope;
-      if Token = toFunction then
-      begin
-        CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
-        //SetDataType(SymbolTable, dtInteger, 0);
-        ResVar := SymbolTable;
-      end;
-      NextToken; 
-      
-      if Scanner.Token = toLParen then
-      begin
-        NextToken;
 
-        IsRef := False;
-        if Scanner.Token = toVar then
+      if FwdSym = nil then
+      begin
+        if Token = toFunction then
         begin
-          IsRef := True;
-          NextToken;
+          CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
+          //SetDataType(SymbolTable, dtInteger, 0);
+          ResVar := SymbolTable;
         end;
-
-        ParseParamList(IsRef);
-        while Scanner.Token = toSemicolon do
+        NextToken; 
+        
+        if Scanner.Token = toLParen then
         begin
           NextToken;
 
@@ -3939,38 +3971,51 @@ begin
             NextToken;
           end;
 
-          ParseParamList(IsRef); (* ParamGroup *)
+          ParseParamList(IsRef);
+          while Scanner.Token = toSemicolon do
+          begin
+            NextToken;
+
+            IsRef := False;
+            if Scanner.Token = toVar then
+            begin
+              IsRef := True;
+              NextToken;
+            end;
+
+            ParseParamList(IsRef); (* ParamGroup *)
+          end;
+          Expect(toRParen);
+          NextToken;
         end;
-        Expect(toRParen);
+
+        if NewSym^.Kind = scFunc then
+        begin
+          Expect(toColon);
+          NextToken;
+
+          NewSym^.DataType := ParseTypeDef();
+          ResVar^.DataType := NewSym^.DataType;
+        end;
+        
+        AdjustOffsets;
+
+        Expect(toSemicolon);
         NextToken;
-      end;
 
-      if NewSym^.Kind = scFunc then
-      begin
-        Expect(toColon);
-        NextToken;
-
-        NewSym^.DataType := ParseTypeDef();
-        ResVar^.DataType := NewSym^.DataType;
-      end;
-      
-      AdjustOffsets;
-
-      Expect(toSemicolon);
-      NextToken;
-
-      if Scanner.Token = toIdent then
-      begin
         while Scanner.Token = toIdent do
         begin
           S := LowerStr(Scanner.StrValue);
           NextToken;
-          if S = 'stdcall' then
+          if S = 'forward' then
+            NewSym^.IsForward := True
+          else if S = 'stdcall' then
             NewSym^.IsStdCall := True
           else if S = 'register' then
             NewSym^.IsStdCall := False
           else if S = 'external' then
           begin
+            NewSym^.IsExternal := True;
             if Scanner.Token = toString then
             begin
               NewSym^.Tag := Scanner.StrValue;
@@ -3984,8 +4029,24 @@ begin
           Expect(toSemicolon);
           NextToken;
         end;
-      end
-      else
+
+        if NewSym^.IsForward then
+        begin
+          if SymbolTable^.Kind = scScope then
+          begin
+            NewSym^.SavedParams := nil
+          end
+          else
+          begin
+            NewSym^.SavedParams := SymbolTable;
+            NewSym^.Next^.Next^.Prev := nil;
+            NewSym^.Next^.Next := nil;
+            SymbolTable := NewSym^.Next;
+          end;
+        end
+      end;
+
+      if not NewSym^.IsExternal and not NewSym^.IsForward then
       begin
         ParseBlock(NewSym);
         Expect(toSemicolon);
@@ -4112,7 +4173,7 @@ begin
 
     if Binary = btCom then Org := 256 else Org := 8192;
     Len := FSize(BinFile);
-    WriteLn;
+    //WriteLn;
     WriteLn(Len, ' bytes (', HexStr(Org, 4), '-', HexStr(Org + Len - 1, 4), ')');
 
     Build := 0;
