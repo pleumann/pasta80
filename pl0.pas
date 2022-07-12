@@ -377,6 +377,8 @@ end;
 type
   TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scVar, scProc, scFunc, scScope);
 
+  // Flags: Forward, External, Register, Magic, Reference, Writable, Relative, Sizable, Addressable
+
   PSymbol = ^TSymbol;
   TSymbol = record
     Name: String;
@@ -3739,16 +3741,22 @@ end;
 procedure ParseVarList();
 var
   Old: PSymbol;
-  DataType: PSymbol;
+  DataType, Sym: PSymbol;
   Low, High: Integer;
+  Multi, IsAbs: Boolean;
+  Tag: String;
 begin
   Low := 0;
   High := -1;
+
+  Multi := False;
+  IsAbs := False;
 
   Old := SymbolTable;
   ParseVar;
   while Scanner.Token = toComma do
   begin
+    Multi := True;
     NextToken; ParseVar;
   end;
 
@@ -3760,6 +3768,28 @@ begin
     // WriteLn('Var type is ', DataType^.Name);
     // if DataType^.Kind = scArrayType then WriteLn(' of ', DataType^.DataType^.Name);
 
+  if (Scanner.Token = toIdent) and (LowerCase(Scanner.StrValue) = 'absolute') then
+  begin
+    if Multi then Error('"absolute" only allowed for single variables');
+
+    NextToken;
+    if Scanner.Token = toNumber then
+      Tag := Int2Str(Scanner.NumValue)
+    else if Scanner.Token = toString then
+      Tag := Scanner.StrValue
+    else if Scanner.Token = toIdent then
+    begin
+      Sym := LookupLocal(Scanner.StrValue);
+      if Sym = nil then Error('Ident not found');
+      if Sym^.Tag = '' then Error('Not addressable');
+      Tag := Sym^.Tag;
+    end
+    else Error('Address expected');
+
+    NextToken;
+    IsAbs := True;
+  end;
+
   while Old<>SymbolTable do
   begin
     Old := Old^.Next;
@@ -3767,7 +3797,8 @@ begin
     begin
       SetDataType(Old, DataType, High - Low + 1);
 
-      if Old^.Level = 1 then
+      if IsAbs then Old^.Tag := Tag
+      else if Old^.Level = 1 then
       begin
         Old^.Tag := GetLabel('global');
         Emit(Old^.Tag, 'ds ' + Int2Str(Old^.DataType^.Value), 'Global ' + Old^.Name);
