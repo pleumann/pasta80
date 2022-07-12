@@ -549,6 +549,10 @@ begin
 
   for I := 0 to 99 do
     Assert(B[I] = A[I] + 1);
+
+  (* Ugly alternative syntax works, too (although not perfectly) *)
+  B(. 42 .) := 1000;
+  Assert(B(. 42 .) = 1000);
 end;
 
 procedure SwapPointProc(var P: TPoint);
@@ -979,6 +983,41 @@ begin
   Assert(Factorial(7) = 5040);
 end;
 
+procedure F1; forward;
+
+procedure F2(X, Y: Integer; var Z: Integer); forward;
+
+function F3(X, Y: Integer): Integer; forward;
+
+procedure TestForward;
+var
+  Z: Integer;
+begin
+  WriteLn('--- TestForward ---');
+
+  Z := -1;
+  F1;
+  Assert(Z = -1);
+  F2(11, 22, Z);
+  Assert(Z = 33);
+  Z := F3(33, 44);
+  Assert(Z = 77);
+end;
+
+procedure F1;
+begin
+end;
+
+procedure F2;
+begin
+  Z := X + Y;
+end;
+
+function F3;
+begin
+  F3 := X + Y;
+end;
+
 procedure TestArraysOfArrays;
 var
   I, J: Integer;
@@ -992,6 +1031,37 @@ begin
   for I := 0 to 9 do
     for J := 0 to 9 do
       Assert(AA[I][J] = 10 * I + J);
+end;
+
+var
+  AbsI: Integer;
+  AbsJ: Integer absolute 16384;
+  AbsX: Integer absolute AbsI;
+  AbsY: Integer absolute AbsJ;
+  AbsZ: Integer absolute '__buffer';
+
+procedure TestAbsolute;
+begin
+  WriteLn('--- TestAbsolute ---');
+
+  Assert(Addr(AbsJ) = 16384);
+  Assert(Addr(AbsX) = Addr(AbsI));
+  Assert(Addr(AbsY) = Addr(AbsJ));
+  Assert(Addr(AbsZ) <> 0);
+
+  AbsI := 100;
+  Assert(AbsI = 100);
+  Assert(AbsX = 100);
+  AbsJ := 200;
+  Assert(AbsJ = 200);
+  Assert(AbsY = 200);
+
+  AbsX := 101;
+  Assert(AbsI = 101);
+  Assert(AbsX = 101);
+  AbsY := 201;
+  Assert(AbsJ = 201);
+  Assert(AbsY = 201);
 end;
 
 procedure TestTypeChecks;
@@ -1366,6 +1436,42 @@ begin
   Assert(J = 26);
 end;
 
+type
+  Str255 = string[255];
+  
+procedure UpperCase(var Strg: Str255);
+begin
+  inline(
+    $dd/$6e/<Strg/      (* ld l,[ix+Strg]    *)
+    $dd/$66/<Strg+1/    (* ld h,[ix+Strg+1]  *)
+    $46/                (* ld b,(hl)         *)
+    $04/                (* inc b             *)
+                        (* l1:               *)
+    $05/                (* dec b             *)
+    $ca/*+20/           (* jp z,l2           *)
+    $23/                (* inc hl            *)
+    $7e/                (* ld a,(hl)         *)
+    $fe/$61/            (* cp 'a'            *)
+    $da/*-9/            (* jp c,l1           *)
+    $fe/$7b/            (* cp 'z'+1          *)
+    $d2/*-14/           (* jp nc,l1          *)
+    $d6/$20/            (* sub 20h           *)
+    $77/                (* ld (hl),a         *)
+    $c3/*-20            (* jp l1             *)
+  );                    (* l2:               *)
+end;
+
+procedure TestInline;
+var
+  S: Str255;
+begin
+  WriteLn('--- TestInline ---');
+
+  S := 'hello, inline world!';
+  UpperCase(S);
+  Assert(S = 'HELLO, INLINE WORLD!')
+end;
+
 procedure TestWriteInteger;
 begin
   WriteLn('--- TestWriteInteger ---');
@@ -1713,11 +1819,17 @@ begin
 end;
 
 procedure TestReal;
-const
-  Pi = 3.14159265359;
 var
   X, Y, Z: Real;
   I: Integer;
+
+  function Equals(X, Y: Real): Boolean;
+  begin
+    X := Int(X * 100.0 + 0.5) / 100.0;
+    Y := Int(Y * 100.0 + 0.5) / 100.0;
+    Equals := X = Y;
+  end;
+
 begin
   WriteLn('--- TestReal ---');
   WriteLn;
@@ -1774,6 +1886,40 @@ begin
   Assert(X > Y);
   Assert(I = 17);
 
+  Assert(Sin(0.0) = 0.0);
+  Assert(Sin(Pi / 2.0) = 1.0);
+
+  Assert(Cos(0.0) = 1.0);
+  Assert(Cos(Pi / 2.0) = 0.0);
+
+  Assert(Tan(0.0) = 0.0);
+  Assert(Equals(Tan(Pi / 4.0), Sin(Pi / 4.0) / Cos(Pi / 4.0)));
+
+  Assert(Equals(ArcTan(Tan(Pi / 4.0)), Pi / 4.0));
+
+  Assert(Sqr(4.0) = 16.0);
+  Assert(Sqrt(16.0) = 4.0);
+
+  Assert(Abs(10.0) = 10.0);
+  Assert(Abs(-10.0) = 10.0);
+
+  Assert(Equals(Exp(1.0), 2.71828182846));
+  Assert(Equals(Ln(2.71828182846), 1.0));
+
+  Assert(Equals(Log(10000.0), 4.0));
+
+  Assert(Equals(Frac(Pi), 0.14159));
+
+  WriteLn(Frac(-Pi));
+
+  Assert(Equals(Frac(-Pi), -0.14159));
+
+  Assert(Int(Pi) = 3.0);
+  Assert(Int(-Pi) = -3.0);
+{
+  Assert(Round(Pi) = 3);
+  Assert(Round(-Pi) = -3);
+}
   WriteLn;
 end;
 
@@ -1805,6 +1951,7 @@ begin
   TestArrays;
   TestRecords;
   TestArraysOfArrays;
+  TestAbsolute;
 
   TestEnums;
 
@@ -1818,6 +1965,7 @@ begin
   TestComplexParams;
   TestVarParams;
   TestRecursion;
+  TestForward;
   
   TestTypeChecks;
 
@@ -1830,6 +1978,8 @@ begin
   TestForInteger;
   TestForBoolean;
   TestForChar;
+
+  TestInline;
 
   TestWriteInteger;
   TestWriteBoolean;
