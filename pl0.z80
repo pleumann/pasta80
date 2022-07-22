@@ -673,12 +673,21 @@ __streq:
         jr      z,__streq1
 __streq0:
         ld      de,0
+
 ;        ld      (hl),de
         ret
 __streq1:
         ld      de,1
 ;        ld      (hl),de
 ;        ld      a,1
+
+__streq2:
+        pop     de
+
+        ld      hl,512
+        add     hl,de
+        ld      sp,hl
+
         ret
 
 ;
@@ -1733,6 +1742,114 @@ __get_pixel:    di
 ;__border:
 ;__setpixel:
 ;__getpixel:
+
+__heapptr:
+        dw      0
+
+; In: HL pointer address, DE size
+; Out: -
+__getmem:
+        push    ix
+        push    hl
+        call    __malloc
+        pop     hl
+        ld      a,ixl
+        ld      (hl),a
+        inc     hl
+        ld      a,ixh
+        ld      (hl),a
+        pop     ix
+        ret
+
+; In: DE size
+; Out: IX new block
+__malloc:
+;        db      $dd,01,00,00
+        ld      bc,__heapptr
+        ld      ix,(__heapptr)
+__malloc_loop:
+; Null pointer means heap exhausted
+        ld      a,ixh
+        or      ixl
+        jr      z,__malloc_out_of_memory
+; Check size of free block
+        ld      l,(ix+2)
+        ld      h,(ix+3)
+        and     a
+        sbc     hl,de
+        jr      c,__malloc_next
+        jr      nz,__malloc_check_larger
+; Case 1: Block of exact size found, just remove if from list
+        ld      a,(ix+0)
+        ld      (bc),a
+        inc     bc
+        ld      a,(ix+1)
+        ld      (bc),a
+        ret
+; Larger blocks can be split, if at least 4 bytes remain 
+__malloc_check_larger:
+        ld      a,252
+        and     l
+        or      h
+        jr      z,__malloc_next
+; Case 2: Suitable larger block found, split it and adjust pointers
+        exx
+        ld      c,(ix+0)
+        ld      b,(ix+1)
+        exx
+
+        push    ix
+        add     ix,de
+        exx
+        ld      (ix+0),c
+        ld      (ix+1),b
+        exx
+        ld      (ix+2),l
+        ld      (ix+3),h
+
+        ld      a,ixl
+        ld      (bc),a
+        inc     bc
+        ld      a,ixh
+        ld      (bc),a
+
+        pop     ix
+
+        ret
+; Try next block
+__malloc_next:
+        ld      bc,ix
+        exx
+        ld      e,(ix+0)
+        ld      d,(ix+1)
+        ld      ix,de
+        exx
+        jp      __malloc_loop
+; Display error message and freeze
+__malloc_out_of_memory:
+        ld      hl,__malloc_error_message
+        call    __puts
+__malloc_infinite_loop:
+        jp      __malloc_infinite_loop
+__malloc_error_message:
+        db      13,'Out of memory'
+
+; In: HL pointer, DE size
+__freemem:
+;        db      $dd,01,00,00
+        ld      bc,(__heapptr)
+        ld      (hl),c
+        inc     hl
+        ld      (hl),b
+        inc     hl
+        ld      (hl),e
+        inc     hl
+        ld      (hl),d
+        dec     hl
+        dec     hl
+        dec     hl
+        ld      (__heapptr),hl
+        ret
 
 __get_heap_start:
                 ld      hl, eof

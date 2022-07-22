@@ -3,18 +3,18 @@
 type
   PBlock = ^TBlock;
   TBlock = record
-    Size: Integer;
     Next: PBlock;
+    Size: Integer;
   end;
 
 var
-  HeapPtr: PBlock;
+  HeapPtr: PBlock absolute '__heapptr';
 
   AssertPassed: Integer absolute '__assertpassed';
   AssertFailed: Integer absolute '__assertfailed';
 
-procedure FreeMem(var P: Pointer; Size: Integer);
-var
+procedure FreeMem(P: Pointer; Size: Integer); register; external '__freemem';
+(*var
   Q: PBlock;
 begin
   Q := P;
@@ -23,9 +23,10 @@ begin
   HeapPtr := Q;
   P := nil;
 end;
+*)
 
-procedure GetMem(var P: Pointer; Size: Integer);
-var
+procedure GetMem(var P: Pointer; Size: Integer); register; external '__getmem';
+(*var
   Q, R: PBlock;
 begin
   Q := nil;
@@ -70,13 +71,13 @@ begin
   WriteLn('Out of memory error');
   while True do;
 end;
-
+*)
 procedure InitHeap(Bytes: Integer);
 var
   P: Pointer;
 begin
   HeapPtr := nil;
-  P := GetHeapStart;
+  P := Ptr(32768); (* GetHeapStart; *)
   FreeMem(P, Bytes);
 end;
 
