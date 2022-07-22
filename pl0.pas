@@ -387,7 +387,7 @@ type
     ArgTypes: array[0..15] of PSymbol;
     ArgIsRef: array[0..15] of Boolean;
     Level: Integer;
-    Value: Integer;
+    Value, Value2: Integer;
     StrVal: String;
     Tag: String;
     Bounds: Integer;
@@ -425,6 +425,18 @@ begin
   Offset := 0;
 end;
 
+procedure OpenWith();
+var
+  Sym: PSymbol;
+begin
+  New(Sym);
+  Sym^.Kind := scScope;
+  Sym^.Prev := SymbolTable;
+  if SymbolTable <> nil then SymbolTable^.Next := Sym;
+  Sym^.Value := Offset;
+  SymbolTable := Sym;
+end;
+
 procedure Emit(Tag, Instruction, Comment: String); forward;
 
 procedure CloseScope();
@@ -445,6 +457,24 @@ begin
   until Kind = scScope;
 
   Level := Level - 1;
+end;
+
+procedure CloseWith();
+var
+  Sym: PSymbol;
+  Kind: TSymbolClass;
+begin
+  repeat
+    Kind := SymbolTable^.Kind;
+
+    if ((Kind = scProc) or (Kind = scFunc)) and (SymbolTable^.IsForward) then
+      Error('Unimplemented forward proc/func: ' + SymbolTable^.Name);
+
+    Sym := SymbolTable^.Prev;
+    Offset := SymbolTable^.Value;
+    Dispose(SymbolTable);
+    SymbolTable := Sym;
+  until Kind = scScope;
 end;
 
 function LookupLocal(Name: String): PSymbol;
@@ -751,7 +781,7 @@ type
             toProgram, toBegin, toEnd, toConst, toType, toVar,
             toStringKw, toRecord, toSet, toProcedure, toFunction,
             toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil, toInline,
-            toFor, toTo, toDownTo,
+            toFor, toTo, toDownTo, toWith,
             toNil,
             toEof);
 
@@ -774,7 +804,7 @@ const
             'program', 'begin', 'end', 'const', 'type', 'var',
             'string', 'record', 'set', 'procedure', 'function',
             'if', 'then', 'else', 'while', 'do', 'repeat', 'until', 'inline',
-            'for', 'to', 'downto',
+            'for', 'to', 'downto', 'with',
             'nil',
             '<eof>');
 
@@ -1651,7 +1681,15 @@ begin
     Emit('', 'pop hl', '');
     Emit('', 'ld de,(hl)', '');
     Emit('', 'push de', '');
-  end;  
+  end;
+
+  if Sym^.Value2 <> 0 then
+  begin
+    EmitI('pop hl');
+    EmitI('ld de,' + Int2Str(Sym^.Value2));
+    EmitI('add hl,de');
+    EmitI('push hl');
+  end;
 end;
 
 procedure EmitLoad(DataType: PSymbol);
@@ -2606,12 +2644,15 @@ begin
   begin
     NextToken; Expect(toLParen); NextToken;
 
+    T := ParseExpression;
+    if T^.Kind <> scPointerType then Error('Pointer type needed');
+    (*
     Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
     NextToken;
     T := ParseVariableAccess(Sym);
-
+    *)
     // EmitI('pop hl');
     // EmitI('ld e,(hl)');
     // EmitI('inc hl');
@@ -3063,6 +3104,77 @@ begin
   EmitStore(T); (* T? *)
 end;
 
+procedure ParseStatement(ContTarget, BreakTarget: String); forward;
+
+procedure ParseWith(ContTarget, BreakTarget: String);
+var
+  Old, Sym, Sym2, F: PSymbol;
+  OldOff, Base: Integer;
+begin
+    Old := SymbolTable;
+    OldOff := Offset;
+
+    // OpenWith;
+
+    NextToken;
+    Expect(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Ident not found');
+    if Sym^.Kind <> scVar then Error('Must be var');
+    NextToken;
+
+    // if Token = do...
+    if Scanner.Token = toDo then
+    begin
+      Base := Sym^.Value;
+      Sym := Sym^.DataType;
+    end
+    else
+    begin
+      Sym := ParseVariableAccess(Sym);
+      if Sym^.Kind <> scRecordType then Error('Record type needed');
+      Expect(toDo);
+
+      Offset := Offset - 2; // Handle in OpenWith?
+      Base := Offset;
+    end;
+
+    NextToken;
+
+    // Check: Global (not in unit tests), Local, Var, Nested, Comma
+    // Optimize simple case 'with R do X := 5;' to avoid double addressing
+
+    WriteLn('with at offset ', Base);
+
+    F := Sym^.DataType;
+    while F <> nil do
+    begin
+      Sym2 := CreateSymbol(scVar, '', 0);
+      Sym2^.Name := F^.Name;
+      Sym2^.DataType := F^.DataType;
+      Sym2^.Value := Base;
+      Sym2^.Value2 := F^.Value;
+      Sym2^.IsRef := True;
+      F := F^.Prev;
+    end;
+
+    ParseStatement(ContTarget, BreakTarget);
+
+    if Offset <> OldOff then EmitI('pop bc');
+
+    Offset := OldOff; // In CloseWith?
+
+    while Symboltable <> Old do
+    begin
+      Sym := SymbolTable;
+      SymbolTable := SymbolTable^.Prev;
+      WriteLn('Drop ' , Sym^.Name);
+      FreeMem(Sym);
+    end;
+      
+    //CloseWith;
+end;
+
 procedure ParseInlineTerm(var S: String; var W: Boolean);
 var
   Sym: PSymbol;
@@ -3162,7 +3274,7 @@ end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String);
 var
-  Sym: PSymbol;
+  Sym, Sym2, F: PSymbol;
   Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
   (*T: PSymbol;*)
@@ -3332,6 +3444,10 @@ begin
     EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
+  end
+  else if Scanner.Token = toWith then
+  begin
+    ParseWith(ContTarget, BreakTarget);
   end
   else if Scanner.Token = toInline then
   begin
