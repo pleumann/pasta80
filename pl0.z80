@@ -680,14 +680,6 @@ __streq1:
         ld      de,1
 ;        ld      (hl),de
 ;        ld      a,1
-
-__streq2:
-        pop     de
-
-        ld      hl,512
-        add     hl,de
-        ld      sp,hl
-
         ret
 
 ;
