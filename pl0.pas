@@ -617,10 +617,12 @@ begin
 //  Sym^.Bounds := Bounds;
 
 //  if Bounds = 0 then Size := 2 else Size := 2 * Bounds;
-  if Level = 1 then
+  if (Level = 1) and (Sym^.Tag = '') then
   begin
+(* TODO This is be distinguished in a better way
     Sym^.Value := Offset;
     Offset := Offset + DataType^.Value;
+*)
   end
   else
   begin
@@ -1592,7 +1594,11 @@ begin
   end;
 
   if Sym = Nil then
-    Emit('main', 'call __init', '')
+  begin
+    Emit('main', 'call __init', '');
+    EmitI('ld ix,0');
+    EmitI('add ix,sp');
+  end
   else
   begin
     Emit(Sym^.Tag, 'push ix', 'Prologue');
@@ -1656,7 +1662,7 @@ var
 begin
   L := Level - Sym^.Level;
 
-  if Sym^.Level = 1 then
+  if (Sym^.Level = 1) and (Sym^.Tag <> '') then
   begin
     Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
     EmitI('push hl');
