@@ -1437,6 +1437,64 @@ begin
 end;
 
 type
+  WithRec = record
+    A, B: Real;
+  end;
+
+var
+  WithC: WithRec;
+  WithD: ^WithRec;
+
+procedure TestWith;
+var
+  A, B, I, J, K: Integer;
+  R: WithRec;
+  S: array[20] of WithRec;
+begin
+  WriteLn('--- TestWith ---');
+
+  WithD := Ptr(Addr(WithC));
+
+  A := 1;
+  B := 2;
+
+  with WithC do
+  begin
+    A := 3.0;
+  end;
+
+  with WithD^ do
+  begin
+    B := 4.0;
+  end;
+
+  with R do
+  begin
+    A := 5.0;
+    B := 6.0;
+  end;
+
+  I := 2; J := 3; K := 4;
+  with S[I * J + K] do
+  begin
+    A := 7.0;
+    B := 8.0;
+  end;
+
+  Assert(A = 1);
+  Assert(B = 2);
+
+  Assert(WithC.A = 3.0);
+  Assert(WithC.B = 4.0);
+
+  Assert(R.A = 5.0);
+  Assert(R.B = 6.0);
+
+  Assert(S[I * J + K].A = 7.0);
+  Assert(S[I * J + K].B = 8.0);
+end;
+
+type
   Str255 = string[255];
   
 procedure UpperCase(var Strg: Str255);
@@ -1978,6 +2036,17 @@ begin
   TestForInteger;
   TestForBoolean;
   TestForChar;
+
+  TestWith;
+
+  (* Additional 'with' tests for level 1 *)
+  with WithC do
+  begin
+    A := 9.0;
+    B := 10.0;
+  end;
+  Assert(WithC.A = 9.0);
+  Assert(WithC.B = 10.0);
 
   TestInline;
 

@@ -3114,71 +3114,58 @@ procedure ParseStatement(ContTarget, BreakTarget: String); forward;
 
 procedure ParseWith(ContTarget, BreakTarget: String);
 var
-  Old, Sym, Sym2, F: PSymbol;
-  OldOff, Base: Integer;
+  OldSymbols, Sym, Field, FieldRef, DataType: PSymbol;
+  OldOffset, Address: Integer;
 begin
-    Old := SymbolTable;
-    OldOff := Offset;
+  OldSymbols := SymbolTable;
+  OldOffset := Offset;
 
-    // OpenWith;
+  NextToken;
+  Expect(toIdent);
+  Sym := LookupGlobal(Scanner.StrValue);
+  if Sym = nil then Error('Identifier not found');
+  if Sym^.Kind <> scVar then Error('Variable expected');
+  NextToken;
 
-    NextToken;
-    Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Ident not found');
-    if Sym^.Kind <> scVar then Error('Must be var');
-    NextToken;
+  Offset := Offset - 2;
+  Address := Offset;
+  DataType := ParseVariableAccess(Sym);
 
-    // if Token = do...
-    if Scanner.Token = toDo then
-    begin
-      Base := Sym^.Value;
-      Sym := Sym^.DataType;
-    end
-    else
-    begin
-      Sym := ParseVariableAccess(Sym);
-      if Sym^.Kind <> scRecordType then Error('Record type needed');
-      Expect(toDo);
-
-      Offset := Offset - 2; // Handle in OpenWith?
-      Base := Offset;
-    end;
-
-    NextToken;
+  if DataType^.Kind <> scRecordType then Error('Record type expected');
+  Expect(toDo);
+  NextToken;
 
     // Check: Global (not in unit tests), Local, Var, Nested, Comma
     // Optimize simple case 'with R do X := 5;' to avoid double addressing
 
-    WriteLn('with at offset ', Base);
+  WriteLn('Level ', Level, ' with at offset ', Address);
 
-    F := Sym^.DataType;
-    while F <> nil do
-    begin
-      Sym2 := CreateSymbol(scVar, '', 0);
-      Sym2^.Name := F^.Name;
-      Sym2^.DataType := F^.DataType;
-      Sym2^.Value := Base;
-      Sym2^.Value2 := F^.Value;
-      Sym2^.IsRef := True;
-      F := F^.Prev;
-    end;
+  Field := DataType^.DataType;
+  while Field <> nil do
+  begin
+    FieldRef := CreateSymbol(scVar, '', 0);
+    FieldRef^.Name := Field^.Name;
+    FieldRef^.DataType := Field^.DataType;
+    FieldRef^.Value := Address;
+    FieldRef^.Value2 := Field^.Value;
+    FieldRef^.IsRef := True;
+    FieldRef^.Level := Level;
+    WriteLn('Create ' , Field^.Name, ' at level ', Level, ' address ', Address, ' Offset ', Field^.Value);
+    Field := Field^.Prev;
+  end;
 
-    ParseStatement(ContTarget, BreakTarget);
+  ParseStatement(ContTarget, BreakTarget);
 
-    if Offset <> OldOff then EmitI('pop bc');
+  Offset := Offset + 2;
+  EmitI('pop bc');
 
-    Offset := OldOff; // In CloseWith?
-
-    while Symboltable <> Old do
-    begin
-      Sym := SymbolTable;
-      SymbolTable := SymbolTable^.Prev;
-      WriteLn('Drop ' , Sym^.Name);
-      FreeMem(Sym);
-    end;
-      
-    //CloseWith;
+  while SymbolTable <> OldSymbols do
+  begin
+    Sym := SymbolTable;
+    SymbolTable := SymbolTable^.Prev;
+    WriteLn('Drop ' , Sym^.Name);
+    FreeMem(Sym);
+  end;
 end;
 
 procedure ParseInlineTerm(var S: String; var W: Boolean);
