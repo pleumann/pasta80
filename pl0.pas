@@ -773,18 +773,13 @@ end;
 
 type
   TToken = (toNone,
-            toIdent, toNumber, toString, toFloat,
-            toAdd, toSub, toMul, toDiv,
-            toEq, toNeq, toLt, toLeq, toGt, toGeq,
-            toLParen, toRParen, toLBrack, toRBrack,
+            toIdent, toNumber, toString, toFloat, toAdd, toSub, toMul, toDiv,
+            toEq, toNeq, toLt, toLeq, toGt, toGeq, toLParen, toRParen, toLBrack, toRBrack,
             toBecomes, toComma, toColon, toSemicolon, toPeriod, toCaret, toRange,
-            toAnd, toOr, toXor, toNot, toMod, toIn,
-            toArray, toOf,
-            toProgram, toBegin, toEnd, toConst, toType, toVar,
-            toStringKw, toRecord, toSet, toProcedure, toFunction,
-            toIf, toThen, toElse, toWhile, toDo, toRepeat, toUntil, toInline,
-            toFor, toTo, toDownTo, toWith,
-            toNil,
+            toAbsolute, toAnd, toArray, toBegin, toCase, toConst, toDivKw, toDo, toDownto, toElse, toEnd,
+            toExternal, toFile, toFor, toForward, toFunction, toGoto, toIf, toIn, toInline, toLabel, toMod,
+            toNil, toNot, toOf, toOr, toOverlay, toPacked, toProcedure, toProgram, toRecord, toRepeat, toSet,
+            toShl, toShr, toStringKw, toThen, toTo, toType, toUntil, toVar, toWhile, toWith, toXor,
             toEof);
 
   TScanner = record
@@ -796,22 +791,17 @@ type
 const
   TokenStr: array[TToken] of String = 
            ('<nul>',
-            'Identifier', 'Number', 'String', 'Real',
-            '+', '-', '*', '/',
-            '=', '#', '<', '<=', '>', '>=',
-            '(', ')', '[', ']',
+            'Identifier', 'Number', 'String', 'Real', '+', '-', '*', '/',
+            '=', '#', '<', '<=', '>', '>=', '(', ')', '[', ']',
             ':=', ',', ':', ';', '.', '^', '..',
-            'and', 'or', 'xor', 'not', 'mod', 'in',
-            'array', 'of',
-            'program', 'begin', 'end', 'const', 'type', 'var',
-            'string', 'record', 'set', 'procedure', 'function',
-            'if', 'then', 'else', 'while', 'do', 'repeat', 'until', 'inline',
-            'for', 'to', 'downto', 'with',
-            'nil',
+            'absolute', 'and', 'array', 'begin', 'case', 'const', 'div', 'do', 'downto', 'else', 'end',
+            'external', 'file', 'for', 'forward', 'function', 'goto', 'if', 'in', 'inline', 'label', 'mod',
+            'nil', 'not', 'of', 'or', 'overlay', 'packed', 'procedure', 'program', 'record', 'repeat', 'set',
+            'shl', 'shr', 'string', 'then', 'to', 'type', 'until', 'var', 'while', 'with', 'xor',
             '<eof>');
 
-  FirstKeyword = toAnd;
-  LastKeyword = toNil;
+  FirstKeyword = toAbsolute;
+  LastKeyword = toXor;
 
 var
   Scanner: TScanner;
@@ -3877,7 +3867,7 @@ begin
     // WriteLn('Var type is ', DataType^.Name);
     // if DataType^.Kind = scArrayType then WriteLn(' of ', DataType^.DataType^.Name);
 
-  if (Scanner.Token = toIdent) and (LowerCase(Scanner.StrValue) = 'absolute') then
+  if Scanner.Token = toAbsolute then
   begin
     if Multi then Error('"absolute" only allowed for single variables');
 
@@ -4143,18 +4133,11 @@ begin
         Expect(toSemicolon);
         NextToken;
 
-        while Scanner.Token = toIdent do
+        while Scanner.Token in [toExternal,toForward,toIdent] do
         begin
-          S := LowerStr(Scanner.StrValue);
-          NextToken;
-          if S = 'forward' then
-            NewSym^.IsForward := True
-          else if S = 'stdcall' then
-            NewSym^.IsStdCall := True
-          else if S = 'register' then
-            NewSym^.IsStdCall := False
-          else if S = 'external' then
+          if Scanner.Token = toExternal then
           begin
+            NextToken;
             NewSym^.IsExternal := True;
             if Scanner.Token = toString then
             begin
@@ -4164,7 +4147,22 @@ begin
             else 
               NewSym^.Tag := '__' + LowerStr(NewSym^.Name);
           end
-          else Error('Unknown modifier ' + S);
+          else if Scanner.Token = toForward then
+          begin
+            NewSym^.IsForward := True;
+            NextToken;
+          end
+          else
+          begin
+            S := LowerCase(Scanner.StrValue);
+            if S = 'stdcall' then
+              NewSym^.IsStdCall := True
+            else if S = 'register' then
+              NewSym^.IsStdCall := False
+            else Error('Unknown modifier ' + S);
+
+            NextToken;
+          end;
 
           Expect(toSemicolon);
           NextToken;
