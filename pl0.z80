@@ -85,6 +85,22 @@ __int16_geq_of: ret p
                 inc a
                 ret
 
+; Signed bc <= de <= hl check
+
+__int16_case:   push    de
+                call    __int16_geq
+                pop     hl
+                and     a
+                ret     z
+                push    hl
+                ld      de,bc
+                call    __int16_geq
+                pop     de
+                and     a
+                ret     z
+                inc     a
+                ret
+
 ;
 ; Signed 16 bit multiplication (taken from Leventhal/Saville)
 ;

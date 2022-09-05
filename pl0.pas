@@ -3255,6 +3255,119 @@ begin
   NextToken;
 end;
 
+procedure ParseCaseValue(T: PSymbol; var V: Integer);
+var
+  C: PSymbol;
+begin
+  if Scanner.Token = toIdent then
+  begin
+    C := LookupGlobal(Scanner.StrValue);
+    if C = nil then Error('Not found');
+    if C^.Kind <> scConst then Error('Const expected');
+    if C^.DataType <> T then Error('Invalid type');
+    V := C^.Value;
+  end
+  else if Scanner.Token = toNumber then
+  begin
+    if T <> dtInteger then Error('Invalid type');
+    V := Scanner.NumValue;
+  end
+  else (* toString *)
+  begin
+    if Length(Scanner.StrValue) <> 1 then Error('Invalid type');
+    if T <> dtChar then Error('Invalid type');
+    V := Ord(Scanner.StrValue[1]);
+  end;
+
+  NextToken;
+end;
+
+procedure ParseCaseLabel(T: PSymbol; OfTarget: String);
+var
+  Low, High: Integer;
+begin
+  ParseCaseValue(T, Low);
+  High := Low;
+  if Scanner.Token = toRange then
+  begin
+    NextToken;
+    ParseCaseValue(T, High);
+  end;
+
+  if High = Low then
+  begin
+    EmitI('ld hl,' + Int2Str(High));
+    EmitI('call __int16_eq');
+    EmitI('and a');
+    EmitI('jp nz,' + OfTarget);
+  end
+  else
+  begin
+    EmitI('ld bc,' + Int2Str(Low));
+    EmitI('ld hl,' + Int2Str(High));
+    EmitI('call __int16_case');
+    EmitI('and a');
+    EmitI('jp nz,' + OfTarget);
+  end;
+end;
+
+procedure ParseStatementList(ContTarget, BreakTarget: String); forward;
+
+procedure ParseCaseStatement(ContTarget, BreakTarget: String);
+var
+  T: PSymbol;
+  OfTarget, NextTest, EndTarget: String;
+begin
+  EndTarget := GetLabel('end');
+
+  NextToken;
+  T := ParseExpression;
+
+  EmitI('pop de');
+
+  Expect(toOf);
+  NextToken;
+
+  while Scanner.Token in [toIdent, toNumber, toString] do
+  begin
+    OfTarget := GetLabel('case');
+    NextTest := GetLabel('test');
+
+    ParseCaseLabel(T, OfTarget);
+    while Scanner.Token = toComma do
+    begin
+      NextToken;
+      ParseCaseLabel(T, OfTarget);
+    end;
+
+    Expect(toColon);
+    NextToken;
+
+    EmitI('jp ' + NextTest);
+
+    Emit(OfTarget, '', '');
+
+    ParseStatement(ContTarget, BreakTarget);
+    Expect(toSemicolon);
+    NextToken;
+
+    EmitI('jp ' + EndTarget);
+
+    Emit(NextTest, '', '');
+  end;
+
+  if Scanner.Token = toElse then
+  begin
+    NextToken;
+    ParseStatementList(ContTarget, BreakTarget);
+  end;
+
+  Emit(EndTarget, '', '');
+
+  Expect(toEnd);
+  NextToken;
+end;
+
 procedure ParseStatement(ContTarget, BreakTarget: String);
 var
   Sym, Sym2, F: PSymbol;
@@ -3427,6 +3540,10 @@ begin
     EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
+  end
+  else if Scanner.Token = toCase then
+  begin
+    ParseCaseStatement(ContTarget, BreakTarget);
   end
   else if Scanner.Token = toWith then
   begin
@@ -4198,6 +4315,16 @@ begin
   end;
 end;
 
+procedure ParseStatementList(ContTarget, BreakTarget: String);
+begin
+  ParseStatement(ContTarget, BreakTarget);
+  while Scanner.Token = toSemicolon do
+  begin
+    NextToken;
+    ParseStatement(ContTarget, BreakTarget);
+  end;
+end;
+
 procedure ParseBlock(Sym: PSymbol);
 begin
   ParseDeclarations(Sym);
@@ -4208,12 +4335,7 @@ begin
   Expect(toBegin);
   NextToken;
 
-  ParseStatement('', '');
-  while Scanner.Token = toSemicolon do
-  begin
-    NextToken;
-    ParseStatement('', '');
-  end;
+  ParseStatementList('', '');
 
   Expect(toEnd);
   NextToken;

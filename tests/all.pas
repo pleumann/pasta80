@@ -1192,6 +1192,54 @@ begin
   Assert(J = 2);
 end;
 
+procedure TestCase;
+var
+  I: Integer;
+  S: String[255];
+begin
+  WriteLn('--- TestWhile ---');
+
+  S := '';
+
+  for I := 0 to 12 do
+  begin
+    Write(I, ' is ');
+
+    case I of
+      0:          begin WriteLn('nothing'); S := S + 'n'; end;
+      2..3, 5, 7: begin WriteLn('prime'); S := S + 'p'; end;
+      4, 9:       begin WriteLn('square'); S := S + 's'; end;
+      10:         begin WriteLn('two hands'); S := S + 'h'; end;
+      12:         begin Writeln('a dozen'); S := S + 'd'; end;
+    else
+      WriteLn('just that');
+      S := S + 't';
+    end;
+  end;
+
+  WriteLn;
+  
+  Assert(S = 'ntppsptptshtd');
+
+  S := 'ZX Spectrum+ 128K';
+
+  for I := 1 to Length(S) do
+  begin
+    C := S[I];
+    case C of
+      'A'..'Z':   C := Char(Ord(S[I]) + 32);
+      'a'..'z':   C := Char(Ord(S[I]) - 32);
+    end;
+
+    Write(C);
+    S[I] := C;
+  end;
+
+  WriteLn;
+
+  Assert(S = 'zx sPECTRUM+ 128k');
+end;
+
 procedure TestWhile;
 var
   I, J, K: Integer;
@@ -2030,6 +2078,8 @@ begin
   TestIfThen;
   TestIfThenElse;
   TestIfBlocks;
+
+  TestCase;
 
   TestWhile;
   TestRepeat;
