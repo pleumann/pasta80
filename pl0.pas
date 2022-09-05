@@ -3128,7 +3128,7 @@ begin
     // Check: Global (not in unit tests), Local, Var, Nested, Comma
     // Optimize simple case 'with R do X := 5;' to avoid double addressing
 
-  WriteLn('Level ', Level, ' with at offset ', Address);
+  //WriteLn('Level ', Level, ' with at offset ', Address);
 
   Field := DataType^.DataType;
   while Field <> nil do
@@ -3140,7 +3140,7 @@ begin
     FieldRef^.Value2 := Field^.Value;
     FieldRef^.IsRef := True;
     FieldRef^.Level := Level;
-    WriteLn('Create ' , Field^.Name, ' at level ', Level, ' address ', Address, ' Offset ', Field^.Value);
+    //WriteLn('Create ' , Field^.Name, ' at level ', Level, ' address ', Address, ' Offset ', Field^.Value);
     Field := Field^.Prev;
   end;
 
@@ -3153,7 +3153,7 @@ begin
   begin
     Sym := SymbolTable;
     SymbolTable := SymbolTable^.Prev;
-    WriteLn('Drop ' , Sym^.Name);
+    //WriteLn('Drop ' , Sym^.Name);
     FreeMem(Sym);
   end;
 end;
