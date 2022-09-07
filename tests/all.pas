@@ -1192,6 +1192,72 @@ begin
   Assert(J = 2);
 end;
 
+procedure TestGoto;
+label
+  Foo, Bar, 123, 456, 789, Loop;
+var
+  S: string[255];
+  I: Integer;
+begin
+  S := 'A';
+
+  goto Foo;
+
+  S := S + '1';
+
+  Bar:
+    S := S + 'C';
+    goto 123;
+
+  S := S + '2';
+
+  Foo:
+    S := S + 'B';
+    goto Bar;
+
+  S := S + '3';
+
+  123:
+    S := S + 'D';
+  
+  Assert(S = 'ABCD');
+
+  S := '';
+
+  goto 456;
+
+  S := S + 'X';
+
+  456: begin
+    S := S + 'Y';
+  end;
+
+  S := S + 'Z';
+
+  Assert(S = 'YZ');
+
+  S := '';
+
+  goto 789;
+
+  S := S + 'X';
+
+  begin
+    789: S := S + 'Y';
+  end;
+
+  S := S + 'Z';
+
+  Assert(S = 'YZ');
+
+  I := 0;
+  Loop:
+    I := I + 1;
+    if I < 10 then goto Loop;
+
+  Assert(I = 10);
+end;
+
 procedure TestCase;
 var
   I: Integer;
@@ -2078,6 +2144,8 @@ begin
   TestIfThen;
   TestIfThenElse;
   TestIfBlocks;
+
+  TestGoto;
 
   TestCase;
 

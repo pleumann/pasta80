@@ -375,7 +375,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scVar, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scVar, scLabel, scProc, scFunc, scScope);
 
   // Flags: Forward, External, Register, Magic, Reference, Writable, Relative, Sizable, Addressable
 
@@ -3376,6 +3376,33 @@ var
   (*T: PSymbol;*)
   NewLine: Boolean;
 begin
+  if Scanner.Token = toNumber then
+  begin
+    Sym := LookupGlobal(Int2Str(Scanner.NumValue));
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+
+    if Sym^.Kind = scLabel then
+    begin
+      NextToken;
+      Expect(toColon);
+      NextToken;
+      Emit(Sym^.Tag, '', '');
+    end;
+  end
+  else if Scanner.Token = toIdent then
+  begin
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+
+    if Sym^.Kind = scLabel then
+    begin
+      NextToken;
+      Expect(toColon);
+      NextToken;
+      Emit(Sym^.Tag, '', '');
+    end;
+  end;
+
   if Scanner.Token = toIdent then
   begin
     Sym := LookupGlobal(Scanner.StrValue);
@@ -3553,6 +3580,26 @@ begin
   begin
     NextToken;
     ParseInline;
+  end
+  else if Scanner.Token = toGoto then
+  begin
+    NextToken;
+
+    if Scanner.Token = toIdent then
+    begin
+      Sym := LookupLocal(Scanner.StrValue);
+      // ...
+      EmitI('jp ' + Sym^.Tag);
+    end
+    else if Scanner.Token = toNumber then
+    begin
+      Sym := LookupLocal(Int2Str(Scanner.NumValue));
+      // ...
+      EmitI('jp ' + Sym^.Tag);
+    end
+    else Error('Ident or number expected');
+
+    NextToken;
   end;
 end;
 
@@ -4072,6 +4119,24 @@ begin
   end;
 end;
 
+procedure ParseLabelDef;
+var
+  S: PSymbol;
+begin
+  if Scanner.Token = toIdent then
+  begin
+    S := CreateSymbol(scLabel, Scanner.StrValue, 0);
+  end
+  else if Scanner.Token = toNumber then
+  begin
+    S := CreateSymbol(scLabel, Int2Str(Scanner.NumValue), 0);
+  end
+  else Error('Ident or number expected');
+
+  S^.Tag := GetLabel('label');
+  NextToken;
+end;
+
 procedure ParseBlock(Sym: PSymbol); forward;
 
 procedure ParseDeclarations(Sym: PSymbol);
@@ -4081,7 +4146,7 @@ var
   Name, S: String;
   IsRef: Boolean;
 begin
-  while Scanner.Token in [toConst, toType, toVar, toProcedure, toFunction] do
+  while Scanner.Token in [toConst, toType, toVar, toLabel, toProcedure, toFunction] do
   begin
     if Scanner.Token = toConst then
     begin
@@ -4141,6 +4206,19 @@ begin
         Expect(toSemicolon);
         NextToken;
       until Scanner.Token <> toIdent;
+    end
+
+    else if Scanner.Token = toLabel then
+    begin
+      NextToken;
+      parseLabelDef();
+      while Scanner.Token = toComma do
+      begin
+        NextToken;
+        parseLabelDef();
+      end;
+      Expect(toSemicolon);
+      NextToken;
     end
 
     else if (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
