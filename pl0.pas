@@ -3633,11 +3633,12 @@ begin
   else if DataType^.Kind = scEnumType then
   begin
     Expect(toIdent);
-    Sym := LookupLocal(Scanner.StrValue);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Unknown ident');
     if (Sym^.Kind <> scConst) or (Sym^.DataType <> DataType) then
       Error('Invalid enum constant');
 
-    Emit('', 'dw ' + Int2Str(Sym^.Value), '');
+    Emit('', 'db ' + Int2Str(Sym^.Value), '');
 
     NextToken;
   end
@@ -3658,11 +3659,19 @@ begin
 
       NextToken;
     end
+    else if DataType = dtByte then
+    begin
+      Expect(toNumber);
+
+      Emit('', 'db ' + Int2Str(Scanner.NumValue), '');
+
+      NextToken;
+    end
     else if DataType = dtChar then
     begin
       Expect(toString);
       if Length(Scanner.StrValue) <> 1 then Error('Char expected');
-      Emit('', 'dw "' + Scanner.StrValue + '"', '');     
+      Emit('', 'db "' + Scanner.StrValue + '"', '');     
       NextToken; 
     end
     else
