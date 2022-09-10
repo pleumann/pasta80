@@ -606,6 +606,154 @@ begin
   Assert(Q.Y = 200);
 end;
 
+procedure TestVariantRecords;
+type
+  Rec1 = record
+    C: Char;
+    case Boolean of
+      False: (I: Integer;);
+      True:  (Lo, Hi: Byte;);
+  end;
+
+  Rec2 = record
+    C: Char;
+    case B: Boolean of
+      False: (I: Integer;);
+      True:  (Lo, Hi: Byte;);
+  end;
+
+  Rec3 = record
+    case Code: Integer of
+      0: ( B: Boolean; );
+      1: ( C: Char;    );
+      2: ( Y: Byte;    );
+      3: ( I: Integer; );
+      4: ( R: Real;    );
+      5: ( S: record
+                case Boolean of
+                  False: ( Text: String; );
+                  True:  ( Len: Byte; Chrs: array[255] of Char; );
+              end;
+         );
+  end;
+
+  Rec4 = record  
+    X : Integer;  
+    case Byte of  
+      2 : ( Y : Integer;
+            case Byte of  
+              3 : ( Z : Integer; );
+              4:  ( P : Char; );
+          );
+      5: ( Q: Char; ); 
+  end;
+
+var
+  R1: Rec1;
+  R2: Rec2;
+  
+const
+  R2a: Rec2 = (
+    C: 'A';
+    B: False;
+    I: 42;
+  );
+
+  R2b: Rec2 = (
+    C: 'B';
+    B: True;
+    Lo: 1;
+    Hi: 2;
+  );
+
+  R2c: Rec2 = (
+    B: True;
+    Lo: 1;
+    Hi: 2;
+  );
+
+  R2d: Rec2 = (
+    C: 'D';
+    Hi: 2;
+  );
+
+  R2e: Rec2 = (
+    C: 'E';
+  );
+
+  R2f: Rec2 = (
+  );
+
+  R2g: Rec2 = (
+    ;;;;;;;;;
+  );
+
+var
+  R4: Rec4;
+  A: Integer;
+
+begin
+  WriteLn('--- TestVariantRecords ---');
+
+  A := Addr(R1);
+  Assert(Addr(R1.C) = A);
+  Assert(Addr(R1.I) = A + 1);
+  Assert(Addr(R1.Lo) = A + 1);
+  Assert(Addr(R1.Hi) = A + 2);
+  Assert(SizeOf(R1) = 3);
+
+  A := Addr(R2);
+  Assert(Addr(R2.C) = A);
+  Assert(Addr(R2.B) = A + 1);
+  Assert(Addr(R2.I) = A + 2);
+  Assert(Addr(R2.Lo) = A + 2);
+  Assert(Addr(R2.Hi) = A + 3);
+  Assert(SizeOf(R2) = 4);
+
+  R2.C := 'X';
+  R2.B := False;
+  R2.I := 16383;
+
+  Assert(R2.C = 'X');
+  Assert(not R2.B);
+  Assert(R2.I = 16383);
+  Assert(R2.Lo = 255);
+  Assert(R2.Hi = 63);
+
+  R2.B := True;
+  R2.Hi := 64;
+  R2.Lo := 0;
+
+  Assert(R2.B);
+  Assert(R2.I = 16384);
+  Assert(R2.Lo = 0);
+  Assert(R2.Hi = 64);
+
+  Assert(R2a.C = 'A');
+  Assert(not R2a.B);
+  Assert(R2a.I = 42);
+
+  Assert(R2b.C = 'B');
+  Assert(R2b.B);
+  Assert(R2b.I = 513);
+
+  Assert(R2c.B);
+  Assert(R2c.I = 513);
+
+  Assert(R2d.C = 'D');
+  Assert(R2d.Hi = 2);
+
+  Assert(R2e.C = 'E');
+
+  A := Addr(R4);
+  Assert(Addr(R4.X) = A);
+  Assert(Addr(R4.Y) = A + 2);
+  Assert(Addr(R4.Z) = A + 4);
+  Assert(Addr(R4.P) = A + 4);
+  Assert(Addr(R4.Q) = A + 2);
+  Assert(SizeOf(R4) = 6);
+end;
+
 procedure TestSets;
 type
   Day = (Mon, Tue, Wed, Thu, Fri, Sat, Sun);
@@ -2122,6 +2270,7 @@ begin
   TestVarNested;
   TestArrays;
   TestRecords;
+  TestVariantRecords;
   TestArraysOfArrays;
   TestAbsolute;
 

@@ -3607,8 +3607,9 @@ function ParseTypeDef: PSymbol; forward;
 
 procedure ParseConstValue(DataType: PSymbol);
 var
-  I, Sign, Value: Integer;
+  I, Sign, Value, Offset: Integer;
   Sym: PSymbol;
+  Test: Boolean;
 begin
   if DataType^.Kind = scArrayType then
   begin
@@ -3627,8 +3628,49 @@ begin
     NextToken;
   end
   else if DataType^.Kind = scRecordType then
-  begin    
-    Error('Not supported');
+  begin
+    Expect(toLParen);
+    NextToken;
+
+    Offset := 0;
+    Test := True;
+    while Test do
+    begin
+      Test := False;
+
+      if Scanner.Token = toIdent then
+      begin
+        Sym := findField(DataType^.DataType, Scanner.StrValue);
+        if Sym = nil then Error('Unknown identifier');
+
+        if Sym^.Value < Offset then Error('Invalid offset');
+        if Sym^.Value > Offset then
+        begin
+          EmitI('ds ' + Int2Str(Sym^.Value - Offset));
+          Offset := Sym^.Value;
+        end;
+
+        NextToken;
+        Expect(toColon);
+        NextToken;
+
+        ParseConstValue(Sym^.DataType);
+
+        Offset := Offset + Sym^.DataType^.Value;
+      end;
+
+      if Scanner.Token = toSemicolon then
+      begin
+        Test := True;
+        NextToken;
+      end;
+    end;
+
+    if Offset < DataType^.Value then
+      EmitI('ds ' + Int2Str(DataType^.Value - Offset));
+
+    Expect(toRParen);
+    NextToken;
   end
   else if DataType^.Kind = scEnumType then
   begin
@@ -3749,51 +3791,140 @@ begin
   end;
 end;
 
-function ParseFieldGroup(var Fields: PSymbol): PSymbol;
+procedure ParseField(var Fields: PSymbol);
 var
-  Name: String;
   Sym: PSymbol;
 begin
-  Name := Scanner.StrValue;
-  NextToken;
+  Expect(toIdent);
+  if FindField(Fields, Scanner.StrValue) <> nil then Error('Duplicate field');
 
   New(Sym);
+  FillChar(Sym^, SizeOf(TSymbol), 0);
   Sym^.Kind := scVar;
-  Sym^.Name := Name;
+  Sym^.Name := Scanner.StrValue;
   Sym^.Prev := Fields;
   Fields := Sym;
 
-  if Scanner.Token = toComma then
+  NextToken;
+end;
+
+procedure ParseFieldGroup(var Fields: PSymbol; var Offset: Integer);
+var
+  Name: String;
+  Sym, Typ: PSymbol;
+  Len, I: Integer;
+begin
+  ParseField(Fields);
+  Len := 1;
+
+  while Scanner.Token = toComma do
+  begin
+    NextToken;
+    ParseField(Fields);
+    Len := Len + 1;
+  end;
+
+  Expect(toColon);
+  NextToken;
+  Typ := ParseTypeDef();
+
+  Offset := Offset + Len * Typ^.Value;
+  Sym := Fields;
+
+  for I := 1 to Len do
+  begin
+    Sym^.DataType := Typ;
+    Sym^.Value := Offset - I * Typ^.Value;
+    Sym := Sym^.Prev;
+  end;
+end;
+
+procedure ParseRecord(RecSym: PSymbol);
+var
+  DataType, Sym, CaseType: PSymbol;
+  I, J, FixedSize, VariantSize: Integer;
+  Ident: String;
+begin
+  while Scanner.Token = toIdent do
+  begin
+    ParseFieldGroup(RecSym^.DataType, RecSym^.Value);
+    Expect(toSemicolon);
+    NextToken;
+  end;
+
+  if Scanner.Token = toCase then
   begin
     NextToken;
     Expect(toIdent);
-    Sym^.DataType := ParseFieldGroup(Fields);
-  end
-  else
-  begin
-    Expect(toColon);
+    Ident := Scanner.StrValue;
     NextToken;
-    Sym^.DataType := ParseTypeDef();
-  end;
+    if Scanner.Token = toColon then
+    begin
+      NextToken;
+      Expect(toIdent);
+      CaseType := LookupGlobal(Scanner.StrValue);
+      if CaseType = nil then Error('Type not found');
 
-  ParseFieldGroup := Sym^.DataType;
-end;
+      New(Sym);
+      FillChar(Sym^, SizeOf(TSymbol), 0);
+      Sym^.Kind := scVar;
+      Sym^.Name := Ident;
+      Sym^.DataType := CaseType;
+      Sym^.Value := CaseType^.Value;
+      Sym^.Prev := RecSym^.DataType;
+      RecSym^.DataType := Sym;
 
-function GetFieldOffset(Field: PSymbol): Integer;
-begin
-  if Field = nil then
-    GetFieldOffset := 0
-  else
-  begin
-    Field^.Value := GetFieldOffset(Field^.Prev);
-    GetFieldOffset := Field^.Value + Field^.DataType^.Value;
+      RecSym^.Value := RecSym^.Value + CaseType^.Value;
+
+      NextToken;
+    end
+    else
+    begin
+      CaseType := LookupGlobal(Ident);
+      if CaseType = nil then Error('Type not found');
+    end;
+
+    FixedSize := RecSym^.Value;
+    VariantSize := FixedSize;
+
+    Expect(toOf);
+    NextToken;
+
+    while Scanner.Token in [toIdent, toNumber] do
+    begin
+      NextToken; (* Type check? *)
+      while Scanner.Token = toComma do
+      begin
+        NextToken;
+        NextToken; (* Type check? *)
+      end;
+
+      Expect(toColon);
+      NextToken;
+
+      Expect(toLParen);
+      NextToken;
+
+      ParseRecord(RecSym);
+      if RecSym^.Value > VariantSize then VariantSize := RecSym^.Value;
+      RecSym^.Value := FixedSize;
+
+      Expect(toRParen);
+      NextToken;
+
+      Expect(toSemicolon);
+      NextToken;
+    end;
+
+    RecSym^.Value := VariantSize;
   end;
 end;
 
 function ParseTypeDef: PSymbol;
 var
-  DataType, Sym: PSymbol;
-  I: Integer;
+  DataType, Sym, CaseType: PSymbol;
+  I, J, FixedSize, VariantSize: Integer;
+  Ident: String;
 begin
   if Scanner.Token = toArray then
   begin
@@ -3858,17 +3989,9 @@ begin
     DataType := CreateSymbol(scRecordType, '', 0);
     NextToken;
 
-    while Scanner.Token = toIdent do
-    begin
-      ParseFieldGroup(DataType^.DataType);
-      Expect(toSemicolon);
-      NextToken;
-    end;
-
+    ParseRecord(DataType);
     Expect(toEnd);
-    NextToken;
-
-    if DataType^.DataType <> nil then DataType^.Value := GetFieldOffset(DataType^.DataType);
+    NextToken;    
   end
   else if Scanner.Token = toSet then
   begin
