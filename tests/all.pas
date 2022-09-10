@@ -1263,7 +1263,7 @@ var
   I: Integer;
   S: String[255];
 begin
-  WriteLn('--- TestWhile ---');
+  WriteLn('--- TestCase ---');
 
   S := '';
 
