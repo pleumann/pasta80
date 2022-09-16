@@ -390,7 +390,9 @@ type
     Value, Value2: Integer;
     StrVal: String;
     Tag: String;
-    Bounds: Integer;
+    //Bounds: Integer;
+    IndexType: PSymbol;
+    Low, High: Integer;  // Range types
     Prev, Next: PSymbol;
     IsMagic: Boolean;
     IsRef: Boolean;
@@ -407,7 +409,7 @@ var
 
   AssertProc, BreakProc, ContProc, ExitProc, WriteProc, WriteLnProc: PSymbol;
 
-  AbsFunc, AddrFunc, DisposeProc, EvenFunc, NewProc, OddFunc, OrdFunc, PredFunc,
+  AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
@@ -569,7 +571,7 @@ begin
   Offset := 0;
 end;
 
-function CreateSymbol(Kind: TSymbolClass; Name: String; Bounds: Integer): PSymbol;
+function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
@@ -584,7 +586,6 @@ begin
   Sym^.Name := Name;
   Sym^.Level := Level;
   Sym^.Prev := SymbolTable;
-  Sym^.Bounds := Bounds;
   Sym^.Tag := '';
 
   SymbolTable^.Next := Sym;
@@ -609,7 +610,7 @@ begin
   CreateSymbol := Sym;
 end;
 
-procedure SetDataType(Sym: PSymbol; DataType: PSymbol; Bounds: Integer);
+procedure SetDataType(Sym: PSymbol; DataType: PSymbol);
 var
   Size: Integer;
 begin
@@ -640,7 +641,7 @@ function RegisterType(Name: String; Size: Integer): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(scType, Name, 0);
+  Sym := CreateSymbol(scType, Name);
   Sym^.Value := Size;
 
   RegisterType := Sym;
@@ -650,7 +651,7 @@ function NewEnumType(Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(scEnumType, Name, 0);
+  Sym := CreateSymbol(scEnumType, Name);
   Sym^.Value := 1;
   NewEnumType := Sym;
 end;
@@ -659,7 +660,7 @@ function NewConst(Name: String; DataType: PSymbol; Value: Integer): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(scConst, Name, 0);
+  Sym := CreateSymbol(scConst, Name);
   Sym^.DataType := DataType;
   Sym^.Value := Value;
   NewConst := Sym;
@@ -669,7 +670,7 @@ function RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: S
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(Kind, Name, 0);
+  Sym := CreateSymbol(Kind, Name);
   Sym^.Level := 0;
   Sym^.Value := Args;
   Sym^.Tag := Tag;
@@ -682,7 +683,7 @@ function RegisterMagic(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Sym := CreateSymbol(Kind, Name, 0);
+  Sym := CreateSymbol(Kind, Name);
   Sym^.IsMagic := True;
   RegisterMagic := Sym;
 end;
@@ -693,29 +694,39 @@ var
   Sym, Sym2: PSymbol;
 begin
   dtInteger := RegisterType('Integer', 2);
+  dtInteger^.Low := -32768;
+  dtInteger^.High := 32767;
 
   dtBoolean := NewEnumType('Boolean');
+  dtBoolean^.Low := 0;
+  dtBoolean^.High := 1;
   NewConst('False', dtBoolean, 0);
   NewConst('True', dtBoolean, 1);
 
   dtChar := RegisterType('Char', 1);
+  dtChar^.Low := 0;
+  dtChar^.High := 255;
   dtChar^.Value := 1;
   dtByte := RegisterType('Byte', 1);
+  dtByte^.Low := 0;
+  dtByte^.High := 255;
   dtByte^.Value := 1;
 
-  dtString := CreateSymbol(scStringType, 'String', 256);
+  dtString := CreateSymbol(scStringType, 'String');
   dtString^.Value := 256;
 
-  dtReal := CreateSymbol(scType, 'Real', 6);
+  dtReal := CreateSymbol(scType, 'Real');
   dtReal^.Value := 6;
 
-  dtPointer := CreateSymbol(scPointerType, 'Pointer', 2);
+  dtPointer := CreateSymbol(scPointerType, 'Pointer');
   dtPointer^.Value := 2;
 
-  Sym := CreateSymbol(scArrayType, '', 65536);
+  Sym := CreateSymbol(scArrayType, '');
+  Sym^.Low := 0;
+  Sym^.High := 65535;
   Sym^.DataType := dtByte;
 
-  Sym2 := CreateSymbol(scVar, 'Mem', 0);
+  Sym2 := CreateSymbol(scVar, 'Mem');
   Sym2^.DataType := Sym;
   Sym2^.Tag := '0';
   Sym2^.Value := 0;
@@ -732,6 +743,8 @@ begin
   AbsFunc := RegisterMagic(scFunc, 'Abs');
   AddrFunc := RegisterMagic(scFunc, 'Addr');
   EvenFunc := RegisterMagic(scFunc, 'Even');
+  HighFunc := RegisterMagic(scFunc, 'High');
+  LowFunc := RegisterMagic(scFunc, 'Low');
   OddFunc := RegisterMagic(scFunc, 'Odd');
   OrdFunc := RegisterMagic(scFunc, 'Ord');
   PredFunc := RegisterMagic(scFunc, 'Pred');
@@ -2196,6 +2209,9 @@ begin
   if Left = nil then Error('Error in TypeCheck: Left = nil');
   if Right = nil then Error('Error in TypeCheck: Right = nil');
 
+  if Left^.Kind = scSubrangeType then Left := Left^.DataType;
+  if Right^.Kind = scSubrangeType then Right := Right^.DataType;
+
   if Left = Right then
   begin
     TypeCheck := Left;
@@ -2299,7 +2315,13 @@ begin
       begin
       NextToken;
 
-      TypeCheck(dtInteger, ParseExpression(), tcExpr);
+      TypeCheck(DataType^.IndexType, ParseExpression(), tcExpr);
+
+      if DataType^.IndexType^.Low <> 0 then
+      begin
+        EmitLiteral(DataType^.IndexType^.Low);
+        EmitBinOp(toSub, dtInteger);
+      end;
 
       DataType := DataType^.DataType;
 
@@ -2549,6 +2571,22 @@ begin
     EmitI('push hl');
 
     ParseBuiltInFunction := dtByte;
+  end
+  else if (Func = HighFunc) or (Func = LowFunc) then
+  begin
+    Expect(toIdent);
+    Sym := LookupGlobal(Scanner.StrValue);
+    if Sym = nil then Error('Not found');
+    if Sym^.Kind = scVar then Sym := Sym^.DataType;
+    if Sym^.Kind = scArrayType then Sym := Sym^.IndexType;
+    if Sym^.Kind = scSetType then Sym := Sym^.DataType;
+    if Sym = nil then Error('Eeek!');
+    if Func = HighFunc then EmitLiteral(Sym^.High) else EmitLiteral(Sym^.Low);
+    NextToken;
+
+    if Sym^.Kind = scSubrangeType then Sym := Sym^.DataType;
+
+    ParseBuiltInFunction := Sym;
   end
   else
     Error('Cannot handle: ' + Func^.Name);
@@ -2875,7 +2913,8 @@ begin
     EmitI('ld bc,32');
     EmitI('ldir');
 
-    Sym := CreateSymbol(scSetType, '', 32);
+    Sym := CreateSymbol(scSetType, '');
+    Sym^.Value := 32;
     Sym^.DataType := T;
     T := Sym;
   end
@@ -3133,7 +3172,7 @@ begin
   Field := DataType^.DataType;
   while Field <> nil do
   begin
-    FieldRef := CreateSymbol(scVar, '', 0);
+    FieldRef := CreateSymbol(scVar, '');
     FieldRef^.Name := Field^.Name;
     FieldRef^.DataType := Field^.DataType;
     FieldRef^.Value := Address;
@@ -3616,7 +3655,7 @@ begin
     Expect(toLParen);
     NextToken;
 
-    for I := 1 to DataType^.Bounds - 1 do
+    for I := DataType^.IndexType^.Low to DataType^.IndexType^.High - 1 do
     begin
       ParseConstValue(DataType^.DataType);
       Expect(toComma);
@@ -3735,7 +3774,7 @@ begin
   begin
     NextToken;
 
-    Sym := CreateSymbol(scVar, Name, 0);
+    Sym := CreateSymbol(scVar, Name);
     Sym^.DataType := ParseTypeDef();
     Sym^.Tag := GetLabel('const');
     Sym^.Level := 1; (* Force global *)
@@ -3749,7 +3788,7 @@ begin
   end
   else
   begin
-    Sym := CreateSymbol(scConst, Name, 0);
+    Sym := CreateSymbol(scConst, Name);
 
     Expect(toEq);
     NextToken;
@@ -3920,6 +3959,25 @@ begin
   end;
 end;
 
+procedure ParseArray(DataType: PSymbol);
+begin
+  Expect(toLBrack);
+  NextToken;
+
+  DataType^.IndexType := ParseTypeDef;
+  if not (DataType^.IndexType^.Kind in [scType, scEnumType, scSubrangeType]) then
+    Error('Not an ordinal type');
+
+  Expect(toRBrack);
+  NextToken;
+
+  Expect(toOf);
+  NextToken;
+
+  DataType^.DataType := ParseTypeDef();
+  DataType^.Value := (DataType^.IndexType^.High - DataType^.IndexType^.Low + 1) * DataType^.DataType^.Value;
+end;
+
 function ParseTypeDef: PSymbol;
 var
   DataType, Sym, CaseType: PSymbol;
@@ -3928,50 +3986,16 @@ var
 begin
   if Scanner.Token = toArray then
   begin
-    DataType := CreateSymbol(scArrayType, '', 0);
+    DataType := CreateSymbol(scArrayType, '');
     NextToken;
 
-    Expect(toLBrack);
-    NextToken;
-
-    if Scanner.Token = toNumber then
-      DataType^.Bounds := Scanner.NumValue
-    else if Scanner.Token = toIdent then
-    begin
-      Sym := LookupGlobal(Scanner.StrValue);
-      if Sym = nil then
-        Error(Scanner.StrValue + ' not found');
-      if (Sym^.Kind <> scConst) or (Sym^.DataType <> dtInteger) then
-        Error(Scanner.StrValue + ' is not an integer constant');
-      DataType^.Bounds := Sym^.Value;
-    end
-    else
-      Error('Integer literal or constant expected');     
-
-    NextToken;
-(*
-    if Scanner.Token = toDots then
-    begin
-      NextToken;
-
-      Expect(toNumber);
-      NextToken;
-    end;
-*)
-    Expect(toRBrack);
-    NextToken;
-
-    Expect(toOf);
-    NextToken;
-
-    DataType^.DataType := ParseTypeDef();
-    DataType^.Value := DataType^.Bounds * DataType^.DataType^.Value;
+    ParseArray(DataType);
   end
   else if Scanner.Token = toStringKW then
   begin
     NextToken;
 
-    DataType := CreateSymbol(scStringType, '', 0);
+    DataType := CreateSymbol(scStringType, '');
 
     if Scanner.Token = toLBrack then
     begin
@@ -3986,7 +4010,7 @@ begin
   end
   else if Scanner.Token = toRecord then
   begin
-    DataType := CreateSymbol(scRecordType, '', 0);
+    DataType := CreateSymbol(scRecordType, '');
     NextToken;
 
     ParseRecord(DataType);
@@ -3999,7 +4023,7 @@ begin
     Expect(toOf);
     NextToken;
 
-    DataType := CreateSymbol(scSetType, '', 0);
+    DataType := CreateSymbol(scSetType, '');
     DataType^.DataType := ParseTypeDef;
 
     if not (DataType^.DataType^.Kind in [scType, scEnumType, scSubrangeType]) then
@@ -4012,7 +4036,7 @@ begin
   end
   else if Scanner.Token = toCaret then
   begin
-    DataType := CreateSymbol(scPointerType, '', 0);
+    DataType := CreateSymbol(scPointerType, '');
     DataType^.Value := 2;
     NextToken;
 
@@ -4026,7 +4050,7 @@ begin
   end
   else if Scanner.Token = toLParen then
   begin
-    DataType := CreateSymbol(scEnumType, '', 0);
+    DataType := CreateSymbol(scEnumType, '');
     DataType^.Tag := GetLabel('enumlit');
     DataType^.Value := 1;
     I := 0;
@@ -4037,7 +4061,7 @@ begin
       NextToken;
       Expect(toIdent);
 
-      Sym := CreateSymbol(scConst, Scanner.StrValue, 0);
+      Sym := CreateSymbol(scConst, Scanner.StrValue);
       Sym^.Value := I;
       // Sym^.Value2 := AddString(Sym^.Name);
 
@@ -4048,18 +4072,23 @@ begin
       NextToken;
     until Scanner.Token <> toComma;
 
+    DataType^.Low := 0;
+    DataType^.High := I - 1;
+
     Expect(toRParen);
     NextToken;
   end
   else if Scanner.Token = toNumber then
   begin
-    DataType := CreateSymbol(scSubrangeType, '', 0);
+    DataType := CreateSymbol(scSubrangeType, '');
     DataType^.DataType := dtInteger;
 
+    DataType^.Low := Scanner.NumValue;
     NextToken;
     Expect(toRange);
     NextToken;
     Expect(toNumber);
+    DataType^.High := Scanner.NumValue;
 
     if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
 
@@ -4069,14 +4098,16 @@ begin
   begin
     if Length(Scanner.StrValue) <> 1 then Error('Char expected');
 
-    DataType := CreateSymbol(scSubrangeType, '', 0);
+    DataType := CreateSymbol(scSubrangeType, '');
     DataType^.DataType := dtChar;
 
+    DataType^.Low := Ord(Scanner.StrValue[1]);
     NextToken;
     Expect(toRange);
     NextToken;
     Expect(toString);
     if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+    DataType^.High := Ord(Scanner.StrValue[1]);
 
     DataType^.Value := 1;
 
@@ -4092,14 +4123,19 @@ begin
 
     if Sym^.Kind = scConst then
     begin
-      DataType := CreateSymbol(scSubrangeType, '', 0);
+      DataType := CreateSymbol(scSubrangeType, '');
       DataType^.DataType := Sym^.DataType;
       DataType^.Value := 1;
 
+      Sym := LookupGlobal(Scanner.StrValue);
+      DataType^.Low := Sym^.Value;
       NextToken;
       Expect(toRange);
       NextToken;
       Expect(toIdent);
+      // More checks
+      Sym := LookupGlobal(Scanner.StrValue);
+      DataType^.High := Sym^.Value;
       NextToken;
     end
     else
@@ -4123,7 +4159,7 @@ begin
   Name := Scanner.StrValue;
   NextToken;
 
-  CreateSymbol(scVar, Name, 0);
+  CreateSymbol(scVar, Name);
   (*
   if Sym^.Level = 1 then
   begin
@@ -4190,7 +4226,7 @@ begin
     Old := Old^.Next;
     if Old^.Kind = scVar then
     begin
-      SetDataType(Old, DataType, High - Low + 1);
+      SetDataType(Old, DataType);
 
       if IsAbs then Old^.Tag := Tag
       else if Old^.Level = 1 then
@@ -4245,7 +4281,7 @@ begin
   begin
     if Sym^.Kind = scVar then
     begin
-      SetDataType(Sym, DataType, High - Low + 1);
+      SetDataType(Sym, DataType);
     end;
     Sym := Sym^.Prev;
   end;
@@ -4257,11 +4293,11 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
-    S := CreateSymbol(scLabel, Scanner.StrValue, 0);
+    S := CreateSymbol(scLabel, Scanner.StrValue);
   end
   else if Scanner.Token = toNumber then
   begin
-    S := CreateSymbol(scLabel, Int2Str(Scanner.NumValue), 0);
+    S := CreateSymbol(scLabel, Int2Str(Scanner.NumValue));
   end
   else Error('Ident or number expected');
 
@@ -4362,9 +4398,9 @@ begin
       if (FwdSym <> nil) and (FwdSym^.IsForward) then
       begin
         if Token = toProcedure then
-          NewSym := CreateSymbol(scProc, '', 0)
+          NewSym := CreateSymbol(scProc, '')
         else
-          NewSym := CreateSymbol(scFunc, '', 0);
+          NewSym := CreateSymbol(scFunc, '');
 
         if NewSym^.Kind <> FwdSym^.Kind then Error('Proc/Func mismatch');
 
@@ -4393,12 +4429,12 @@ begin
       begin
         if Token = toProcedure then
         begin
-          NewSym := CreateSymbol(scProc, Scanner.StrValue, 0);
+          NewSym := CreateSymbol(scProc, Scanner.StrValue);
           NewSym^.Tag := GetLabel('proc');
         end
         else
         begin
-          NewSym := CreateSymbol(scFunc, Scanner.StrValue, 0);
+          NewSym := CreateSymbol(scFunc, Scanner.StrValue);
           NewSym^.Tag := GetLabel('func');
         end;
 
@@ -4411,7 +4447,7 @@ begin
       begin
         if Token = toFunction then
         begin
-          CreateSymbol(scVar, Scanner.StrValue, 0)^.Tag := 'RESULT';
+          CreateSymbol(scVar, Scanner.StrValue)^.Tag := 'RESULT';
           //SetDataType(SymbolTable, dtInteger, 0);
           ResVar := SymbolTable;
         end;

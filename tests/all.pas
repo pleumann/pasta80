@@ -7,16 +7,16 @@ const
 
   NotTrueEither: Boolean = False;
 
-  ThreeByThree: array[3] of array[3] of Integer = (
+  ThreeByThree: array[0..2] of array[0..2] of Integer = (
     (1, 2, 3),
     (4, 5, 6),
     (7, 8, 9)
   );
 
 type
-  Color = (Red, Yellow, Green);
+  Color = (Red, Green, Blue);
 
-  TIntArray100 = array[100] of Integer;
+  TIntArray100 = array[0..99] of Integer;
 
   TPoint = record
     X, Y: Integer;
@@ -31,9 +31,9 @@ var
   A: TIntArray100;
   AfterA: Integer;
 
-  AA: array[10] of array[10] of Integer;
+  AA: array[0..9] of array[0..9] of Integer;
 
-  CA: array[3] of Color;
+  CA: array[0..2] of Color;
 
   GlobalIntArray: TIntArray100;
 
@@ -519,9 +519,20 @@ begin
 end;
 
 procedure TestArrays;
+const
+  Jan = 1;
+  Dec = 12;
+  DaysInMonth: array[Jan..Dec] of Integer = (
+    31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+  );
 var
+  RgbLed: array[Color] of Byte;
+  IsPrime: array[2..20] of Boolean;
+  UpperCase: array['a'..'z'] of Char;
   I: Integer;
   B: TIntArray100;
+  C: Char;
+  S: String[255];
 begin
   WriteLn('--- TestArrays ---');
   
@@ -553,6 +564,71 @@ begin
   (* Ugly alternative syntax works, too (although not perfectly) *)
   B(. 42 .) := 1000;
   Assert(B(. 42 .) = 1000);
+
+  WriteLn('Color: ', Low(Color), '..', High(Color));
+  WriteLn('RgbLed: ', Low(RgbLed), '..', High(RgbLed));
+  WriteLn('IsPrime: ', Low(IsPrime), '..', High(IsPrime));
+  
+  Assert(Low(Color) = Red);
+  Assert(High(Color) = Blue);
+  Assert(Low(RgbLed) = Red);
+  Assert(High(RgbLed) = Blue);
+  Assert(Low(IsPrime) = 2);
+  Assert(High(IsPrime) = 20);
+
+  WriteLn;
+
+  WriteLn('DaysInMonth: ', Low(DaysInMonth), '..', High(DaysInMonth));
+
+  Assert(Low(DaysInMonth) = Jan);
+  Assert(High(DaysInMonth) = Dec);
+
+  for I := Jan to Dec do
+    Write(' ', I, ' ');
+
+  for I := Jan to Dec do
+    Write(DaysInMonth[I], ' ');
+
+  WriteLn;
+  WriteLn;
+
+  WriteLn('ToUpper: ', Low(UpperCase), '..', High(UpperCase));
+  WriteLn;
+
+  Assert(Low(UpperCase) = 'a');
+  Assert(High(UpperCase) = 'z');
+
+  for C := Low(UpperCase) to High(UpperCase) do
+    UpperCase[C] := Char(Ord(C) - 32);
+
+  S := 'The quick brown fox jumped over the lazy dog.';
+
+  for I := 1 to Length(S) do
+  begin
+    C := S[I];
+    if (C >= 'a') and (C <= 'z') then S[I] := UpperCase[C];
+  end;
+
+  WriteLn(S);
+
+  Assert(S = 'THE QUICK BROWN FOX JUMPED OVER THE LAZY DOG.');
+end;
+
+procedure TestHighLow;
+begin
+  WriteLn('--- TestHighLow ---');
+
+  Assert(Low(Integer) = -32768);
+  Assert(High(Integer) = 32767);
+
+  Assert(Low(Byte) = 0);
+  Assert(High(Byte) = 255);
+
+  Assert(Low(Char) = #0);
+  Assert(High(Char) = #255);
+
+  Assert(Low(Boolean) = False);
+  Assert(High(Boolean) = True);
 end;
 
 procedure SwapPointProc(var P: TPoint);
@@ -632,7 +708,7 @@ type
       5: ( S: record
                 case Boolean of
                   False: ( Text: String; );
-                  True:  ( Len: Byte; Chrs: array[255] of Char; );
+                  True:  ( Len: Byte; Chrs: array[1..255] of Char; );
               end;
          );
   end;
@@ -1216,7 +1292,7 @@ procedure TestTypeChecks;
 var
   I: Integer;
   B: Byte;
-  A: array[5] of Byte;
+  A: array[0..4] of Byte;
 
   procedure Local(Expected: Integer; Actual: Byte);
   begin
@@ -1711,7 +1787,7 @@ procedure TestWith;
 var
   A, B, I, J, K: Integer;
   R: WithRec;
-  S: array[20] of WithRec;
+  S: array[0..19] of WithRec;
 begin
   WriteLn('--- TestWith ---');
 
@@ -1871,23 +1947,26 @@ begin
   C := Green;
   Assert(C = Green);
   
-  C := Yellow;
+  C := Green;
   Assert(C > Red);
-  Assert(C >= Yellow);
-  Assert(C <= Yellow);
-  Assert(C < Green);
+  Assert(C >= Green);
+  Assert(C <= Green);
+  Assert(C < Blue);
 
-  Assert(Red = Pred(Yellow));
-  Assert(Succ(Red) = Yellow);
+  Assert(Red = Pred(Green));
+  Assert(Succ(Red) = Green);
 
-  Assert(Yellow = Pred(Green));
-  Assert(Succ(Yellow) = Green);
+  Assert(Green = Pred(Blue));
+  Assert(Succ(Green) = Blue);
 
   Assert(Even(Red));
-  Assert(Odd(Yellow));
+  Assert(Odd(Green));
+
+  Assert(Low(Color) = Red);
+  Assert(High(Color) = Blue);
 
   I := 0;
-  for C := Red to Green do
+  for C := Red to Blue do
   begin
     Assert(Ord(C) = I);
     Assert(C = Color(I));
@@ -1895,22 +1974,22 @@ begin
   end;
 
   CA[0] := Red;
-  CA[1] := Yellow;
-  CA[2] := Green;
+  CA[1] := Green;
+  CA[2] := Blue;
 
   Assert(CA[0] = Red);
-  Assert(CA[1] = Yellow);
-  Assert(CA[2] = Green);
+  Assert(CA[1] = Green);
+  Assert(CA[2] = Blue);
 
   I := 0;
-  for C := Red to Green do
+  for C := Red to Blue do
   begin
     Assert(C = CA[I]);
     I := I + 1;
   end;
 
   I := 2;
-  for C := Green downto Red do
+  for C := Blue downto Red do
   begin
     Assert(C = CA[I]);
     I := I - 1;
@@ -1923,7 +2002,7 @@ var
 begin
   WriteLn('--- TestWriteEnums ---');
   WriteLn;
-  for C := Red to Green do
+  for C := Red to Blue do
   begin
     WriteLn('The light is ', C, '.');
   end;
@@ -1958,7 +2037,7 @@ type
   TStr15  = string[15];
   TStr0   = string[0];
 
-  TStringArray = array[8] of String[31];
+  TStringArray = array[0..7] of String[31];
 
 var
   MyStr255: TStr255;
@@ -2275,6 +2354,7 @@ begin
   TestAbsolute;
 
   TestEnums;
+  TestHighLow;
 
   TestStrings;
   TestReal;
