@@ -533,6 +533,9 @@ var
   B: TIntArray100;
   C: Char;
   S: String[255];
+  AndGate: array[Boolean] of array[Boolean] of Boolean;
+  OrGate: array[Boolean, Boolean] of Boolean;
+  P, Q: Boolean;
 begin
   WriteLn('--- TestArrays ---');
   
@@ -612,6 +615,37 @@ begin
   WriteLn(S);
 
   Assert(S = 'THE QUICK BROWN FOX JUMPED OVER THE LAZY DOG.');
+
+  AndGate[False][False] := False;
+  AndGate[False][True] := False;
+  AndGate[True, False] := False;
+  AndGate[True, True] := True;
+
+  OrGate[False][False] := False;
+  OrGate[False][True] := True;
+  OrGate[True, False] := True;
+  OrGate[True, True] := True;
+
+  for P := False to True do
+    for Q := False to True do
+    begin
+      Assert(AndGate[P, Q] = P and Q);
+      Assert(OrGate[P, Q] = P or Q);
+    end;
+
+  Assert(Low(AndGate) = False);
+  Assert(High(AndGate) = True);
+  Assert(Low(AndGate[False]) = False);
+  Assert(High(AndGate[False]) = True);
+  Assert(SizeOf(AndGate) = 4);
+  Assert(SizeOf(AndGate[False]) = 2);
+
+  Assert(Low(OrGate) = False);
+  Assert(High(OrGate) = True);
+  Assert(Low(OrGate[False]) = False);
+  Assert(High(OrGate[False]) = True);
+  Assert(SizeOf(OrGate) = 4);
+  Assert(SizeOf(OrGate[False]) = 2);
 end;
 
 procedure TestHighLow;

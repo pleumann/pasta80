@@ -2311,44 +2311,43 @@ begin
   begin
     if Scanner.Token = toLBrack then
     begin
-      if DataType^.Kind = scArrayType then
-      begin
-      NextToken;
-
-      TypeCheck(DataType^.IndexType, ParseExpression(), tcExpr);
-
-      if DataType^.IndexType^.Low <> 0 then
-      begin
-        EmitLiteral(DataType^.IndexType^.Low);
-        EmitBinOp(toSub, dtInteger);
-      end;
-
-      DataType := DataType^.DataType;
-
-      Size := DataType^.Value;
-      if Size > 1 then
-      begin
-        case Size of
-          2: EmitShl;
-          4: begin EmitShl; EmitShl; end;
-          else begin
-            EmitLiteral(Size);
-            EmitBinOp(toMul, dtInteger);
-          end;
-        end;
-      end;
-      EmitBinOp(toAdd, dtInteger);
-      end
-      else if DataType^.Kind = scStringType then
-      begin
+      repeat
         NextToken;
+        if DataType^.Kind = scArrayType then
+        begin
+          TypeCheck(DataType^.IndexType, ParseExpression(), tcExpr);
 
-        TypeCheck(dtInteger, ParseExpression(), tcExpr);
+          if DataType^.IndexType^.Low <> 0 then
+          begin
+            EmitLiteral(DataType^.IndexType^.Low);
+            EmitBinOp(toSub, dtInteger);
+          end;
 
-        DataType := dtChar;
-        EmitBinOp(toAdd, dtInteger);
-      end
-      else Error('Not an array or a string');
+          DataType := DataType^.DataType;
+
+          Size := DataType^.Value;
+          if Size > 1 then
+          begin
+            case Size of
+              2: EmitShl;
+              4: begin EmitShl; EmitShl; end;
+              else begin
+                EmitLiteral(Size);
+                EmitBinOp(toMul, dtInteger);
+              end;
+            end;
+          end;
+          EmitBinOp(toAdd, dtInteger);
+        end
+        else if DataType^.Kind = scStringType then
+        begin
+          TypeCheck(dtInteger, ParseExpression(), tcExpr);
+
+          DataType := dtChar;
+          EmitBinOp(toAdd, dtInteger);
+        end
+        else Error('Not an array or a string');
+      until Scanner.Token <> toComma;
       
       Expect(toRBrack);
 
@@ -3967,22 +3966,35 @@ begin
   end;
 end;
 
-procedure ParseArray(DataType: PSymbol);
+procedure ParseArray(DataType: PSymbol; First: Boolean);
 begin
-  Expect(toLBrack);
-  NextToken;
+  if First then
+  begin
+    Expect(toLBrack);
+    NextToken;
+  end;
 
   DataType^.IndexType := ParseTypeDef;
   if not (DataType^.IndexType^.Kind in [scType, scEnumType, scSubrangeType]) then
     Error('Not an ordinal type');
 
-  Expect(toRBrack);
-  NextToken;
+  if Scanner.Token = toComma then
+  begin
+    NextToken;
+    DataType^.DataType := CreateSymbol(scArrayType, '');
+    ParseArray(DataType^.DataType, False);
+  end
+  else
+  begin
+    Expect(toRBrack);
+    NextToken;
 
-  Expect(toOf);
-  NextToken;
+    Expect(toOf);
+    NextToken;
 
-  DataType^.DataType := ParseTypeDef();
+    DataType^.DataType := ParseTypeDef();
+  end;
+
   DataType^.Value := (DataType^.IndexType^.High - DataType^.IndexType^.Low + 1) * DataType^.DataType^.Value;
 end;
 
@@ -3997,7 +4009,7 @@ begin
     DataType := CreateSymbol(scArrayType, '');
     NextToken;
 
-    ParseArray(DataType);
+    ParseArray(DataType, True);
   end
   else if Scanner.Token = toStringKW then
   begin
