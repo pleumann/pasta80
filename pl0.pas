@@ -2493,8 +2493,12 @@ begin
     NextToken;
 
     if Sym^.Kind = scVar then
-      EmitLiteral(Sym^.DataType^.Value)
-    else if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType] then
+    begin
+      Sym := ParseVariableAccess(Sym);
+      EmitClear(2);
+    end;
+
+    if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType] then
       EmitLiteral(Sym^.Value)
     else
       Error('Cannot apply SizeOf to ' + Sym^.Name);
@@ -2576,13 +2580,17 @@ begin
   begin
     Expect(toIdent);
     Sym := LookupGlobal(Scanner.StrValue);
+    NextToken;
     if Sym = nil then Error('Not found');
-    if Sym^.Kind = scVar then Sym := Sym^.DataType;
+    if Sym^.Kind = scVar then
+    begin
+      Sym := ParseVariableAccess(Sym);
+      EmitClear(2);
+    end;
     if Sym^.Kind = scArrayType then Sym := Sym^.IndexType;
     if Sym^.Kind = scSetType then Sym := Sym^.DataType;
     if Sym = nil then Error('Eeek!');
     if Func = HighFunc then EmitLiteral(Sym^.High) else EmitLiteral(Sym^.Low);
-    NextToken;
 
     if Sym^.Kind = scSubrangeType then Sym := Sym^.DataType;
 
