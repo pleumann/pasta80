@@ -700,6 +700,7 @@ begin
   dtBoolean := NewEnumType('Boolean');
   dtBoolean^.Low := 0;
   dtBoolean^.High := 1;
+  dtBoolean^.Tag := '__boolean_enum';
   NewConst('False', dtBoolean, 0);
   NewConst('True', dtBoolean, 1);
 
@@ -2119,11 +2120,6 @@ begin
   begin
     Emit('', 'pop hl', '');
     EmitI('call __putn');
-  end
-  else if DataType = dtBoolean then
-  begin
-    Emit('', 'pop hl', '');
-    EmitI('call __putb')
   end
   else if DataType = dtChar then
   begin

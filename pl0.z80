@@ -26,6 +26,13 @@ __buffer:       equ     23698
 #endif
 
 ;
+; Boolean literals
+;
+__boolean1:     db      4,"True"
+__boolean0:     db      5,"False"
+__boolean_enum: dw __boolean0, __boolean1
+
+;
 ; Signed 16 bit '=' check (with help from Ped7g)
 ;
 ; In:   HL (left), DE (right)
@@ -1304,25 +1311,6 @@ __putn:         ex      hl,de
                 ld      (hl),a
                 call    __puts
                 ret
-
-;
-; Print boolean to screen
-;
-; Entry:  HL (number)
-; Exit:   -
-; Uses:   AF,BC,DE
-;
-__putb:         xor     a
-                or      l
-                jr      z,__putb2
-                ld      hl,__putb_true
-                call    __puts
-                ret
-__putb2:        ld      hl,__putb_false
-                call    __puts
-                ret
-__putb_true:    db      4,"TRUE"
-__putb_false:   db      5,"FALSE"
 
 ;
 ; Read number from keyboard
