@@ -1313,6 +1313,19 @@ __putn:         ex      hl,de
                 ret
 
 ;
+; Print enum to screen
+;
+; Entry:  HL (value), DE (literal table)
+; Exit:   -
+; Uses:   AF,BC,DE
+;
+__pute:
+                add     hl,hl
+                add     hl,de
+                ld      de,(hl)
+                ex      de,hl
+                jp      __puts
+;
 ; Read number from keyboard
 ;
 ; Entry:  -

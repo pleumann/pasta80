@@ -2143,13 +2143,9 @@ begin
   end
   else if DataType^.Kind = scEnumType then
   begin
-    Emit('', 'pop hl', '');
+    EmitI('pop hl');
     EmitI('ld de,' + DataType^.Tag);
-    EmitI('add hl,hl');
-    EmitI('add hl,de');
-    EmitI('ld de,(hl)');
-    EmitI('ex hl,de');
-    EmitI('call __puts');
+    EmitI('call __pute');
   end
   else Error('Unprintable type: ' + DataType^.Name);
 end;
