@@ -2154,35 +2154,6 @@ begin
   else Error('Unprintable type: ' + DataType^.Name);
 end;
 
-procedure EmitPrintStr(S: String);
-var
-  Tag: String;
-begin
-  if Length(S) = 1 then
-  begin
-    Emit('', 'ld a,' + Int2Str(Ord(S[1])), '');
-    Emit('', 'call __putc', '');
-  end
-  else
-  begin
-    Tag := AddString(S);
-    Emit('', 'ld hl,' + Tag, '');
-    Emit('', 'call __puts', '');
-  end;
-end;
-
-procedure EmitPrintNewLine();
-begin
-  Emit('', 'call __newline', '');
-end;
-
-procedure EmitAssertFailed(S: String; L: Integer);
-begin
-  Emit('', 'ld hl, ' + S, '');
-  Emit('', 'ld de, ' + Int2Str(L), '');
-  Emit('', 'call __assertfailed', '');
-end;
-
 procedure CloseTarget();
 begin
   Flush;
@@ -2654,7 +2625,7 @@ begin
       NextToken;
     end;
 
-    if Proc = WriteLnProc then EmitPrintNewLine;
+    if Proc = WriteLnProc then EmitI('call __newline');
   end
   else if Proc = NewProc then
   begin
