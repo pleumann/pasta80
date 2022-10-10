@@ -1431,13 +1431,14 @@ __assertfailed: dw 0
 ; Exit:   A (length)
 ; Uses:   *
 ;
-__itoa:         ld      (hl),' '
-                ld      b,0
+__itoa:         ld      bc,0
                 bit     7,d                
                 ex      de,hl
                 jr      z,__itoa_loop1
                 ex      de,hl
                 ld      (hl),'-'
+                inc     hl
+                inc     c
                 push    hl
                 ld      hl,0
                 and     a
@@ -1452,14 +1453,13 @@ __itoa_loop1:   push    bc              ; mod 10 and push
                 ld      a,h
                 or      l
                 jr      nz,__itoa_loop1
-                ld      c,b
                 ex      de,hl
 __itoa_loop2:   pop     af              ; pop and store
-                inc     hl
                 ld      (hl),a
+                inc     hl
+                inc     c
                 djnz    __itoa_loop2
                 ld      a,c
-                inc     a
                 ret
 
 ;

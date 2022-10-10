@@ -583,16 +583,14 @@ begin
 
   WriteLn('DaysInMonth: ', Low(DaysInMonth), '..', High(DaysInMonth));
 
+  WriteLn;
+
   Assert(Low(DaysInMonth) = Jan);
   Assert(High(DaysInMonth) = Dec);
 
   for I := Jan to Dec do
-    Write(' ', I, ' ');
+    WriteLn('Month ', I, ' has ', DaysInMonth[I], ' days.');
 
-  for I := Jan to Dec do
-    Write(DaysInMonth[I], ' ');
-
-  WriteLn;
   WriteLn;
 
   WriteLn('ToUpper: ', Low(UpperCase), '..', High(UpperCase));
@@ -975,10 +973,10 @@ begin
   WriteLn;
 
   Primes := [2, 3, 5, 7, 11, 13, 17, 23, 29, 31];
-  Write('Some primes:');
+  Write('Some primes: ');
   for I := 0 to 31 do
     if I in Primes then
-      Write(I);
+      Write(I, ' ');
   WriteLn;
 
   (* FIXME
@@ -1907,11 +1905,11 @@ begin
   WriteLn('--- TestWriteInteger ---');
 
   WriteLn;
-  WriteLn('Expected output: 0, 1, 10, 100, 1000, 10000, 32767');
-  WriteLn('Actual output  :', 0, ',', 1, ',',  10, ',', 100, ',', 1000, ',', 10000, ',', 32767);
+  WriteLn('Expected output: 0,1,10,100,1000,10000,32767');
+  WriteLn('Actual output  : ', 0, ',', 1, ',',  10, ',', 100, ',', 1000, ',', 10000, ',', 32767);
   WriteLn;
   WriteLn('Expected output: 0,-1,-10,-100,-1000,-10000,-32767');
-  WriteLn('Actual output  :', -0, ',', -1, ',', -10, ',', -100, ',', -1000, ',', -10000, ',', -32768);
+  WriteLn('Actual output  : ', -0, ',', -1, ',', -10, ',', -100, ',', -1000, ',', -10000, ',', -32768);
   WriteLn;
 end;
 
@@ -1949,7 +1947,7 @@ begin
   for B := 0 to 255 do
   begin
     if B mod 8 = 0 then WriteLn;
-    Write(B);
+    Write(B, ' ');
   end;
   WriteLn;
   WriteLn;
@@ -2439,8 +2437,8 @@ begin
   TestWriteEnums;
 
   WriteLn('************************');
-  WriteLn('Passed assertions:', AssertPassed);
-  WriteLn('Failed assertions:', AssertFailed);
+  WriteLn('Passed assertions: ', AssertPassed);
+  WriteLn('Failed assertions: ', AssertFailed);
   WriteLn('************************');
   WriteLn;
 end.
