@@ -1797,16 +1797,38 @@ end;
 
 procedure EmitSpace(Bytes: Integer);
 begin
-  Emit('', 'ld hl,-' + Int2Str(Bytes), 'Space');
-  EmitI('add hl,sp');
-  EmitI('ld sp,hl');
+  if (Bytes < 10) and not Odd(Bytes) then
+  begin
+    while Bytes > 0 do
+    begin
+      EmitI('push hl');
+      Bytes := Bytes - 2;
+    end
+  end
+  else
+  begin
+    Emit('', 'ld hl,-' + Int2Str(Bytes), 'Space');
+    EmitI('add hl,sp');
+    EmitI('ld sp,hl');
+  end;
 end;
 
 procedure EmitClear(Bytes: Integer);
 begin
-  Emit('', 'ld hl,' + Int2Str(Bytes), 'Clear');
-  EmitI('add hl,sp');
-  EmitI('ld sp,hl');
+  if (Bytes < 10) and not Odd(Bytes) then
+  begin
+    while Bytes > 0 do
+    begin
+      EmitI('pop hl');
+      Bytes := Bytes - 2;
+    end
+  end
+  else
+  begin
+    Emit('', 'ld hl,' + Int2Str(Bytes), 'Clear');
+    EmitI('add hl,sp');
+    EmitI('ld sp,hl');
+  end;
 end;
 
 procedure EmitRelOp(Op: TToken);
