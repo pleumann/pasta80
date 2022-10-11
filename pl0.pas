@@ -1745,33 +1745,11 @@ begin
 end;
 
 procedure EmitStore(DataType: PSymbol);
-var
-  Tag, Len: String;
 begin
   if DataType^.Kind = scStringType then
   begin
-      Tag := GetLabel('ok');
-      Len := Int2Str(DataType^.Value - 1);
-
-      EmitI('ld hl,0');
-      EmitI('add hl,sp');
-      EmitI('ld a,' + Len);
-      EmitI('cp (hl)');
-      EmitI('jp nc,' + Tag);
-      EmitI('ld (hl),a');
-      Emit(Tag, '', '');
-      //EmitI('inc a');
-      EmitI('inc h');
-      EmitI('ld de,(hl)');
-      EmitI('dec h');
-      EmitI('ld b,0');
-      EmitI('ld c,a');
-      EmitI('inc bc');
-      EmitI('ldir');
-
-      EmitI('ld hl,258');
-      EmitI('add hl,sp');
-      EmitI('ld sp,hl');
+      EmitI('ld a,' + Int2Str(DataType^.Value - 1));
+      EmitI('call __storestr');
       Exit;
     end;
 

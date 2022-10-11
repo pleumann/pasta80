@@ -908,6 +908,33 @@ __loadstr:
         ldir
         ret
 
+;
+; Store string of max length A from stack to HL, return properly.
+;
+__storestr:
+        ld      hl,2
+        add     hl,sp
+        cp      (hl)
+        jp      nc,__storestr_1
+        ld      (hl),a
+__storestr_1:
+        inc     h
+        ld      de,(hl)
+        dec     h
+        ld      b,0
+        ld      c,a
+        inc     bc
+        ldir
+
+        pop     de
+
+        ld      hl,258
+        add     hl,sp
+        ld      sp,hl
+
+        ex      de,hl
+        jp      (hl)
+
 #include "math48.z80"
 
 .macro __constfp %xx,%yy,%zz
