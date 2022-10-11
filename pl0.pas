@@ -2100,6 +2100,16 @@ begin
   end
   else if DataType^.Kind = scStringType then
   begin
+    if Optimize and (Code <> nil) then
+    begin
+      if Code^.Instruction = 'call __loadstr' then
+      begin
+        RemoveCode;
+        EmitI('call __puts');
+        Exit;
+      end;
+    end;
+
     EmitI('ld hl,0');
     EmitI('add hl,sp');
     EmitI('call __puts');
