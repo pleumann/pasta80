@@ -1047,9 +1047,6 @@ __atof:
 __ftoa:
         push    ix
         ld      ix,__ftoatmp + 1
-        exx
-        ld      hl,$0a0d
-        exx
         call    FSTRR
         jr      nc,__ftoaok
         ld      hl,__ftoaerr
@@ -1075,8 +1072,51 @@ __ftoaerr:
         db      5,"ERROR"
 
 __putf:
+        exx
+        ld      hl,$090d
+        exx
         call __ftoa
         call __puts
+        ret
+
+__putf_exp:
+        exx
+        push    bc
+        ld      a,c
+        cp      $09
+        jr      nc,__putf_exp_0
+        ld      a,1
+        jr      __putf_exp_1
+__putf_exp_0:             
+        sub     $07
+        cp      $0a
+        jp      c,__putf_exp_1
+        
+        ld      a,$09
+__putf_exp_1:             
+        ld      h,a
+        ld      l,$0d
+        exx
+        call    __ftoa
+        pop     bc
+        call    __puts_fmt
+        ret
+
+__putf_fix:
+        exx
+        push    de
+        ld      a,c
+;        cp      $10
+;        jp      c,__putf_fix_1
+;        ld      a,$0f
+__putf_fix_1:
+        or      $f0
+        ld      h,a
+        ld      l,$0a
+        exx
+        call    __ftoa
+        pop     bc
+        call    __puts_fmt
         ret
 
 ; ========================================================================
@@ -1368,6 +1408,51 @@ __pute:
                 ld      de,(hl)
                 ex      de,hl
                 jp      __puts
+
+;
+; Formatted output. Similar to normal output, but BC contains field width.
+;
+__putc_fmt:
+                ld      a,l
+                ld      hl,__buffer+1
+                ld      (hl),a
+                dec     hl
+                ld      (hl),1
+                jp      __puts_fmt
+
+__puts_fmt:
+                push    hl
+                ld      a,c
+                sub     (hl)
+                jr      z,__puts_fmt_1
+                jr      c,__puts_fmt_1
+                ld      b,a
+__puts_fmt_loop:
+                push    bc
+                ld      a, ' '
+                call    __putc
+                pop     bc
+                djnz    __puts_fmt_loop
+__puts_fmt_1:
+                pop     hl
+                jp      __puts
+
+__putn_fmt:     push    bc
+                ex      hl,de
+                ld      hl,__buffer+1
+                call    __itoa
+                ld      hl,__buffer
+                ld      (hl),a
+                pop     bc
+                jp      __puts_fmt
+
+__pute_fmt:
+                add     hl,hl
+                add     hl,de
+                ld      de,(hl)
+                ex      de,hl
+                jp      __puts_fmt
+
 ;
 ; Read number from keyboard
 ;

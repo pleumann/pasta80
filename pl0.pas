@@ -2131,6 +2131,55 @@ begin
   else Error('Unprintable type: ' + DataType^.Name);
 end;
 
+procedure EmitWrite1(DataType: PSymbol);
+begin
+  Emit('', 'pop bc', '');
+
+  if (DataType = dtInteger) or (DataType = dtByte) then
+  begin
+    Emit('', 'pop hl', '');
+    EmitI('call __putn_fmt');
+  end
+  else if DataType = dtChar then
+  begin
+    Emit('', 'pop hl', '');
+    EmitI('call __putc_fmt');
+  end
+  else if DataType^.Kind = scStringType then
+  begin
+    EmitI('ld hl,0');
+    EmitI('add hl,sp');
+    EmitI('call __puts_fmt');
+    EmitI('ld hl,256');
+    EmitI('add hl,sp');
+    EmitI('ld sp,hl');
+  end
+  else if DataType = dtReal then
+  begin
+    EmitI('exx');
+    EmitI('popfp');
+    EmitI('call __putf_exp');
+  end
+  else if DataType^.Kind = scEnumType then
+  begin
+    EmitI('pop hl');
+    EmitI('ld de,' + DataType^.Tag);
+    EmitI('call __pute_fmt');
+  end
+  else Error('Unprintable type: ' + DataType^.Name);
+end;
+
+procedure EmitWrite2(DataType: PSymbol);
+begin
+  if DataType <> dtReal then Error('Unprintable type for format 2: ' + DataType^.Name);
+
+  EmitI('pop bc');
+  EmitI('pop de');
+  EmitI('exx');
+  EmitI('popfp');
+  EmitI('call __putf_fix');
+end;
+
 procedure CloseTarget();
 begin
   Flush;
@@ -2589,14 +2638,24 @@ begin
 
     if Scanner.Token = toLParen then
     begin
+      repeat
       NextToken;
-      EmitWrite(ParseExpression);
+        T := ParseExpression();
 
-      while Scanner.Token = toComma do
+        if Scanner.Token = toColon then
       begin
         NextToken;
-        EmitWrite(ParseExpression);
-      end;
+          TypeCheck(dtInteger, ParseExpression, tcExpr);
+          if Scanner.Token = toColon then
+          begin
+            NextToken;
+            TypeCheck(dtInteger, ParseExpression, tcExpr);
+            EmitWrite2(T);
+          end
+          else EmitWrite1(T);
+        end
+        else EmitWrite(T);
+      until Scanner.Token <> toComma;
 
       Expect(toRParen);
       NextToken;
