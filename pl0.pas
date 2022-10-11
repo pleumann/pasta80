@@ -1706,15 +1706,8 @@ procedure EmitLoad(DataType: PSymbol);
 begin
   if DataType^.Kind = scStringType then
   begin
-    EmitI('pop de');
-    EmitI('ld hl,-256');
-    EmitI('add hl,sp');
-    EmitI('ld sp,hl');
-    EmitI('ex hl,de');
-    EmitI('ld b,0');
-    EmitI('ld c,(hl)');
-    EmitI('inc bc');
-    EmitI('ldir');
+    EmitI('pop hl');
+    EmitI('call __loadstr');
     Exit;
   end;
 

@@ -891,6 +891,22 @@ __length:
         ld      (hl),de
         ret
 
+;
+; Load string from HL address to stack, return properly
+;
+__loadstr:
+        pop     bc
+        ex      de,hl
+        ld      hl,-256
+        add     hl,sp
+        ld      sp,hl
+        push    bc
+        ex      de,hl
+        ld      b,0
+        ld      c,(hl)
+        inc     bc
+        ldir
+        ret
 
 #include "math48.z80"
 
