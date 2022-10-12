@@ -2312,12 +2312,27 @@ begin
   Assert((Z > 0.39) and (Z < 0.40));
 
   Writeln;
+  WriteLn('|        X         |      Sin(X)      |      Cos(X)      |');
+  WriteLn('|------------------|------------------|------------------|');
 
   X := 0.0;
   I := 0;
   while X <= Y do
   begin
-    WriteLn('| X=', X, ' | Sin(X)=', Sin(X), ' | Cos(X)=', Cos(X), ' |');
+    WriteLn('| ', X, ' | ', Sin(X), ' | ', Cos(X), ' |');
+    X := X + Z;
+    I := I + 1;
+  end;
+
+  Writeln;
+  WriteLn('|        X         |      Sin(X)      |      Cos(X)      |');
+  WriteLn('|------------------|------------------|------------------|');
+
+  X := 0.0;
+  I := 0;
+  while X <= Y do
+  begin
+    WriteLn('| ', X:16:10, ' | ', Sin(X):16:10, ' | ', Cos(X):16:10, ' |');
     X := X + Z;
     I := I + 1;
   end;
