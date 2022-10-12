@@ -1017,6 +1017,11 @@ var
     MulFunc := P * Q;
   end;
 
+  function MulAddFunc(P, Q, R: Integer): Integer;
+  begin
+    MulAddFunc := P * Q + R;
+  end;
+
 begin
   WriteLn('--- TestProcFunc ---');
 
@@ -1034,6 +1039,9 @@ begin
 
   J := MulFunc(100, 200);
   Assert(J = 20000);
+
+  J := MulAddFunc(2, 3, 4);
+  Assert(J = 10);
 end;
 
 procedure AddPoints1(P, Q: TPoint; var R: TPoint);
@@ -2460,7 +2468,7 @@ const
 begin
   Writeln('--- TestWriteFormat ---');
   WriteLn;
-  
+
   TestWriteDefault;
 
   TestWriteFormat1(0);

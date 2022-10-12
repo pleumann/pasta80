@@ -4321,14 +4321,11 @@ begin
   (*if (DataType^.Kind in [scArrayType, scRecordType]) and not isRef then
     Error('Structured parameters must be passed by reference');*)
 
-  Sym := SymbolTable;
-  while Sym<>Old do
+  while Old<>SymbolTable do
   begin
-    if Sym^.Kind = scVar then
-    begin
-      SetDataType(Sym, DataType);
-    end;
-    Sym := Sym^.Prev;
+    Old := Old^.Next;
+    if Old^.Kind = scVar then
+      SetDataType(Old, DataType);
   end;
 end;
 
