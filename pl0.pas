@@ -1421,8 +1421,8 @@ begin
     for I := 0 to Sym^.Value - 1 do
     begin
       J := Sym^.ArgTypes[I]^.Value;
-      EmitC('Cleanup ' + Int2Str(J) + ' bytes');
       if Sym^.ArgIsRef[I] or (J < 2) then J := 2;
+      EmitC('Cleanup ' + Int2Str(J) + ' bytes');
       EmitClear(J);
     end;
   end;
