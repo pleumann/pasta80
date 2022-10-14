@@ -2616,6 +2616,23 @@ begin
     Expect(toRParen); NextToken;
 end;
 
+function ParseFormat: Integer;
+begin
+  if Scanner.Token = toColon then
+  begin
+    NextToken;
+    TypeCheck(dtInteger, ParseExpression, tcExpr);
+    if Scanner.Token = toColon then
+    begin
+      NextToken;
+      TypeCheck(dtInteger, ParseExpression, tcExpr);
+      ParseFormat := 2;
+    end
+    else ParseFormat := 1;
+  end
+  else ParseFormat := 0;
+end;
+
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
   Sym, T: PSymbol;
@@ -2661,22 +2678,13 @@ begin
     if Scanner.Token = toLParen then
     begin
       repeat
-      NextToken;
-        T := ParseExpression();
-
-        if Scanner.Token = toColon then
-      begin
         NextToken;
-          TypeCheck(dtInteger, ParseExpression, tcExpr);
-          if Scanner.Token = toColon then
-          begin
-            NextToken;
-            TypeCheck(dtInteger, ParseExpression, tcExpr);
-            EmitWrite2(T);
-          end
-          else EmitWrite1(T);
-        end
-        else EmitWrite(T);
+        T := ParseExpression();
+        case ParseFormat of
+          0: EmitWrite(T);
+          1: EmitWrite1(T);
+          2: EmitWrite2(T);
+        end;
       until Scanner.Token <> toComma;
 
       Expect(toRParen);
