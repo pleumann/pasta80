@@ -1748,10 +1748,22 @@ procedure EmitStore(DataType: PSymbol);
 begin
   if DataType^.Kind = scStringType then
   begin
-      EmitI('ld a,' + Int2Str(DataType^.Value - 1));
-      EmitI('call __storestr');
-      Exit;
+    if Optimize and (Code <> nil) then
+    begin
+      if Code^.Instruction = 'call __loadstr' then
+      begin
+        RemoveCode;
+        EmitI('pop de');
+        EmitI('ld a,' + Int2Str(DataType^.Value - 1));
+        EmitI('call __movestr');
+        Exit;
+      end;
     end;
+
+    EmitI('ld a,' + Int2Str(DataType^.Value - 1));
+    EmitI('call __storestr');
+    Exit;
+  end;
 
   if DataType = dtReal then
   begin

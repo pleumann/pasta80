@@ -892,7 +892,7 @@ __length:
         ret
 
 ;
-; Load string from HL address to stack, return properly
+; Load string from HL to stack, return properly.
 ;
 __loadstr:
         pop     bc
@@ -900,40 +900,46 @@ __loadstr:
         ld      hl,-256
         add     hl,sp
         ld      sp,hl
-        push    bc
         ex      de,hl
-        ld      b,0
-        ld      c,(hl)
-        inc     bc
-        ldir
+        push    bc
+        ld      a,255
+        call    __movestr
         ret
 
 ;
-; Store string of max length A from stack to HL, return properly.
+; Store string of max length A from stack to address, cleanup stack, return properly.
 ;
 __storestr:
-        ld      hl,2
+        ld      hl,258
         add     hl,sp
-        cp      (hl)
-        jp      nc,__storestr_1
-        ld      (hl),a
-__storestr_1:
-        inc     h
         ld      de,(hl)
         dec     h
-        ld      b,0
-        ld      c,a
-        inc     bc
-        ldir
-
-        pop     de
-
+        call    __movestr
+        pop     bc
         ld      hl,258
         add     hl,sp
         ld      sp,hl
+        push    bc
+        ret
 
-        ex      de,hl
-        jp      (hl)
+;
+; Move string of max length A from HL to DE, bypassing the stack.
+;
+__movestr:
+        ld      b,(hl)
+        cp      b
+        jp      c,__movestr_1
+        ld      a,b
+__movestr_1:
+        ld      (de),a
+        and     a
+        ret     z
+        inc     hl
+        inc     de
+        ld      b,0
+        ld      c,a
+        ldir
+        ret
 
 #include "math48.z80"
 
