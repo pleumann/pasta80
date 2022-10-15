@@ -126,7 +126,9 @@ procedure Insert(S: TString; var T: TString; Start: Integer); stdcall; external 
 procedure Delete(var S: TString; Start: Integer; Count: Integer); stdcall; external '__delete';
 
 procedure Val(S: TString; var I, Code: Integer); stdcall; external '__val_int';
+{
 procedure Str(I: Integer; var S: TString); stdcall; external '__str_int';
+}
 
 procedure ClrScr; register; external '__clrscr';
 procedure GotoXY(X, Y: Integer); register; external '__gotoxy';

@@ -1393,6 +1393,67 @@ __newline:
 ; Exit:   -
 ; Uses:   AF,BC,DE
 ;
+__strn:         ex      de,hl
+                push    hl
+                push    af
+                ld      hl,__buffer+1
+                call    __itoa
+                ld      hl,__buffer
+                ld      (hl),a
+                pop     af
+                pop     de
+                call    __movestr
+                ret
+
+__strc:
+                and     a
+                ret     z
+                ex      de,hl
+                ld      (hl),1
+                inc     hl
+                ld      (hl),e
+                ret
+
+__strs:
+                ld      hl,2
+                add     hl,sp
+                call    __movestr
+                pop     de
+                ld      hl,256
+                add     hl,sp
+                ld      sp,hl
+                push    de
+                ret
+
+__strf:
+                push    af
+                exx
+                push    de
+                ld      hl,$090d
+                exx
+                call    __ftoa
+                pop     de
+                pop     af
+                call    __movestr
+                ret
+
+__stre:
+                add     hl,bc
+                add     hl,bc
+                ld      b,(hl)
+                inc     hl
+                ld      h,(hl)
+                ld      l,b
+                call    __movestr
+                ret
+
+;
+; Print number to screen
+;
+; Entry:  HL (number)
+; Exit:   -
+; Uses:   AF,BC,DE
+;
 __putn:         ex      hl,de
                 ld      hl,__buffer+1
                 call    __itoa

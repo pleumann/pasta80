@@ -407,7 +407,7 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
-  AssertProc, BreakProc, ContProc, ExitProc, WriteProc, WriteLnProc: PSymbol;
+  AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
@@ -738,6 +738,7 @@ begin
   DisposeProc := RegisterMagic(scProc, 'Dispose');
   ExitProc := RegisterMagic(scProc, 'Exit');
   NewProc := RegisterMagic(scProc, 'New');
+  StrProc := RegisterMagic(scProc, 'Str');
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
 
@@ -2119,6 +2120,55 @@ begin
   Emit('', 'call __newline', '');
 end;
 
+procedure EmitStr(DataType, VarType: PSymbol);
+begin
+  EmitI('ld a,' + Int2Str(VarType^.Value - 1));
+
+  if (DataType = dtInteger) or (DataType = dtByte) then
+  begin
+    EmitI('pop de');
+    EmitI('pop hl');
+    EmitI('call __strn');
+  end
+  else if DataType = dtChar then
+  begin
+    EmitI('pop de');
+    EmitI('pop hl');
+    EmitI('call __strc');
+  end
+  else if DataType^.Kind = scStringType then
+  begin
+    EmitI('pop de');
+    { String on stack }
+    EmitI('call __strs');
+  end
+  else if DataType = dtReal then
+  begin
+    EmitI('pop de');
+    EmitI('exx');
+    EmitI('popfp');
+    EmitI('call __strf');
+  end
+  else if DataType^.Kind = scEnumType then
+  begin
+    EmitI('pop de');
+    EmitI('pop bc');
+    EmitI('ld hl,' + DataType^.Tag);
+    EmitI('call __stre');
+  end
+  else Error('Unprintable type: ' + DataType^.Name);
+end;
+
+procedure EmitStr1(DataType, VarType: PSymbol);
+begin
+  
+end;
+
+procedure EmitStr2(DataType, VarType: PSymbol);
+begin
+  
+end;
+
 procedure EmitWrite(DataType: PSymbol);
 begin
   if (DataType = dtInteger) or (DataType = dtByte) then
@@ -2645,10 +2695,23 @@ begin
   else ParseFormat := 0;
 end;
 
+function ParseVariableRef: PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Expect(toIdent);
+  Sym := LookupGlobal(Scanner.StrValue);
+  if Sym = nil then Error('Unknown identifier');
+  if Sym^.Kind <> scVar then Error('Variable expected');
+  NextToken;
+  ParseVariableRef := ParseVariableAccess(Sym);
+end;
+
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
-  Sym, T: PSymbol;
+  Sym, T, V: PSymbol;
   Tag: String;
+  F: Integer;
 begin
   if Proc^.Kind <> scProc then
     Error('Not a built-in procedure: ' + Proc^.Name);
@@ -2704,6 +2767,29 @@ begin
     end;
 
     if Proc = WriteLnProc then EmitI('call __newline');
+  end
+  else if Proc = StrProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+
+    T := ParseExpression;
+    F := ParseFormat;
+    
+    Expect(toComma);
+    NextToken;
+
+    V := ParseVariableRef;
+
+    case F of
+      0: EmitStr(T, V);
+      1: EmitStr1(T, V);
+      2: EmitStr2(T, V);
+    end;
+
+    Expect(toRParen);
+    NextToken;
   end
   else if Proc = NewProc then
   begin
