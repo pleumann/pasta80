@@ -2304,6 +2304,15 @@ begin
     Exit;
   end;
 
+  if (Left = dtReal) and ((Right = dtInteger) or (Right = dtByte)) then
+  begin
+    EmitI('pop hl');
+    EmitI('call FLOAT');
+    EmitI('pushfp');
+    TypeCheck := dtReal;
+    Exit;
+  end;
+
   if Check = tcExpr then
   begin
     if (Left^.Kind = scStringType) and (Right^.Kind = scStringType) then
