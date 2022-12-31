@@ -1953,13 +1953,14 @@ begin
     toSub: EmitI('call FPSUB');
     toMul: EmitI('call FPMUL');
     toDiv: EmitI('call FPDIV');
+    toMod: EmitI('call MOD');
 
     toEq, toNeq: EmitI('call __flteq');
     toLt, toGeq: EmitI('call __fltlt');
     toGt, toLeq: EmitI('call __fltleq');
   end;
 
-  if Op in [toAdd, toSub, toMul, toDiv] then
+  if Op in [toAdd, toSub, toMul, toDiv, toMod] then
   begin
     EmitI('pushfp');
   end
@@ -3115,7 +3116,7 @@ begin
       EmitBinOp(Op, T);
     end
   else if T = dtReal then
-    while Scanner.Token in [toMul, toDiv] do
+    while Scanner.Token in [toMul, toDiv, toMod] do
     begin
       Op := Scanner.Token;
       NextToken;
