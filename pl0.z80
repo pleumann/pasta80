@@ -1134,9 +1134,32 @@ __putf_fix_1:
 ;
 ; Entry: (SP+2) 32 bytes set, (SP+34) 1 byte element
 ; Exit:  DE=1 if element in set, 0 otherwise
-; Uses:  AF, HL, DE, BC
+; Uses:  AF, HL, DE
 ;
 __setin:
+        ld      hl,34
+        ld      d,h
+        add     hl,sp       ; HL = sp+32
+        ld      e,(hl)
+        db      $ed,$94 ; pixelad
+        db      $ed,$95 ; setae
+        db      $ed,$24 ; mirror
+        db      $ed,$34,$00,$c0; add hl,-$4000+2
+        add     hl,sp       ; HL = sp+32+bit_offset
+        ld      e,d         ; DE = 0 when bit is clear
+        and     (hl)
+        ret     z
+        ld      e,1         ; DE = 1 when bit is set
+        ret
+
+;
+; Set membership test
+;
+; Entry: (SP+2) 32 bytes set, (SP+34) 1 byte element
+; Exit:  DE=1 if element in set, 0 otherwise
+; Uses:  AF, HL, DE, BC
+;
+__setin_old:
         ld      hl,34
         add     hl,sp
         ld      a,(hl)
@@ -1405,6 +1428,16 @@ __strn:         ex      de,hl
                 call    __movestr
                 ret
 
+__strn_fmt:
+                push    de
+                ld      b,a
+                push    bc
+                call    __strn
+                pop     de
+                pop     hl
+                call    __ralign
+                ret
+
 __strc:
                 and     a
                 ret     z
@@ -1446,6 +1479,59 @@ __stre:
                 ld      l,b
                 call    __movestr
                 ret
+
+;
+; Right-align Pascal string, inserting spaces at the start.
+;
+; Pre:
+;       HL: string address
+;       D : maximum string length
+;       E : desired string length
+; Post:
+;       AF / BC / DE / HL changed
+;
+__ralign:
+        ld      a,d
+        cp      e               ; Is desired length > maximum length?
+        jp      nc,__ralign1
+        ld      e,d
+
+__ralign1:
+        ld      a,(hl)
+        cp      e               ; Do we already have desired length?
+        ret     nc
+
+        ld      b,0
+        ld      c,a
+        ld      a,e
+        sub     (hl)
+        ld      (hl),e          ; Set new length
+
+        inc     hl
+        add     hl,bc           ; Old end of string
+        ld      e,a
+        ld      d,0
+        push    hl
+        add     hl,de           ; New end of string
+        ex      de,hl
+        pop     hl
+        inc     bc
+        lddr                    ; Move string
+
+        inc     hl
+        ld      b,a
+        ld      a,32
+
+__ralign2:
+        ld      (hl),a          ; Fill with spaces
+        inc     hl
+        djnz    __ralign2
+
+        ret
+
+
+
+
 
 ;
 ; Print number to screen

@@ -2162,7 +2162,42 @@ end;
 
 procedure EmitStr1(DataType, VarType: PSymbol);
 begin
-  
+  EmitI('ld a,' + Int2Str(VarType^.Value - 1));
+
+  if (DataType = dtInteger) or (DataType = dtByte) then
+  begin
+    EmitI('pop de');
+    EmitI('pop bc');
+    EmitI('pop hl');
+    EmitI('call __strn_fmt');
+  end
+  else if DataType = dtChar then
+  begin
+    EmitI('pop de');
+    EmitI('pop hl');
+    EmitI('call __strc');
+  end
+  else if DataType^.Kind = scStringType then
+  begin
+    EmitI('pop de');
+    { String on stack }
+    EmitI('call __strs');
+  end
+  else if DataType = dtReal then
+  begin
+    EmitI('pop de');
+    EmitI('exx');
+    EmitI('popfp');
+    EmitI('call __strf');
+  end
+  else if DataType^.Kind = scEnumType then
+  begin
+    EmitI('pop de');
+    EmitI('pop bc');
+    EmitI('ld hl,' + DataType^.Tag);
+    EmitI('call __stre');
+  end
+  else Error('Unprintable type: ' + DataType^.Name);
 end;
 
 procedure EmitStr2(DataType, VarType: PSymbol);
