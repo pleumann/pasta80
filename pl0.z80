@@ -1136,7 +1136,7 @@ __putf_fix_1:
 ; Exit:  DE=1 if element in set, 0 otherwise
 ; Uses:  AF, HL, DE
 ;
-__setin:
+__setin_new:
         ld      hl,34
         ld      d,h
         add     hl,sp       ; HL = sp+32
@@ -1159,7 +1159,7 @@ __setin:
 ; Exit:  DE=1 if element in set, 0 otherwise
 ; Uses:  AF, HL, DE, BC
 ;
-__setin_old:
+__setin:
         ld      hl,34
         add     hl,sp
         ld      a,(hl)
