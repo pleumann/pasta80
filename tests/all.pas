@@ -2374,6 +2374,18 @@ begin
   Assert(Round(Pi) = 3);
   Assert(Round(-Pi) = -3);
 }
+  X := 0.0;
+  Y := 0;
+  Assert(X = Y);
+
+  WriteLn(Y);
+
+  X := 1.0;
+  Y := 1;
+  Assert(X = Y);
+
+  WriteLn(Y);
+
   WriteLn;
 end;
 
