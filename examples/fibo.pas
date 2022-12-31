@@ -1,13 +1,13 @@
-(* Fibonacci *)
+program Fibonacci;
 
 var
-  A, B, I;
+  A, B, I: Integer;
 
 procedure Fibo;
 var
-  C;
+  C: Integer;
 begin
-  ! A;
+  WriteLn(A);
 
   C := A + B;
   A := B;
@@ -21,7 +21,7 @@ begin
 
   while I < 25 do
   begin
-    call Fibo;
+    Fibo;
     I := I + 1;
   end;
 end.

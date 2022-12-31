@@ -1,3 +1,5 @@
+program Colors;
+
 var
   B, C;
 begin
@@ -8,8 +10,8 @@ begin
     for C := 0 to 7 do
     begin
       TextColor(C);
-      GotoXY(1+C * 9, 1+B * 2);
-      ! ' tnylpo ';
+      GotoXY(1 + C * 9, 1 + B * 2);
+      Write(' Pascal ');
     end;
   end;
 end.

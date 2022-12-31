@@ -1,7 +1,7 @@
-(* Factorial *)
+program Factorial;
 
 var
-  I, J;
+  I, J: Integer;
 
 procedure Fact;
 begin
@@ -15,7 +15,7 @@ end;
 
 begin
   I := 5;
-  call Fact;
-  ! J;
+  Fact;
+  WriteLn(J);
 end.
 

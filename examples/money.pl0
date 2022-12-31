@@ -1,0 +1,89 @@
+program Money;
+
+(*const Names = 'SENDMORY';*)
+
+var
+  Variables: array[0..9] of Integer;
+  I: Integer;
+  Count, Carry: Integer;
+
+  function Check(A, B: Integer): Boolean;
+  begin
+    (*)
+    Carry := A div 10;
+    Check := A mod 10 = B;
+    *)
+    if A >= 10 then
+    begin
+      A := A - 10;
+      Carry := 1;
+    end
+    else
+    begin
+      Carry := 0;
+    end;
+
+    if A = B then Check := True else Check := False;
+  end;
+
+(* SENDMORY *)
+procedure Test;
+var
+  I: Integer;
+
+
+begin
+  if (Variables[0] = 0) or (Variables[4] = 0) then Exit;
+  if not Check(Variables[3] + Variables[1], Variables[7]) then Exit;
+  if not Check(Variables[2] + Variables[6] + Carry, Variables[1]) then Exit;
+  if not Check(Variables[1] + Variables[5] + Carry, Variables[2]) then Exit;
+  if not Check(Variables[0] + Variables[4] + Carry, Variables[5]) then Exit;
+  if not Check(Carry, Variables[4]) then Exit;
+  if Carry <> 0 then Exit;
+
+  Write('Solution: ');
+  for I := 0 to 7 do
+    Write((*Names[I + 1], '=',*) Variables[I], ' ');
+  WriteLn;
+end;
+
+procedure Swap(I, J: Integer);
+var
+  K: Integer;
+begin
+  K := Variables[I];
+  Variables[I] := Variables[J];
+  Variables[J] := K;
+end;
+
+procedure Perm(Low, High: Integer);
+var
+  I: Integer;
+begin
+  if Low = High - 1 then
+  begin
+    Test;
+    Count := Count + 1;
+    Exit;
+  end;
+
+  Perm(Low + 1, High);
+
+  for I := Low + 1 to High - 1 do
+  begin
+    Swap(Low, I);
+    Perm(Low + 1, High);
+    Swap(Low, I);
+  end;
+end;
+
+begin
+  Count := 0;
+
+  for I := 0 to 9 do
+    Variables[I] := I;
+
+  Perm(0, 10);
+
+  WriteLn(Count);
+end.
