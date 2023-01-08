@@ -410,7 +410,7 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
-  PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+  IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -741,6 +741,9 @@ begin
   StrProc := RegisterMagic(scProc, 'Str');
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
+
+  IncludeProc := RegisterMagic(scProc, 'Include');
+  ExcludeProc := RegisterMagic(scProc, 'Exclude');
 
   AbsFunc := RegisterMagic(scFunc, 'Abs');
   AddrFunc := RegisterMagic(scFunc, 'Addr');
@@ -1910,7 +1913,7 @@ begin
 
   if Op = toIn then
   begin
-    EmitI('call __setin');
+    EmitI('call __setmember');
     EmitClear(34);
     EmitI('push de');
   end
@@ -2791,6 +2794,33 @@ begin
     Emit('', 'jp ' + ExitTarget, 'Exit');    
     NextToken;
   end
+  else if (Proc = IncludeProc) or (Proc = ExcludeProc) then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+   
+    V := ParseVariableRef;
+    
+    if V^.Kind <> scSetType then Error('Set variable expected');
+    
+    Expect(toComma);
+    NextToken;
+
+    T := ParseExpression;
+(*    if T <> V^.DataType^.DataType then Error('Does not match set type'); *)
+
+    Expect(toRParen);
+    NextToken;
+
+    EmitI('pop de');
+    EmitI('pop hl');
+
+    if Proc = IncludeProc then
+      EmitI('call __setinclude')
+    else
+      EmitI('call __setexclude');
+  end
   else if (Proc = WriteProc) or (Proc = WriteLnProc) then
   begin
     NextToken;
@@ -3256,12 +3286,12 @@ begin
   if Scanner.Token = toIn then
   begin
     if not (T^.Kind in [scType, scEnumType, scSubrangeType]) then Error('Scalar needed');
-    if T^.Value <> 1 then Error('8 bit needed');
+    (* if T^.Value <> 1 then Error('8 bit needed'); *) (* FIXME!!! *)
 
     NextToken;
     U := ParseExpression;
     if U^.Kind <> scSetType then Error('Set needed');    
-    if U^.DataType <> T then Error('Incompatible');    
+    (* if U^.DataType <> T then Error('Incompatible');    *) (* FIXME!!! *)
 
     EmitSetOp(toIn);
 

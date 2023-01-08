@@ -984,6 +984,11 @@ begin
   Assert(not (12 in Primes));
   Assert(13 in Primes);
   *)
+
+  Include(Primes, 42);
+  Assert(42 in Primes);
+  Exclude(Primes, 42);
+  Assert(not (42 in Primes));
   
   WriteLn;
 end;

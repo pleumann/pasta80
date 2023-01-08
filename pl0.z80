@@ -1152,6 +1152,37 @@ __setin_new:
         ld      e,1         ; DE = 1 when bit is set
         ret
 
+; Set index to offset
+; Entry E index
+; Exit DE offset of byte (D always 0), A correct bit set
+__setoff:
+        ld      e,a
+        srl     e
+        srl     e
+        srl     e
+;        inc     e
+;        inc     e
+        ld      d,a
+        ld      a,1
+        bit     0,d
+        jr      z,__setoff1
+        sla     a
+__setoff1:
+        bit     1,d
+        jr      z,__setoff2
+        sla     a
+        sla     a
+__setoff2:
+        bit     2,d
+        jr      z,__setoff3
+        sla     a
+        sla     a
+        sla     a
+        sla     a
+__setoff3:
+        ld      d,0
+        ret
+
 ;
 ; Set membership test
 ;
@@ -1159,41 +1190,35 @@ __setin_new:
 ; Exit:  DE=1 if element in set, 0 otherwise
 ; Uses:  AF, HL, DE, BC
 ;
-__setin:
+__setmember:
         ld      hl,34
         add     hl,sp
         ld      a,(hl)
-        ld      d,0
-        ld      e,a
-        srl     e
-        srl     e
-        srl     e
-        inc     e
-        inc     e
-        ld      b,a
-        ld      a,1
-        bit     0,b
-        jr      z,__setin1
-        sla     a
-__setin1:
-        bit     1,b
-        jr      z,__setin2
-        sla     a
-        sla     a
-__setin2:
-        bit     2,b
-        jr      z,__setin3
-        sla     a
-        sla     a
-        sla     a
-        sla     a
-__setin3:
-        ld      hl,0
-        ex      hl,de
+        call    __setoff
+        ld      hl,2
+        add     hl,de
+        ld      de,0
         add     hl,sp
         and     (hl)
         ret     z
         ld      de,1
+        ret
+
+__setinclude:
+        ld      a,e
+        call    __setoff
+        add     hl,de
+        or      (hl)
+        ld      (hl),a
+        ret
+
+__setexclude:
+        ld      a,e
+        call    __setoff
+        add     hl,de
+        xor     255
+        and     (hl)
+        ld      (hl),a
         ret
 
 ;
