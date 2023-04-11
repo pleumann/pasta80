@@ -180,6 +180,23 @@ begin
   Assert(2 * (3 + 4 * (5 - 6 * (7 + 8 * (9 / 3)))) = -1442);
 end;
 
+procedure TestShift;
+begin
+  WriteLn('--- TestShift ---');
+  
+  Assert(1 shl 0 = 1);
+  Assert(1 shl 1 = 2);
+  Assert(1 shl 8 = 256);
+  Assert(1 shl 14 = 16384);
+  Assert(1 shl 15 = -32768);
+
+  Assert(1 shr 0 = 1);
+  Assert(2 shr 1 = 1);
+  Assert(256 shr 8 = 1);
+  Assert(16384 shr 14 = 1);
+  Assert((-32768) shr 15 = 1); (* Hmm??? *)
+end;
+
 procedure TestRelOpsUnsigned;
 begin
   WriteLn('--- TestRelOpsUnsigned ---');
@@ -2516,6 +2533,47 @@ begin
   TestWriteFormat2(20, 5);
 end;
 
+procedure TestIncDec;
+var
+  B: Byte;
+  I: Integer;
+  C: Char;
+  E: (East, North, West, South);
+  Z: Boolean;
+begin
+  WriteLn('--- TestIncDec ---');
+
+  B := 100;
+  Inc(B);
+  Assert(B = 101);
+  Dec(B);
+  Assert(B = 100);
+
+  I := 255;
+  Inc(I);
+  Assert(I = 256);
+  Dec(I);
+  Assert(I = 255);
+
+  C := 'X';
+  Inc(C);
+  Assert(C = 'Y');
+  Dec(C);
+  Assert(C = 'X');
+
+  E := North;
+  Inc(E);
+  Assert(E = West);
+  Dec(E);
+  Assert(E = North);
+
+  Z := False;
+  Inc(Z);
+  Assert(Z = True);
+  Dec(Z);
+  Assert(Z = False);
+end;
+
 begin
   TestComment;
 
@@ -2527,6 +2585,7 @@ begin
   TestDivide;
   TestModulus;
   TestComplex;
+  TestShift;
 
   TestRelOpsUnsigned;
   TestRelOpsSigned;
@@ -2599,6 +2658,8 @@ begin
   TestWriteEnums;
 
   TestWriteFormat;
+
+  TestIncDec;
 
   WriteLn('************************');
   WriteLn('Passed assertions: ', AssertPassed);
