@@ -4317,7 +4317,7 @@ begin
       Sym^.Kind := scVar;
       Sym^.Name := Ident;
       Sym^.DataType := CaseType;
-      Sym^.Value := CaseType^.Value;
+      Sym^.Value := RecSym^.Value;
       Sym^.Prev := RecSym^.DataType;
       RecSym^.DataType := Sym;
 
