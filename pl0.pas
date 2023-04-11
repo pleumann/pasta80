@@ -870,6 +870,8 @@ end;
 var
   C: Char;
 
+procedure SetLibrary(FileName: String); forward;
+
 procedure NextToken();
 var
   S: String;
@@ -1024,7 +1026,9 @@ begin
       C := GetChar;
 
       if LowerStr(Copy(S, 2, 2)) = '$i' then
-        SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)));
+        SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)))
+      else if LowerStr(Copy(S, 2, 2)) = '$l' then
+        SetLibrary(TrimStr(Copy(S, 4, Length(S) - 4)));
 
       NextToken;
       Exit;
@@ -1249,6 +1253,12 @@ begin
     Code := Code^.Next;
     Dispose(Temp);
   end;
+end;
+
+procedure SetLibrary;
+begin
+  Flush;
+  Emit0('', 'include "' + FileName + '"', '');
 end;
 
 function DoOptimize: Boolean;
