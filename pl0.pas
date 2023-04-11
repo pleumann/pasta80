@@ -2609,7 +2609,7 @@ begin
   begin
     Sym := ParseExpression;
 
-    if Sym = dtInteger then
+    if (Sym = dtInteger) or (Sym = dtByte) then
     begin
       EmitI('pop hl');
       EmitI('call __abs16');
