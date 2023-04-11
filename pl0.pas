@@ -410,7 +410,7 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
-  IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+  ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -741,6 +741,8 @@ begin
   StrProc := RegisterMagic(scProc, 'Str');
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
+
+  ValProc := RegisterMagic(scProc, 'Val');
 
   IncludeProc := RegisterMagic(scProc, 'Include');
   ExcludeProc := RegisterMagic(scProc, 'Exclude');
@@ -2211,7 +2213,15 @@ end;
 
 procedure EmitStr2(DataType, VarType: PSymbol);
 begin
-  
+  if DataType = dtReal then
+  begin
+    EmitI('pop bc');
+    EmitI('pop de');
+    EmitI('exx');
+    EmitI('popfp');
+    EmitI('call __strf2');
+  end
+  else Error('Unprintable type: ' + DataType^.Name);
 end;
 
 procedure EmitWrite(DataType: PSymbol);
@@ -2763,7 +2773,7 @@ end;
 
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
-  Sym, T, V: PSymbol;
+  Sym, T, V, U: PSymbol;
   Tag: String;
   F: Integer;
 begin
@@ -2868,6 +2878,32 @@ begin
       1: EmitStr1(T, V);
       2: EmitStr2(T, V);
     end;
+
+    Expect(toRParen);
+    NextToken;
+  end
+  else if Proc = ValProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+
+    if ParseExpression^.Kind <> scStringType then Error('String expected');
+
+    Expect(toComma);
+    NextToken;
+
+    T := ParseVariableRef;
+    if (T <> dtInteger) and (T <> dtReal) then Error('Numeric variable expected');
+
+    NextToken;
+    U := ParseVariableRef;
+    if U <> dtInteger then Error('Integer variable expected');
+
+    if T = dtInteger then
+      EmitI('call __val_int')
+    else
+      EmitI('call __val_float');
 
     Expect(toRParen);
     NextToken;

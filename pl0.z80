@@ -901,6 +901,29 @@ __val_int:
         ld      bc,(hl)
         ld      hl,bc
         ld      (hl),de
+        pop     de
+        ld      hl,260
+        add     hl,sp
+        ld      sp,hl
+        push    de
+        ret                     ; FIXME: Error reporting 
+
+__val_float:
+        ld      hl,6
+        add     hl,sp
+;        ld      a,(hl)
+;        inc     hl
+        call    __atof
+        exx
+        pop     de
+        pop     bc
+        pop     hl
+        call    __storefp
+        exx
+        ld      hl,256
+        add     hl,sp
+        ld      sp,hl
+        push    de
         ret                     ; FIXME: Error reporting 
 
 ;
@@ -1516,6 +1539,36 @@ __strf:
                 exx
                 push    de
                 ld      hl,$090d
+                exx
+                call    __ftoa
+                pop     de
+                pop     af
+                call    __movestr
+                ret
+
+__strf2:
+        exx
+        push    de
+        ld      a,c
+;        cp      $10
+;        jp      c,__putf_fix_1
+;        ld      a,$0f
+__str_fix_1:
+        or      $f0
+        ld      h,a
+        ld      l,$0a
+        exx
+        call    __ftoa
+        pop     bc
+        call    __puts_fmt
+        ret
+
+                push    af
+                exx
+                push    de
+                ld      l,$09
+                ld      h,c
+                set     4,h
                 exx
                 call    __ftoa
                 pop     de

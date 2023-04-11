@@ -125,8 +125,8 @@ function Copy(S: TString; Start: Integer; Count: Integer): TString; stdcall; ext
 procedure Insert(S: TString; var T: TString; Start: Integer); stdcall; external '__insert';
 procedure Delete(var S: TString; Start: Integer; Count: Integer); stdcall; external '__delete';
 
-procedure Val(S: TString; var I, Code: Integer); stdcall; external '__val_int';
 {
+  procedure Val(S: TString; var I, Code: Integer); stdcall; external '__val_int';
 procedure Str(I: Integer; var S: TString); stdcall; external '__str_int';
 }
 
