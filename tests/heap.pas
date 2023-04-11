@@ -64,7 +64,7 @@ end;
 
 procedure HeapStress;
 var
-  P: array[128] of Pointer;
+  P: array[0..128] of Pointer;
   Size, I: Integer;
 begin
   Size := 128;
