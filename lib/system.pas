@@ -162,6 +162,8 @@ function Tan(R: Real): Real; register; external 'TAN';
 
 (* Chr, Ord, Round, Trunc *)
 
+function Fix(R: Real): Integer; register; external 'FIX';
+
 (* Miscellaneous functions *)
 
 (* 
