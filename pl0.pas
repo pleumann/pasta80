@@ -1997,12 +1997,12 @@ end;
 
 procedure EmitJumpIf(When: Boolean; Target: String);
 begin
-  EmitI('pop hl');
-  EmitI('bit 0,l');
+  EmitI('pop af');
+(*  EmitI('bit 0,l'); *)
   if When then
-    EmitI('jp nz,' + Target)
+    EmitI('jp c,' + Target)
   else
-    EmitI('jp z,' + Target);
+    EmitI('jp nc,' + Target);
 end;
 
 procedure EmitBinOp(Op: TToken; DataType: PSymbol);
