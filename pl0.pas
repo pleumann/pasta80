@@ -2022,6 +2022,12 @@ begin
             end;
              EmitI('ld a,l'); EmitI('xor e'); EmitI('ld l,a');
            end;
+    toShl: begin
+              EmitI('call __int_shl');
+           end;
+    toShr: begin
+              EmitI('call __int_shr');
+           end;
     end;
   Emit('', 'push hl', '');
 end;
@@ -3165,7 +3171,7 @@ begin
   T := ParseFactor;
 
   if (T = dtInteger) or (T = dtByte) then
-    while Scanner.Token in [toMul, toDiv, toMod, toAnd] do
+    while Scanner.Token in [toMul, toDiv, toMod, toAnd, toShl, toShr] do
     begin
       Op := Scanner.Token;
       NextToken;

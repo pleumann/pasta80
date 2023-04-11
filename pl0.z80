@@ -108,6 +108,34 @@ __int16_case:   push    de
                 inc     a
                 ret
 
+; Signed 16 bit left-shift 
+;
+; Entry: HL (Number), E (number of Bits)
+; Exit:  HL (Number)
+__int_shl:      ld a,e
+                and a
+                ret z
+                ld b,a
+__int_shl1:
+                sla l
+                rl h
+                djnz __int_shl1
+                ret
+
+; Signed 16 bit right-shift 
+;
+; Entry: HL (Number), E (number of Bits)
+; Exit:  HL (Number)
+__int_shr:      ld a,e
+                and a
+                ret z
+                ld b,a
+__int_shr1:
+                srl h
+                rr l
+                djnz __int_shr1
+                ret
+
 ;
 ; Signed 16 bit multiplication (taken from Leventhal/Saville)
 ;
