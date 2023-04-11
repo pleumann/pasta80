@@ -3979,6 +3979,8 @@ begin
     Emit('', 'push de','');
     Emit('', 'push de', '');
 
+    Offset := Offset - 2;
+
     EmitAddress(Sym);
     EmitLoad(Sym^.DataType);
 
@@ -4010,6 +4012,8 @@ begin
     EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
+
+    Offset := Offset + 2;
   end
   else if Scanner.Token = toCase then
   begin
