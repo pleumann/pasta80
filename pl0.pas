@@ -4967,9 +4967,21 @@ begin
 
       if not NewSym^.IsExternal and not NewSym^.IsForward then
       begin
-        ParseBlock(NewSym);
-        Expect(toSemicolon);
-        NextToken;
+        if (Scanner.Token = toInline) then
+        begin
+          Emit(NewSym.Tag, '', '');
+          NextToken;
+          ParseInline;
+          EmitI('ret');
+          Expect(toSemicolon);
+          NextToken;
+        end
+        else
+        begin
+          ParseBlock(NewSym);
+          Expect(toSemicolon);
+          NextToken;
+        end;
       end;
 
       CloseScope;
