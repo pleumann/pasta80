@@ -410,7 +410,7 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
-  IncProc, DecProc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+  MoveProc, IncProc, DecProc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -749,6 +749,8 @@ begin
 
   IncludeProc := RegisterMagic(scProc, 'Include');
   ExcludeProc := RegisterMagic(scProc, 'Exclude');
+
+  MoveProc := RegisterMagic(scProc, 'Move');
 
   AbsFunc := RegisterMagic(scFunc, 'Abs');
   AddrFunc := RegisterMagic(scFunc, 'Addr');
@@ -3062,6 +3064,33 @@ begin
     EmitCall(LookupGlobal('FreeMem'));
 
     Expect(toRParen); NextToken;
+  end
+  else if Proc = MoveProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+
+    T := ParseVariableRef;
+
+    Expect(toComma);
+    NextToken;
+
+    T := ParseVariableRef;
+
+    Expect(toComma);
+    NextToken;
+
+    T := ParseExpression;
+    if T <> dtInteger then Error('Integer expr expected');
+
+    Expect(toRParen);
+    NextToken;
+
+    EmitI('pop bc');
+    EmitI('pop de');
+    EmitI('pop hl');
+    EmitI('ldir');
   end
   else
     Error('Cannot handle: ' + Proc^.Name);
