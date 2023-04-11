@@ -1499,11 +1499,12 @@ begin
   end;
 end;
 
-function EncodeAsmStr(S: String): String;
+function EncodeAsmStr(const S: String): String;
 var
   T: String;
   Quotes: Boolean;
   I: Integer;
+  C: Char;
 begin
   T := Int2Str(Length(S));
   Quotes := False;
@@ -1511,7 +1512,7 @@ begin
   for I := 1 to Length(S) do
   begin
     C := S[I];
-    if (C < ' ') or (C > '~') or (C = '"') then
+    if (C < ' ') or (C > '~') or (C = '"') or (C = '´') then
     begin
       if Quotes then
       begin
@@ -4161,6 +4162,14 @@ begin
       Expect(toString);
       if Length(Scanner.StrValue) <> 1 then Error('Char expected');
       Emit('', 'db "' + Scanner.StrValue + '"', '');     
+      NextToken; 
+    end
+    else if DataType^.Kind = scStringType then
+    begin
+      Expect(toString);
+      // Emit('', 'db ' + Int2Str(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
+      Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
+      Emit('', 'ds ' + Int2Str(DataType^.Value - Length(Scanner.StrValue) - 1), '');
       NextToken; 
     end
     else
