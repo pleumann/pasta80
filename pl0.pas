@@ -410,7 +410,7 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
-  ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+  IncProc, DecProc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope();
 var
@@ -741,6 +741,9 @@ begin
   StrProc := RegisterMagic(scProc, 'Str');
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
+
+  IncProc := RegisterMagic(scProc, 'Inc');
+  DecProc := RegisterMagic(scProc, 'Dec');
 
   ValProc := RegisterMagic(scProc, 'Val');
 
@@ -2858,6 +2861,113 @@ begin
     end;
 
     if Proc = WriteLnProc then EmitI('call __newline');
+  end
+  else if Proc = IncProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+    V := ParseVariableRef;
+    if V = dtInteger then
+    begin
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('ld de,(hl)');
+        EmitI('ex de,hl');
+        EmitI('add hl,bc');
+        EmitI('ex de,hl');
+        EmitI('ld (hl),de');
+      end
+      else
+      begin
+        Tag := GetLabel('nonzero');
+        EmitI('pop hl');
+        EmitI('ld de,(hl)');
+        EmitI('inc de');
+        EmitI('ld (hl), de');
+        Emit(Tag, '', '');
+      end;
+    end
+    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
+    begin
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('ld a,(hl)');
+        EmitI('add a,c');
+        EmitI('ld (hl),a');
+      end
+      else
+      begin
+        EmitI('pop hl');
+        EmitI('inc (hl)');
+      end;
+    end
+    else Error('Invalid type, need Integer or Byte');
+
+    Expect(toRParen);
+    NextToken;
+  end
+  else if Proc = DecProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+    V := ParseVariableRef;
+    if V = dtInteger then
+    begin
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('ld de,(hl)');
+        EmitI('ex de,hl');
+        EmitI('and a');
+        EmitI('sbc hl,bc');
+        EmitI('ex de,hl');
+        EmitI('ld (hl),de');
+      end
+      else
+      begin
+        Tag := GetLabel('nonzero');
+        EmitI('pop hl');
+        EmitI('ld de,(hl)');
+        EmitI('dec de');
+        EmitI('ld (hl), de');
+        Emit(Tag, '', '');
+      end;
+    end
+    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
+    begin
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('ld a,(hl)');
+        EmitI('sub a,c');
+        EmitI('ld (hl),a');
+      end
+      else
+      begin
+        EmitI('pop hl');
+        EmitI('dec (hl)');
+      end;
+    end
+    else Error('Invalid type, need Integer or Byte');
+
+    Expect(toRParen);
+    NextToken;
   end
   else if Proc = StrProc then
   begin
