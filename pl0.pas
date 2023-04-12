@@ -230,7 +230,7 @@ var
   AltEditor: Boolean;
 
 procedure Error(Message: String);
-var  I, L, C: Integer;
+var  I: Integer;
 begin
   WriteLn;
   WriteLn(Source[Include].Buffer);
@@ -611,8 +611,6 @@ begin
 end;
 
 procedure SetDataType(Sym: PSymbol; DataType: PSymbol);
-var
-  Size: Integer;
 begin
   Sym^.DataType := DataType;
 //  Sym^.Bounds := Bounds;
@@ -1598,7 +1596,6 @@ end;
 *)
 procedure EmitPrologue(Sym: PSymbol);
 var
-  I: Integer;
   V: String; 
 begin
 (*
@@ -3549,10 +3546,9 @@ procedure ParseStatement(ContTarget, BreakTarget: String); forward;
 procedure ParseWith(ContTarget, BreakTarget: String);
 var
   OldSymbols, Sym, Field, FieldRef, DataType: PSymbol;
-  OldOffset, Address: Integer;
+  Address: Integer;
 begin
   OldSymbols := SymbolTable;
-  OldOffset := Offset;
 
   NextToken;
   Expect(toIdent);
@@ -3814,11 +3810,10 @@ end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String);
 var
-  Sym, Sym2, F: PSymbol;
+  Sym: PSymbol;
   Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
   (*T: PSymbol;*)
-  NewLine: Boolean;
 begin
   if Scanner.Token = toNumber then
   begin
@@ -4266,7 +4261,6 @@ end;
 
 procedure ParseFieldGroup(var Fields: PSymbol; var Offset: Integer);
 var
-  Name: String;
   Sym, Typ: PSymbol;
   Len, I: Integer;
 begin
@@ -4297,8 +4291,8 @@ end;
 
 procedure ParseRecord(RecSym: PSymbol);
 var
-  DataType, Sym, CaseType: PSymbol;
-  I, J, FixedSize, VariantSize: Integer;
+  Sym, CaseType: PSymbol;
+  FixedSize, VariantSize: Integer;
   Ident: String;
 begin
   while Scanner.Token = toIdent do
@@ -4410,9 +4404,8 @@ end;
 
 function ParseTypeDef: PSymbol;
 var
-  DataType, Sym, CaseType: PSymbol;
-  I, J, FixedSize, VariantSize: Integer;
-  Ident: String;
+  DataType, Sym: PSymbol;
+  I: Integer;
 begin
   if Scanner.Token = toArray then
   begin
@@ -4603,13 +4596,9 @@ procedure ParseVarList();
 var
   Old: PSymbol;
   DataType, Sym: PSymbol;
-  Low, High: Integer;
   Multi, IsAbs: Boolean;
   Tag: String;
 begin
-  Low := 0;
-  High := -1;
-
   Multi := False;
   IsAbs := False;
 
@@ -4675,13 +4664,9 @@ end;
 
 procedure ParseParamList(IsRef: Boolean);
 var
-  Old, Sym: PSymbol;
+  Old: PSymbol;
   DataType: PSymbol;
-  Low, High: Integer;
 begin
-  Low := 0;
-  High := -1;
-
   Old := SymbolTable;
   ParseVar;
   SymbolTable^.IsRef := IsRef;
@@ -5213,8 +5198,6 @@ begin
 end;
 
 procedure DoCompile;
-var
-  I, Org, Len: Integer;
 begin
   if (WorkFile = '') and (MainFile = '') then DoWorkFile;
 
@@ -5301,7 +5284,6 @@ end;
 
 function TermStr(S: String): String;
 var
-  P: Integer;
   T: String;
 begin
   T := '';
