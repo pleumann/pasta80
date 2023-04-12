@@ -2395,8 +2395,8 @@ begin
   Assert(Int(Pi) = 3.0);
   Assert(Int(-Pi) = -3.0);
 
-  Assert(Fix(Pi) = 3);
-  Assert(Fix(-Pi) = -3);
+  Assert(Trunc(Pi) = 3);
+  Assert(Trunc(-Pi) = -3);
 
   X := 0.0;
   Y := 0;
