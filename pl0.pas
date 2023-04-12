@@ -2338,6 +2338,17 @@ begin
   Close(Target);
 end;
 
+procedure EmitCharToString;
+begin
+  EmitI('pop de');
+  EmitI('ld hl,-254');
+  EmitI('add hl,sp');
+  EmitI('ld sp, hl');
+  EmitI('ld d,e');
+  EmitI('ld e,1');
+  EmitI('push de');
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Parser --------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
@@ -2376,6 +2387,25 @@ begin
   begin
     EmitI('pop hl');
     EmitI('call FLOAT');
+    EmitI('pushfp');
+    TypeCheck := dtReal;
+    Exit;
+  end;
+
+  if ((Left = dtInteger) or (Left = dtByte)) and (Right = dtReal) then
+  begin
+    EmitI('popfp');
+    EmitI('exx');
+    EmitI('pop hl');
+    EmitI('exx');
+    EmitI('pushfp');
+    EmitI('exx');
+    EmitI('call FLOAT');
+    EmitI('exx');
+    EmitI('popfp');
+    EmitI('exx');
+    EmitI('pushfp');
+    EmitI('exx');
     EmitI('pushfp');
     TypeCheck := dtReal;
     Exit;
@@ -2426,15 +2456,8 @@ begin
 
   if (Left^.Kind = scStringType) and (Right = dtChar) then
   begin
-    TypeCheck := Left;
-    EmitI('pop de');
-    EmitI('ld hl,-254');
-    EmitI('add hl,sp');
-    EmitI('ld sp,hl');
-    EmitI('ld d,e');
-    EmitI('ld e,1');
-    EmitI('push de');
-
+    EmitCharToString;
+    TypeCheck := dtString;
     Exit;
   end;
 
@@ -3359,7 +3382,7 @@ begin
       Op := Scanner.Token;
       NextToken;
       T := TypeCheck(T, ParseFactor, tcExpr);
-      EmitBinOp(Op, T);
+      if T = dtReal then EmitFloatOp(Op) else EmitBinOp(Op, T);
     end
   else if T = dtBoolean then
     while Scanner.Token = toAnd do
@@ -3422,7 +3445,7 @@ begin
       Op := Scanner.Token;
       NextToken;
       T := TypeCheck(T, ParseTerm, tcExpr);
-      EmitBinOp(Op, T);
+      if T = dtReal then EmitFloatOp(Op) else EmitBinOp(Op, T);
     end
   else if T = dtBoolean then
     while Scanner.Token in [toOr, toXor] do
@@ -3432,15 +3455,17 @@ begin
       T := TypeCheck(T, ParseTerm, tcExact);
       EmitBinOp(Op, T);
     end
-  else if T^.Kind = scStringType then
+  else if (T = dtChar) or (T^.Kind = scStringType) then
+  begin
     while Scanner.Token = toAdd do
     begin
-      Op := Scanner.Token;
+      T := TypeCheck(dtString, T, tcExact);
       NextToken;
-      T := TypeCheck(T, ParseTerm, tcExact);
+      T := TypeCheck(dtString, ParseTerm, tcExact);
       EmitI('call __stradd');
       EmitClear(256);
     end
+  end
   else if T = dtReal then
     while Scanner.Token in [toAdd, toSub] do
     begin

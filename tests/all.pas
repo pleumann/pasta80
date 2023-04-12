@@ -2276,6 +2276,8 @@ begin
   Delete(S, 12, 5);
   Assert(S = 'ZX Spectrum');
 
+  Assert('Spectru' + 'm' = 'Spectrum');
+  Assert('S' + 'pectrum' = 'Spectrum');
   WriteLn;
 end;
 
@@ -2392,10 +2394,10 @@ begin
 
   Assert(Int(Pi) = 3.0);
   Assert(Int(-Pi) = -3.0);
-{
-  Assert(Round(Pi) = 3);
-  Assert(Round(-Pi) = -3);
-}
+
+  Assert(Fix(Pi) = 3);
+  Assert(Fix(-Pi) = -3);
+
   X := 0.0;
   Y := 0;
   Assert(X = Y);
@@ -2407,6 +2409,9 @@ begin
   Assert(X = Y);
 
   WriteLn(Y);
+
+  Assert(1.0 + 1 = 2.0);
+  Assert(2 + 1.0 = 3.0);
 
   WriteLn;
 end;
