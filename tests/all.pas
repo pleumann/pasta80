@@ -142,9 +142,9 @@ begin
   Assert(0 * 1 = 0);
 
   Assert(3 * 4 = 12);
-  Assert(3 * (-4) = -12);
-  Assert((-3) * 4 = -12);
-  Assert((-3) * (-4) = 12);
+  Assert(3 * -4 = -12);
+  Assert(-3 * 4 = -12);
+  Assert(-3 * -4 = 12);
 end;
 
 procedure TestDivide;
@@ -155,9 +155,9 @@ begin
   Assert(1 / 1 = 1);
 
   Assert(10 / 5 = 2);
-  Assert(10 / (-5) = -2);
-  Assert((-10) / 5 = -2);
-  Assert((-10) / (-5) = 2);
+  Assert(10 / -5 = -2);
+  Assert(-10 / 5 = -2);
+  Assert(-10 / -5 = 2);
 end;
 
 procedure TestModulus;
@@ -194,7 +194,7 @@ begin
   Assert(2 shr 1 = 1);
   Assert(256 shr 8 = 1);
   Assert(16384 shr 14 = 1);
-  Assert((-32768) shr 15 = 1); (* Hmm??? *)
+  Assert(-32768 shr 15 = 1);
 end;
 
 procedure TestRelOpsUnsigned;
@@ -2412,6 +2412,12 @@ begin
 
   Assert(1.0 + 1 = 2.0);
   Assert(2 + 1.0 = 3.0);
+
+  Assert(4.0 + - 4.0 = 0.0);
+  Assert(4.0 - - 4.0 = 8.0);
+
+  Assert(2.0 * - 4.0 = - 8.0);
+  Assert(8.0 / - 4.0 = - 2.0);
 
   WriteLn;
 end;

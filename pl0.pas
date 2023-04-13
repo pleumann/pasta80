@@ -3343,26 +3343,17 @@ begin
     Sym^.DataType := T;
     T := Sym;
   end
-  else if Scanner.Token = toNot then
+  else if Scanner.Token in [toAdd, toSub, toNot] then
   begin
+    Op := Scanner.Token;
     NextToken;
-
-    Op := toNone;
-    if (Scanner.Token = toAdd) or (Scanner.Token = toSub) then
-    begin
-      Op := Scanner.Token;
-      NextToken;
-    end;
-
-    if Op = toSub then
-      EmitLiteral(0);
-
     T := ParseFactor();
-    if T = dtChar then Error('not only applicable to Integer, Byte or Boolean');
-
-    if Op = toSub then EmitBinOp(toSub, T);
-
-    EmitUnOp(toNot, T);
+    if T = dtChar then Error('not only applicable to Integer, Byte, Real or Boolean');
+    case Op of
+      toAdd: begin (* Nop *) end;
+      toSub: EmitNeg(T);
+      toNot: EmitUnOp(toNot, T);
+    end;
   end
   else Error('Factor expected');
 
@@ -3417,27 +3408,7 @@ var
   Op: TToken;
   T: PSymbol;
 begin
-  Op := toNone;
-
-  (* Integer only *)
-  if (Scanner.Token = toAdd) or (Scanner.Token = toSub) then
-  begin
-    Op := Scanner.Token;
-    NextToken;
-  end;
-
-  // if Op = toSub then EmitLiteral(0);
-
   T := ParseTerm;
-
-  if (Op <> toNone) then
-  begin
-    if (T <> dtInteger) and (T <> dtByte) and (T <> dtReal) then
-      Error('Number expected.'); // T := TypeCheck(dtInteger, T, tcExpr); // +=Byte, -=Integer
-
-    if Op = toSub then EmitNeg(T);
-  //if Op = toSub then EmitBinOp(toSub, T);
-  end;
 
   if (T = dtInteger) or (T = dtByte) then
     while Scanner.Token in [toAdd, toSub, toOr, toXor] do
