@@ -2593,17 +2593,22 @@ end;
 
 procedure ParseArguments(Sym: PSymbol);
 var
-  I: Integer;
+  I, J: Integer;
 begin
   I := 0;
-  if Scanner.Token = toLParen then
+  J := Sym^.Value;
+
+  if J <> 0 then
   begin
+    Expect(toLParen);
     NextToken;
+
     ParseArgument(Sym, I);
     I := I + 1;
 
-    while Scanner.Token = toComma do
+    while I < Sym^.Value do
     begin
+      Expect(toComma);
       NextToken;
       ParseArgument(Sym, I);
       I := I + 1;
@@ -2611,9 +2616,8 @@ begin
 
     Expect(toRParen);
     NextToken;
-  end;
-
-  if I <> Sym^.Value then Error('Wrong number of arguments');
+  end
+  else if Scanner.Token = toLParen then Error('Arguments not allowed here')
 end;
 
 function ParseBuiltInFunction(Func: PSymbol): PSymbol;
