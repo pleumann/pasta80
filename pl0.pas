@@ -4629,7 +4629,7 @@ begin
       Tag := Scanner.StrValue
     else if Scanner.Token = toIdent then
     begin
-      Sym := LookupLocal(Scanner.StrValue);
+      Sym := LookupGlobal(Scanner.StrValue);
       if Sym = nil then Error('Ident not found');
       if Sym^.Tag = '' then Error('Not addressable');
       Tag := Sym^.Tag;
