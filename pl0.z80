@@ -1087,6 +1087,20 @@ __fltpwr2:
         call    FPMUL
         ret
 
+__fltrnd:
+        exx
+        ld      hl,$0080
+        ld      de,$0000
+        ld      bc,$0000
+        exx
+        bit     7,b
+        jr      nz,__fltrnd_neg
+        call    FPADD
+        jp      FIX
+__fltrnd_neg:
+        call    FPSUB
+        jp      FIX
+        
 __atof:
         push    ix
         ld      de,hl

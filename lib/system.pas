@@ -1,5 +1,9 @@
 (* Built-ins that do not have to be defined in the compiler itself. *)
 
+const
+  MaxInt = 32767;
+  MinInt = -32768;
+
 type
   PBlock = ^TBlock;
   TBlock = record
@@ -156,25 +160,71 @@ function Tan(R: Real): Real; register; external 'TAN';
 
 (* Scalar functions *
 
-(* Pred, Succ, Odd *)
+(* Pred, Succ, Odd, Even -- all built-in *)
 
 (* Transfer functions *)
 
-(* Chr, Ord, Round, Trunc *)
+function Hi(I: Integer): Byte; register; inline
+(
+  $6c /       (* ld   l,h     *)
+  $26 / $00 / (* ld   h,0     *)
+  $c9         (* ret          *)
+);
+
+function Lo(I: Integer): Byte; register; inline
+(
+  $26 / $00 / (* ld   h,0     *)
+  $c9         (* ret          *)
+);
+
+function Swap(I: Integer): Integer; register; inline
+(
+  $7c /       (* ld   a,h     *)
+  $65 /       (* ld   h,l     *)
+  $6f /       (* ld   l,a     *)
+  $c9         (* ret          *)
+);
+
+function Chr(B: Byte): Char; register; inline
+(
+  $c9         (* ret          *)
+);
 
 function Trunc(R: Real): Integer; register; external 'FIX';
+function Round(R: Real): Integer; register; external '__fltrnd';
+
+function UpCase(C: Char): Char; register; inline
+(
+  $7d /       (* ld   a,l     *)
+  $fe / $61 / (* cp   'a'     *)
+  $d8 /       (* ret  c       *)
+  $fe / $7b / (* cp   'z' + 1 *)
+  $d0 /       (* ret  nc      *)
+  $cb / $ad / (* res  4,l     *)
+  $c9         (* ret          *)
+);
+
+function LoCase(C: Char): Char; register; inline
+(
+  $7d /       (* ld   a,l     *)
+  $fe / $41 / (* cp   'A'     *)
+  $d8 /       (* ret  c       *)
+  $fe / $5b / (* cp   'Z' + 1 *)
+  $d0 /       (* ret  nc      *)
+  $cb / $ed / (* set  4,l     *)
+  $c9         (* ret          *)
+);
 
 (* Miscellaneous functions *)
 
+(* Addr, Ptr - built-in *)
+
 (* 
-  Hi ld l,h, ld h,0
   KeyPressed
-  Lo ld h,0
-  Random
-  Random(I)
+  Random -> Real
+  Random(I) -> Integer
   ParamCount
   ParamStr
-  SizeOf ok
-  Swap ld a,h, ld h,l, ld l,a
+  SizeOf built-ib
   UpCase  -> lib z80
 *)

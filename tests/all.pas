@@ -2598,6 +2598,16 @@ begin
   Assert(Z = False);
 end;
 
+procedure TestBuiltIns;
+begin
+  WriteLn('--- TestBuiltIns ---');
+  
+  Assert(Hi($1234) = $12);
+  Assert(Lo($1234) = $34);
+  Assert(Swap($1234) = $3412);
+  Assert(Chr(65) = 'A');
+end;
+
 begin
   TestComment;
 
@@ -2684,6 +2694,8 @@ begin
   TestWriteFormat;
 
   TestIncDec;
+
+  TestBuiltIns;
 
   WriteLn('************************');
   WriteLn('Passed assertions: ', AssertPassed);
