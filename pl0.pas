@@ -67,51 +67,54 @@ begin
   HexStr := S;
 end;
 
-(*
-function EncodeReal(Src: String): String;
+function EncodeReal(S: String): String;
 var
-  S: Boolean;
-  E, D, I: LongInt;
-  R, M: Real;
-  Res: String;
+  Number, Mantissa: Double;
+  Sign: Boolean;  
+  Exponent, I: Integer;
+  Bytes: array[0..5] of Byte;
 begin
-  Val(Src, R);
-  S := False;
-  E := 0;
-  M := 0;
+  Val(S, Number);
+  Sign := False;
+  Mantissa := 0;
+  Exponent := 0;
 
-  if R <> 0 then
+  if Number = 0 then
   begin
-    if R < 0 then
-    begin
-        S := True;
-        R := -R;
-    end;
-
-    FRExp(R, M, E);
+    Result := '$0000,$0000,$0000';
+    Exit;
   end;
 
-  E := E + 128;
-
-  M := M * 256;
-  D := Floor(M);
-  if not S then D := D and not 128;
-  M := Frac(M);
-  Res := HexStr(D, 2);
-
-  for I := 1 to 4 do
+  if Number < 0 then
   begin
-    M := M * 256;
-    D := Floor(M);
-    M := Frac(M);
-    Res := Res + HexStr(D, 2);
+    Sign := True;
+    Number := -Number;
   end;
 
-  Res := Res + HexStr(E, 2);
+  FRExp(Number, Mantissa, Exponent);
 
-  EncodeReal := '0x' + Copy(Res, 1, 4) + ',0x' + Copy(Res, 5, 4) + ',0x' + Copy(Res, 9, 4);
+  Bytes[0] := Exponent - 1023 + 127;
+
+  Mantissa := Mantissa * 256;
+  Bytes[5] := Trunc(Mantissa);
+  Mantissa := Frac(Mantissa);
+
+  if not Sign then Dec(Bytes[5], 128);
+
+  for I := 4 downto 1 do
+  begin
+    Mantissa := Mantissa * 256;
+    Bytes[I] := Trunc(Mantissa);
+    Mantissa := Frac(Mantissa);
+  end;
+
+  // TODO: If the 11.th. hex digit is larger than 7 the
+  // number should be rounded by adding 1 to BCDEH.
+
+  EncodeReal := '0x' + HexStr(Bytes[1], 2) + HexStr(Bytes[0], 2) + ',' +
+                '0x' + HexStr(Bytes[3], 2) + HexStr(Bytes[2], 2) + ',' +
+                '0x' + HexStr(Bytes[5], 2) + HexStr(Bytes[4], 2);
 end;
-*)
 
 function AlignStr(S: String; N: Integer): String;
 const
@@ -3221,8 +3224,8 @@ begin
   else if Scanner.Token = toFloat then
   begin
     T := dtReal;
-    Tag := AddString(Scanner.StrValue + ' ');
-    EmitI('constfp ' + Tag);
+    //Tag := AddString(Scanner.StrValue + ' ');
+    EmitI('constfp ' + EncodeReal(Scanner.StrValue));
     EmitI('pushfp');
     NextToken;
   end
@@ -4152,6 +4155,20 @@ begin
 
       NextToken;
     end
+    else if DataType = dtReal then
+    begin
+      if Scanner.Token = toSub then
+      begin
+        Sign := -1;
+        NextToken;
+      end
+      else Sign := 1;
+      Expect(toFloat);
+
+      Emit('', 'dw ' + EncodeReal(Scanner.StrValue), '');
+
+      NextToken;
+    end
     else if DataType = dtChar then
     begin
       Expect(toString);
@@ -4213,7 +4230,7 @@ begin
     else if Scanner.Token = toFloat then
     begin
       Sym^.DataType := dtReal;
-      Sym^.Tag := AddString(Scanner.StrValue + ' ');
+      Sym^.Tag := EncodeReal(Scanner.StrValue);
     end
     else if Scanner.Token = toIdent then
     begin

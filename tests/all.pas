@@ -1,5 +1,7 @@
 const
-  MyPi = 31415;
+  NumberOfTheBeast = 666;
+
+  MyPi = 3.1415;
 
   NotTrue = False;
 
@@ -12,6 +14,10 @@ const
     (4, 5, 6),
     (7, 8, 9)
   );
+
+  SingleFloat: Real = 1.23456789;
+
+  FloatArray: array[1..5] of Real = (1.0, 2.0, 3.0, 4.0, 5.0);
 
 type
   Color = (Red, Green, Blue);
@@ -82,7 +88,7 @@ var
 begin
   WriteLn('--- TestConst ---');
 
-  Assert(MyPi = 31415);
+  Assert(NumberOfTheBeast = 666);
   Assert(not NotTrue);
 
   Assert(not NotTrueEither);
@@ -100,6 +106,13 @@ begin
   TestConstHelp(666);
   TestConstHelp(667);
   TestConstHelp(668);
+
+  Assert(MyPi = 3.1415);
+
+  Assert(SingleFloat = 1.23456789);
+
+  for I := 1 to 5 do
+    Assert(FloatArray[I] = I);
 end;
 
 procedure TestAdd;

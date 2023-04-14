@@ -994,15 +994,10 @@ __movestr_1:
 
 #include "math48.z80"
 
-.macro __constfp %xx,%yy,%zz
-        ld      bc,%xx
+.macro constfp %xx,%yy,%zz
+        ld      hl,%xx
         ld      de,%yy
-        ld      hl,%zz
-.endm
-
-.macro constfp %x
-        ld      hl,%x
-        call    __atof
+        ld      bc,%zz
 .endm
 
 .macro pushfp
