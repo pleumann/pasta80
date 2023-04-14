@@ -69,7 +69,7 @@ end;
 
 function EncodeReal(S: String): String;
 var
-  Number, Mantissa: Double;
+  Number, Mantissa: Extended;
   Sign: Boolean;  
   Exponent, I: Integer;
   Bytes: array[0..5] of Byte;
