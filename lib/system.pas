@@ -318,6 +318,8 @@ begin
     ParamStr := '';
 end;
 
+function Random(Range: Integer): Integer; register; external '__random';
+
 (* -------------------------------------------------------------------------- *)
 (* --- Assertion support ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
@@ -327,13 +329,3 @@ end;
 var
   AssertPassed: Integer absolute '__assertpassed';
   AssertFailed: Integer absolute '__assertfailed';
-
-
-(* 
-  KeyPressed
-  Random -> Real
-  Random(I) -> Integer
-*)
-
-function Random(Range: Integer): Integer; register; external '__random';
-
