@@ -95,18 +95,14 @@ begin
 
   Bytes[0] := Exponent - 1023 + 127;
 
-  Mantissa := Mantissa * 256;
-  Bytes[5] := Trunc(Mantissa);
-  Mantissa := Frac(Mantissa);
-
-  if not Sign then Dec(Bytes[5], 128);
-
-  for I := 4 downto 1 do
+  for I := 5 downto 1 do
   begin
     Mantissa := Mantissa * 256;
     Bytes[I] := Trunc(Mantissa);
     Mantissa := Frac(Mantissa);
   end;
+
+  if not Sign then Dec(Bytes[5], 128);
 
   // TODO: If the 11.th. hex digit is larger than 7 the
   // number should be rounded by adding 1 to BCDEH.

@@ -2298,6 +2298,7 @@ procedure TestReal;
 var
   X, Y, Z: Real;
   I: Integer;
+  S: TString;
 
   function Equals(X, Y: Real): Boolean;
   begin
@@ -2314,9 +2315,11 @@ begin
   WriteLn(' 1.0=', 1.0);
   WriteLn('-1.0=', -1.0);
   WriteLn;
-  WriteLn('Rmin=', -1.0E37);
-  WriteLn('Rmax=', 1.0E37);
+  WriteLn('MaxReal=', MaxReal);
   WriteLn;
+
+  Str(MaxReal, S);
+  Assert(S = ' 1.701411835E+38');
 
   Assert(0.0 = 0.0);
   Assert(0.0 <> 1.0);
@@ -2602,6 +2605,8 @@ procedure TestBuiltIns;
 begin
   WriteLn('--- TestBuiltIns ---');
   
+  Assert(MaxInt = 32767);
+
   Assert(Hi($1234) = $12);
   Assert(Lo($1234) = $34);
   Assert(Swap($1234) = $3412);
