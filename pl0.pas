@@ -3643,6 +3643,11 @@ begin
     W := True;
     NextToken;
   end
+  else if (Scanner.Token = toString) and (Length(Scanner.StrValue) = 1) then
+  begin
+    S := S + Int2Str(Ord(Scanner.StrValue[1]));
+    NextToken;
+  end
   else Error('Invalid inline code');
 end;
 

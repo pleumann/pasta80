@@ -134,6 +134,8 @@ procedure Delete(var S: TString; Start: Integer; Count: Integer); stdcall; exter
 procedure Str(I: Integer; var S: TString); stdcall; external '__str_int';
 }
 
+procedure ConOut(C: Char); register; external '__conout';
+
 procedure ClrScr; register; external '__clrscr';
 procedure GotoXY(X, Y: Integer); register; external '__gotoxy';
 procedure TextColor(I: Integer); register; external '__textfg';
@@ -141,7 +143,34 @@ procedure TextBackground(I: Integer); register; external '__textbg';
 procedure CursorOn; register; external '__cursor_on';
 procedure CursorOff; register; external '__cursor_off';
 
-(* Arithmetic functions *)
+procedure ClrEol; register; inline
+(
+  $2e /                       (* ld   l,27      *)
+  $cd / ConOut /              (* call ConOut    *)
+  $3e / 'K' /                 (* ld   l,'K'     *)
+  $cd / ConOut /              (* call ConOut    *)
+  $c9                         (* ret            *)
+);
+
+procedure DelLine; register; inline
+(
+  $2e /                       (* ld   l,27      *)
+  $cd / ConOut /              (* call ConOut    *)
+  $3e / 'M' /                 (* ld   l,'M'     *)
+  $cd / ConOut /              (* call ConOut    *)
+  $c9                         (* ret            *)
+);
+
+procedure InsLine; register; inline
+(
+  $2e /                       (* ld   l,27      *)
+  $cd / ConOut /              (* call ConOut    *)
+  $3e / 'L' /                 (* ld   l,'L'     *)
+  $cd / ConOut /              (* call ConOut    *)
+  $c9                         (* ret            *)
+);
+
+(* Arithmetic functions  *)
 
 (* a math48.asm *)
 (* function Abs(I: Integer): Integer  *) (* built-in *)
@@ -236,11 +265,64 @@ function LoCase(C: Char): Char; register; inline
 
 (* Addr, Ptr - built-in *)
 
+var
+  CmdLine: TString absolute $80;
+
+function ParamCount: Integer;
+var
+  C, D: Boolean;
+  I, J: Integer;
+begin
+  C := True;
+  J := 0;
+
+  for I := 1 to Length(CmdLine) do
+  begin
+    D := CmdLine[I] > ' ';
+    if not C and D then Inc(J);
+    C := D;
+  end;
+
+  ParamCount := J;
+end;
+
+function ParamStr(I: Integer): TString;
+var
+  C, D: Boolean;
+  J, K: Integer;
+begin
+  C := True;
+  K := 1;
+
+  for J := 1 to Length(CmdLine) do
+  begin
+    D := CmdLine[J] > ' ';
+
+    if not C and D then
+      K := J
+    else if C and not D then
+    begin
+      if I = 0 then
+      begin
+        Dec(J);
+        Break;
+      end;
+
+      Dec(I);
+    end;
+
+    C := D;
+  end;
+
+  if I = 0 then
+    ParamStr := Copy(CmdLine, K, J - K + 1)  
+  else
+    ParamStr := '';
+end;
+
 (* 
   KeyPressed
   Random -> Real
   Random(I) -> Integer
-  ParamCount
-  ParamStr
   SizeOf built-in
 *)

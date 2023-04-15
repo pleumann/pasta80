@@ -1458,6 +1458,8 @@ __putc:
                 ret
 #endif
 
+__conout:       equ     __putc
+
 ;
 ; Print string to screen
 ;
