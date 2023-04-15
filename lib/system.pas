@@ -319,6 +319,7 @@ begin
 end;
 
 function Random(Range: Integer): Integer; register; external '__random';
+function RandomReal: Real; register; external '__random48';
 
 (* -------------------------------------------------------------------------- *)
 (* --- Assertion support ---------------------------------------------------- *)

@@ -311,10 +311,25 @@ __neg16:
 __random:
     ; ex hl,de
     call __rand16
+    res 7,h
     call __sdiv16
     ex hl,de
     ret
-    
+
+__random48:
+    ; ex hl,de
+    call __rand16
+    push hl
+    call __rand16
+    push hl
+    call __rand16
+    pop de
+    pop bc
+    res 7,b
+    ld   l,$81
+    call FRAC
+    ret
+
 ;#define smc    ;uncomment if you are using SMC
 __rand16:
 ;;collaboration by Zeda with Runer112
@@ -347,7 +362,6 @@ seed2=$+1
     ld l,a
     ld (seed2),hl
     add hl,bc
-    res 7,h
     ret
 seed1:              dw 1234
 seed2:              dw 5678
