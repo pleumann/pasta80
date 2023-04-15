@@ -143,6 +143,7 @@ procedure CursorOff; register; external '__cursor_off';
 
 (* Arithmetic functions *)
 
+(* a math48.asm *)
 (* function Abs(I: Integer): Integer  *) (* built-in *)
 (* function Abs(R: Real): Real        *) (* built-in *)
 function ArcTan(R: Real): Real; register; external 'ATN';
@@ -157,6 +158,22 @@ function Sin(R: Real): Real; register; external 'SIN';
 function Sqr(R: Real): Real; register; external '__fltpwr2';
 function Sqrt(R: Real): Real; register; external 'SQR';
 function Tan(R: Real): Real; register; external 'TAN';
+
+function MaxReal: Real; register; inline
+(
+  $01 / $7FFF /
+  $11 / $FFFF /
+  $21 / $FFFF /
+  $c9
+);
+
+function MinReal: Real; register; inline
+(
+  $01 / $FFFF /
+  $11 / $FFFF /
+  $21 / $FFFF /
+  $c9
+);
 
 (* Scalar functions *
 
@@ -225,6 +242,5 @@ function LoCase(C: Char): Char; register; inline
   Random(I) -> Integer
   ParamCount
   ParamStr
-  SizeOf built-ib
-  UpCase  -> lib z80
+  SizeOf built-in
 *)
