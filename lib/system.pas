@@ -1,8 +1,39 @@
 (* Built-ins that do not have to be defined in the compiler itself. *)
 
-const
-  MaxInt = 32767;
-  MinInt = -32768;
+(* -------------------------------------------------------------------------- *)
+(* --- String support ------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+type
+  TString = String[255];
+
+(* Built-in: procedure Val(S: TString; var Scalar; var E: Integer); *)
+(* Built-in: procedure Str(N: Scalar; var S: TString);              *)
+
+procedure Delete(var S: TString; Start: Integer; Count: Integer); external '__delete';
+procedure Insert(S: TString; var T: TString; Start: Integer); external '__insert';
+
+function Concat(S, T: TString): TString; external '__concat';
+function Copy(S: TString; Start: Integer; Count: Integer): TString; external '__copy';
+function Length(S: TString): Integer; external '__length';
+function Pos(S, T: TString): Integer; external '__pos';
+
+(* -------------------------------------------------------------------------- *)
+(* --- Set support ---------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+(* Built-in: procedure Include(var S: Set; E: Element);     *)
+(* Built-in: procedure Exclude(var S: Set; E: Element);     *)
+
+(* -------------------------------------------------------------------------- *)
+(* --- File support --------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+(* TBD *)
+
+(* -------------------------------------------------------------------------- *)
+(* --- Heap management ------------------------------------------------------ *)
+(* -------------------------------------------------------------------------- *)
 
 type
   PBlock = ^TBlock;
@@ -14,76 +45,11 @@ type
 var
   HeapPtr: PBlock absolute '__heapptr';
 
-  AssertPassed: Integer absolute '__assertpassed';
-  AssertFailed: Integer absolute '__assertfailed';
+(* Built-in: procedure New(var P: Pointer);       *)
+(* Built-in: procedure Dispose(P: Pointer);       *)
 
 procedure FreeMem(P: Pointer; Size: Integer); register; external '__freemem';
-(*var
-  Q: PBlock;
-begin
-  Q := P;
-  Q^.Size := Size;
-  Q^.Next := HeapPtr;
-  HeapPtr := Q;
-  P := nil;
-end;
-*)
-
 procedure GetMem(var P: Pointer; Size: Integer); register; external '__getmem';
-(*var
-  Q, R: PBlock;
-begin
-  Q := nil;
-  R := HeapPtr;
-  while R <> nil do
-  begin
-    if R^.Size = Size then
-    begin
-      if Q = nil then
-        HeapPtr := R^.Next
-      else
-        Q^.Next := R^.Next;
-
-      P := R;
-
-      Exit;
-    end
-    else if R^.Size >= Size + 4 then
-    begin
-      if Q = nil then
-      begin
-        HeapPtr := Ptr(Ord(R) + Size);
-        HeapPtr^.Size := R^.Size - Size;
-        HeapPtr^.Next := R^.Next;
-      end
-      else
-      begin
-        Q^.Next := Ptr(Ord(R) + Size);
-        Q^.Next^.Size := R^.Size - Size;
-        Q^.Next^.Next := R^.Next;
-      end;
-
-      P := R;
-
-      Exit;
-    end;
-
-    Q := R;
-    R := R^.Next;
-  end;
-
-  WriteLn('Out of memory error');
-  while True do;
-end;
-*)
-procedure InitHeap(Bytes: Integer);
-var
-  P: Pointer;
-begin
-  HeapPtr := nil;
-  P := Ptr(32768); (* GetHeapStart; *)
-  FreeMem(P, Bytes);
-end;
 
 function MemAvail: Integer;
 var
@@ -117,31 +83,29 @@ begin
   MaxAvail := I;
 end;
 
-type
-  TString = String[255];
+procedure InitHeap(Bytes: Integer);
+var
+  P: Pointer;
+begin
+  HeapPtr := nil;
+  P := Ptr(32768); (* GetHeapStart; *)
+  FreeMem(P, Bytes);
+end;
 
-function Random(Range: Integer): Integer; register; external '__random';
+(* -------------------------------------------------------------------------- *)
+(* --- Standard procedures -------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
-function Length(S: TString): Integer; stdcall; external '__length';
-function Concat(S, T: TString): TString; stdcall; external '__concat';
-function Pos(S, T: TString): Integer; stdcall; external '__pos';
-function Copy(S: TString; Start: Integer; Count: Integer): TString; stdcall; external '__copy';
-procedure Insert(S: TString; var T: TString; Start: Integer); stdcall; external '__insert';
-procedure Delete(var S: TString; Start: Integer; Count: Integer); stdcall; external '__delete';
-
-{
-  procedure Val(S: TString; var I, Code: Integer); stdcall; external '__val_int';
-procedure Str(I: Integer; var S: TString); stdcall; external '__str_int';
-}
-
-procedure ConOut(C: Char); register; external '__conout';
+(* Built-in: procedure Break;                   *)
+(* Built-in: procedure Continue;                *)
+(* Built-in: procedure Exit;                    *)
 
 procedure ClrScr; register; external '__clrscr';
 procedure GotoXY(X, Y: Integer); register; external '__gotoxy';
-procedure TextColor(I: Integer); register; external '__textfg';
-procedure TextBackground(I: Integer); register; external '__textbg';
 procedure CursorOn; register; external '__cursor_on';
 procedure CursorOff; register; external '__cursor_off';
+
+procedure ConOut(C: Char); register; external '__conout';
 
 procedure ClrEol; register; inline
 (
@@ -152,11 +116,11 @@ procedure ClrEol; register; inline
   $c9                         (* ret            *)
 );
 
-procedure DelLine; register; inline
+procedure ClrEos; register; inline
 (
   $2e /                       (* ld   l,27      *)
   $cd / ConOut /              (* call ConOut    *)
-  $3e / 'M' /                 (* ld   l,'M'     *)
+  $3e / 'J' /                 (* ld   l,'J'     *)
   $cd / ConOut /              (* call ConOut    *)
   $c9                         (* ret            *)
 );
@@ -170,11 +134,31 @@ procedure InsLine; register; inline
   $c9                         (* ret            *)
 );
 
-(* Arithmetic functions  *)
+procedure DelLine; register; inline
+(
+  $2e /                       (* ld   l,27      *)
+  $cd / ConOut /              (* call ConOut    *)
+  $3e / 'M' /                 (* ld   l,'M'     *)
+  $cd / ConOut /              (* call ConOut    *)
+  $c9                         (* ret            *)
+);
 
-(* a math48.asm *)
-(* function Abs(I: Integer): Integer  *) (* built-in *)
-(* function Abs(R: Real): Real        *) (* built-in *)
+procedure TextColor(I: Integer); register; external '__textfg';
+procedure TextBackground(I: Integer); register; external '__textbg';
+
+(* -------------------------------------------------------------------------- *)
+(* --- Arithmetic functions ------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+{$A math48.z80}
+
+const
+  MaxInt = 32767;
+  MinInt = -32768;
+
+(* Built-in: function Abs(I: Integer): Integer  *)
+(* Built-in: function Abs(R: Real): Real        *)
+
 function ArcTan(R: Real): Real; register; external 'ATN';
 function Cos(R: Real): Real; register; external 'COS';
 function Exp(R: Real): Real; register; external 'EXP';
@@ -204,11 +188,37 @@ function MinReal: Real; register; inline
   $c9
 );
 
-(* Scalar functions *
+(* -------------------------------------------------------------------------- *)
+(* --- Scalar functions ----------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
-(* Pred, Succ, Odd, Even -- all built-in *)
+(* Built-in: function Pred(Ordinal): Ordinal;     *)
+(* Built-in: function Succ(Ordinal): Ordinal;     *)
+(* Built-in: function Odd(Ordinal): Boolean;      *)
+(* Built-in: function Even(Ordinal): Boolean;     *)
 
-(* Transfer functions *)
+(* -------------------------------------------------------------------------- *)
+(* --- Transfer functions --------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+(* Built-in: function Ord(Ordinal): Integer;      *)
+
+function Round(R: Real): Integer; register; external '__fltrnd';
+function Trunc(R: Real): Integer; register; external 'FIX';
+
+function Chr(B: Byte): Char; register; inline
+(
+  $c9         (* ret          *)
+);
+
+(* -------------------------------------------------------------------------- *)
+(* --- Miscellaneous standard functions ------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+(* Built-in: function KeyPressed: Boolean;        *)
+(* Built-in: function SizeOf(XYZ): Integer;       *)
+(* Built-in: function Addr(XYZ): Integer;         *)
+(* Built-in: function Ptr(I: Integer): Pointer;   *)
 
 function Hi(I: Integer): Byte; register; inline
 (
@@ -230,14 +240,6 @@ function Swap(I: Integer): Integer; register; inline
   $6f /       (* ld   l,a     *)
   $c9         (* ret          *)
 );
-
-function Chr(B: Byte): Char; register; inline
-(
-  $c9         (* ret          *)
-);
-
-function Trunc(R: Real): Integer; register; external 'FIX';
-function Round(R: Real): Integer; register; external '__fltrnd';
 
 function UpCase(C: Char): Char; register; inline
 (
@@ -261,17 +263,13 @@ function LoCase(C: Char): Char; register; inline
   $c9         (* ret          *)
 );
 
-(* Miscellaneous functions *)
-
-(* Addr, Ptr - built-in *)
-
 var
   CmdLine: TString absolute $80;
 
 function ParamCount: Integer;
 var
   C, D: Boolean;
-  I, J: Integer;
+  I, J: Byte;
 begin
   C := True;
   J := 0;
@@ -286,10 +284,10 @@ begin
   ParamCount := J;
 end;
 
-function ParamStr(I: Integer): TString;
+function ParamStr(I: Byte): TString;
 var
   C, D: Boolean;
-  J, K: Integer;
+  J, K: Byte;
 begin
   C := True;
   K := 1;
@@ -320,9 +318,22 @@ begin
     ParamStr := '';
 end;
 
+(* -------------------------------------------------------------------------- *)
+(* --- Assertion support ---------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+(* Built-in: procedure Assert(B: Boolean); *)
+
+var
+  AssertPassed: Integer absolute '__assertpassed';
+  AssertFailed: Integer absolute '__assertfailed';
+
+
 (* 
   KeyPressed
   Random -> Real
   Random(I) -> Integer
-  SizeOf built-in
 *)
+
+function Random(Range: Integer): Integer; register; external '__random';
+
