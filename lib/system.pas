@@ -4,19 +4,16 @@
 (* --- String support ------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
-type
-  TString = String[255];
+(* Built-in: procedure Val(S: String; var Scalar; var E: Integer); *)
+(* Built-in: procedure Str(N: Scalar; var S: String);              *)
 
-(* Built-in: procedure Val(S: TString; var Scalar; var E: Integer); *)
-(* Built-in: procedure Str(N: Scalar; var S: TString);              *)
+procedure Delete(var S: String; Start: Integer; Count: Integer); external '__delete';
+procedure Insert(S: String; var T: String; Start: Integer); external '__insert';
 
-procedure Delete(var S: TString; Start: Integer; Count: Integer); external '__delete';
-procedure Insert(S: TString; var T: TString; Start: Integer); external '__insert';
-
-function Concat(S, T: TString): TString; external '__concat';
-function Copy(S: TString; Start: Integer; Count: Integer): TString; external '__copy';
-function Length(S: TString): Integer; external '__length';
-function Pos(S, T: TString): Integer; external '__pos';
+function Concat(S, T: String): String; external '__concat';
+function Copy(S: String; Start: Integer; Count: Integer): String; external '__copy';
+function Length(S: String): Integer; external '__length';
+function Pos(S, T: String): Integer; external '__pos';
 
 (* -------------------------------------------------------------------------- *)
 (* --- Set support ---------------------------------------------------------- *)
@@ -264,7 +261,7 @@ function LoCase(C: Char): Char; register; inline
 );
 
 var
-  CmdLine: TString absolute $80;
+  CmdLine: String absolute $80;
 
 function ParamCount: Integer;
 var
@@ -284,7 +281,7 @@ begin
   ParamCount := J;
 end;
 
-function ParamStr(I: Byte): TString;
+function ParamStr(I: Byte): String;
 var
   C, D: Boolean;
   J, K: Byte;
@@ -313,7 +310,7 @@ begin
   end;
 
   if I = 0 then
-    ParamStr := Copy(CmdLine, K, J - K + 1)  
+    ParamStr := Copy(CmdLine, K, J - K + 1)
   else
     ParamStr := '';
 end;

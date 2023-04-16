@@ -16,7 +16,7 @@ type
     DMA: array[0..127] of Char;
   end;
 
-procedure Assign(var T: Text; S: TString);
+procedure Assign(var T: Text; S: String);
 var
   I: Integer;
 begin
@@ -83,7 +83,7 @@ begin
   ReadChar := C;
 end;
 
-procedure ReadLine(var T: Text; var S: TString);
+procedure ReadLine(var T: Text; var S: String);
 var
   C: Char;
 begin
@@ -117,7 +117,7 @@ begin
   T.Offset := T.Offset + 1;
 end;
 
-procedure WriteLine(var T: Text; S: TString);
+procedure WriteLine(var T: Text; S: String);
 var
   I: Integer;
 begin

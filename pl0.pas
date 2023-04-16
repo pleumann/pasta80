@@ -4592,6 +4592,28 @@ begin
   ParseTypeDef := DataType;
 end;
 
+function ParseTypeRef: PSymbol;
+var
+  DataType: PSymbol;
+begin
+  if Scanner.Token = toStringKW then
+  begin
+    DataType := dtString;
+  end
+  else
+  begin
+    Expect(toIdent);
+    DataType := LookupGlobal(Scanner.StrValue);
+
+    if DataType = nil then Error('Unknown identifier');
+    if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType]) then Error('Type expected');
+  end;
+
+  NextToken;
+
+  ParseTypeRef := DataType;
+end;
+
 procedure ParseVar;
 var
   Name: String;
@@ -4697,14 +4719,7 @@ begin
   Expect(toColon);
   NextToken;
 
-  Expect(toIdent);
-
-  DataType := LookupGlobal(Scanner.StrValue);
-
-  if DataType = nil then Error('Unknown identifier');
-  if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType]) then Error('Type expected');
-
-  NextToken;
+  DataType := ParseTypeRef;
 
   (*if (DataType^.Kind in [scArrayType, scRecordType]) and not isRef then
     Error('Structured parameters must be passed by reference');*)
@@ -4917,7 +4932,7 @@ begin
           Expect(toColon);
           NextToken;
 
-          NewSym^.DataType := ParseTypeDef();
+          NewSym^.DataType := ParseTypeRef();
           ResVar^.DataType := NewSym^.DataType;
         end;
         

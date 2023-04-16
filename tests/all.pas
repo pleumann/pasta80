@@ -2298,7 +2298,7 @@ procedure TestReal;
 var
   X, Y, Z: Real;
   I: Integer;
-  S: TString;
+  S: String;
 
   function Equals(X, Y: Real): Boolean;
   begin
@@ -2702,6 +2702,7 @@ begin
 
   TestBuiltIns;
 
+  WriteLn;
   WriteLn('************************');
   WriteLn('Passed assertions: ', AssertPassed);
   WriteLn('Failed assertions: ', AssertFailed);
