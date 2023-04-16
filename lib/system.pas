@@ -7,13 +7,13 @@
 (* Built-in: procedure Val(S: String; var Scalar; var E: Integer); *)
 (* Built-in: procedure Str(N: Scalar; var S: String);              *)
 
-procedure Delete(var S: String; Start: Integer; Count: Integer); external '__delete';
+procedure Delete(var S: String; Start, Count: Integer);     external '__delete';
 procedure Insert(S: String; var T: String; Start: Integer); external '__insert';
 
-function Concat(S, T: String): String; external '__concat';
-function Copy(S: String; Start: Integer; Count: Integer): String; external '__copy';
-function Length(S: String): Integer; external '__length';
-function Pos(S, T: String): Integer; external '__pos';
+function Concat(S, T: String): String;                      external '__concat';
+function Copy(S: String; Start, Count: Integer): String;    external '__copy';
+function Length(S: String): Integer;                        external '__length';
+function Pos(S, T: String): Integer;                        external '__pos';
 
 (* -------------------------------------------------------------------------- *)
 (* --- Set support ---------------------------------------------------------- *)
@@ -45,8 +45,8 @@ var
 (* Built-in: procedure New(var P: Pointer);       *)
 (* Built-in: procedure Dispose(P: Pointer);       *)
 
-procedure FreeMem(P: Pointer; Size: Integer); register; external '__freemem';
-procedure GetMem(var P: Pointer; Size: Integer); register; external '__getmem';
+procedure FreeMem(P: Pointer; Size: Integer);     register; external '__freemem';
+procedure GetMem(var P: Pointer; Size: Integer);  register; external '__getmem';
 
 function MemAvail: Integer;
 var
@@ -97,12 +97,12 @@ end;
 (* Built-in: procedure Continue;                *)
 (* Built-in: procedure Exit;                    *)
 
-procedure ClrScr; register; external '__clrscr';
-procedure GotoXY(X, Y: Integer); register; external '__gotoxy';
-procedure CursorOn; register; external '__cursor_on';
-procedure CursorOff; register; external '__cursor_off';
+procedure ClrScr; register;                 external '__clrscr';
+procedure GotoXY(X, Y: Integer); register;  external '__gotoxy';
+procedure CursorOn; register;               external '__cursor_on';
+procedure CursorOff; register;              external '__cursor_off';
 
-procedure ConOut(C: Char); register; external '__conout';
+procedure ConOut(C: Char); register;        external '__conout';
 
 procedure ClrEol; register; inline
 (
@@ -140,7 +140,7 @@ procedure DelLine; register; inline
   $c9                         (* ret            *)
 );
 
-procedure TextColor(I: Integer); register; external '__textfg';
+procedure TextColor(I: Integer); register;      external '__textfg';
 procedure TextBackground(I: Integer); register; external '__textbg';
 
 (* -------------------------------------------------------------------------- *)
@@ -157,17 +157,18 @@ const
 (* Built-in: function Abs(R: Real): Real        *)
 
 function ArcTan(R: Real): Real; register; external 'ATN';
-function Cos(R: Real): Real; register; external 'COS';
-function Exp(R: Real): Real; register; external 'EXP';
-function Frac(R: Real): Real; register; external 'FRAC';
-function Int(R: Real): Real; register; external 'INT';
-function Ln(R: Real): Real; register; external 'LN';
-function Log(R: Real): Real; register; external 'LOG';
-function Pi: Real; register; external 'ACPI';
-function Sin(R: Real): Real; register; external 'SIN';
-function Sqr(R: Real): Real; register; external '__fltpwr2';
-function Sqrt(R: Real): Real; register; external 'SQR';
-function Tan(R: Real): Real; register; external 'TAN';
+function Cos(R: Real): Real; register;    external 'COS';
+function Exp(R: Real): Real; register;    external 'EXP';
+function Frac(R: Real): Real; register;   external 'FRAC';
+function Int(R: Real): Real; register;    external 'INT';
+function Ln(R: Real): Real; register;     external 'LN';
+function Log(R: Real): Real; register;    external 'LOG';
+function Sin(R: Real): Real; register;    external 'SIN';
+function Sqr(R: Real): Real; register;    external '__fltpwr2';
+function Sqrt(R: Real): Real; register;   external 'SQR';
+function Tan(R: Real): Real; register;    external 'TAN';
+
+function Pi: Real; register;              external 'ACPI';
 
 function MaxReal: Real; register; inline
 (
@@ -316,7 +317,7 @@ begin
 end;
 
 function Random(Range: Integer): Integer; register; external '__random';
-function RandomReal: Real; register; external '__random48';
+function RandomReal: Real; register;                external '__random48';
 
 (* -------------------------------------------------------------------------- *)
 (* --- Assertion support ---------------------------------------------------- *)
