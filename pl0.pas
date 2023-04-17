@@ -3178,7 +3178,7 @@ begin
       T := Sym^.DataType; (* Type = Type(func) *)
       if Sym^.IsStdCall then
       begin
-        if T.Value = 1 then EmitSpace(2) else EmitSpace(T.Value); (* Result *)
+        if T.Value = 1 then EmitLiteral(0) else EmitSpace(T.Value); (* Result *)
       end;
       NextToken;
       ParseArguments(Sym);

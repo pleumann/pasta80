@@ -264,7 +264,7 @@ function LoCase(C: Char): Char; register; inline
 var
   CmdLine: String absolute $80;
 
-function ParamCount: Integer;
+function ParamCount: Byte;
 var
   C, D: Boolean;
   I, J: Byte;
