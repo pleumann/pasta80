@@ -411,7 +411,7 @@ var
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   MoveProc, IncProc, DecProc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
-procedure OpenScope();
+procedure OpenScope(AdjustLevel: Boolean);
 var
   Sym: PSymbol;
 begin
@@ -422,25 +422,14 @@ begin
   Sym^.Value := Offset;
   SymbolTable := Sym;
 
-  Level := Level + 1;
-  Offset := 0;
+  if AdjustLevel then
+  begin
+    Level := Level + 1;
+    Offset := 0;
+  end;
 end;
 
-procedure OpenWith();
-var
-  Sym: PSymbol;
-begin
-  New(Sym);
-  Sym^.Kind := scScope;
-  Sym^.Prev := SymbolTable;
-  if SymbolTable <> nil then SymbolTable^.Next := Sym;
-  Sym^.Value := Offset;
-  SymbolTable := Sym;
-end;
-
-procedure Emit(Tag, Instruction, Comment: String); forward;
-
-procedure CloseScope();
+procedure CloseScope(AdjustLevel: Boolean);
 var
   Sym: PSymbol;
   Kind: TSymbolClass;
@@ -451,31 +440,14 @@ begin
     if ((Kind = scProc) or (Kind = scFunc)) and (SymbolTable^.IsForward) then
       Error('Unimplemented forward proc/func: ' + SymbolTable^.Name);
 
+    if AdjustLevel then Offset := SymbolTable^.Value;
+
     Sym := SymbolTable^.Prev;
-    Offset := SymbolTable^.Value;
     Dispose(SymbolTable);
     SymbolTable := Sym;
   until Kind = scScope;
 
-  Level := Level - 1;
-end;
-
-procedure CloseWith();
-var
-  Sym: PSymbol;
-  Kind: TSymbolClass;
-begin
-  repeat
-    Kind := SymbolTable^.Kind;
-
-    if ((Kind = scProc) or (Kind = scFunc)) and (SymbolTable^.IsForward) then
-      Error('Unimplemented forward proc/func: ' + SymbolTable^.Name);
-
-    Sym := SymbolTable^.Prev;
-    Offset := SymbolTable^.Value;
-    Dispose(SymbolTable);
-    SymbolTable := Sym;
-  until Kind = scScope;
+  if AdjustLevel then Level := Level - 1;
 end;
 
 function LookupLocal(Name: String): PSymbol;
@@ -4851,7 +4823,7 @@ begin
 
         FwdSym^.IsForward := False;
 
-        OpenScope;
+        OpenScope(True);
 
         NewSym^.Tag := FwdSym^.Tag;
         if FwdSym^.SavedParams <> nil then
@@ -4883,7 +4855,7 @@ begin
           NewSym^.Tag := GetLabel('func');
         end;
 
-        OpenScope;
+        OpenScope(True);
       end;
 
       NewSym^.IsStdCall := True;
@@ -5011,7 +4983,7 @@ begin
         end;
       end;
 
-      CloseScope;
+      CloseScope(True);
 
       EmitC('');
     end;
@@ -5052,13 +5024,14 @@ var
 
 procedure ParseProgram;
 begin
-  OpenScope;
+  OpenScope(True);
   RegisterAllBuiltIns((Binary = btDot) and (Graphics <> gmNone));
 
   SetInclude(HomeDir + '/lib/system.pas');
   NextToken;
   ParseDeclarations(nil);
 
+  OpenScope(False);
   if Scanner.Token = toProgram then
   begin
     NextToken;
@@ -5078,7 +5051,9 @@ begin
   Emit('display', 'ds 32', 'Display');
   EmitC('');
   Emit('eof', '', 'End of file');
-  CloseScope;
+
+  CloseScope(False);
+  CloseScope(True);
 end;
 
 function Build: Integer;
@@ -5110,7 +5085,7 @@ begin
     Include := False;
     C := #0;
 
-    while SymbolTable <> nil do CloseScope;
+    while SymbolTable <> nil do CloseScope(True);
 
     OpenInput(SrcFile);
     OpenTarget(AsmFile);
