@@ -1232,7 +1232,7 @@ end;
 
 function DoOptimize: Boolean;
 var
-  TwoOp: String;
+  Op1, Op2: String;
   Prev: PCode;
 begin
   (* Try to eliminate the most embarrassing generated instruction pairs. *)
@@ -1248,89 +1248,46 @@ begin
       Exit;
     end;
 
-    if StartsWith(Prev^.Instruction, 'db ') and StartsWith(Code^.Instruction, 'db') then
+    if StartsWith(Prev^.Instruction, 'db ') and StartsWith(Code^.Instruction, 'db ') then
     begin
       Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
       RemoveCode;
       Exit;
     end;
 
-    if StartsWith(Prev^.Instruction, 'dw ') and StartsWith(Code^.Instruction, 'dw') then
+    if StartsWith(Prev^.Instruction, 'dw ') and StartsWith(Code^.Instruction, 'dw ') then
     begin
       Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
       RemoveCode;
       Exit;
     end;
 
-    TwoOp := Prev^.Instruction + '/' + Code^.Instruction;
-    //if StartsWith(TwoOp, 'push af') then
-    //  WriteLn(TwoOp);
+    if StartsWith(Prev^.Instruction, 'push ') and StartsWith(Code^.Instruction, 'pop ') then
+    begin
+      Op1 := Copy(Prev^.Instruction, 6, 255);
+      Op2 := Copy(Code^.Instruction, 5, 255);
 
-    if (TwoOp = 'push hl/pop hl') or (TwoOp = 'push de/pop de') or (TwoOp = 'push af/pop af') then
-    begin
-      // WriteLn('*** Eliminate ', TwoOp);
-      RemoveCode;
-      RemoveCode;
-      Exit;
-    end
-    else if TwoOp = 'push de/pop hl' then
-    begin
-      RemoveCode;
-      Code^.Instruction := 'ld hl,de';
-      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
-      Exit;
-    end
-    else if TwoOp = 'push de/pop bc' then
-    begin
-      RemoveCode;
-      Code^.Instruction := 'ld bc,de';
-      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
-      Exit;
-    end
-    else if TwoOp = 'push hl/pop de' then
-    begin
-      RemoveCode;
-      Code^.Instruction := 'ld de,hl';
-      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
-      Exit;
-    end
-    else if TwoOp = 'push af/pop de' then
-    begin
-      RemoveCode;
-      Code^.Instruction := 'ld d,a';
-      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
-      Exit;
-    end
-    else if TwoOp = 'push af/pop hl' then
-    begin
-      RemoveCode;
-      Code^.Instruction := 'ld h,a';
-      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
-      Exit;
-    end
-    else if TwoOp = 'pushfp/popfp' then
-    begin
-      RemoveCode;
-      RemoveCode;
-      // WriteLn('*** Replace ', TwoOp, ' with ', Code^.Instruction);
-      Exit;
-    end
-    (*
-    else if StartsWith(TwoOp, 'push hl/ld de,') then
-    begin
-      // WriteLn('*** Fast lane for ', Instruction, ' in ', TwoOp);
-      Prev^.Instruction := Code^.Instruction;
-      Code^.Instruction := 'push hl';
-      Exit;
-    end
-    else if StartsWith(TwoOp, 'ld de,') and not StartsWith(TwoOp, 'ld de,hl') and (Code^.Instruction='pop hl') then
-    begin
-      // WriteLn('*** Fast lane for ', Code^.Instruction, ' in ', TwoOp);
-      Code^.Instruction := Prev^.Instruction;
-      Prev^.Instruction := 'pop hl';
-      Exit;
+      if Op1 = Op2 then
+      begin
+        RemoveCode;
+        RemoveCode;
+        Exit;
+      end;
+
+      if (Op1 <> 'af') and (Op2 <> 'af') then
+      begin
+        Prev^.Instruction := 'ld ' + Op2 + ',' + Op1;
+        RemoveCode;
+        Exit;
+      end;
     end;
-    *)
+
+    if (Prev^.Instruction = 'pushfp') and (Code^.Instruction = 'popfp') then
+    begin
+      RemoveCode;
+      RemoveCode;
+      Exit;
+    end
   end;
 
   DoOptimize := False;
