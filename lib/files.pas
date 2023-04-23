@@ -18,15 +18,41 @@ type
 
 procedure Assign(var T: Text; S: String);
 var
-  I: Integer;
+  I, L, P, Q: Integer;
 begin
-  T.FCB.DR := 0;
+  with T.FCB do
+  begin
+    L := Length(S);
 
-  for I := 1 to 8 do
-    T.FCB.FN[I - 1] := S[I];
+    if (L > 1) and (S[2] = ':') then
+    begin
+      DR := Ord(UpCase(S[1])) - 64;
+      Delete(S, 1, 2);
+      Dec(L, 2);
+    end
+    else DR := 0;
 
-  for I := 10 to 12 do
-    T.FCB.TN[I - 10] := S[I];
+    P := Pos('.', S);
+    if P = 0 then P := L + 1;
+
+    Q := P - 1;
+    if Q > 8 then Q := 8;
+
+    for I := 1 to Q do FN[I - 1] := UpCase(S[I]);
+    for I := Q + 1 to 8 do FN[I - 1] := ' ';
+
+    Q := L - P;
+    if Q > 3 then Q := 3;
+
+    for I := 1 to Q do TN[I - 1] := UpCase(S[P + I]);
+    for I := Q + 1 to 3 do TN[I - 1] := ' ';
+
+    Write(DR, ':');
+    for I := 0 to 7 do Write(FN[I]);
+    Write('.');
+    for I := 0 to 2 do Write(TN[I]);
+    WriteLn;
+  end;
 end;
 
 procedure Reset(var T: Text);
