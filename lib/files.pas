@@ -16,11 +16,11 @@ type
     DMA: array[0..127] of Char;
   end;
 
-procedure Assign(var T: Text; S: String);
+procedure InitFCB(var F: FileControlBlock; S: String);
 var
   I, L, P, Q: Integer;
 begin
-  with T.FCB do
+  with F do
   begin
     L := Length(S);
 
@@ -46,13 +46,19 @@ begin
 
     for I := 1 to Q do TN[I - 1] := UpCase(S[P + I]);
     for I := Q + 1 to 3 do TN[I - 1] := ' ';
-
+(*
     Write(DR, ':');
     for I := 0 to 7 do Write(FN[I]);
     Write('.');
     for I := 0 to 2 do Write(TN[I]);
     WriteLn;
+*)
   end;
+end;
+
+procedure Assign(var T: Text; S: String);
+begin
+  InitFCB(T.FCB, S);
 end;
 
 procedure Reset(var T: Text);
@@ -170,4 +176,21 @@ begin
   end;
 
   A := Bdos(16, Addr(T.FCB));
+end;
+
+procedure Erase(var T: Text);
+var
+  A: Integer;
+begin
+  A := Bdos(19, Addr(T.FCB));
+end;
+
+procedure Rename(var T: Text; S: String);
+var
+  F: FileControlBlock;
+  A: Integer;
+begin
+  InitFCB(F, S);
+  Move(F, T.FCB.AL, 12);
+  A := Bdos(23, Addr(T.FCB));
 end;
