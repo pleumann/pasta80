@@ -2016,6 +2016,23 @@ __cur_off_str: db 2,27,'f'
 __cursor_off: ret
 #endif
 
+#if defined(CPM)
+__checkbreak:
+                push    ix
+                ld      c,11
+                call    5
+                pop     ix
+                and     a
+                ret     z
+                push    ix
+                ld      c,1
+                call    5
+                pop     ix
+                cp      3
+                ret     nz
+                rst     0
+#endif
+
 ;
 ; Poke
 ;

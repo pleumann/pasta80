@@ -319,6 +319,8 @@ end;
 function Random(Range: Integer): Integer; register; external '__random';
 function RandomReal: Real; register;                external '__random48';
 
+procedure CheckBreak; register; external '__checkbreak';
+
 (* -------------------------------------------------------------------------- *)
 (* --- Assertion support ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)

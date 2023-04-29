@@ -800,6 +800,10 @@ const
 var
   Scanner: TScanner;
 
+(* Doesn't belong here. Fix later. *)
+const
+  CheckBreak: Boolean = False;
+
 function IsIdentHead(C: Char): Boolean;
 begin
   IsIdentHead := (C >= 'A') and (C <= 'Z') or (C >= 'a') and (C <= 'z') or (C = '_');
@@ -996,6 +1000,8 @@ begin
 
       if LowerStr(Copy(S, 2, 2)) = '$i' then
         SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)))
+      else if LowerStr(Copy(S, 2, 2)) = '$u' then
+        CheckBreak := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$l' then
         SetLibrary(TrimStr(Copy(S, 4, Length(S) - 4)));
 
@@ -3748,6 +3754,8 @@ var
   Delta: Integer;
   (*T: PSymbol;*)
 begin
+  if CheckBreak then EmitI('call __checkbreak');
+
   if Scanner.Token = toNumber then
   begin
     Sym := LookupGlobal(Int2Str(Scanner.NumValue));
