@@ -2034,6 +2034,59 @@ __checkbreak:
 #endif
 
 ;
+; Fill Char
+;
+; In: HL address, DE count, C value.
+;
+__fillchar:
+                ld      a,d             ; Check for zero length
+                or      e
+                ret     z               ; Return if this is the case
+                
+                ld      (hl),c          ; Set first byte
+
+                dec     de              ; Decrement counter
+
+                ld      a,d             ; Check for zero length
+                or      e
+                ret     z               ; Return if this is the case
+
+                ld      bc,de           ; Let LDIR do the remaining work 
+                ld      de,hl
+                inc     de
+                ldir
+
+                ret
+
+;
+; Move
+;
+; In: HL source, DE destination, BC value.
+;
+__move:
+                ld      a,b             ; Check for zero length
+                or      c
+                ret     z               ; Return if this is the case
+
+                push    hl              ; Check if destination > source
+                and     a
+                sbc     hl,de
+                pop     hl
+                jr      c,__movedn      ; Move "downwards" if this is the case
+__moveup:
+                ldir
+                ret
+__movedn:
+                add     hl,bc           ; Set HL to end of buffer
+                dec     hl
+                ex      de,hl           ; Set DE to end of buffer
+                add     hl,bc
+                dec     hl
+                ex      de,hl
+                lddr
+                ret
+
+;
 ; Poke
 ;
 ; Entry:  HL (addr), E (value)

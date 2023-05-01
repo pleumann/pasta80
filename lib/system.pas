@@ -321,6 +321,10 @@ function RandomReal: Real; register;                external '__random48';
 
 procedure CheckBreak; register; external '__checkbreak';
 
+(* Built-in: procedure FillChar(var Dest; Length: Integer; Data); *)
+
+procedure Move(var Source, Dest; Count: Integer); register; external '__move';
+
 (* -------------------------------------------------------------------------- *)
 (* --- Assertion support ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)

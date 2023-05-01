@@ -409,7 +409,7 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
-  MoveProc, IncProc, DecProc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+  FillProc, IncProc, DecProc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope(AdjustLevel: Boolean);
 var
@@ -719,7 +719,7 @@ begin
   IncludeProc := RegisterMagic(scProc, 'Include');
   ExcludeProc := RegisterMagic(scProc, 'Exclude');
 
-  MoveProc := RegisterMagic(scProc, 'Move');
+  FillProc := RegisterMagic(scProc, 'FillChar');
 
   AbsFunc := RegisterMagic(scFunc, 'Abs');
   AddrFunc := RegisterMagic(scFunc, 'Addr');
@@ -1373,8 +1373,11 @@ begin
   begin
     for I := 0 to Sym^.Value - 1 do
     begin
-      J := Sym^.ArgTypes[I]^.Value;
-      if Sym^.ArgIsRef[I] or (J < 2) then J := 2;
+      if Sym^.ArgIsRef[I] then J := 2 else
+      begin
+        J := Sym^.ArgTypes[I]^.Value;
+        if J < 2 then J := 2;
+      end;
       EmitC('Cleanup ' + Int2Str(J) + ' bytes');
       EmitClear(J);
     end;
@@ -2506,7 +2509,7 @@ end;
 
 procedure ParseArgument(Sym: PSymbol; I: Integer);
 var
-  Sym2: PSymbol;
+  Sym2, T: PSymbol;
 begin
   if Sym^.ArgIsRef[I] then
   begin
@@ -2519,7 +2522,10 @@ begin
 
     NextToken;
     
-    TypeCheck(Sym^.ArgTypes[I], ParseVariableAccess(Sym2), tcAssign);
+    T := ParseVariableAccess(Sym2);
+
+    if Sym^.ArgTypes[I] <> nil then
+      TypeCheck(Sym^.ArgTypes[I], T, tcAssign);
   end
   else
     TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);  
@@ -3034,7 +3040,7 @@ begin
 
     Expect(toRParen); NextToken;
   end
-  else if Proc = MoveProc then
+  else if Proc = FillProc then
   begin
     NextToken;
     Expect(toLParen);
@@ -3045,13 +3051,14 @@ begin
     Expect(toComma);
     NextToken;
 
-    T := ParseVariableRef;
+    T := ParseExpression;
+    if T <> dtInteger then Error('Integer expr expected');
 
     Expect(toComma);
     NextToken;
 
     T := ParseExpression;
-    if T <> dtInteger then Error('Integer expr expected');
+    if not ((T = dtInteger) or (T = dtByte) or (T = dtChar) or (T = dtBoolean) or (T^.Kind <> scEnumType)) then Error('Ordinal expr expected');
 
     Expect(toRParen);
     NextToken;
@@ -3059,7 +3066,7 @@ begin
     EmitI('pop bc');
     EmitI('pop de');
     EmitI('pop hl');
-    EmitI('ldir');
+    EmitI('call __fillchar');
   end
   else
     Error('Cannot handle: ' + Proc^.Name);
@@ -4653,10 +4660,13 @@ begin
     SymbolTable^.IsRef := IsRef;
   end;
 
-  Expect(toColon);
-  NextToken;
-
-  DataType := ParseTypeRef;
+  if not IsRef or (Scanner.Token = toColon) then
+  begin
+    Expect(toColon);
+    NextToken;
+    DataType := ParseTypeRef;
+  end
+  else DataType := nil;
 
   (*if (DataType^.Kind in [scArrayType, scRecordType]) and not isRef then
     Error('Structured parameters must be passed by reference');*)

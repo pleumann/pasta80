@@ -2602,6 +2602,8 @@ begin
 end;
 
 procedure TestBuiltIns;
+var
+  S, T: String[15];
 begin
   WriteLn('--- TestBuiltIns ---');
   
@@ -2611,6 +2613,38 @@ begin
   Assert(Lo($1234) = $34);
   Assert(Swap($1234) = $3412);
   Assert(Chr(65) = 'A');
+
+  S := 'Hello, World!';
+  Move(S, T, SizeOf(S));
+  Assert(T = S);
+
+  Move(S[1], T[8], 5);
+  Assert(T = 'Hello, Hello!');
+
+  Move(S[8], T[1], 5);
+  Assert(T = 'World, Hello!');
+
+  T := '';
+  Move(S, T, 0);
+  Assert(Length(T) = 0);
+
+  S := 'ABC';
+
+  FillChar(S[2], 1, 'b');
+  Assert(S = 'AbC');
+
+  FillChar(S[3], 1, 99);
+  Assert(S = 'Abc');
+
+  FillChar(S[0], 1, True);
+  Assert(S = 'A');
+
+  S[0] := #3;
+  FillChar(S[1], 3, 'Z');
+  Assert(S = 'ZZZ');
+
+  FillChar(S[2], 0, 'X');
+  Assert(S = 'ZZZ');
 end;
 
 begin
