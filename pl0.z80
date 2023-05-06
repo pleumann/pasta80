@@ -2361,7 +2361,9 @@ __get_heap_bytes:
 ; Uses: *
 ;
 #if defined(CPM)
-__init:         ret
+__init:         pop     hl
+                ld      sp, ($0006)
+                jp      (hl)
 #endif
 
 #if defined(NXT)
@@ -2393,7 +2395,7 @@ __init:         ld      (__saved_iy),iy
 ; Uses: *
 ;
 #if defined(CPM)
-__done:         ret
+__done:         rst     0
 #endif
 
 #if defined(NXT)
