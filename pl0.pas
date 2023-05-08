@@ -802,6 +802,7 @@ var
 
 (* Doesn't belong here. Fix later. *)
 const
+  AbsCode: Boolean = False;
   CheckBreak: Boolean = False;
 
 function IsIdentHead(C: Char): Boolean;
@@ -1002,6 +1003,8 @@ begin
         SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)))
       else if LowerStr(Copy(S, 2, 2)) = '$u' then
         CheckBreak := S[4] = '+'
+      else if LowerStr(Copy(S, 2, 2)) = '$a' then
+        AbsCode := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$l' then
         SetLibrary(TrimStr(Copy(S, 4, Length(S) - 4)));
 
@@ -4629,6 +4632,8 @@ begin
     Old := Old^.Next;
     if Old^.Kind = scVar then
     begin
+      if AbsCode then Old^.Level := 1;
+
       SetDataType(Old, DataType);
 
       if IsAbs then Old^.Tag := Tag
