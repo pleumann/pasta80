@@ -65,35 +65,75 @@ procedure Reset(var T: Text);
 var
   A: Integer;
 begin
-  T.FCB.EX := 0;
-  T.FCB.S1 := 0;
-  T.FCB.S2 := 0;
-  T.FCB.RC := 0;
-  T.FCB.CR := 0;
+  with T do
+  begin
+    with FCB do
+    begin
+      EX := 0;
+      S1 := 0;
+      S2 := 0;
+      RC := 0;
+      CR := 0;
+    end;
 
-  T.Writing := False;
+    A := Bdos(15, Addr(T.FCB));
 
-  A := Bdos(15, Addr(T.FCB));
-
-  T.Offset := 128;
+    T.Offset := 128;
+    T.Writing := False;
+  end;
 end;
 
 procedure Rewrite(var T: Text);
 var
   A: Integer;
 begin
-  T.FCB.EX := 0;
-  T.FCB.S1 := 0;
-  T.FCB.S2 := 0;
-  T.FCB.RC := 0;
-  T.FCB.CR := 0;
+  with T do
+  begin
+    with FCB do
+    begin
+      EX := 0;
+      S1 := 0;
+      S2 := 0;
+      RC := 0;
+      CR := 0;
+    end;
 
-  T.Writing := True;
+    A := Bdos(19, Addr(FCB));
+    A := Bdos(22, Addr(FCB));
 
-  A := Bdos(19, Addr(T.FCB));
-  A := Bdos(22, Addr(T.FCB));
+    Offset := 0;
+    Writing := True;
+  end;
+end;
 
-  T.Offset := 0;
+procedure Append(var T: Text);
+var
+  A: Integer;
+begin
+  with T do
+  begin
+    with FCB do
+    begin
+      EX := 0;
+      S1 := 0;
+      S2 := 0;
+      RC := 0;
+      CR := 0;
+    end;
+
+    A := Bdos(15, Addr(FCB));
+    A := Bdos(35, Addr(FCB));
+    A := Bdos(33, Addr(FCB));
+
+    Offset := 0;
+    while Offset < 128 do
+    begin
+      if DMA[Offset] = #26 then Exit;
+      Inc(Offset);
+    end;
+
+    (* Treat 128 as file format error? *)
+  end;
 end;
 
 procedure ReadRec(var T: Text);
