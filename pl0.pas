@@ -3658,11 +3658,14 @@ begin
   Expect(toLParen);
   NextToken;
 
-  ParseInlineExpr;
-  while Scanner.Token = toDiv do
-  begin
-    NextToken;
+  if Scanner.Token <> toRParen then
+  begin 
     ParseInlineExpr;
+    while Scanner.Token = toDiv do
+    begin
+      NextToken;
+      ParseInlineExpr;
+    end;
   end;
 
   Expect(toRParen);
