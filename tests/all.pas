@@ -2272,7 +2272,8 @@ begin
 
   Assert(('ZX' + ' Spectrum ' + 'Next') = 'ZX Spectrum Next');
 
-  Assert(Concat('ZX', Concat(' Spectrum ', 'Next')) = 'ZX Spectrum Next');
+  Assert(Concat('ZX', ' Spectrum') = 'ZX Spectrum');
+  Assert(Concat('ZX', ' Spectrum ', 'Next') = 'ZX Spectrum Next');
 
   Assert(Copy(S, 5, 0) = '');
   Assert(Copy(S, 1, 2) = 'ZX');

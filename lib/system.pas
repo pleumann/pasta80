@@ -10,7 +10,8 @@
 procedure Delete(var S: String; Start, Count: Integer);     external '__delete';
 procedure Insert(S: String; var T: String; Start: Integer); external '__insert';
 
-function Concat(S, T: String): String;                      external '__concat';
+(* Built-in: function Concat(S: String, ...): String;              *)
+
 function Copy(S: String; Start, Count: Integer): String;    external '__copy';
 function Length(S: String): Integer;                        external '__length';
 function Pos(S, T: String): Integer;                        external '__pos';

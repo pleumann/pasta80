@@ -409,7 +409,7 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
-  FillProc, IncProc, DecProc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+  FillProc, IncProc, DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
 procedure OpenScope(AdjustLevel: Boolean);
 var
@@ -714,6 +714,7 @@ begin
   IncProc := RegisterMagic(scProc, 'Inc');
   DecProc := RegisterMagic(scProc, 'Dec');
 
+  ConcatFunc := RegisterMagic(scFunc, 'Concat'); 
   ValProc := RegisterMagic(scProc, 'Val');
 
   IncludeProc := RegisterMagic(scProc, 'Include');
@@ -2718,6 +2719,20 @@ begin
     if Sym^.Kind = scSubrangeType then Sym := Sym^.DataType;
 
     ParseBuiltInFunction := Sym;
+  end
+  else if Func = ConcatFunc then
+  begin
+    TypeCheck(dtString, ParseExpression, tcExact);
+
+    while Scanner.Token = toComma do
+    begin
+      NextToken;
+      TypeCheck(dtString, ParseExpression, tcExact);
+      EmitI('call __stradd');
+      EmitClear(256);
+    end;  
+
+    ParseBuiltInFunction := dtString;  
   end
   else
     Error('Cannot handle: ' + Func^.Name);

@@ -799,24 +799,6 @@ __strleq1:
         ret
 
 ; Concat
-__concat:
-        ld      hl,514
-        add     hl,sp
-        ld      (hl),0
-        ld      de,hl
-        dec     d
-        push    hl
-        push    de
-        ld      b,255
-        call    __strcat
-        pop     de
-        dec     d
-        pop     hl
-        ld      b,255
-        call    __strcat
-        ret
-
-; Concat
 __stradd:
         ld      hl,258
         add     hl,sp
