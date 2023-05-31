@@ -406,7 +406,7 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
 
-  AssertProc, BreakProc, ContProc, ExitProc, StrProc, WriteProc, WriteLnProc: PSymbol;
+  AssertProc, BreakProc, ContProc, ExitProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   FillProc, IncProc, DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
@@ -708,6 +708,8 @@ begin
   ExitProc := RegisterMagic(scProc, 'Exit');
   NewProc := RegisterMagic(scProc, 'New');
   StrProc := RegisterMagic(scProc, 'Str');
+  ReadProc := RegisterMagic(scProc, 'Read');
+  ReadLnProc := RegisterMagic(scProc, 'ReadLn');
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
 
@@ -2834,6 +2836,36 @@ begin
       EmitI('call __setinclude')
     else
       EmitI('call __setexclude');
+  end
+  else if (Proc = ReadProc) or (Proc = ReadLnProc) then
+  begin
+    NextToken;
+    EmitI('call __getline');
+
+    if Scanner.Token = toLParen then
+    begin
+      repeat
+        NextToken;
+        T := ParseVariableRef();
+        EmitI('pop hl');
+
+        if T = dtInteger then
+          EmitI('call __getn')
+        else if T = dtChar then
+          EmitI('call __getc')
+        else if T = dtReal then
+          EmitI('call __getr')
+        else if T^.Kind = scStringType then
+        begin
+          EmitI('ld a,' + Int2Str(T^.Value - 1));
+          EmitI('call __gets');
+        end
+        else Error('Unreadable type');
+      until Scanner.Token <> toComma;
+
+      Expect(toRParen);
+      NextToken;
+    end;
   end
   else if (Proc = WriteProc) or (Proc = WriteLnProc) then
   begin

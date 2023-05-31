@@ -25,6 +25,9 @@ __win_handle:   dw      0
 __buffer:       equ     23698
 #endif
 
+__linemax:      ds      1
+__linelen:      ds      1
+__linebuf:      ds      128
 ;
 ; Boolean literals
 ;
@@ -1729,21 +1732,93 @@ __pute_fmt:
 ; TODO Separate input from string-to-integer functionality
 ;
 #if defined(CPM)
-__getn:         ld      a,'>'
-                call    __putc
-                ld      hl,6
-                ld      (__buffer),hl
-                ld      de,__buffer
+__getline:
+                ld      hl,127
+                ld      (__linemax),hl
+                ld      de,__linemax
                 ld      c,10
                 call    5
-                ld      a,'>'
+                ld      a,13
                 call    __putc
-                ld      hl,__buffer+1
-                call    __puts
-                ld      hl,__buffer+1
-                ld      a,(hl)
+                ld      a,10
+                call    __putc
+                ld      a,(__linelen)
+                ld      d,0
+                ld      e,a
+                ld      hl,__linebuf
+                add     hl,de
+                ld      (hl),0
+                and     a
+                sbc     hl,de
+                ld      (__lineptr),hl
+                ret
+
+__lineptr:      ds      2
+
+__blanks:       ld      hl,(__lineptr)
+__blanks1:      ld      a,(hl)
+                cp      '!'
+                ret     nc
+                cp      0
+                ret     z
                 inc     hl
+                ld      (__lineptr),hl
+                jr      __blanks1
+
+__getn:         push    hl
+                call    __blanks
+                ld      hl,(__lineptr)
+                ld      a,6
                 call    __atoi
+                ld      (__lineptr),hl
+                pop     hl
+                ld      (hl),de
+                ret
+
+__getr:         push    hl
+                push    ix
+                call    __blanks
+                ld      ix,(__lineptr)
+                call    CNVN
+                ld      (__lineptr),ix
+                pop     ix
+                exx
+                pop     hl
+                call    __storefp
+                ret
+
+__getc:         push    hl
+                ld      hl,(__lineptr)
+                ld      a,(hl)
+                pop     de
+                ld      (de),a
+                cp      ' '
+                ret     c
+                inc     hl
+                ld      (__lineptr),hl
+                ret
+
+__gets:         push    hl
+                ld      hl,(__lineptr)
+                ld      de,__linebuf
+                and     a
+                sbc     hl,de
+                ex      de,hl
+                ld      hl,(__linelen)
+                ld      h,0
+                and     a
+                sbc     hl,de
+                ex      de,hl
+                ld      hl,(__lineptr)
+                dec     hl
+                ld      (hl),e
+                pop     de
+                call    __movestr
+                ld      hl,(__lineptr)
+                ld      e,a
+                ld      d,0
+                add     hl,de
+                ld      (__lineptr),hl
                 ret
 #endif
 
@@ -1893,9 +1968,11 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 cp      '-'
                 ret     nz
                 and     a
+                push    hl
                 ld      hl,0
                 sbc     hl,de
                 ex      de,hl
+                pop     hl
                 ret
 
 #if defined(CPM)
