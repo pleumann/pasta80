@@ -2478,9 +2478,12 @@ begin
 
       DataType := Symbol^.DataType;
 
-      EmitLiteral(Symbol^.Value);
-      EmitBinOp(toAdd, dtInteger);
-
+      if Symbol^.Value <> 0 then
+      begin
+        EmitLiteral(Symbol^.Value);
+        EmitBinOp(toAdd, dtInteger);
+      end;
+      
       NextToken;
     end
     else
