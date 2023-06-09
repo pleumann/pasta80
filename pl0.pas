@@ -1492,6 +1492,8 @@ begin
   end;
 end;
 
+procedure EmitSpace(Bytes: Integer); forward;
+
 (*)
 procedure CollectString(Sym: PSymbol);
 var
@@ -1577,9 +1579,10 @@ begin
 
     EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
 
-    EmitI('ld hl,' + Int2Str(Offset));
-    EmitI('add hl,sp');
-    EmitI('ld sp,hl');
+    EmitSpace(-Offset);
+//    EmitI('ld hl,' + Int2Str(Offset));
+//    EmitI('add hl,sp');
+//    EmitI('ld sp,hl');
 (*
     I := Offset;
     if I < 0 then
@@ -1779,6 +1782,8 @@ begin
       Bytes := Bytes - 2;
     end
   end
+  else if Bytes = 256 then
+    EmitI('call __mkstr')
   else
   begin
     Emit('', 'ld hl,-' + Int2Str(Bytes), 'Space');
@@ -1797,6 +1802,8 @@ begin
       Bytes := Bytes - 2;
     end
   end
+  else if Bytes = 256 then
+    EmitI('call __rmstr')
   else
   begin
     Emit('', 'ld hl,' + Int2Str(Bytes), 'Clear');

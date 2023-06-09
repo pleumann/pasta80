@@ -1038,6 +1038,20 @@ __movestr_1:
         ldir
         ret
 
+__mkstr:        pop     de
+                ld      hl,-256
+                add     hl,sp
+                ld      sp,hl
+                ex      de,hl
+                jp      (hl)
+
+__rmstr:        pop     de
+                ld      hl,256
+                add     hl,sp
+                ld      sp,hl
+                ex      de,hl
+                jp      (hl)
+
 #include "math48.z80"
 
 .macro constfp %xx,%yy,%zz
