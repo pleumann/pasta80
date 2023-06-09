@@ -734,6 +734,7 @@ __streq:
         add     hl,sp
         ld      de,hl
         dec     h
+__streqnosp:
         ld      a,(de)
         cp      (hl)
         jr      nz,__streq0     ; Fast track if lengths differ
@@ -924,6 +925,52 @@ __val_float:
         ld      sp,hl
         push    de
         ret                     ; FIXME: Error reporting 
+
+; string on stack, de table, b size, a contains code if found, 255 if not
+__val_enum:     ld      hl,6
+                add     hl,sp
+                call    __atoe
+                ld      a,d
+                and     a
+                jr      nz,__val_enum1
+
+                ld      hl,4            ; Result
+                add     hl,sp
+                ld      bc,(hl)
+                ld      hl,bc
+                ld      (hl),e
+                inc     hl
+                ld      (hl),a                
+                ld      e,0
+
+__val_enum1:    ld      hl,2            ; Error
+                add     hl,sp
+                ld      bc,(hl)
+                ld      hl,bc
+                ld      (hl),e
+                xor     a
+                inc     hl
+                ld      (hl),a                
+
+                pop     de
+                ld      hl,260
+                add     hl,sp
+                ld      sp,hl
+                push    de
+                ret                     ; FIXME: Error reporting 
+
+__val_enum2:    ld      a,c
+                ld      hl,4        
+                add     hl,sp
+                ld      bc,(hl)
+                ld      hl,bc
+                ld      (hl),a
+                pop     de
+                ld      hl,260
+                add     hl,sp
+                ld      sp,hl
+                push    de
+                ret                     ; FIXME: Error reporting 
 
 ;
 ; String length. Arguments and result on stack.
@@ -1973,6 +2020,33 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 sbc     hl,de
                 ex      de,hl
                 pop     hl
+                ret
+
+; hl string, de table, b size, out d=0 if found, e contains code, otherwise d=1
+__atoe:         ld      c,0
+                ex      de,hl
+__atoe1:        push    hl
+                push    de
+                push    bc
+                ld      a,(hl)
+                inc     hl
+                ld      h,(hl)
+                ld      l,a
+                call    __streqnosp
+                ld      a,e
+                pop     bc
+                pop     de
+                pop     hl
+                and     a
+                jr      nz,__atoe2
+                inc     hl
+                inc     hl
+                inc     c
+                djnz    __atoe1
+                ld      de,257
+                ret
+__atoe2:        ld      d,0
+                ld      e,c
                 ret
 
 #if defined(CPM)

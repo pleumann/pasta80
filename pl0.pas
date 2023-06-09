@@ -3039,6 +3039,12 @@ begin
 
     if T = dtInteger then
       EmitI('call __val_int')
+    else if T^.Kind = scEnumType then
+    begin
+      EmitI('ld de,' + T^.Tag);
+      EmitI('ld b,' + Int2Str(T^.High + 1));
+      EmitI('call __val_enum');
+    end
     else
       EmitI('call __val_float');
 
