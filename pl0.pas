@@ -3031,7 +3031,7 @@ begin
     NextToken;
 
     T := ParseVariableRef;
-    if (T <> dtInteger) and (T <> dtReal) then Error('Numeric variable expected');
+    if (T <> dtInteger) and (T <> dtReal) and (T^.Kind <> scEnumType) then Error('Numeric variable expected');
 
     NextToken;
     U := ParseVariableRef;
@@ -4685,7 +4685,7 @@ begin
     Old := Old^.Next;
     if Old^.Kind = scVar then
     begin
-      if AbsCode then Old^.Level := 1;
+      if AbsCode and (DataType^.Value <= 32) then Old^.Level := 1;
 
       SetDataType(Old, DataType);
 

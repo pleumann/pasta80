@@ -1,3 +1,4 @@
+{$a+}
 const
   NumberOfTheBeast = 666;
 
