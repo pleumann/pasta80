@@ -1288,6 +1288,9 @@ begin
 
       if (Op1 <> 'af') and (Op2 <> 'af') then
       begin
+        if (Op1 = 'de') and (Op2 = 'hl') or (Op1 = 'hl') and (Op2 = 'de') then
+          Prev^.Instruction := 'ex de,hl'
+        else
         Prev^.Instruction := 'ld ' + Op2 + ',' + Op1;
         RemoveCode;
         Exit;
