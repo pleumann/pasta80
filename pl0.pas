@@ -1701,13 +1701,9 @@ begin
        end;
     else
     begin
-      Emit('', 'pop de', 'Load');
-      EmitI('ld hl,-' + Int2Str(DataType^.Value));
-      EmitI('add hl,sp');
-      EmitI('ld sp,hl');
-      EmitI('ex hl,de');
+      Emit('', 'pop hl', 'Load');
       EmitI('ld bc,' + Int2Str(DataType^.Value));
-      Emit('', 'ldir', 'Load end');
+      EmitI('call __load16');
     end
   end;
 end;
@@ -1756,15 +1752,8 @@ begin
         end;
     else
     begin
-      Emit('', 'ld bc,' + Int2Str(DataType^.Value), 'Store');
-      EmitI('ld hl,bc');
-      EmitI('add hl,sp');
-      EmitI('ld de,(hl)');
-      EmitI('ld hl,0');
-      EmitI('add hl,sp');
-      EmitI('ldir');
-      EmitI('ld sp,hl');
-      Emit('', 'pop hl', 'Store end');
+      EmitI('ld bc,' + Int2Str(DataType^.Value));
+      EmitI('call __store16');
     end;
   end;
 end;

@@ -1052,6 +1052,34 @@ __rmstr:        pop     de
                 ex      de,hl
                 jp      (hl)
 
+__load16:       pop     de
+                ex      de,hl
+                ld      (__load16ret),hl
+                and     a
+                sbc     hl,hl
+                sbc     hl,bc
+                add     hl,sp
+                ld      sp,hl
+                ex      de,hl
+                ldir
+                ld      hl,(__load16ret)
+                jp      (hl)
+__load16ret:    ds      2
+
+__store16:      pop     hl
+                ld      (__store16ret),hl
+                ld      hl,bc
+                add     hl,sp
+                ld      de,(hl)
+                ld      hl,0
+                add     hl,sp
+                ldir
+                ld      sp,hl
+                pop     hl
+                ld      hl,(__store16ret)
+                jp      (hl)
+__store16ret:   ds      2
+
 #include "math48.z80"
 
 .macro constfp %xx,%yy,%zz
