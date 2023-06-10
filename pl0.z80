@@ -1070,6 +1070,7 @@ __store16:      pop     hl
                 ld      (__store16ret),hl
                 ld      hl,bc
                 add     hl,sp
+;                ld      (__store16sp),hl
                 ld      de,(hl)
                 ld      hl,0
                 add     hl,sp
@@ -1854,12 +1855,30 @@ __blanks1:      ld      a,(hl)
                 ld      (__lineptr),hl
                 jr      __blanks1
 
+WORD:
+__word:         ld      hl,(__lineptr)
+                ld      de,__buffer + 1
+                ld      b,30
+                ld      c,0
+__word1:        ld      a,(hl)
+                ld      (de),a
+                inc     de
+                cp      '!'
+                jr      c, __word2
+                inc     hl
+                inc     c
+                djnz    __word1
+__word2:        ld      (__lineptr),hl
+                ld      a,c
+                ld      (__buffer),a
+                ret
+
 __getn:         push    hl
                 call    __blanks
-                ld      hl,(__lineptr)
+                call    __word
+                ld      hl,__buffer + 1
                 ld      a,6
                 call    __atoi
-                ld      (__lineptr),hl
                 pop     hl
                 ld      (hl),de
                 ret
@@ -1867,13 +1886,30 @@ __getn:         push    hl
 __getr:         push    hl
                 push    ix
                 call    __blanks
-                ld      ix,(__lineptr)
+                call    __word
+                ld      ix,__buffer + 1
                 call    CNVN
-                ld      (__lineptr),ix
                 pop     ix
                 exx
                 pop     hl
                 call    __storefp
+                ret
+
+; hl address, de table, b=count
+__gete:         push    hl
+                push    de
+                push    bc
+                call    __blanks
+                call    __word
+                ld      hl,__buffer
+                pop     bc
+                pop     de
+                call    __atoe
+                pop     hl
+                ld      a,d
+                and     a
+                ret     nz
+                ld      (hl),e
                 ret
 
 __getc:         push    hl

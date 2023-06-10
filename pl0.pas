@@ -404,7 +404,7 @@ type
 var
   SymbolTable: PSymbol = nil;
   Level, Offset: Integer;
-  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer: PSymbol;
+  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtText: PSymbol;
 
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
 
@@ -1291,7 +1291,7 @@ begin
         if (Op1 = 'de') and (Op2 = 'hl') or (Op1 = 'hl') and (Op2 = 'de') then
           Prev^.Instruction := 'ex de,hl'
         else
-        Prev^.Instruction := 'ld ' + Op2 + ',' + Op1;
+          Prev^.Instruction := 'ld ' + Op2 + ',' + Op1;
         RemoveCode;
         Exit;
       end;
@@ -1302,7 +1302,7 @@ begin
       RemoveCode;
       RemoveCode;
       Exit;
-    end
+    end;
   end;
 
   DoOptimize := False;
@@ -2770,6 +2770,28 @@ begin
   ParseVariableRef := ParseVariableAccess(Sym);
 end;
 
+procedure EmitReadConsole(T: PSymbol);
+begin
+  if T = dtInteger then
+    EmitI('call __getn')
+  else if T = dtChar then
+    EmitI('call __getc')
+  else if T = dtReal then
+    EmitI('call __getr')
+  else if T^.Kind = scEnumType then
+  begin
+    EmitI('ld de,' + T^.Tag);
+    EmitI('ld b,' + Int2Str(T^.High + 1));
+    EmitI('call __gete');
+  end
+  else if T^.Kind = scStringType then
+  begin
+    EmitI('ld a,' + Int2Str(T^.Value - 1));
+    EmitI('call __gets');
+  end
+  else Error('Unreadable type');
+end;
+
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
   Sym, T, V, U: PSymbol;
@@ -2843,24 +2865,17 @@ begin
 
     if Scanner.Token = toLParen then
     begin
-      repeat
+      NextToken;
+      T := ParseVariableRef();
+      EmitI('pop hl');
+      EmitReadConsole(T);
+      while Scanner.Token = toComma do
+      begin
         NextToken;
         T := ParseVariableRef();
         EmitI('pop hl');
-
-        if T = dtInteger then
-          EmitI('call __getn')
-        else if T = dtChar then
-          EmitI('call __getc')
-        else if T = dtReal then
-          EmitI('call __getr')
-        else if T^.Kind = scStringType then
-        begin
-          EmitI('ld a,' + Int2Str(T^.Value - 1));
-          EmitI('call __gets');
-        end
-        else Error('Unreadable type');
-      until Scanner.Token <> toComma;
+        EmitReadConsole(T);
+      end;
 
       Expect(toRParen);
       NextToken;
@@ -4511,6 +4526,8 @@ begin
       I := I + 1;
       NextToken;
     until Scanner.Token <> toComma;
+
+    Emit('', 'dw 0', '');
 
     DataType^.Low := 0;
     DataType^.High := I - 1;
