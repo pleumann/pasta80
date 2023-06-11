@@ -2023,8 +2023,8 @@ begin
   if (DataType = dtInteger) or (DataType = dtByte) then
   begin
     EmitI('pop de');
-    EmitI('ld hl,0');
-    EmitI('xor a');
+    EmitI('and a');
+    EmitI('sbc hl,hl');
     EmitI('sbc hl,de');
     EmitI('push hl');
   end
@@ -2047,9 +2047,13 @@ begin
   
   if DataType = dtInteger then
   begin
-    EmitI('ld de,(hl)');
+    EmitI('ld e,(hl)');
+    EmitI('inc hl');
+    EmitI('ld d,(hl)');
     EmitI('inc de');
-    EmitI('ld (hl),de');
+    EmitI('ld (hl),d');
+    EmitI('dec hl');
+    EmitI('ld (hl),e');
   end
   else
   begin
@@ -2063,9 +2067,13 @@ begin
 
   if DataType = dtInteger then
   begin
-    EmitI('ld de,(hl)');
+    EmitI('ld e,(hl)');
+    EmitI('inc hl');
+    EmitI('ld d,(hl)');
     EmitI('dec de');
-    EmitI('ld (hl),de');
+    EmitI('ld (hl),d');
+    EmitI('dec hl');
+    EmitI('ld (hl),e');
   end
   else
   begin
@@ -2188,8 +2196,8 @@ begin
   end
   else if DataType = dtChar then
   begin
-    Emit('', 'pop hl', '');
-    EmitI('ld a,l');
+    Emit('', 'pop de', '');
+    EmitI('ld a,e');
     EmitI('call __putc');
   end
   else if DataType^.Kind = scStringType then
@@ -2207,9 +2215,7 @@ begin
     EmitI('ld hl,0');
     EmitI('add hl,sp');
     EmitI('call __puts');
-    EmitI('ld hl,256');
-    EmitI('add hl,sp');
-    EmitI('ld sp,hl');
+    EmitI('call __rmstr');
   end
   else if DataType = dtReal then
   begin
@@ -2244,9 +2250,7 @@ begin
     EmitI('ld hl,0');
     EmitI('add hl,sp');
     EmitI('call __puts_fmt');
-    EmitI('ld hl,256');
-    EmitI('add hl,sp');
-    EmitI('ld sp,hl');
+    EmitI('call __rmstr');
   end
   else if DataType = dtReal then
   begin
@@ -2283,12 +2287,7 @@ end;
 procedure EmitCharToString;
 begin
   EmitI('pop de');
-  EmitI('ld hl,-254');
-  EmitI('add hl,sp');
-  EmitI('ld sp, hl');
-  EmitI('ld d,e');
-  EmitI('ld e,1');
-  EmitI('push de');
+  EmitI('call __char2str');
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -2568,6 +2567,7 @@ end;
 function ParseBuiltInFunction(Func: PSymbol): PSymbol;
 var
   Sym: PSymbol;
+  Old: PCode;
 begin
   if Func^.Kind <> scFunc then
     Error('Not a built-in function: ' + Func^.Name);
@@ -2619,8 +2619,9 @@ begin
 
     if Sym^.Kind = scVar then
     begin
+      Old := Code;
       Sym := ParseVariableAccess(Sym);
-      EmitClear(2);
+      while Code <> Old do RemoveCode;
     end;
 
     if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType] then
@@ -2709,8 +2710,9 @@ begin
     if Sym = nil then Error('Not found');
     if Sym^.Kind = scVar then
     begin
+      Old := Code;
       Sym := ParseVariableAccess(Sym);
-      EmitClear(2);
+      while Code <> Old do RemoveCode;
     end;
     if Sym^.Kind = scArrayType then Sym := Sym^.IndexType;
     if Sym^.Kind = scSetType then Sym := Sym^.DataType;

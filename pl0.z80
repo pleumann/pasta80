@@ -1052,6 +1052,16 @@ __rmstr:        pop     de
                 ex      de,hl
                 jp      (hl)
 
+__char2str:     ld      b,e
+                pop     de
+                ld      hl,-254
+                add     hl,sp
+                ld      sp,hl
+                ld      c,1
+                push    bc
+                ex      de,hl
+                jp      (hl)
+
 __load16:       pop     de
                 ex      de,hl
                 ld      (__load16ret),hl
