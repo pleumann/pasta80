@@ -1752,8 +1752,17 @@ begin
         end;
     else
     begin
-      EmitI('ld bc,' + Int2Str(DataType^.Value));
-      EmitI('call __store16');
+      if Optimize and (Code^.Instruction = 'call __load16') then
+      begin
+        RemoveCode;
+        EmitI('pop de');
+        EmitI('ldir');
+      end
+      else
+      begin
+        EmitI('ld bc,' + Int2Str(DataType^.Value));
+        EmitI('call __store16');
+      end;
     end;
   end;
 end;
@@ -3336,10 +3345,6 @@ begin
     end;
     NextToken;
 
-    //for K := 0 to 31 do Write(BA[K], ' ');
-
-    EmitSpace(32); // EmitBytes
-
     S1 := GetLabel('set');
     S2 := GetLabel('set');
     EmitI('jr ' + S2);
@@ -3348,17 +3353,15 @@ begin
     for K := 0 to 31 do S3 := S3 + HexStr(BA[K], 2);
     EmitI('dm $' + S3);
     Emit(S2, '', '');
-    EmitI('ld hl,0');
-    EmitI('add hl,sp');
-    EmitI('ld de,' + S1);
-    EmitI('ex de,hl');
-    EmitI('ld bc,32');
-    EmitI('ldir');
 
     Sym := CreateSymbol(scSetType, '');
     Sym^.Value := 32;
     Sym^.DataType := T;
     T := Sym;
+
+    Emit('', 'ld hl,' + S1, 'Load set constant');
+    EmitI('push hl');
+    EmitLoad(T);
   end
   else if Scanner.Token in [toAdd, toSub, toNot] then
   begin

@@ -1080,7 +1080,6 @@ __store16:      pop     hl
                 ld      (__store16ret),hl
                 ld      hl,bc
                 add     hl,sp
-;                ld      (__store16sp),hl
                 ld      de,(hl)
                 ld      hl,0
                 add     hl,sp
