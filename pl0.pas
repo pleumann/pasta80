@@ -2934,15 +2934,7 @@ begin
         EmitI('ex de,hl');
         EmitI('ld (hl),de');
       end
-      else
-      begin
-        Tag := GetLabel('nonzero');
-        EmitI('pop hl');
-        EmitI('ld de,(hl)');
-        EmitI('inc de');
-        EmitI('ld (hl), de');
-        Emit(Tag, '', '');
-      end;
+      else EmitInc(dtInteger);
     end
     else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
     begin
@@ -2956,11 +2948,7 @@ begin
         EmitI('add a,c');
         EmitI('ld (hl),a');
       end
-      else
-      begin
-        EmitI('pop hl');
-        EmitI('inc (hl)');
-      end;
+      else EmitInc(V);
     end
     else Error('Invalid type, need Integer or Byte');
 
@@ -2988,15 +2976,7 @@ begin
         EmitI('ex de,hl');
         EmitI('ld (hl),de');
       end
-      else
-      begin
-        Tag := GetLabel('nonzero');
-        EmitI('pop hl');
-        EmitI('ld de,(hl)');
-        EmitI('dec de');
-        EmitI('ld (hl), de');
-        Emit(Tag, '', '');
-      end;
+      else EmitDec(V);
     end
     else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
     begin
@@ -3010,11 +2990,7 @@ begin
         EmitI('sub a,c');
         EmitI('ld (hl),a');
       end
-      else
-      begin
-        EmitI('pop hl');
-        EmitI('dec (hl)');
-      end;
+      else EmitDec(V);
     end
     else Error('Invalid type, need Integer or Byte');
 
