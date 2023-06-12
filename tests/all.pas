@@ -2578,17 +2578,36 @@ begin
   Dec(B);
   Assert(B = 100);
 
+  Inc(B, 155);
+  Assert(B = 255);
+  Inc(B, 2);
+  Assert(B = 1);
+
+  Dec(B, 2);
+  Assert(B = 255);
+  Dec(B, 155);
+  Assert(B = 100);
+
   I := 255;
   Inc(I);
   Assert(I = 256);
   Dec(I);
   Assert(I = 255);
 
+  Inc(I, 1000);
+  Assert(I = 1255);
+  Dec(I, 2000);
+  Assert(I = -745);
+
   C := 'X';
   Inc(C);
   Assert(C = 'Y');
   Dec(C);
   Assert(C = 'X');
+  Dec(C, 23);
+  Assert(C = 'A');
+  Inc(C, 25);
+  Assert(C = 'Z');
 
   E := North;
   Inc(E);

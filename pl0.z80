@@ -1090,6 +1090,43 @@ __store16:      pop     hl
                 jp      (hl)
 __store16ret:   ds      2
 
+__inc16:        inc     (hl)
+                ret     nz
+                inc     hl
+                inc     (hl)
+                ret
+
+__inc16by:      ld      e,(hl)
+                inc     hl
+                ld      d,(hl)
+                ex      de,hl
+                add     hl,bc
+                ex      de,hl
+                ld      (hl),d
+                dec     hl
+                ld      (hl),e
+                ret
+
+__dec16:        ld      a,(hl)
+                sub     1
+                ld      (hl),a
+                ret     nc
+                inc     hl
+                dec     (hl)
+                ret
+
+__dec16by:      ld      e,(hl)
+                inc     hl
+                ld      d,(hl)
+                ex      de,hl
+                and     a
+                sbc     hl,bc
+                ex      de,hl
+                ld      (hl),d
+                dec     hl
+                ld      (hl),e
+                ret
+
 #include "math48.z80"
 
 .macro constfp %xx,%yy,%zz

@@ -1657,7 +1657,9 @@ begin
   if Sym^.IsRef then
   begin
     Emit('', 'pop hl', '');
-    Emit('', 'ld de,(hl)', '');
+    Emit('', 'ld e,(hl)', '');
+    Emit('', 'inc hl', '');
+    Emit('', 'ld d,(hl)', '');
     Emit('', 'push de', '');
   end;
 
@@ -1696,7 +1698,9 @@ begin
         end;
     2: begin
           EmitI('pop hl');
-          EmitI('ld de,(hl)');
+          EmitI('ld e,(hl)');
+          EmitI('inc hl');
+          EmitI('ld d,(hl)');
           EmitI('push de');
        end;
     else
@@ -1775,13 +1779,14 @@ end;
 
 procedure EmitSpace(Bytes: Integer);
 begin
-  if (Bytes < 10) and not Odd(Bytes) then
+  if Bytes <= 10 then
   begin
-    while Bytes > 0 do
+    while Bytes > 1 do
     begin
       EmitI('push hl');
       Bytes := Bytes - 2;
-    end
+    end;
+    if Bytes > 0 then EmitI('dec sp');
   end
   else if Bytes = 256 then
     EmitI('call __mkstr')
@@ -1795,13 +1800,14 @@ end;
 
 procedure EmitClear(Bytes: Integer);
 begin
-  if (Bytes < 10) and not Odd(Bytes) then
+  if Bytes <= 10 then
   begin
-    while Bytes > 0 do
+    while Bytes > 1 do
     begin
       EmitI('pop hl');
       Bytes := Bytes - 2;
-    end
+    end;
+    if Bytes > 0 then EmitI('inc sp');
   end
   else if Bytes = 256 then
     EmitI('call __rmstr')
@@ -2055,19 +2061,9 @@ begin
   EmitI('pop hl');
   
   if DataType = dtInteger then
-  begin
-    EmitI('ld e,(hl)');
-    EmitI('inc hl');
-    EmitI('ld d,(hl)');
-    EmitI('inc de');
-    EmitI('ld (hl),d');
-    EmitI('dec hl');
-    EmitI('ld (hl),e');
-  end
+    EmitI('call __inc16')
   else
-  begin
     EmitI('inc (hl)');
-  end;
 end;
 
 procedure EmitDec(DataType: PSymbol);
@@ -2075,19 +2071,9 @@ begin
   EmitI('pop hl');
 
   if DataType = dtInteger then
-  begin
-    EmitI('ld e,(hl)');
-    EmitI('inc hl');
-    EmitI('ld d,(hl)');
-    EmitI('dec de');
-    EmitI('ld (hl),d');
-    EmitI('dec hl');
-    EmitI('ld (hl),e');
-  end
+    EmitI('call __dec16')
   else
-  begin
     EmitI('dec (hl)');
-  end;
 end;
 
 procedure EmitShl;
@@ -2928,11 +2914,7 @@ begin
         TypeCheck(dtInteger, ParseExpression, tcExpr);
         EmitI('pop bc');
         EmitI('pop hl');
-        EmitI('ld de,(hl)');
-        EmitI('ex de,hl');
-        EmitI('add hl,bc');
-        EmitI('ex de,hl');
-        EmitI('ld (hl),de');
+        EmitI('call __inc16by');
       end
       else EmitInc(dtInteger);
     end
@@ -2969,12 +2951,7 @@ begin
         TypeCheck(dtInteger, ParseExpression, tcExpr);
         EmitI('pop bc');
         EmitI('pop hl');
-        EmitI('ld de,(hl)');
-        EmitI('ex de,hl');
-        EmitI('and a');
-        EmitI('sbc hl,bc');
-        EmitI('ex de,hl');
-        EmitI('ld (hl),de');
+        EmitI('call __dec16by');
       end
       else EmitDec(V);
     end
