@@ -1,8 +1,8 @@
 program Knight;
 
 var
-  Seen: array[25] of Boolean;
-  Path: array[25] of Char;
+  Seen: array[0..24] of Boolean;
+  Path: array[0..25] of Char;
   I, J, Total: Integer;
 
 procedure Tour(X, Y, Move: Integer);
