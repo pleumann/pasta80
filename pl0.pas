@@ -1204,8 +1204,16 @@ begin
 
   if Instruction <> '' then
   begin
+    if Instruction = 'ld de,(hl)' then
+      Instruction := 'ld e,(hl) \ inc hl \ ld d,(hl)'
+    else if Instruction = 'ld (hl),de' then
+      Instruction := 'ld (hl),e \ inc hl \ ld (hl),d'
+    else if Instruction = 'ld bc,(hl)' then
+      Instruction := 'ld c,(hl) \ inc hl \ ld b,(hl)';
+
+
     P := Pos(' ', Instruction);
-    if P<>0 then
+    if P <> 0 then
       Instruction := AlignStr(Copy(Instruction, 1, P-1), 8) + Copy(Instruction, P+1, 255);
 
     S := AlignStr(S, 16) + Instruction;
@@ -1244,8 +1252,8 @@ end;
 
 function DoOptimize: Boolean;
 var
-  Op1, Op2: String;
-  Prev: PCode;
+  Op1, Op2, S: String;
+  Prev, Next: PCode;
 begin
   (* Try to eliminate the most embarrassing generated instruction pairs. *)
 
@@ -1294,7 +1302,15 @@ begin
           Prev^.Instruction := 'ld ' + Op2 + ',' + Op1;
         RemoveCode;
         Exit;
-      end;
+      end
+      // else if (Op1 = 'hl') and (Op2 = 'af') then
+      // begin
+      //   RemoveCode;
+      //   RemoveCode;
+      //   Code^.Instruction := 'ccf';
+      //   Code^.Prev.Instruction := 'dec a';
+      //   Exit;    
+      // end;
     end;
 
     if (Prev^.Instruction = 'pushfp') and (Code^.Instruction = 'popfp') then
@@ -1302,6 +1318,162 @@ begin
       RemoveCode;
       RemoveCode;
       Exit;
+    end;
+
+    if (Code^.Instruction = 'ex de,hl') and (Prev^.Instruction = 'ex de,hl') then
+    begin
+      RemoveCode;
+      RemoveCode;
+      Exit;
+    end;
+
+    if (Prev^.Instruction = 'ld l,a') and (Code^.Instruction = 'bit 0,l') then
+    begin
+      if (Prev^.Prev <> nil) and (Prev^.Prev^.Instruction = 'ld h,0') then
+      begin
+        RemoveCode;
+        RemoveCode;
+        Code^.Instruction := 'and a';
+        Exit;
+      end;
+    end;
+
+    if (Code^.Instruction = '') and (Code^.Comment <> '') and StartsWith(Prev^.Instruction, 'push') then
+    begin
+      Code^.Instruction := Prev^.Instruction;
+      Prev^.Instruction := '';
+
+      Prev^.Comment := Code^.Comment;
+      Code^.Comment := '';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'ld bc,de') and StartsWith(Prev^.Instruction, 'ld de,') then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'ld bc,' + Copy(Code^.Instruction, 7, 255);
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'ld bc,hl') and (Prev^.Instruction = 'ld l,a') then
+    begin
+      if (Prev^.Prev <> nil) and (Prev^.Prev^.Instruction = 'ld h,0') then
+      begin
+        RemoveCode;
+        RemoveCode;
+        Code^.Instruction := 'ld c,a';
+        Exit;
+      end;
+    end;
+
+    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,2') then
+    begin
+      Prev^.Instruction := 'inc hl \ inc hl';
+      RemoveCode;
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,1') then
+    begin
+      Prev^.Instruction := 'inc hl';
+      RemoveCode;
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,0') then
+    begin
+      RemoveCode;
+      RemoveCode;
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,-1') then
+    begin
+      Prev^.Instruction := 'dec de';
+      Code^.Instruction := 'ex de,hl';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld hl,-1') then
+    begin
+      Prev^.Instruction := 'dec de';
+      Code^.Instruction := 'ex de,hl';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,-2') then
+    begin
+      Prev^.Instruction := 'dec de \ dec de';
+      Code^.Instruction := 'ex de,hl';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld hl,-2') then
+    begin
+      Prev^.Instruction := 'dec de \ dec de';
+      Code^.Instruction := 'ex de,hl';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'ld a,e') and StartsWith(Prev^.Instruction, 'ld de,') then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'ld a,' + Copy(Code^.Instruction, 7, 255);
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'ex de,hl') and StartsWith(Prev^.Instruction, 'ld de,') then
+    begin
+      if IsDecDigit(Prev^.Instruction[7]) then
+      begin
+        Prev^.Instruction := 'ld hl,' + Copy(Prev^.Instruction, 7, 255);
+        RemoveCode;
+        Exit;
+      end;
+    end;
+
+    if (Code^.Instruction = 'ld de,(hl)') and StartsWith(Prev^.Instruction, 'ld hl,') then
+    begin
+      Prev^.Instruction := 'ld hl,(' + Copy(Prev^.Instruction, 7, 255) + ')';
+      Code^.Instruction := 'ex de,hl';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'pop hl') and StartsWith(Prev^.Instruction, 'ld de,') then
+    begin
+      if (Prev^.Prev <> nil) and (Prev^.Prev^.Instruction = 'push hl') then
+      begin
+        Prev^.Prev^.Instruction := Prev^.Instruction;
+        Prev^.Instruction := 'push hl';
+        Exit;
+      end;
+    end;
+
+    if (Code^.Instruction = 'pop hl') and StartsWith(Prev^.Instruction, 'ld de,') then
+    begin
+      if (Prev^.Prev <> nil) and (Prev^.Prev^.Instruction = 'push de') then
+      begin
+        Prev^.Prev^.Instruction := 'ex de,hl';
+        RemoveCode;
+
+        if Prev^.Prev^.Prev <> nil then
+        begin
+          S := Prev^.Prev^.Prev^.Instruction;
+
+          if S = 'ex de,hl' then
+          begin
+            Prev^.Prev^.Prev^.Instruction := '';
+            Prev^.Prev^.Instruction := '';
+          end
+          else if StartsWith(S, 'ld de,') and IsDecDigit(S[7]) then
+          begin
+            Prev^.Prev^.Prev^.Instruction := 'ld hl,' + Copy(S, 7, 255);
+            Prev^.Prev^.Instruction := '';
+          end;
+        end;
+
+        Exit;
+      end;
     end;
   end;
 
@@ -1333,8 +1505,9 @@ end;
 
 procedure EmitC(S: String);
 begin
-  Flush;
-  WriteLn(Target, '; ', S);
+  Emit('', '', S)
+  //Flush;
+  //WriteLn(Target, '; ', S);
 end;
 
 procedure EmitInclude(S: String);
@@ -1346,7 +1519,7 @@ procedure EmitClear(Bytes: Integer); forward;
 
 procedure EmitCall(Sym: PSymbol);
 var
-  I, J: Integer;
+  I, J, K: Integer;
 begin
   if not Sym^.IsStdCall then
   begin
@@ -1380,6 +1553,7 @@ begin
   end
   else
   begin
+    K := 0;
     for I := 0 to Sym^.Value - 1 do
     begin
       if Sym^.ArgIsRef[I] then J := 2 else
@@ -1387,8 +1561,13 @@ begin
         J := Sym^.ArgTypes[I]^.Value;
         if J < 2 then J := 2;
       end;
-      EmitC('Cleanup ' + Int2Str(J) + ' bytes');
-      EmitClear(J);
+      K:= K + J;
+    end;
+  
+    if K <> 0 then
+    begin
+      EmitC('Post call cleanup ' + Int2Str(K) + ' bytes');
+      EmitClear(K);
     end;
   end;
 end;
@@ -1657,9 +1836,7 @@ begin
   if Sym^.IsRef then
   begin
     Emit('', 'pop hl', '');
-    Emit('', 'ld e,(hl)', '');
-    Emit('', 'inc hl', '');
-    Emit('', 'ld d,(hl)', '');
+    Emit('', 'ld de,(hl)', '');
     Emit('', 'push de', '');
   end;
 
@@ -1698,9 +1875,7 @@ begin
         end;
     2: begin
           EmitI('pop hl');
-          EmitI('ld e,(hl)');
-          EmitI('inc hl');
-          EmitI('ld d,(hl)');
+          EmitI('ld de,(hl)');
           EmitI('push de');
        end;
     else
@@ -1951,12 +2126,12 @@ end;
 
 procedure EmitJumpIf(When: Boolean; Target: String);
 begin
-  EmitI('pop af');
-(*  EmitI('bit 0,l'); *)
+  EmitI('pop hl');
+  EmitI('bit 0,l');
   if When then
-    EmitI('jp c,' + Target)
+    EmitI('jp nz,' + Target)
   else
-    EmitI('jp nc,' + Target);
+    EmitI('jp z,' + Target);
 end;
 
 procedure EmitBinOp(Op: TToken; DataType: PSymbol);
