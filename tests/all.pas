@@ -20,6 +20,10 @@ const
 
   FloatArray: array[1..5] of Real = (1.0, 2.0, 3.0, 4.0, 5.0);
 
+  Start = 10;
+
+  Stop = 20;
+
 type
   Color = (Red, Green, Blue);
 
@@ -28,6 +32,11 @@ type
   TPoint = record
     X, Y: Integer;
   end;
+
+  SubRange1 = 10 .. 20;
+  SubRange2 = Start .. 20;
+  SubRange3 = 10 .. Stop;
+  SubRange4 = Start .. Stop;
 
 var
   X, Y, Z: Integer;

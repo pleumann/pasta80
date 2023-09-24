@@ -4683,10 +4683,27 @@ begin
     NextToken;
     Expect(toRange);
     NextToken;
-    Expect(toNumber);
-    DataType^.High := Scanner.NumValue;
 
-    if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+    if Scanner.Token = toIdent then
+    begin
+      Sym := LookupGlobal(Scanner.StrValue);
+
+      if Sym = nil then
+        Error('Identifier not found: ' + Scanner.StrValue);
+      if Sym^.Kind <> scConst then Error('Not a constant');
+      if Sym^.DataType <> dtInteger then Error('Not an integer');
+
+      DataType^.High := Sym^.Value;
+      
+      if Sym^.Value < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+    end
+    else
+    begin
+      Expect(toNumber);
+      DataType^.High := Scanner.NumValue;
+      
+      if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+    end;
 
     NextToken;
   end
@@ -4728,10 +4745,28 @@ begin
       NextToken;
       Expect(toRange);
       NextToken;
-      Expect(toIdent);
-      // More checks
-      Sym := LookupGlobal(Scanner.StrValue);
-      DataType^.High := Sym^.Value;
+
+      if Scanner.Token = toIdent then
+      begin
+        Sym := LookupGlobal(Scanner.StrValue);
+
+        if Sym = nil then
+          Error('Identifier not found: ' + Scanner.StrValue);
+        if Sym^.Kind <> scConst then Error('Not a constant');
+        if Sym^.DataType <> dtInteger then Error('Not an integer');
+
+        DataType^.High := Sym^.Value;
+        
+        if Sym^.Value < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+      end
+      else
+      begin
+        Expect(toNumber);
+        DataType^.High := Scanner.NumValue;
+        
+        if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+      end;
+
       NextToken;
     end
     else
