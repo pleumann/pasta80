@@ -200,6 +200,7 @@ begin
   WriteLn('--- TestComplex ---');
 
   Assert(4 - 4 - 4 = -4);
+  Assert(10 / 2 * 5 = 25);
   Assert(2 * (3 + 4 * (5 - 6 * (7 + 8 * (9 / 3)))) = -1442);
 end;
 
@@ -2445,6 +2446,8 @@ begin
 
   Assert(2.0 * - 4.0 = - 8.0);
   Assert(8.0 / - 4.0 = - 2.0);
+
+  Assert(10.0 / 2.0 * 5.0 = 25.0);
 
   WriteLn;
 end;

@@ -3539,7 +3539,7 @@ begin
     begin
       Op := Scanner.Token;
       NextToken;
-      T := TypeCheck(T, ParseTerm, tcExpr);
+      T := TypeCheck(T, ParseFactor, tcExpr);
       EmitFloatOp(Op);
     end
   else if T^.Kind = scSetType then
