@@ -317,6 +317,10 @@ begin
     ParamStr := '';
 end;
 
+var
+  RandSeed1: Integer absolute 'seed1';
+  RandSeed2: Integer absolute 'seed2';
+
 function Random(Range: Integer): Integer; register; external '__random';
 function RandomReal: Real; register;                external '__random48';
 
