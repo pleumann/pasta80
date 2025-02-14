@@ -6,11 +6,11 @@ type
     EX, S1, S2, RC: Byte;
     AL: array[0..15] of Byte;
     CR: Byte;
-    RN: array[0..2] of Byte;
+    RL: Integer; RH: Byte;
   end;
 
   Text = record
-    Offset: Integer;
+    Offset: Byte;
     Writing: Boolean;
     FCB: FileControlBlock;
     DMA: array[0..127] of Char;
@@ -53,6 +53,11 @@ begin
     for I := 0 to 2 do Write(TN[I]);
     WriteLn;
 *)
+    EX := 0;
+    S1 := 0;
+    S2 := 0;
+    RC := 0;
+    CR := 0;
   end;
 end;
 
@@ -63,82 +68,62 @@ end;
 
 procedure Reset(var T: Text);
 var
-  A: Integer;
+  A: Byte;
 begin
   with T do
   begin
-    with FCB do
-    begin
-      EX := 0;
-      S1 := 0;
-      S2 := 0;
-      RC := 0;
-      CR := 0;
-    end;
-
-    A := Bdos(15, Addr(T.FCB));
-
-    T.Offset := 128;
-    T.Writing := False;
+    A := Bdos(15, Addr(FCB));
+    Offset := 128;
+    Writing := False;
   end;
 end;
 
 procedure Rewrite(var T: Text);
 var
-  A: Integer;
+  A: Byte;
 begin
   with T do
   begin
-    with FCB do
-    begin
-      EX := 0;
-      S1 := 0;
-      S2 := 0;
-      RC := 0;
-      CR := 0;
-    end;
-
     A := Bdos(19, Addr(FCB));
     A := Bdos(22, Addr(FCB));
-
     Offset := 0;
     Writing := True;
   end;
 end;
 
+procedure SeekEof(var T: Text);
+var
+  A: Byte;
+begin
+  with T, FCB do
+  begin
+    A := Bdos(35, Addr(FCB));
+
+    Dec(RL);
+    if RL = -1 then Dec(RH);
+
+    A := Bdos(33, Addr(FCB));
+
+    for Offset := 0 to 127 do
+      if DMA[Offset] = #26 then Break;
+  end;
+end;
+
 procedure Append(var T: Text);
 var
-  A: Integer;
+  A: Byte;
 begin
   with T do
   begin
-    with FCB do
-    begin
-      EX := 0;
-      S1 := 0;
-      S2 := 0;
-      RC := 0;
-      CR := 0;
-    end;
-
     A := Bdos(15, Addr(FCB));
-    A := Bdos(35, Addr(FCB));
-    A := Bdos(33, Addr(FCB));
-
-    Offset := 0;
-    while Offset < 128 do
-    begin
-      if DMA[Offset] = #26 then Exit;
-      Inc(Offset);
-    end;
-
-    (* Treat 128 as file format error? *)
+    SeekEof(T);
+    Writing := True;
   end;
 end;
 
 procedure ReadRec(var T: Text);
 var
-  A: Integer;
+  A: Byte;
 begin
   A := Bdos(26, Addr(T.DMA));
   A := Bdos(20, Addr(T.FCB));
@@ -191,7 +176,7 @@ end;
 
 procedure WriteLine(var T: Text; S: String);
 var
-  I: Integer;
+  I: Byte;
 begin
   for I := 1 to Length(S) do WriteChar(T, S[I]);
 
@@ -207,7 +192,7 @@ end;
 
 procedure Close(var T: Text);
 var
-  A: Integer;
+  A: Byte;
 begin
   if T.Writing then
   begin
@@ -220,7 +205,7 @@ end;
 
 procedure Erase(var T: Text);
 var
-  A: Integer;
+  A: Byte;
 begin
   A := Bdos(19, Addr(T.FCB));
 end;
@@ -228,7 +213,7 @@ end;
 procedure Rename(var T: Text; S: String);
 var
   F: FileControlBlock;
-  A: Integer;
+  A: Byte;
 begin
   InitFCB(F, S);
   Move(F, T.FCB.AL, 12);
