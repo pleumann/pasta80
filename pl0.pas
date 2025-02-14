@@ -3690,14 +3690,11 @@ end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String); forward;
 
-procedure ParseWith(ContTarget, BreakTarget: String);
+procedure ParseWithVar;
 var
-  OldSymbols, Sym, Field, FieldRef, DataType: PSymbol;
+  Sym, Field, FieldRef, DataType: PSymbol;
   Address: Integer;
 begin
-  OldSymbols := SymbolTable;
-
-  NextToken;
   Expect(toIdent);
   Sym := LookupGlobal(Scanner.StrValue);
   if Sym = nil then Error('Identifier not found');
@@ -3709,13 +3706,6 @@ begin
   DataType := ParseVariableAccess(Sym);
 
   if DataType^.Kind <> scRecordType then Error('Record type expected');
-  Expect(toDo);
-  NextToken;
-
-    // Check: Global (not in unit tests), Local, Var, Nested, Comma
-    // Optimize simple case 'with R do X := 5;' to avoid double addressing
-
-  //WriteLn('Level ', Level, ' with at offset ', Address);
 
   Field := DataType^.DataType;
   while Field <> nil do
@@ -3727,20 +3717,44 @@ begin
     FieldRef^.Value2 := Field^.Value;
     FieldRef^.IsRef := True;
     FieldRef^.Level := Level;
-    //WriteLn('Create ' , Field^.Name, ' at level ', Level, ' address ', Address, ' Offset ', Field^.Value);
+    // WriteLn('Create ' , Field^.Name, ' at level ', Level, 'in ', Sym^.Name, ' address ', Address, ' Offset ', Field^.Value);
     Field := Field^.Prev;
+  end;  
+end;
+
+procedure ParseWith(ContTarget, BreakTarget: String);
+var
+  OldSymbols, Sym: PSymbol;
+  Count, I: Integer;
+begin
+  OldSymbols := SymbolTable;
+  
+  ParseWithVar;
+  Count := 1;
+
+  while Scanner.Token = toComma do
+  begin
+    NextToken;
+    ParseWithVar;
+    Inc(Count);
   end;
+
+  Expect(toDo);
+  NextToken;
+
+  // TODO Check global (not in unit tests), Local, Var, Nested, Comma
+  // Optimize simple case 'with R do X := 5;' to avoid double addressing
 
   ParseStatement(ContTarget, BreakTarget);
 
-  Offset := Offset + 2;
-  EmitI('pop bc');
+  Offset := Offset + 2 * Count;
+  for I := 1 to Count do EmitI('pop bc');
 
   while SymbolTable <> OldSymbols do
   begin
     Sym := SymbolTable;
     SymbolTable := SymbolTable^.Prev;
-    //WriteLn('Drop ' , Sym^.Name);
+    // WriteLn('Drop ' , Sym^.Name);
     FreeMem(Sym);
   end;
 end;
@@ -4174,6 +4188,7 @@ begin
   end
   else if Scanner.Token = toWith then
   begin
+    NextToken;
     ParseWith(ContTarget, BreakTarget);
   end
   else if Scanner.Token = toInline then
