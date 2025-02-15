@@ -3,38 +3,39 @@
 (* -------------------------------------------------------------------------- *)
 
 type
-  FileControlBlock = record
-    DR: Byte;
-    FN: array[0..7] of Char;
-    TN: array[0..2] of Char;
-    EX, S1, S2, RC: Byte;
-    AL: array[0..15] of Byte;
-    CR: Byte;
-    RN: array[0..2] of Byte;
+  FileControlBlock = record             (* CP/M file control block            *)
+    DR: Byte;                           (* Drive number                       *)
+    FN: array[0..7] of Char;            (* File name, 8 chars, space-padded   *)
+    TN: array[0..2] of Char;            (* Extension, 3 chars, space-padded   *)
+    EX, S1, S2, RC: Byte;               (* CP/M internal stuff                *)
+    AL: array[0..15] of Byte;           (* CP/M internal stuff                *)
+    CR: Byte;                           (* CP/M internal stuff                *)
+    RL: Integer; RH: Byte;              (* 24 bit random record number        *)
   end;
 
-  FileType = (ftStandard, ftText, ftUntyped);
+  TextRec = record                      (* Internal text file representation  *)
+    FCB: FileControlBlock;              (* FCB, *must* start at offset 0      *)
+    Readable: Boolean;                  (* File is open for reading           *)
+    Writable: Boolean;                  (* File is open for writing           *)
+    Offset: Integer;                    (* Offset within 128 byte buffer      *)
+    DMA: array[0..127] of Char;         (* Internal sector buffer             *)
+  end;
 
-  Text = record
-    TheType: FileType;
-
-    Active: Boolean;
-    Dirty: Boolean;
-
-    BlockSize: Integer;
-    BlockCount: Integer;
-    BlockIndex: Integer;
-
-    Offset: Integer;    
-    FCB: FileControlBlock;
-    
+  FileRec = record                      (* Internal typed file representation *)
+    FCB: FileControlBlock;              (* FCB, *must* start at offset 0      *)
+    CompSize: Integer;                  (* Size of component type             *)
+    CompCount: Integer;                 (* Number of components in file       *)
+    CompIndex: Integer;                 (* Index of current component         *)
+    Offset: Integer;                    (* Offset within 128 byte buffer      *)
+    Modified: Boolean;                  (* Current record has been modified   *)
     case Boolean of
-        False: (DMA: array[0..127] of Char);
-        True:  (Header1, Header2: Integer);
-    end; 
+      False: (DMA: array[0..127] of Char;); (* Internal sector buffer         *)
+      True:  (Count, Size: Integer;);       (* Typed file header              *)
   end;
 
-procedure InitFCB(var F: FileControlBlock; S: String);
+(* --- Untyped file routines, use FileControlBlock as representation -------- *)
+
+procedure BlockAssign(var F: FileControlBlock; S: String);
 var
   I, L, P, Q: Integer;
 begin
@@ -74,184 +75,204 @@ begin
   end;
 end;
 
-procedure AssignStructured(var T: Text; S: String; Size: Integer);
-begin
-  with T do
-  begin
-    InitFCB(FCB, S);
-
-    FileType := 'S';
-
-    Active := False;
-    Dirty := False;
-
-    BlockSize := Size;
-    BlockCount := 0;
-    BlockIndex := 0;
-  end;
-end;
-
-procedure AssignText(var T: Text; S: String);
-begin
-  with T do
-  begin
-    InitFCB(FCB, S);
-
-    FileType := 'T';
-
-    Active := False;
-    Dirty := False;
-
-    BlockSize := 0;
-    BlockCount := 0;
-    BlockIndex := 0;
-  end;
-end;
-
-procedure AssignUntyped(var T: Text; S: String);
-begin
-  with T do
-  begin
-    InitFCB(FCB, S);
-
-    FileType := 'U';
-
-    Active := False;
-    Dirty := False;
-
-    BlockSize := 0;
-    BlockCount := 0;
-    BlockIndex := 0;
-  end;
-end;
-
-procedure Reset(var T: Text);
+procedure BlockErase(var F: FileControlBlock);
 var
-  A: Integer;
+  A: Byte;
 begin
-  with T do
+  A := Bdos(19, Addr(F));
+end;
+
+procedure BlockRename(var F: FileControlBlock; S: String);
+var
+  G: FileControlBlock;
+  A: Byte;
+begin
+  BlockAssign(G, S);
+  Move(G, F.AL, 12);
+  A := Bdos(23, Addr(F));
+end;
+
+procedure BlockReset(var F: FileControlBlock);
+var
+  A: Byte;
+begin
+  A := Bdos(19, Addr(F));
+end;
+
+procedure BlockRewrite(var F: FileControlBlock);
+var
+  A: Byte;
+begin
+  A := Bdos(19, Addr(F));
+  A := Bdos(22, Addr(F));
+end;
+
+procedure BlockClose(var F: FileControlBlock);
+var
+  A: Byte;
+begin
+  A := Bdos(16, Addr(F));
+end;
+
+function BlockFilePos(var F: FileControlBlock): Integer;
+begin
+  BlockFilePos := F.RL;
+end;
+
+function BlockFileSize(var F: FileControlBlock): Integer;
+var
+  I: Integer;
+  A: Byte;
+begin
+  with F do
   begin
-    with FCB do
-    begin
-      EX := 0;
-      S1 := 0;
-      S2 := 0;
-      RC := 0;
-      CR := 0;
-    end;
-
-    A := Bdos(15, Addr(T.FCB));
-    ReadRec(T);
-
-    if T.FileType = 'S' then
-    begin
-      I := Integer(DMA[0]) + Integer(DMA[1]) shl 8;
-      J := Integer(DMA[2]) + Integer(DMA[3]) shl 8;
-
-      if J <> T.BlockSize then WriteLn('*** Invalid block size.'); (* Halt *)
-
-      T.BlockCount := I;
-
-      T.Offset := 4;
-
-      T.Active := True;
-      T.Dirty := True;
-    end
+    I := RL;
+    A := Bdos(35, Addr(F));
+    BlockFileSize := RL;
+    RL := I;
   end;
 end;
 
-procedure Rewrite(var T: Text);
-var
-  A: Integer;
+function BlockEof(var F: FileControlBlock): Boolean;
 begin
-  with T do
+  BlockEof := BlockFilePos(F) = BlockFileSize(F);
+end;
+
+procedure BlockSeek(var F: FileControlBlock; I: Integer);
+begin
+  F.RL := I;
+end;
+
+procedure BlockRead(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
+var
+  A: Byte;
+  DMA: Integer;
+begin
+  DMA := Addr(Buffer);
+  Actual := 0;
+
+  while Count > 0 do
   begin
-    with FCB do
-    begin
-      EX := 0;
-      S1 := 0;
-      S2 := 0;
-      RC := 0;
-      CR := 0;
-    end;
+    A := Bdos(26, DMA);
+    A := Bdos(20, Addr(F));
 
-    A := Bdos(19, Addr(FCB));
-    A := Bdos(22, Addr(FCB));
-
-    if T.FileType = 'S' then
-    begin
-      DMA[0] := Char(BlockSize);
-      DMA[1] := Char(BlockSize shr 8);
-
-      DMA[2] := Char(BlockCount);
-      DMA[3] := Char(BlockCount shr 8);
-
-      T.ItemCount := J;
-      T.ItemIndex := 0;
-
-      T.Offset := 4;
-
-      T.Active := True;
-      T.Dirty := True;
-    end;
-
-    T.Offset := 128;
-    T.Writing := False;
-  end;
-
+    Inc(F.RL);
+    Inc(DMA, 128);
+    Inc(Actual);
+    Dec(Count);
   end;
 end;
 
-procedure Append(var T: Text);
+procedure BlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
 var
-  A: Integer;
+  A: Byte;
+  DMA: Integer;
+begin
+  DMA := Addr(Buffer);
+  Actual := 0;
+
+  while Count > 0 do
+  begin
+    A := Bdos(26, DMA);
+    A := Bdos(21, Addr(F));
+
+    Inc(F.RL);
+    Inc(DMA, 128);
+    Inc(Actual);
+    Dec(Count);
+  end;
+end;
+
+(* --- Text file routines, use TextRec as representation -------------------- *)
+
+procedure TextReset(var T: TextRec);
+var
+  E: Integer;
 begin
   with T do
   begin
-    with FCB do
-    begin
-      EX := 0;
-      S1 := 0;
-      S2 := 0;
-      RC := 0;
-      CR := 0;
-    end;
+    BlockReset(FCB);
+    BlockRead(FCB, DMA, 1, E);
 
-    A := Bdos(15, Addr(FCB));
-    A := Bdos(35, Addr(FCB));
-    A := Bdos(33, Addr(FCB));
+    Readable := True;
+    Writable := False;
 
     Offset := 0;
-    while Offset < 128 do
-    begin
-      if DMA[Offset] = #26 then Exit;
-      Inc(Offset);
-    end;
-
-    (* Treat 128 as file format error? *)
   end;
 end;
 
-procedure ReadRec(var T: Text);
-var
-  A: Integer;
+procedure TextRewrite(var T: TextRec);
 begin
-  A := Bdos(26, Addr(T.DMA));
-  A := Bdos(20, Addr(T.FCB));
-  T.Offset := 0;
+  with T do
+  begin
+    BlockRewrite(FCB);
+
+    Readable := False;
+    Writable := True;
+
+    Offset := 0;
+  end;
 end;
 
-function ReadChar(var T: Text): Char;
+procedure TextSeekEof(var T: TextRec);
+var
+  E: Integer;
+begin
+  with T do
+  begin
+    BlockSeek(FCB, BlockFileSize(FCB) - 1);
+    BlockRead(FCB, DMA, 1, E);
+
+    for Offset := 0 to 127 do
+      if DMA[Offset] = #26 then Exit;
+  end;
+end;
+
+procedure TextAppend(var T: TextRec);
+var
+  A: Byte;
+begin
+  with T do
+  begin
+    TextReset(T);
+    TextSeekEof(T);
+
+    Readable := False;
+    Writable := True;
+  end;
+end;
+
+procedure TextReadChar(var T: TextRec; var C: Char);
+var
+  E: Integer;
+begin
+  with T do
+  begin
+    C := DMA[Offset];
+    if C <> #26 then
+    begin
+      Inc(Offset);
+      if Offset = 128 then
+      begin
+        BlockRead(FCB, DMA, 1, E);
+        Offset := 0;
+      end;
+    end;
+  end;
+end;
+
+procedure TextSeekEol(var T: TextRec);
 var
   C: Char;
 begin
-  if T.Offset > 127 then ReadRec(T);
-  C := T.DMA[T.Offset];
-  if C <> #26 then T.Offset := T.Offset + 1;
-  ReadChar := C;
+  with T do
+  begin
+    while DMA[Offset] <> #13 do
+      TextReadChar(T, C);
+  end;
 end;
 
-procedure ReadLine(var T: Text; var S: String);
+procedure TextReadLine(var T: TextRec; var S: String);
 var
   C: Char;
 begin
@@ -259,7 +280,7 @@ begin
 
   while Length(S) < 255 do
   begin
-    C := ReadChar(T);
+    TextReadChar(T, C);
 
     if C = #10 then Break;
     if C = #26 then Break;
@@ -268,65 +289,223 @@ begin
   end;
 end;
 
-procedure WriteRec(var T: Text);
+procedure TextWriteChar(var T: TextRec; C: Char);
 var
-  A: Integer;
+  E: Integer;
 begin
-  A := Bdos(26, Addr(T.DMA));
-  A := Bdos(21, Addr(T.FCB));
-  T.Offset := 0;
+  with T do
+  begin
+    DMA[Offset] := C;
+    Inc(Offset);
+    if Offset = 128 then
+    begin
+      BlockWrite(FCB, DMA, 1, E);
+      Offset := 0;
+    end;
+  end;
 end;
 
-
-procedure WriteChar(var T: Text; C: Char);
-begin
-  if T.Offset > 127 then WriteRec(T);
-  T.DMA[T.Offset] := C;
-  T.Offset := T.Offset + 1;
-end;
-
-procedure WriteLine(var T: Text; S: String);
+procedure TextClose(var T: TextRec);
 var
-  I: Integer;
+  E: Integer;
 begin
-  for I := 1 to Length(S) do WriteChar(T, S[I]);
+  with T do
+  begin
+    if Writable then
+    begin
+      TextWriteChar(T, #26);
 
-  WriteChar(T, #13);
-  WriteChar(T, #10);
+      if Offset <> 0 then
+        BlockWrite(FCB, DMA, 1, E);
+    end;
+
+    BlockClose(FCB);
+
+    Readable := False;
+    Writable := False;
+  end;
 end;
 
-function IsEof(var T: Text): Boolean;
+procedure TextWriteLine(var T: TextRec; S: String);
+var
+  I: Byte;
 begin
-  if T.Offset > 127 then ReadRec(T);
-  IsEof := T.DMA[T.Offset] = #26;
+  for I := 1 to Length(S) do
+    TextWriteChar(T, S[I]);
+
+  TextWriteChar(T, #13);
+  TextWriteChar(T, #10);
+end;
+
+function TextEof(var T: TextRec): Boolean;
+begin
+  with T do
+    TextEof := DMA[Offset] = #26;
 end;        
 
-procedure Close(var T: Text);
-var
-  A: Integer;
+(* --- Typed file routines, use FileRec as representation ------------------- *)
+
+procedure FileAssign(var F: FileRec; Name: String; Size: Integer);
 begin
-  if T.Writing then
+  with F do
   begin
-    WriteChar(T, #26);
-    WriteRec(T);
+    BlockAssign(FCB, Name);
+    CompSize := Size;
   end;
-
-  A := Bdos(16, Addr(T.FCB));
 end;
 
-procedure Erase(var T: Text);
+procedure FileReset(var F: FileRec);
 var
-  A: Integer;
+  E: Integer;
 begin
-  A := Bdos(19, Addr(T.FCB));
+  with F do
+  begin
+    BlockReset(FCB);
+    BlockRead(FCB, DMA, 1, E);
+
+    if CompSize <> Size then WriteLn('Invalid file type'); (* Halt *)
+    CompCount := Count;
+    CompIndex := 0;
+
+    Offset := 4;
+    Modified := False;
+  end;
 end;
 
-procedure Rename(var T: Text; S: String);
-var
-  F: FileControlBlock;
-  A: Integer;
+procedure FileRewrite(var F: FileRec);
 begin
-  InitFCB(F, S);
-  Move(F, T.FCB.AL, 12);
-  A := Bdos(23, Addr(T.FCB));
+  with F do
+  begin
+    BlockRewrite(FCB);
+
+    Count := 0;
+    Size := CompSize;
+
+    Offset := 4;
+    Modified := True;
+  end;
+end;
+
+function FileSize(var F: FileRec): Integer;
+begin
+  FileSize := F.CompCount;
+end;
+
+function FilePos(var F: FileRec): Integer;
+begin
+  FilePos := F.CompIndex;
+end;
+
+function FileEof(var F: FileRec): Boolean;
+begin
+  with F do
+    FileEof := CompIndex = CompCount;
+end;
+
+procedure FileSeek(var F: FileRec; I: Integer);
+var
+  P, E: Integer;
+begin
+  with F do
+  begin
+    P := 4 + I * CompSize;    (* Should we use Real here?    *)
+    BlockSeek(FCB, P / 128);  (* Why does div not work here? *)
+    if I < CompCount then
+      BlockRead(FCB, DMA, 1, E);
+    Offset := P mod 128;
+  end;
+end;
+
+procedure FileRead(var F: FileRec; var Comp);
+var
+  Address, Need, Avail, Bytes, E: Integer;
+begin
+  with F do
+  begin
+    Address := Addr(Comp);
+    Need := CompSize;
+
+    while Need <> 0 do
+    begin
+      Avail := 128 - Offset;
+      if Avail >= Need then
+        Bytes := Need
+      else
+        Bytes := Avail;
+
+      Move(DMA[Offset], Mem[Address], Bytes); (* Hmm... feels like a hack. *)
+      Inc(Address, Bytes);
+      Inc(Offset, Bytes);
+      Dec(Need, Bytes);
+
+      if Offset = 128 then
+      begin
+        if Modified then
+        begin
+          BlockSeek(FCB, BlockFilePos(FCB) - 1);
+          BlockWrite(FCB, DMA, 1, E);
+          Modified := False;
+          Offset := 0;
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure FileWrite(var F: FileRec; var Comp);
+var
+  Address, Need, Avail, Bytes, E: Integer;
+begin
+  with F do
+  begin
+    Need := CompSize;
+
+    while Need <> 0 do
+    begin
+      Avail := 128 - Offset;
+      if Avail >= Need then
+        Bytes := Need
+      else
+        Bytes := Avail;
+
+      Move(Mem[Address], DMA[Offset], Bytes); (* Hmm... feels like a hack. *)
+      Inc(Address, Bytes);
+      Inc(Offset, Bytes);
+      Dec(Need, Bytes);
+      Modified := True;
+
+      if Offset = 128 then
+      begin
+        if Modified then
+        begin
+          BlockSeek(FCB, BlockFilePos(FCB) - 1);
+          BlockWrite(FCB, DMA, 1, E);
+          Modified := False;
+          Offset := 0;
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure FileClose(var F: FileRec);
+var
+  E: Integer;
+begin
+  with F do
+  begin
+    if Modified then
+    begin
+      BlockSeek(FCB, BlockFilePos(FCB) - 1);
+      BlockWrite(FCB, DMA, 1, E);
+    end;
+
+    BlockSeek(FCB, 0);
+    BlockRead(FCB, DMA, 1, E);
+    Count := CompCount;
+    BlockSeek(FCB, 0);
+    BlockWrite(FCB, DMA, 1, E);
+
+    BlockClose(FCB);
+  end;
 end;
