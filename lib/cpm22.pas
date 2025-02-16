@@ -96,13 +96,37 @@ procedure BlockReset(var F: FileControlBlock);
 var
   A: Byte;
 begin
-  A := Bdos(19, Addr(F));
+  with F do
+  begin
+    EX := 0;
+    S1 := 0;
+    S2 := 0;
+    RC := 0;
+    CR := 0;
+
+    RL := 0;
+    RH := 0;
+  end;
+
+  A := Bdos(15, Addr(F));
 end;
 
 procedure BlockRewrite(var F: FileControlBlock);
 var
   A: Byte;
 begin
+  with F do
+  begin
+    EX := 0;
+    S1 := 0;
+    S2 := 0;
+    RC := 0;
+    CR := 0;
+
+    RL := 0;
+    RH := 0;
+  end;
+
   A := Bdos(19, Addr(F));
   A := Bdos(22, Addr(F));
 end;
@@ -154,7 +178,7 @@ begin
   while Count > 0 do
   begin
     A := Bdos(26, DMA);
-    A := Bdos(20, Addr(F));
+    A := Bdos(33, Addr(F));
 
     Inc(F.RL);
     Inc(DMA, 128);
@@ -174,7 +198,7 @@ begin
   while Count > 0 do
   begin
     A := Bdos(26, DMA);
-    A := Bdos(21, Addr(F));
+    A := Bdos(34, Addr(F));
 
     Inc(F.RL);
     Inc(DMA, 128);
@@ -222,7 +246,7 @@ begin
   begin
     BlockSeek(FCB, BlockFileSize(FCB) - 1);
     BlockRead(FCB, DMA, 1, E);
-
+    
     for Offset := 0 to 127 do
       if DMA[Offset] = #26 then Exit;
   end;
@@ -236,6 +260,8 @@ begin
   begin
     TextReset(T);
     TextSeekEof(T);
+
+    Dec(FCB.RL);
 
     Readable := False;
     Writable := True;
@@ -419,6 +445,7 @@ end;
 procedure FileRead(var F: FileRec; var Comp);
 var
   Address, Need, Avail, Bytes, E: Integer;
+  Mem: array[0..65535] of Byte absolute 0;
 begin
   with F do
   begin
@@ -455,6 +482,7 @@ end;
 procedure FileWrite(var F: FileRec; var Comp);
 var
   Address, Need, Avail, Bytes, E: Integer;
+  Mem: array[0..65535] of Byte absolute 0;
 begin
   with F do
   begin
