@@ -30,7 +30,7 @@ type
     Modified: Boolean;                  (* Current record has been modified   *)
     case Boolean of
       False: (DMA: array[0..127] of Char;); (* Internal sector buffer         *)
-      True:  (Count, Size: Integer;);       (* Typed file header              *)
+      True:  (HdrCount, HdrSize: Integer;); (* Typed file header              *)
   end;
 
 (* --- Untyped file routines, use FileControlBlock as representation -------- *)
@@ -389,26 +389,37 @@ begin
     BlockReset(FCB);
     BlockRead(FCB, DMA, 1, E);
 
-    if CompSize <> Size then WriteLn('Invalid file type'); (* Halt *)
-    CompCount := Count;
+    if CompSize <> HdrSize then WriteLn('Invalid file type'); (* Halt *)
+    CompCount := HdrCount;
     CompIndex := 0;
 
     Offset := 4;
     Modified := False;
+
+    WriteLn('Opened existing file, size=', CompSize, ' count=', CompCount);
   end;
 end;
 
 procedure FileRewrite(var F: FileRec);
+var
+  E: Integer;
 begin
   with F do
   begin
     BlockRewrite(FCB);
 
-    Count := 0;
-    Size := CompSize;
+    HdrSize := CompSize;
+    HdrCount := 0;
+
+    CompCount := 0;
+    CompIndex := 0;
 
     Offset := 4;
     Modified := True;
+
+    BlockWrite(FCB, DMA, 1, E);
+
+    WriteLn('Created new file, size=', CompSize, ' count=', CompCount);
   end;
 end;
 
@@ -428,17 +439,37 @@ begin
     FileEof := CompIndex = CompCount;
 end;
 
+procedure FileFlush(var F: FileRec);
+var
+  E: Integer;
+begin
+  with F do
+  begin
+    if Modified then
+    begin
+      Dec(FCB.RL);
+      BlockWrite(FCB, DMA, 1, E);
+      Modified := False;
+    end;
+  end;
+end;
+
 procedure FileSeek(var F: FileRec; I: Integer);
 var
   P, E: Integer;
 begin
   with F do
   begin
+    FileFlush(F);
+
     P := 4 + I * CompSize;    (* Should we use Real here?    *)
     BlockSeek(FCB, P / 128);  (* Why does div not work here? *)
     if I < CompCount then
       BlockRead(FCB, DMA, 1, E);
+
     Offset := P mod 128;
+
+    CompIndex := I;
   end;
 end;
 
@@ -446,7 +477,10 @@ procedure FileRead(var F: FileRec; var Comp);
 var
   Address, Need, Avail, Bytes, E: Integer;
   Mem: array[0..65535] of Byte absolute 0;
+  P: ^Byte absolute Address;
 begin
+  WriteLn('Read entry #', FilePos(F));
+
   with F do
   begin
     Address := Addr(Comp);
@@ -460,22 +494,19 @@ begin
       else
         Bytes := Avail;
 
-      Move(DMA[Offset], Mem[Address], Bytes); (* Hmm... feels like a hack. *)
+      Move(DMA[Offset], P^, Bytes); (* Hmm... feels like a hack. *)
       Inc(Address, Bytes);
       Inc(Offset, Bytes);
       Dec(Need, Bytes);
 
       if Offset = 128 then
       begin
-        if Modified then
-        begin
-          BlockSeek(FCB, BlockFilePos(FCB) - 1);
-          BlockWrite(FCB, DMA, 1, E);
-          Modified := False;
-          Offset := 0;
-        end;
+        FileFlush(F);
+        Offset := 0;
       end;
     end;
+
+    Inc(CompIndex);
   end;
 end;
 
@@ -483,9 +514,13 @@ procedure FileWrite(var F: FileRec; var Comp);
 var
   Address, Need, Avail, Bytes, E: Integer;
   Mem: array[0..65535] of Byte absolute 0;
+  P: ^Byte absolute Address;
 begin
+  WriteLn('Wrote entry #', FilePos(F));
+
   with F do
   begin
+    Address := Addr(Comp);
     Need := CompSize;
 
     while Need <> 0 do
@@ -496,7 +531,7 @@ begin
       else
         Bytes := Avail;
 
-      Move(Mem[Address], DMA[Offset], Bytes); (* Hmm... feels like a hack. *)
+      Move(P^, DMA[Offset], Bytes); (* Hmm... feels like a hack. *)
       Inc(Address, Bytes);
       Inc(Offset, Bytes);
       Dec(Need, Bytes);
@@ -504,15 +539,13 @@ begin
 
       if Offset = 128 then
       begin
-        if Modified then
-        begin
-          BlockSeek(FCB, BlockFilePos(FCB) - 1);
-          BlockWrite(FCB, DMA, 1, E);
-          Modified := False;
-          Offset := 0;
-        end;
+        FileFlush(F);
+        Offset := 0;
       end;
     end;
+
+    if CompIndex = CompCount then Inc(CompCount);
+    Inc(CompIndex);
   end;
 end;
 
@@ -522,18 +555,15 @@ var
 begin
   with F do
   begin
-    if Modified then
-    begin
-      BlockSeek(FCB, BlockFilePos(FCB) - 1);
-      BlockWrite(FCB, DMA, 1, E);
-    end;
+    FileFlush(F);
 
     BlockSeek(FCB, 0);
     BlockRead(FCB, DMA, 1, E);
-    Count := CompCount;
+    HdrCount := CompCount;
     BlockSeek(FCB, 0);
     BlockWrite(FCB, DMA, 1, E);
 
     BlockClose(FCB);
   end;
+  WriteLn('Closed file');
 end;
