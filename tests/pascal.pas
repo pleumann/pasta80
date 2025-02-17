@@ -32,6 +32,15 @@ begin
 
   with C do
   begin
+    Name := 'VIC-20';
+    Year := 1980;
+    Cool := False;
+  end;
+
+  FileWrite(F, C);
+
+  with C do
+  begin
     Name := 'ZX 81';
     Year := 1981;
     Cool := True;
@@ -61,6 +70,33 @@ begin
     Name := 'Commodore 64';
     Year := 1982;
     Cool := False;
+  end;
+
+  FileWrite(F, C);
+
+  with C do
+  begin
+    Name := 'Atari ST';
+    Year := 1985;
+    Cool := True;
+  end;
+
+  FileWrite(F, C);
+
+  with C do
+  begin
+    Name := 'Amiga';
+    Year := 1985;
+    Cool := True;
+  end;
+
+  FileWrite(F, C);
+
+  with C do
+  begin
+    Name := 'Archimedes';
+    Year := 1987;
+    Cool := True;
   end;
 
   FileWrite(F, C);
