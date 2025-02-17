@@ -374,7 +374,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scVar, scLabel, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scFileType, scVar, scLabel, scProc, scFunc, scScope);
 
   // Flags: Forward, External, Register, Magic, Reference, Writable, Relative, Sizable, Addressable
 
@@ -404,9 +404,11 @@ type
 var
   SymbolTable: PSymbol = nil;
   Level, Offset: Integer;
-  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtText: PSymbol;
+  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtFile, dtText: PSymbol;
 
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
+
+  AssignProc, ResetProc, RewriteProc, CloseProc, SeekProc, FilePosFunc, FileSizeFunc, EofFunc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   FillProc, IncProc, DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
@@ -685,6 +687,12 @@ begin
   dtString := CreateSymbol(scStringType, 'String');
   dtString^.Value := 256;
 
+  dtFile := CreateSymbol(scFileType, 'File');
+  dtFile^.Value := 256; (* FIXME *)
+
+  dtText := CreateSymbol(scFileType, 'Text');
+  dtText^.Value := 256; (* FIXME *)
+
   dtReal := CreateSymbol(scType, 'Real');
   dtReal^.Value := 6;
 
@@ -712,6 +720,15 @@ begin
   ReadLnProc := RegisterMagic(scProc, 'ReadLn');
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
+
+  AssignProc := RegisterMagic(scProc, 'Assign');
+  ResetProc := RegisterMagic(scProc, 'Reset');
+  RewriteProc := RegisterMagic(scProc, 'Rewrite');
+  CloseProc := RegisterMagic(scProc, 'Close');
+  SeekProc := RegisterMagic(scProc, 'Seek');
+  FilePosFunc := RegisterMagic(scFunc, 'FilePos');
+  FileSizeFunc := RegisterMagic(scFunc, 'FileSize');
+  EofFunc := RegisterMagic(scFunc, 'Eof');
 
   IncProc := RegisterMagic(scProc, 'Inc');
   DecProc := RegisterMagic(scProc, 'Dec');
@@ -3280,6 +3297,30 @@ begin
     EmitI('pop hl');
     EmitI('call __fillchar');
   end
+  else if Proc = AssignProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+    T := ParseExpression;
+    if T^.Kind <> scFileType then Error('File type expected');
+    Expect(toComma);
+    NextToken;
+    if ParseExpression^.Kind <> scStringType then Error('String expected');
+    Expect(toRParen);
+    NextToken;
+
+    WriteLn('<<< ', T^.Name);
+
+    if (T = dtFile) or (T^.DataType = dtFile) then
+      EmitCall(LookupGlobal('BlockAssign'))
+    else if T = dtText then
+      EmitCall(LookupGlobal('TextAssign'))
+    else
+      EmitCall(LookupGlobal('FileAssign'));
+
+    WriteLn('>>>');
+  end
   else
     Error('Cannot handle: ' + Proc^.Name);
 end;
@@ -4617,6 +4658,18 @@ begin
     end
     else DataType^.Value := 256;
   end
+  else if Scanner.Token = toFile then
+  begin
+    NextToken;
+
+    if Scanner.Token = toOf then
+    begin
+      DataType := CreateSymbol(scFileType, '');
+      NextToken;
+      DataType^.DataType := ParseTypeDef;
+    end
+    else DataType := dtFile;
+  end
   else if Scanner.Token = toRecord then
   begin
     DataType := CreateSymbol(scRecordType, '');
@@ -4786,7 +4839,7 @@ begin
     end
     else
     begin
-      if not (Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType, scSubrangeType]) then
+      if not (Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType, scSubrangeType, scFileType]) then
         Error('Not a type: ' + Scanner.StrValue);
 
       DataType := Sym;

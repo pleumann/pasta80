@@ -209,6 +209,11 @@ end;
 
 (* --- Text file routines, use TextRec as representation -------------------- *)
 
+procedure TextAssign(var T: TextRec; Name: String);
+begin
+  BlockAssign(T.FCB, Name);
+end;
+
 procedure TextReset(var T: TextRec);
 var
   E: Integer;
