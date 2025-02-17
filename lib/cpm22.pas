@@ -507,6 +507,8 @@ begin
       if Offset = 128 then
       begin
         FileFlush(F);
+        (*Inc(FCB.RL);*)
+        BlockRead(FCB, DMA, 1, E);
         Offset := 0;
       end;
     end;
@@ -545,6 +547,7 @@ begin
       if Offset = 128 then
       begin
         FileFlush(F);
+        Inc(FCB.RL);
         Offset := 0;
       end;
     end;
