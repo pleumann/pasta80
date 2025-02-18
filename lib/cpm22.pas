@@ -167,7 +167,7 @@ begin
   F.RL := I;
 end;
 
-procedure BlockRead(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
+procedure BlockBlockRead(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
 var
   A: Byte;
   DMA: Integer;
@@ -187,13 +187,13 @@ begin
   end;
 end;
 
-procedure BlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
+procedure BlockBlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; Actual: Integer);
 var
   A: Byte;
   DMA: Integer;
 begin
   DMA := Addr(Buffer);
-  Actual := 0;
+  (*Actual := 0;*)
 
   while Count > 0 do
   begin
@@ -202,7 +202,7 @@ begin
 
     Inc(F.RL);
     Inc(DMA, 128);
-    Inc(Actual);
+(*    Inc(Actual);*)
     Dec(Count);
   end;
 end;
@@ -221,7 +221,7 @@ begin
   with T do
   begin
     BlockReset(FCB);
-    BlockRead(FCB, DMA, 1, E);
+    BlockBlockRead(FCB, DMA, 1, E);
 
     Readable := True;
     Writable := False;
@@ -250,7 +250,7 @@ begin
   with T do
   begin
     BlockSeek(FCB, BlockFileSize(FCB) - 1);
-    BlockRead(FCB, DMA, 1, E);
+    BlockBlockRead(FCB, DMA, 1, E);
     
     for Offset := 0 to 127 do
       if DMA[Offset] = #26 then Exit;
@@ -285,14 +285,14 @@ begin
       Inc(Offset);
       if Offset = 128 then
       begin
-        BlockRead(FCB, DMA, 1, E);
+        BlockBlockRead(FCB, DMA, 1, E);
         Offset := 0;
       end;
     end;
   end;
 end;
 
-procedure TextSeekEol(var T: TextRec);
+procedure TextSeekEoln(var T: TextRec);
 var
   C: Char;
 begin
@@ -330,9 +330,28 @@ begin
     Inc(Offset);
     if Offset = 128 then
     begin
-      BlockWrite(FCB, DMA, 1, E);
+      BlockBlockWrite(FCB, DMA, 1, E);
       Offset := 0;
     end;
+  end;
+end;
+
+procedure TextFlush(var T: TextRec);
+var
+  E: Integer;
+begin
+  with T do
+  begin
+    (* FIXME !!! *)
+    TextWriteChar(T, #26);
+
+    if Offset <> 0 then
+      BlockBlockWrite(FCB, DMA, 1, E);
+
+    BlockClose(FCB);
+
+    Readable := False;
+    Writable := False;
   end;
 end;
 
@@ -347,7 +366,7 @@ begin
       TextWriteChar(T, #26);
 
       if Offset <> 0 then
-        BlockWrite(FCB, DMA, 1, E);
+        BlockBlockWrite(FCB, DMA, 1, E);
     end;
 
     BlockClose(FCB);
@@ -367,6 +386,12 @@ begin
   TextWriteChar(T, #13);
   TextWriteChar(T, #10);
 end;
+
+function TextEoln(var T: TextRec): Boolean;
+begin
+  with T do
+    TextEoln := DMA[Offset] = #13;
+end;        
 
 function TextEof(var T: TextRec): Boolean;
 begin
@@ -392,7 +417,7 @@ begin
   with F do
   begin
     BlockReset(FCB);
-    BlockRead(FCB, DMA, 1, E);
+    BlockBlockRead(FCB, DMA, 1, E);
 
     if CompSize <> HdrSize then WriteLn('Invalid file type'); (* Halt *)
     CompCount := HdrCount;
@@ -422,20 +447,20 @@ begin
     Offset := 4;
     Modified := True;
 
-    BlockWrite(FCB, DMA, 1, E);
+    BlockBlockWrite(FCB, DMA, 1, E);
 
     WriteLn('Created new file, size=', CompSize, ' count=', CompCount);
   end;
 end;
 
-function FileSize(var F: FileRec): Integer;
+function FileFileSize(var F: FileRec): Integer;
 begin
-  FileSize := F.CompCount;
+  FileFileSize := F.CompCount;
 end;
 
-function FilePos(var F: FileRec): Integer;
+function FileFilePos(var F: FileRec): Integer;
 begin
-  FilePos := F.CompIndex;
+  FileFilePos := F.CompIndex;
 end;
 
 function FileEof(var F: FileRec): Boolean;
@@ -453,7 +478,7 @@ begin
     if Modified then
     begin
       Dec(FCB.RL);
-      BlockWrite(FCB, DMA, 1, E);
+      BlockBlockWrite(FCB, DMA, 1, E);
       Modified := False;
     end;
   end;
@@ -470,7 +495,7 @@ begin
     P := 4 + I * CompSize;    (* Should we use Real here?    *)
     BlockSeek(FCB, P / 128);  (* Why does div not work here? *)
     if I < CompCount then
-      BlockRead(FCB, DMA, 1, E);
+      BlockBlockRead(FCB, DMA, 1, E);
 
     Offset := P mod 128;
 
@@ -484,7 +509,7 @@ var
   Mem: array[0..65535] of Byte absolute 0;
   P: ^Byte absolute Address;
 begin
-  WriteLn('Read entry #', FilePos(F));
+  WriteLn('Read entry #', FileFilePos(F));
 
   with F do
   begin
@@ -508,7 +533,7 @@ begin
       begin
         FileFlush(F);
         (*Inc(FCB.RL);*)
-        BlockRead(FCB, DMA, 1, E);
+        BlockBlockRead(FCB, DMA, 1, E);
         Offset := 0;
       end;
     end;
@@ -523,7 +548,7 @@ var
   Mem: array[0..65535] of Byte absolute 0;
   P: ^Byte absolute Address;
 begin
-  WriteLn('Wrote entry #', FilePos(F));
+  WriteLn('Wrote entry #', FileFilePos(F));
 
   with F do
   begin
@@ -566,10 +591,10 @@ begin
     FileFlush(F);
 
     BlockSeek(FCB, 0);
-    BlockRead(FCB, DMA, 1, E);
+    BlockBlockRead(FCB, DMA, 1, E);
     HdrCount := CompCount;
     BlockSeek(FCB, 0);
-    BlockWrite(FCB, DMA, 1, E);
+    BlockBlockWrite(FCB, DMA, 1, E);
 
     BlockClose(FCB);
   end;

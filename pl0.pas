@@ -408,7 +408,8 @@ var
 
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
 
-  AssignProc, ResetProc, RewriteProc, CloseProc, SeekProc, FilePosFunc, FileSizeFunc, EofFunc: PSymbol;
+  EraseProc, RenameProc, AssignProc, ResetProc, RewriteProc, FlushProc, CloseProc, SeekProc, SeekEofProc, SeekEolnProc,
+  BlockReadProc, BlockWriteProc, FilePosFunc, FileSizeFunc, EolFunc, EofFunc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   FillProc, IncProc, DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
@@ -721,13 +722,24 @@ begin
   WriteProc := RegisterMagic(scProc, 'Write');
   WriteLnProc := RegisterMagic(scProc, 'WriteLn');
 
+  EraseProc := RegisterMagic(scProc, 'Erase');
+  RenameProc := RegisterMagic(scProc, 'Rename');
+
   AssignProc := RegisterMagic(scProc, 'Assign');
   ResetProc := RegisterMagic(scProc, 'Reset');
   RewriteProc := RegisterMagic(scProc, 'Rewrite');
   CloseProc := RegisterMagic(scProc, 'Close');
+  FlushProc := RegisterMagic(scProc, 'Flush');
   SeekProc := RegisterMagic(scProc, 'Seek');
+  SeekEofProc := RegisterMagic(scProc, 'SeekEof');
+  SeekEolnProc := RegisterMagic(scProc, 'SeekEoln');
+
+  BlockReadProc := RegisterMagic(scProc, 'BlockRead');
+  BlockWriteProc := RegisterMagic(scProc, 'BlockWrite');
+
   FilePosFunc := RegisterMagic(scFunc, 'FilePos');
   FileSizeFunc := RegisterMagic(scFunc, 'FileSize');
+  EolFunc := RegisterMagic(scFunc, 'Eoln');
   EofFunc := RegisterMagic(scFunc, 'Eof');
 
   IncProc := RegisterMagic(scProc, 'Inc');
@@ -2754,9 +2766,21 @@ begin
   else if Scanner.Token = toLParen then Error('Arguments not allowed here')
 end;
 
-function ParseBuiltInFunction(Func: PSymbol): PSymbol;
+function ParseVariableRef: PSymbol;
 var
   Sym: PSymbol;
+begin
+  Expect(toIdent);
+  Sym := LookupGlobal(Scanner.StrValue);
+  if Sym = nil then Error('Unknown identifier');
+  if Sym^.Kind <> scVar then Error('Variable expected');
+  NextToken;
+  ParseVariableRef := ParseVariableAccess(Sym);
+end;
+
+function ParseBuiltInFunction(Func: PSymbol): PSymbol;
+var
+  T, Sym: PSymbol;
   Old: PCode;
 begin
   if Func^.Kind <> scFunc then
@@ -2814,7 +2838,7 @@ begin
       while Code <> Old do RemoveCode;
     end;
 
-    if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType] then
+    if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scFileType] then
       EmitLiteral(Sym^.Value)
     else
       Error('Cannot apply SizeOf to ' + Sym^.Name);
@@ -2927,6 +2951,27 @@ begin
 
     ParseBuiltInFunction := dtString;  
   end
+  else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) then
+  begin
+    WriteLn('*** ', Func^.Name, ' ***');
+
+    EmitI('push de');
+
+    T := ParseVariableRef;
+    if T^.Kind <> scFileType then Error('File type expected');
+
+    if (T = dtFile) or (T^.DataType = dtFile) then
+      Sym := LookupGlobal('Block' + Func^.Name)
+    else if T = dtText then
+      Sym := LookupGlobal('Text' + Func^.Name)
+    else
+      Sym := LookupGlobal('File' + Func^.Name);
+
+    if Sym = nil then Error('Not allowed.');
+
+    EmitCall(Sym);
+    ParseBuiltInFunction := Sym^.DataType;
+  end
   else
     Error('Cannot handle: ' + Func^.Name);
 
@@ -2948,18 +2993,6 @@ begin
     else ParseFormat := 1;
   end
   else ParseFormat := 0;
-end;
-
-function ParseVariableRef: PSymbol;
-var
-  Sym: PSymbol;
-begin
-  Expect(toIdent);
-  Sym := LookupGlobal(Scanner.StrValue);
-  if Sym = nil then Error('Unknown identifier');
-  if Sym^.Kind <> scVar then Error('Variable expected');
-  NextToken;
-  ParseVariableRef := ParseVariableAccess(Sym);
 end;
 
 procedure EmitReadConsole(T: PSymbol);
@@ -2986,7 +3019,7 @@ end;
 
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
-  Sym, T, V, U: PSymbol;
+  Sym, T, TT, V, U: PSymbol;
   Tag: String;
   F: Integer;
 begin
@@ -3053,25 +3086,50 @@ begin
   else if (Proc = ReadProc) or (Proc = ReadLnProc) then
   begin
     NextToken;
-    EmitI('call __getline');
 
     if Scanner.Token = toLParen then
     begin
       NextToken;
       T := ParseVariableRef();
-      EmitI('pop hl');
-      EmitReadConsole(T);
-      while Scanner.Token = toComma do
+
+      if (Proc = ReadProc) and (T^.Kind = scFileType) then
       begin
-        NextToken;
+        while Scanner.Token = toComma do
+        begin
+          NextToken;
+
+          EmitI('pop hl');
+          EmitI('push hl');
+          EmitI('push hl');
+
+          TT := ParseVariableRef;
+          if TT <> T^.DataType then Error('Type mismatch');
+
+          EmitCall(LookupGlobal('FileRead'));
+        end;
+
+        EmitI('pop hl');
+      end
+      else
+      begin
+        EmitI('call __getline');
+
         T := ParseVariableRef();
         EmitI('pop hl');
         EmitReadConsole(T);
+        while Scanner.Token = toComma do
+        begin
+          NextToken;
+          T := ParseVariableRef();
+          EmitI('pop hl');
+          EmitReadConsole(T);
+        end;
       end;
 
       Expect(toRParen);
       NextToken;
-    end;
+    end
+    else EmitI('call __getline');
   end
   else if (Proc = WriteProc) or (Proc = WriteLnProc) then
   begin
@@ -3079,15 +3137,88 @@ begin
 
     if Scanner.Token = toLParen then
     begin
-      repeat
-        NextToken;
-        T := ParseExpression();
+      NextToken;
+      
+      EmitC('*** MARKER ***');
+      T := ParseExpression();
+
+      (*
+      if (Proc = WriteProc) and (T = dtText) then
+      begin
+        while not StartsWith(Code^.Instruction, 'ld hl,') do
+          RemoveCode;
+
+        EmitI('push hl');
+
+        while Scanner.Token = toComma do
+        begin
+          NextToken;
+
+          EmitI('pop hl');
+          EmitI('push hl');
+          EmitI('push hl');
+
+          T := ParseExpression;
+          F := ParseFormat;
+
+          V := ParseVariableRef;
+
+          case F of
+            0: EmitStr(T, V);
+            1: EmitStr1(T, V);
+            2: EmitStr2(T, V);
+          end;
+
+          TT := ParseExpression;
+          if TT <> T^.DataType then Error('Type mismatch');
+
+          EmitCall(LookupGlobal('FileWrite'));
+        end;
+
+        EmitI('pop hl');
+      end
+      else *) if (Proc = WriteProc) and (T^.Kind = scFileType) then
+      begin
+        while not StartsWith(Code^.Instruction, 'ld hl,') do
+          RemoveCode;
+
+        EmitI('push hl');
+
+        while Scanner.Token = toComma do
+        begin
+          NextToken;
+
+          EmitI('pop hl');
+          EmitI('push hl');
+          EmitI('push hl');
+
+          TT := ParseVariableRef;
+          if TT <> T^.DataType then Error('Type mismatch');
+
+          EmitCall(LookupGlobal('FileWrite'));
+        end;
+
+        EmitI('pop hl');
+      end
+      else
+      begin
         case ParseFormat of
           0: EmitWrite(T);
           1: EmitWrite1(T);
           2: EmitWrite2(T);
         end;
-      until Scanner.Token <> toComma;
+
+        while Scanner.Token = toComma do
+        begin
+          NextToken;
+          T := ParseExpression();
+          case ParseFormat of
+            0: EmitWrite(T);
+            1: EmitWrite1(T);
+            2: EmitWrite2(T);
+          end;
+        end;
+      end;
 
       Expect(toRParen);
       NextToken;
@@ -3302,7 +3433,7 @@ begin
     NextToken;
     Expect(toLParen);
     NextToken;
-    T := ParseExpression;
+    T := ParseVariableRef;
     if T^.Kind <> scFileType then Error('File type expected');
     Expect(toComma);
     NextToken;
@@ -3310,16 +3441,95 @@ begin
     Expect(toRParen);
     NextToken;
 
-    WriteLn('<<< ', T^.Name);
-
     if (T = dtFile) or (T^.DataType = dtFile) then
       EmitCall(LookupGlobal('BlockAssign'))
     else if T = dtText then
       EmitCall(LookupGlobal('TextAssign'))
     else
+    begin
+      EmitLiteral(T^.DataType^.Value);
       EmitCall(LookupGlobal('FileAssign'));
+    end;
+  end
+  else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = CloseProc) or (Proc = FlushProc) or (Proc = SeekEofProc) or (Proc = SeekEolnProc) then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+    T := ParseVariableRef;
+    if T^.Kind <> scFileType then Error('File type expected');
+    Expect(toRParen);
+    NextToken;
 
-    WriteLn('>>>');
+    Writeln('*** ', Proc^.Name, ' ***');
+
+    if (T = dtFile) or (T^.DataType = dtFile) or (Proc = EraseProc) or (Proc = RenameProc) then
+      Sym := LookupGlobal('Block' + Proc^.Name)
+    else if T = dtText then
+      Sym := LookupGlobal('Text' + Proc^.Name)
+    else
+      Sym := LookupGlobal('File' + Proc^.Name);
+
+    if Sym = nil then Error('Not allowed.');
+
+    EmitCall(Sym);
+  end
+  else if Proc = SeekProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+    T := ParseVariableRef;
+    if T^.Kind <> scFileType then Error('File type expected');
+
+    Expect(toComma);
+    NextToken;
+    
+    ParseExpression; // ^.DataType <> dtByte and dtInteger then Error('Integer expected');
+
+    Expect(toRParen);
+    NextToken;
+
+    if (T = dtFile) or (T^.DataType = dtFile) then
+      EmitCall(LookupGlobal('BlockSeek'))
+    else if T <> dtText then
+      EmitCall(LookupGlobal('FileSeek'))
+    else
+      Error('Not allowed.');
+  end
+  else if (Proc = BlockReadProc) or (Proc = BlockWriteProc) then
+  begin
+    NextToken;
+    
+    Expect(toLParen);
+    NextToken;
+    
+    T := ParseVariableRef;
+    if T^.Kind <> scFileType then Error('File type expected');
+    
+    Expect(toComma);
+    NextToken;
+
+    ParseVariableRef; (* Src or dest *)
+
+    Expect(toComma);
+    NextToken;
+
+    TypeCheck(dtInteger, ParseExpression, tcExpr);
+
+    if Scanner.Token = toComma then
+    begin
+      NextToken;
+      ParseVariableRef; (* Actual bytes, check for integer!? *)
+    end
+    else EmitLiteral(0);
+
+    Expect(toRParen);
+    NextToken;
+
+    EmitCall(LookupGlobal('Block' + Proc^.Name));
+
+    // By Name umlenken auf Implementierung.
   end
   else
     Error('Cannot handle: ' + Proc^.Name);
@@ -4667,6 +4877,7 @@ begin
       DataType := CreateSymbol(scFileType, '');
       NextToken;
       DataType^.DataType := ParseTypeDef;
+      DataType^.Value := 256;
     end
     else DataType := dtFile;
   end
@@ -5138,12 +5349,12 @@ begin
         if Token = toProcedure then
         begin
           NewSym := CreateSymbol(scProc, Scanner.StrValue);
-          NewSym^.Tag := GetLabel('proc');
+          NewSym^.Tag := GetLabel('__' + NewSym^.Name);
         end
         else
         begin
           NewSym := CreateSymbol(scFunc, Scanner.StrValue);
-          NewSym^.Tag := GetLabel('func');
+          NewSym^.Tag := GetLabel('__' + NewSym^.Name);
         end;
 
         OpenScope(True);
