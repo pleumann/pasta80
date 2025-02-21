@@ -1,6 +1,6 @@
 # Pascal Compiler for Z80
 
-This is a [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language) (cross) compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M 2.2](https://en.wikipedia.org/wiki/CP/M) and the [ZX Spectrum Next](https://www.specnext.com) (the latter is currently not working, but I hope to get it back on par with CP/M soon). The Pascal dialect is an almost exact clone of the original [Turbo Pascal 3.0](https://en.wikipedia.org/wiki/Turbo_Pascal) for CP/M (see [this manual](https://bitsavers.trailing-edge.com/pdf/borland/turbo_pascal/Turbo_Pascal_Version_3.0_Reference_Manual_1986.pdf) for details).
+This is a [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) (cross) compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M 2.2](https://en.wikipedia.org/wiki/CP/M) and the [ZX Spectrum Next](https://www.specnext.com) (the latter is currently not working, but I hope to get it back on par with CP/M soon). The Pascal dialect is an almost exact clone of the original [Turbo Pascal 3.0](https://en.wikipedia.org/wiki/Turbo_Pascal) for CP/M (see [this manual](https://bitsavers.trailing-edge.com/pdf/borland/turbo_pascal/Turbo_Pascal_Version_3.0_Reference_Manual_1986.pdf) for details).
 
 The compiler is itself written in Pascal. You can compile it with [Free Pascal](https://www.freepascal.org) (I use version 3.2.2). Just run
 
@@ -13,8 +13,8 @@ The Pascal compiler generates Z80 assembler code and relies on [zasm](https://k1
 Add these lines to your `.bash_profile` to make sure everything is found:
 
 ```
-export PL0_HOME=<Path to pl0 folder>
-export PL0_ASM=<Path of zasm binary>
+export PL0_HOME=<path to pl0 folder>
+export PL0_ASM=<path of zasm binary>
 ```
 
 To run the compiler just invoke the executable with the name of a Pascal source file to translate. There is an optional parameter that enables some simple peephole optimizations:
@@ -32,4 +32,4 @@ $ tnylpo -s hello  # Run in b/w full-screen mode
 $ tnylpo -soy,4,0  # Run in full-screen mode with (Spectrum Next) colors
 ```
 
-There is a folder containing examples and a folder containing tests for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size.
+There is a folder containing examples and a folder containing tests for the compiler. The main test suite `all.pas` needs to be compiled with optimizations because of its size.
