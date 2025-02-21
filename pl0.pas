@@ -2954,8 +2954,6 @@ begin
   end
   else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) then
   begin
-    WriteLn('*** ', Func^.Name, ' ***');
-
     EmitI('push de');
 
     T := ParseVariableRef;
@@ -3095,8 +3093,6 @@ begin
 
       if ((Proc = ReadProc) or (Proc = ReadLnProc)) and (T = dtText) then
       begin
-        WriteLn('*** TEXT CASE ***');
-
         while not StartsWith(Code^.Instruction, 'ld hl,') do
           RemoveCode;
 
@@ -3178,13 +3174,10 @@ begin
     begin
       NextToken;
       
-      EmitC('*** MARKER ***');
       T := ParseExpression();
 
       if ((Proc = WriteProc) or (Proc = WriteLnProc)) and (T = dtText) then
       begin
-        WriteLn('*** TEXT CASE ***');
-
         while not StartsWith(Code^.Instruction, 'ld hl,') do
           RemoveCode;
 
@@ -3511,8 +3504,6 @@ begin
     if T^.Kind <> scFileType then Error('File type expected');
     Expect(toRParen);
     NextToken;
-
-    Writeln('*** ', Proc^.Name, ' ***');
 
     if (T = dtFile) or (T^.DataType = dtFile) or (Proc = EraseProc) or (Proc = RenameProc) then
       Sym := LookupGlobal('Block' + Proc^.Name)
