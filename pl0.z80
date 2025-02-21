@@ -315,7 +315,7 @@ __neg16:
 ;
 
 __random:
-    ; ex hl,de
+    ex hl,de
     call __rand16
     res 7,h
     call __sdiv16
@@ -323,7 +323,7 @@ __random:
     ret
 
 __random48:
-    ; ex hl,de
+    ex hl,de
     call __rand16
     push hl
     call __rand16
