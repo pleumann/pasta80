@@ -3149,7 +3149,6 @@ begin
       begin
         EmitI('call __getline');
 
-        T := ParseVariableRef();
         EmitI('pop hl');
         EmitReadConsole(T);
         while Scanner.Token = toComma do
@@ -3268,7 +3267,8 @@ begin
 
       Expect(toRParen);
       NextToken;
-    end;
+    end
+    else if Proc = WriteLnProc then EmitI('call __newline');
   end
   else if Proc = IncProc then
   begin
