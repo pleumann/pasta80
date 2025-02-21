@@ -1,8 +1,5 @@
 program RawFiles;
 
-{$a+}
-{$i/Users/joerg/Projekte/pl0/lib/cpm22.pas}
-
 var
   Raw: File;
 

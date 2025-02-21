@@ -408,7 +408,7 @@ var
 
   AssertProc, BreakProc, ContProc, ExitProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
 
-  EraseProc, RenameProc, AssignProc, ResetProc, RewriteProc, FlushProc, CloseProc, SeekProc, SeekEofProc, SeekEolnProc,
+  EraseProc, RenameProc, AssignProc, ResetProc, RewriteProc, AppendProc, FlushProc, CloseProc, SeekProc, SeekEofProc, SeekEolnProc,
   BlockReadProc, BlockWriteProc, FilePosFunc, FileSizeFunc, EolFunc, EofFunc: PSymbol;
 
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
@@ -728,6 +728,7 @@ begin
   AssignProc := RegisterMagic(scProc, 'Assign');
   ResetProc := RegisterMagic(scProc, 'Reset');
   RewriteProc := RegisterMagic(scProc, 'Rewrite');
+  AppendProc := RegisterMagic(scProc, 'Append');
   CloseProc := RegisterMagic(scProc, 'Close');
   FlushProc := RegisterMagic(scProc, 'Flush');
   SeekProc := RegisterMagic(scProc, 'Seek');
@@ -3092,7 +3093,45 @@ begin
       NextToken;
       T := ParseVariableRef();
 
-      if (Proc = ReadProc) and (T^.Kind = scFileType) then
+      if ((Proc = ReadProc) or (Proc = ReadLnProc)) and (T = dtText) then
+      begin
+        WriteLn('*** TEXT CASE ***');
+
+        while not StartsWith(Code^.Instruction, 'ld hl,') do
+          RemoveCode;
+
+        // EmitI('pop hl');
+        EmitI('ld (__cur_file),hl');
+
+        while Scanner.Token = toComma do
+        begin
+          NextToken;
+
+          EmitI('ld hl,(__cur_file)');
+          EmitI('push hl');
+
+          T := ParseVariableRef;
+
+          if T^.Kind = scStringType then
+            EmitCall(LookupGlobal('TextReadStr'))
+          else if T = dtChar then
+            EmitCall(LookupGlobal('TextReadChar'))
+          else if T = dtInteger then
+            EmitCall(LookupGlobal('TextReadInt'))
+          else if T = dtReal then
+            EmitCall(LookupGlobal('TextReadFloat'))
+          else
+            Error('Unreadable type');
+        end;
+
+        if (Proc = ReadLnProc) and (T^.Kind <> scStringType) then
+        begin
+          EmitI('ld hl,(__cur_file)');
+          EmitI('push hl');
+          EmitCall(LookupGlobal('TextSeekEoln'));
+        end;
+      end
+      else if (Proc = ReadProc) and (T^.Kind = scFileType) then
       begin
         while Scanner.Token = toComma do
         begin
@@ -3142,42 +3181,54 @@ begin
       EmitC('*** MARKER ***');
       T := ParseExpression();
 
-      (*
-      if (Proc = WriteProc) and (T = dtText) then
+      if ((Proc = WriteProc) or (Proc = WriteLnProc)) and (T = dtText) then
       begin
+        WriteLn('*** TEXT CASE ***');
+
         while not StartsWith(Code^.Instruction, 'ld hl,') do
           RemoveCode;
 
-        EmitI('push hl');
+        EmitI('ld (__cur_file),hl');
+        EmitSpace(256);
+        EmitI('ld hl,0');
+        EmitI('add hl,sp');
+        EmitI('ld (__text_buf), hl');
 
         while Scanner.Token = toComma do
         begin
           NextToken;
 
-          EmitI('pop hl');
-          EmitI('push hl');
-          EmitI('push hl');
-
           T := ParseExpression;
           F := ParseFormat;
 
-          V := ParseVariableRef;
+          EmitI('ld hl,(__text_buf)');
+          EmitI('push hl');
+
+          V := dtString;
 
           case F of
             0: EmitStr(T, V);
-            1: EmitStr1(T, V);
-            2: EmitStr2(T, V);
+            1: EmitStr1(T, V); (* Broken? *)
+            2: EmitStr2(T, V); (* Broken? *)
           end;
 
-          TT := ParseExpression;
-          if TT <> T^.DataType then Error('Type mismatch');
-
-          EmitCall(LookupGlobal('FileWrite'));
+          EmitI('ld hl,(__cur_file)');
+          EmitI('push hl');
+          EmitI('ld hl,(__text_buf)');
+          EmitI('call __loadstr');
+          EmitCall(LookupGlobal('TextWriteStr'));
         end;
 
-        EmitI('pop hl');
+        EmitClear(256);
+
+        if Proc = WriteLnProc then
+        begin
+          EmitI('ld hl,(__cur_file)');
+          EmitI('push hl');
+          EmitCall(LookupGlobal('TextWriteEoln'));
+        end;
       end
-      else *) if (Proc = WriteProc) and (T^.Kind = scFileType) then
+      else if (Proc = WriteProc) and (T^.Kind = scFileType) then
       begin
         while not StartsWith(Code^.Instruction, 'ld hl,') do
           RemoveCode;
@@ -3218,13 +3269,13 @@ begin
             2: EmitWrite2(T);
           end;
         end;
+
+        if Proc = WriteLnProc then EmitI('call __newline');
       end;
 
       Expect(toRParen);
       NextToken;
     end;
-
-    if Proc = WriteLnProc then EmitI('call __newline');
   end
   else if Proc = IncProc then
   begin
@@ -3451,7 +3502,7 @@ begin
       EmitCall(LookupGlobal('FileAssign'));
     end;
   end
-  else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = CloseProc) or (Proc = FlushProc) or (Proc = SeekEofProc) or (Proc = SeekEolnProc) then
+  else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = AppendProc) or (Proc = CloseProc) or (Proc = FlushProc) or (Proc = SeekEofProc) or (Proc = SeekEolnProc) then
   begin
     NextToken;
     Expect(toLParen);

@@ -1,8 +1,5 @@
 program BinFiles;
 
-{$a+}
-{$i/Users/joerg/Projekte/pl0/lib/cpm22.pas}
-
 type
   ComputerRec = record
     Name: String[12];
@@ -12,7 +9,6 @@ type
 
 var
   Bin: file of ComputerRec;
-
   C: ComputerRec;
   I: Integer;
 
