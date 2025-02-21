@@ -118,7 +118,6 @@ begin
   repeat
     I := 1 + Random(4);
     J := 1 + Random(4);
-    WriteLn(I, '/', J, '=', Board[I, J]);
   until Board[I, J] = 0;
 
   Board[I, J] := K;
