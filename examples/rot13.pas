@@ -1,9 +1,6 @@
 program Rot13;
 
-type
-  Str255 = string[255];
-  
-function Crypt(S: Str255): Str255;
+function Crypt(S: string): string;
 var
   I: Integer;
   C: Char;
@@ -19,6 +16,9 @@ begin
 
   Crypt := S;
 end;
+
+var
+  S: string;
 
 begin
   repeat

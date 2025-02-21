@@ -1,7 +1,7 @@
 program Colors;
 
 var
-  B, C;
+  B, C: Integer;
 begin
   ClrScr;
   for B := 0 to 7 do

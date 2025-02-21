@@ -1,23 +1,23 @@
 program Crt;
 
 var
-  I, Y, X, Z, F, B;
+  I, Y, X, Z, F, B: Integer;
 
 begin
   ClrScr;
   I := 0;
   while I < 5000 do
   begin
-    X := 1 + Random mod 54;
-    Y := 1 + Random mod 23;
+    X := 1 + Random(80);
+    Y := 1 + Random(23);
     repeat
-      F := Random mod 8;
-      B := Random mod 8;
+      F := Random(8);
+      B := Random(8);
     until F <> B;
     GotoXY(X,Y);
     TextColor(F);
     TextBackground(B);
-    Write('Thank you! tnylpo rocks! :)');
+    Write('* Pascal *');
     I := I + 1;
   end;
 end.

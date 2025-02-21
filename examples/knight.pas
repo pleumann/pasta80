@@ -1,5 +1,7 @@
 program Knight;
 
+{$a-}
+
 var
   Seen: array[0..24] of Boolean;
   Path: array[0..25] of Char;

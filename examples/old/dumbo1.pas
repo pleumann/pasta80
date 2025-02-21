@@ -1,7 +1,7 @@
 program Dumbo;
 
 const
-  Values: array[10] of array[10] of Integer = (
+  Values: array[0..9] of array[0..9] of Integer = (
     (2,5,2,4,2,5,5,3,3,1),
     (1,1,3,5,6,2,5,8,8,1),
     (2,8,3,8,3,5,3,8,6,3),

@@ -1,10 +1,12 @@
 program Quick;
 
+{$a-}
+
 const
   Count = 200;
 
 type
-  TIntArray = array[Count] of Integer;
+  TIntArray = array[1..Count] of Integer;
 
 var
   Numbers: TIntArray;
@@ -14,7 +16,7 @@ procedure Dump(var A: TIntArray);
 var
   I: Integer;
 begin
-  for I := 0 to Count - 1 do
+  for I := 1 to Count do
     Write(A[I], ' ');
   WriteLn;
   WriteLn;
@@ -52,16 +54,16 @@ begin
   WriteLn('*** Quicksort ***');
   WriteLn;
 
-  WriteLn('Generating', Count, ' random numbers...');
+  WriteLn('Generating ', Count, ' random numbers...');
   WriteLn;
-  for I := 0 to Count - 1 do
+  for I := 1 to Count do
     Numbers[I] := Random(Count);
   
   Dump(Numbers);
 
-  WriteLn('Sorting array of', Count, ' numbers...');
+  WriteLn('Sorting array of ', Count, ' numbers...');
   WriteLn;
-  Sort(Numbers, 0, Count - 1);
+  Sort(Numbers, 1, Count);
 
   Dump(Numbers);
 

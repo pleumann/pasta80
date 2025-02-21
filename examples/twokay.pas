@@ -118,6 +118,7 @@ begin
   repeat
     I := 1 + Random(4);
     J := 1 + Random(4);
+    WriteLn(I, '/', J, '=', Board[I, J]);
   until Board[I, J] = 0;
 
   Board[I, J] := K;
@@ -248,7 +249,7 @@ begin
   Write('Do you want ZX Spectrum Next colors (y/n)? '); C := ReadKey;
   Color := C = 'y';
 
-  Randomize;
+  (*Randomize;*)
 
   ClrScr;
 

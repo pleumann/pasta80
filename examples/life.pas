@@ -6,7 +6,7 @@ const
   Percent  = 10;
 
 var
-  Map: array[2] of array[20] of array[30] of Integer;
+  Map: array[0..1] of array[0..19] of array[0..29] of Integer;
   This, Next, Cycle, Live: Integer;
 
 procedure Paint;
@@ -86,7 +86,7 @@ begin
     CursorOff;
     Paint;
     TextColor(7);
-    Write('Cycle:', Cycle,'  Alive:', Live, '  ');
+    Write('Cycle: ', Cycle,'  Alive: ', Live, '  ');
     CursorOn;
 
     Think;
