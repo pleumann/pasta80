@@ -6,9 +6,9 @@ var
 begin
   ClrScr;
   I := 0;
-  while I < 5000 do
+  while I < 10000 do
   begin
-    X := 1 + Random(80);
+    X := 1 + Random(71);
     Y := 1 + Random(23);
     repeat
       F := Random(8);
