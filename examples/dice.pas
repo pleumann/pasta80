@@ -13,9 +13,9 @@ begin
     for J := 1 to Dice do
     begin
       K := Random(20);
-      Write(K:2);
+      Write(K:4);
       Inc(Sum, K);
     end;
-    WriteLn(' -> ', Sum:2);
+    WriteLn(' -> ', Sum:5);
   end;
 end.
