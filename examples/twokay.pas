@@ -1,4 +1,4 @@
-program TwoKay;
+program TwoKay; (* Only works w/o optimization. Why? *)
 
 const
   Margin: string = '                         ';
@@ -249,7 +249,7 @@ begin
   Write('Do you want ZX Spectrum Next colors (y/n)? '); C := ReadKey;
   Color := C = 'y';
 
-  (*Randomize;*)
+  Randomize;
 
   ClrScr;
 

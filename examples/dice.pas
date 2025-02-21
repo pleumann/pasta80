@@ -1,6 +1,4 @@
-program Dice;
-
-{$a-}
+program Dice; (* Only works w/o optimization. Why? *)
 
 var
   Rolls, Dice, I, J, K, Sum: Integer;

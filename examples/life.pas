@@ -1,4 +1,4 @@
-program Life;
+program Life; (* Only works w/o optimization. Why? *)
 
 const
   Width    = 30;
