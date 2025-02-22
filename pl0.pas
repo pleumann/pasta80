@@ -9,6 +9,9 @@ uses
 (* --- Utility functions ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
+var
+  HomeDir, ZasmCmd, TnylpoCmd, NanoCmd, VscCmd: String;
+
 function UpperStr(S: String): String;
 var
   I: Integer;
@@ -201,6 +204,57 @@ begin
     Close(F);
   end
   else FSize := -1;
+  {$I+}
+end;
+
+procedure LoadConfig;
+var
+  T: Text;
+  UserHome, S, Key, Value: String;
+  P: Integer;
+begin
+  UserHome := GetEnv('HOME');
+
+  {$I-}
+  Assign(T, UserHome + '/.pl0.cfg');
+  Reset(T);
+  if IOResult = 0 then
+  begin
+    while not Eof(T) do
+    begin
+      ReadLn(T, S);
+      if not StartsWith(S, '#') then
+      begin
+        P := Pos('=', S);
+        if P <> 0 then
+        begin
+          S := LowerStr(S);
+          Key := TrimStr(Copy(S, 1, P - 1));
+          Value := TrimStr(Copy(S, P + 1, 255));
+
+          if StartsWith(Value, '~') then
+            Value := UserHome + Copy(Value, 2, 255);
+
+          if Key = 'home' then
+            HomeDir := Value
+          else if Key = 'zasm' then
+            ZasmCmd := Value
+          else if Key = 'nano' then
+            NanoCmd := Value
+          else if Key = 'vscode' then
+            VscCmd := Value
+          else if Key = 'tnylpo' then
+            TnylpoCmd := Value
+          else
+          begin
+            WriteLn('Invalid config key: ' + Key);
+            Halt;
+          end;
+        end;
+      end;
+    end;
+    Close(T);
+  end
   {$I+}
 end;
 
@@ -5569,7 +5623,7 @@ begin
 end;
 
 var
-  SrcFile, MainFile, WorkFile, AsmFile, BinFile, HomeDir, AsmTool, S: String; 
+  SrcFile, MainFile, WorkFile, AsmFile, BinFile, S: String; 
   I: Integer;
 
 procedure ParseProgram;
@@ -5653,9 +5707,9 @@ begin
     WriteLn('  ', FRelative(AsmFile, Dir), ' -> ', FRelative(BinFile, Dir));
     WriteLn;
 
-    Exec(AsmTool,  '-v1 -w ' + AsmFile + ' ' + BinFile);
+    Exec(ZasmCmd,  '-v1 -w ' + AsmFile + ' ' + BinFile);
     if DosError <> 0 then
-      Error('Error ' + Int2Str(DosError) + ' starting ' + AsmTool);
+      Error('Error ' + Int2Str(DosError) + ' starting ' + ZasmCmd);
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
@@ -5747,16 +5801,16 @@ begin
   if AltEditor then
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', '-g ' + S + ':' + Int2Str(Line) + ':' + Int2Str(Column))
+      Exec(VscCmd, '-g ' + S + ':' + Int2Str(Line) + ':' + Int2Str(Column))
     else
-      Exec('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', S)
+      Exec(VscCmd, S)
   end
   else
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + Int2Str(Line) + ',' + Int2Str(Column) + ' ' + S)
+      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + Int2Str(Line) + ',' + Int2Str(Column) + ' ' + S)
     else
-      Exec('nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + S);
+      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + S);
   end;
 end;
 
@@ -5785,9 +5839,9 @@ begin
     if Binary = btCom then
     begin
       if Alt then
-        Exec('/Users/joerg/Library/bin/tnylpo', '-soy -t @ ' + BinFile)
+        Exec(TnylpoCmd, '-soy -t @ ' + BinFile)
       else
-        Exec('/Users/joerg/Library/bin/tnylpo', BinFile)
+        Exec(TnylpoCmd, BinFile)
     end
     else
     begin
@@ -5979,7 +6033,7 @@ begin
   begin
     if SrcFile = '--asm' then
     begin
-      AsmTool := ParamStr(I + 1);
+      ZasmCmd := ParamStr(I + 1);
       I := I + 1;
     end
     else if SrcFile = '--com' then
@@ -6037,12 +6091,10 @@ end;
 
 begin
   Copyright;
+  LoadConfig;
 
-  HomeDir := GetEnv('PL0_HOME');
   if HomeDir = '' then
     HomeDir := ParentDir(FExpand(ParamStr(0)));
-
-  AsmTool := GetEnv('PL0_ASM');
 
   AltEditor := GetEnv('TERM_PROGRAM') = 'vscode';
 
