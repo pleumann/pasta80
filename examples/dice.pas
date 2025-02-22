@@ -1,4 +1,4 @@
-program Dice; (* Only works w/o optimization. Why? *)
+program Dice;
 
 var
   Rolls, Dice, I, J, K, Sum: Integer;
@@ -12,7 +12,7 @@ begin
     Sum := 0;
     for J := 1 to Dice do
     begin
-      K := Random(20);
+      K := 1 + Random(6);
       Write(K:4);
       Inc(Sum, K);
     end;

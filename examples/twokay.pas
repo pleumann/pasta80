@@ -1,4 +1,4 @@
-program TwoKay; (* Only works w/o optimization. Why? *)
+program TwoKay;
 
 const
   Margin: string = '                         ';
