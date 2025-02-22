@@ -1647,8 +1647,13 @@ begin
   begin
     if S <> '' then S := S + ', ' + Sym^.Name else S := Sym^.Name;
     S := S + '(';
+    if Sym^.Tag <> '' then
+      S := S + '@' + Sym^.Tag + ')'
+    else
+    begin
     if Sym^.Value > 0 then S := S + '+';
     S := S + Int2Str(Sym^.Value) + ')';
+    end;
   end;
 end;
 
@@ -1778,6 +1783,7 @@ begin
     Emit('main', 'call __init', '');
     EmitI('ld ix,0');
     EmitI('add ix,sp');
+    EmitCall(LookupGlobal('InitHeap'));
   end
   else
   begin
@@ -5584,7 +5590,7 @@ begin
     Expect(toSemicolon);
     NextToken;
   end;
-  parseBlock(Nil);
+  parseBlock(nil);
   Expect(toPeriod);
 (*
   EmitC('');
@@ -5603,7 +5609,7 @@ end;
 function Build: Integer;
 var
   Dir: String;
-  Org, Len: Integer;
+  Org, Len, HeapStart, HeapBytes: Integer;
 begin
   Dir := FExpand('.');
 
@@ -5655,10 +5661,15 @@ begin
 
     if Binary = btCom then Org := 256 else Org := 8192;
     Len := FSize(BinFile);
-    //WriteLn;
-    WriteLn(Len, ' bytes (', HexStr(Org, 4), '-', HexStr(Org + Len - 1, 4), ')');
 
-    Build := 0;
+    HeapStart := Org + Len;
+    if HeapStart < 24576 then HeapStart := 24576;
+    HeapBytes := 57343 - HeapStart;
+    if HeapBytes < 0 then HeapBytes := 0;
+
+    WriteLn('Code : $', HexStr(Org, 4), '-$', HexStr(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
+    WriteLn('Heap : $', HexStr(HeapStart, 4), '-$', HexStr(57343, 4), ' (', HeapBytes:5, ' bytes)');
+    WriteLn('Stack: $', HexStr(57344, 4), '-$FFFF ( 8192 bytes)');
   end;
 end;
 

@@ -40,9 +40,7 @@ begin
   FreeMem(P, 128);
 
   DumpHeap;
-
-  
-(*  
+(*
   WriteLn('P: ', Ord(P), ' HeapPtr: ', Ord(HeapPtr), ' MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail);
   
   FreeMem(P, 1000);
@@ -84,11 +82,11 @@ end;
 type
   PNode = ^TNode;
   TNode = record
-    Data: TString;
+    Data: string;
     Next: PNode;
   end;
 
-function Setup(P: PNode; S: TString): PNode;
+function Setup(P: PNode; S: string): PNode;
 var
   Q: PNode;
 begin
@@ -117,7 +115,6 @@ var
   TheFullMonty: PNode;
 
 begin
-  InitHeap(16384);
 
 {  SimpleTest;
   Exit;
@@ -129,8 +126,6 @@ begin
 
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
   WriteLn;
-
-  Exit;
 
   TheFullMonty := Setup(Setup(Setup(Setup(Setup(Setup(nil,
     'Press a key and try again!'),
