@@ -58,15 +58,15 @@ $ pl0 hello.pas        # Compiles hello.pas to hello.com
 $ pl0 --opt hello.pas  # Does the same with optimizations
 ```
 
-You can run the resulting `.com` files on a real CP/M machine or in tnylpo. For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
+You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend [tnylpo](https://gitlab.com/gbrein/tnylpo). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
 
 ```
-$ tnylpo hello     # Run in line-mode
-$ tnylpo -s hello  # Run in b/w full-screen mode
-$ tnylpo -soy,4,0  # Run in full-screen mode with (Spectrum Next) colors
+$ tnylpo hello                # Run in line-mode
+$ tnylpo -s -t @ hello        # Run in b/w full-screen mode, wait for key press when finished
+$ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) colors
 ```
 
-There is a folder containing examples and a folder containing tests for the compiler. The main test suite `all.pas` needs to be compiled with optimizations because of its size. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
+There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with optimizations because of its size. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
 
 ## Minimalistic IDE
 
@@ -76,4 +76,4 @@ As a little gimmick the compiler can be started like this
 $ pl0 --ide
 ```
 
-to run it in an interactive mode that has an interface similar to Turbo Pascal 3.0. When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system. You can also run it in a shell within Visual Studio Code, in which case it would default use VSC's editor. In both cases `tnylpo` is expected to be available for running programs.
+to run it in an interactive mode that has an interface similar to Turbo Pascal 3.0. When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system. You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor. In both cases `tnylpo` is expected to be available for running programs.
