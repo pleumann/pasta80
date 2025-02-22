@@ -5756,7 +5756,7 @@ begin
     if (Line <> 0) and (Column <> 0) then
       Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + Int2Str(Line) + ',' + Int2Str(Column) + ' ' + S)
     else
-      Exec('/opt/local/bin/nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + S);
+      Exec('nano', '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + S);
   end;
 end;
 
@@ -5888,9 +5888,9 @@ end;
 procedure Copyright;
 begin
   WriteLn('----------------------------------------');
-  WriteLn('PL/0 Compiler for Z80       Version 1.50');
+  WriteLn('Pascal Compiler for Z80     Version 0.90');
   WriteLn;
-  WriteLn('Copyright (C) 2020-2022 by Jörg Pleumann');
+  WriteLn('Copyright (C) 2020-2025 by Jörg Pleumann');
   WriteLn('----------------------------------------');
   WriteLn;
 end;
