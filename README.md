@@ -20,7 +20,7 @@ Since that list sounds quite exhaustive, so you might ask what is missing. These
 * Most compiler directives are not yet supported with the exception of
   * `$i <file>` for including Pascal source files
   * `$l <file>` for including an assembly file (aka "linking" a library)
-  * `$a(+/-)`   for enabling or disabling absolute mode (disable for recursion)
+  * `$a(+/-)`   for enabling or disabling absolute mode (default is on, disable for recursion)
 * The compiler directives for conditional processing (`ifdef`, ...) are missing.
 * Runtime checks for IO, heap/stack collision or Ctrl-C are missing.
 * `Mark`/`Release` are not currently supported.
