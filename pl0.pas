@@ -3441,7 +3441,9 @@ begin
     T := ParseVariableRef;
     if (T <> dtInteger) and (T <> dtReal) and (T^.Kind <> scEnumType) then Error('Numeric variable expected');
 
+    Expect(toComma);
     NextToken;
+
     U := ParseVariableRef;
     if U <> dtInteger then Error('Integer variable expected');
 
