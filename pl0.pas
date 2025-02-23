@@ -2236,7 +2236,7 @@ begin
              EmitI('sbc hl,de');
            end;
     toMul: Emit('', 'call __mul16', 'Mul');
-    toDiv: Emit('', 'call __sdiv16', 'Div');
+    toDivKW: Emit('', 'call __sdiv16', 'Div');
     toMod: begin Emit('', 'call __sdiv16', 'Mod'); EmitI('ex hl,de'); end;
     toAnd: begin
              if DataType = dtInteger then
@@ -3874,10 +3874,11 @@ begin
   T := ParseFactor;
 
   if (T = dtInteger) or (T = dtByte) then
-    while Scanner.Token in [toMul, toDiv, toMod, toAnd, toShl, toShr] do
+    while Scanner.Token in [toMul, toDiv, toDivKW, toMod, toAnd, toShl, toShr] do
     begin
       Op := Scanner.Token;
       NextToken;
+      if Op = toDiv then T := TypeCheck(dtReal, T, tcExpr);
       T := TypeCheck(T, ParseFactor, tcExpr);
       if T = dtReal then EmitFloatOp(Op) else EmitBinOp(Op, T);
     end
@@ -4009,7 +4010,7 @@ begin
     (*
       * ii ib bi bb zz cc 
       *)
-    TypeCheck(T, ParseSimpleExpression, tcExpr); // Check type, but ignore result.
+    T := TypeCheck(T, ParseSimpleExpression, tcExpr);
     if T^.Kind = scStringType then
       EmitStrOp(Op)
     else if T = dtReal then

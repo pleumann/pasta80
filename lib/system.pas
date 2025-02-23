@@ -875,7 +875,7 @@ begin
     FileFlush(F);
 
     P := 4 + I * CompSize;    (* Should we use Real here?    *)
-    BlockSeek(FCB, P / 128);  (* Why does div not work here? *)
+    BlockSeek(FCB, P div 128);  (* Why does div not work here? *)
     if I < CompCount then
       BlockBlockRead(FCB, DMA, 1, E);
 

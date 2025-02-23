@@ -174,13 +174,13 @@ procedure TestDivide;
 begin
   WriteLn('--- TestDivide ---');
 
-  Assert(0 / 1 = 0);
-  Assert(1 / 1 = 1);
+  Assert(0 div 1 = 0);
+  Assert(1 div 1 = 1);
 
-  Assert(10 / 5 = 2);
-  Assert(10 / -5 = -2);
-  Assert(-10 / 5 = -2);
-  Assert(-10 / -5 = 2);
+  Assert(10 div 5 = 2);
+  Assert(10 div -5 = -2);
+  Assert(-10 div 5 = -2);
+  Assert(-10 div -5 = 2);
 end;
 
 procedure TestModulus;
@@ -200,8 +200,8 @@ begin
   WriteLn('--- TestComplex ---');
 
   Assert(4 - 4 - 4 = -4);
-  Assert(10 / 2 * 5 = 25);
-  Assert(2 * (3 + 4 * (5 - 6 * (7 + 8 * (9 / 3)))) = -1442);
+  Assert(10 div 2 * 5 = 25);
+  Assert(2 * (3 + 4 * (5 - 6 * (7 + 8 * (9 div 3)))) = -1442);
 end;
 
 procedure TestShift;
@@ -2149,7 +2149,7 @@ var
     C: Char;
   begin
     L := Length(S);
-    for I := 1 to L / 2 do
+    for I := 1 to L div 2 do
     begin
       C := S[I];
       S[I] := S[L - I + 1];
