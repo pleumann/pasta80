@@ -1499,6 +1499,20 @@ begin
       Exit;
     end;
 
+    (* --- for later ---
+    if (Code^.Instruction = 'ld (hl),de') and StartsWith(Prev^.Instruction, 'ld de,') and (StartsWith(Prev^.Prev^.Instruction, 'ld hl,global')) then
+    begin
+
+      Addr := Copy(Prev^.Prev^.Instruction, 7, 255);
+
+      Prev^.Prev^.Instruction := '';
+      Code^.Instruction := 'ld (' + Addr + '),de';
+      WriteLn('--> ', Code^.Instruction);
+
+      Exit;
+    end;
+    *)
+
     if (Code^.Instruction = 'ld a,e') and StartsWith(Prev^.Instruction, 'ld de,') then
     begin
       RemoveCode;
@@ -2678,10 +2692,30 @@ function ParseExpression: PSymbol; forward;
 
 function ParseVariableAccess(Symbol: PSymbol): PSymbol;
 var
-  DataType: PSymbol;
+  Variable, DataType: PSymbol;
   Size: Integer;
+  Offset: Integer;
+
+  procedure DelayedEmitAddr;
+  begin
+    if Offset >= 0 then
+    begin
+      EmitI('ld hl,' + Variable^.Tag + ' + ' + Int2Str(Offset));
+      EmitI('push hl');
+      Offset := -1;
+    end;
+  end;
+
 begin
-  EmitAddress(Symbol);
+  Variable := Symbol;
+
+  if (Symbol^.Tag <> '') and (Symbol^.Tag <> 'RESULT') then
+    Offset := 0
+  else 
+  begin
+    EmitAddress(Symbol);
+    Offset := -1;
+  end;
 
   DataType := Symbol^.DataType;
 
@@ -2689,6 +2723,8 @@ begin
   begin
     if Scanner.Token = toLBrack then
     begin
+      DelayedEmitAddr;
+
       repeat
         NextToken;
         if DataType^.Kind = scArrayType then
@@ -2743,16 +2779,23 @@ begin
 
       DataType := Symbol^.DataType;
 
+      if Offset >= 0 then
+        Inc(Offset, Symbol^.Value)
+      else
+      begin
       if Symbol^.Value <> 0 then
       begin
         EmitLiteral(Symbol^.Value);
         EmitBinOp(toAdd, dtInteger);
+        end;
       end;
       
       NextToken;
     end
     else
     begin
+      DelayedEmitAddr;
+
       if DataType^.Kind <> scPointerType then
         Error('Not a pointer');
 
@@ -2771,6 +2814,9 @@ begin
     end;
 
   end;
+
+  DelayedEmitAddr;
+
   ParseVariableAccess := DataType;
 end;
 
