@@ -13,12 +13,34 @@ var
 
   B: Byte;
 
+procedure TestAbs;
+var
+  R: MyRec;
 begin
-  R.A := 1;
-  R.B.C := 2;
-  R.B.D := 3;
+  with R.B do
+  begin
+    C := 3;
+    D := 4;
+  end;
+end;
 
-  WriteLn(R.B.D);
+{$a-}
+procedure Test1;
+var
+  R: MyRec;
+begin
+  with R.B do
+  begin
+    C := 5;
+    D := 6;
+  end;
+end;
+{$a+}
 
-  B := 0;
+begin
+  with R.B do
+  begin
+    C := 1;
+    D := 2;
+  end;
 end.
