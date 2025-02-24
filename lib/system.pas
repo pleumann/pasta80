@@ -888,7 +888,7 @@ end;
 procedure FileRead(var F: FileRec; var Comp);
 var
   Address, Need, Avail, Bytes, E: Integer;
-  Mem: array[0..65535] of Byte absolute 0;
+  (*Mem: array[0..65535] of Byte absolute 0;*)
   P: ^Byte absolute Address;
 begin
   WriteLn('Read entry #', FileFilePos(F));
@@ -927,7 +927,7 @@ end;
 procedure FileWrite(var F: FileRec; var Comp);
 var
   Address, Need, Avail, Bytes, E: Integer;
-  Mem: array[0..65535] of Byte absolute 0;
+  (*Mem: array[0..65535] of Byte absolute 0;*)
   P: ^Byte absolute Address;
 begin
   WriteLn('Wrote entry #', FileFilePos(F));
