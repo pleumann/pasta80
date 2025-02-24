@@ -3,14 +3,14 @@ program PL0;
 {$Mode delphi}
 
 uses
-  Keyboard, Dos, Math;
+  Keyboard, Dos, Math, Process;
 
 (* -------------------------------------------------------------------------- *)
 (* --- Utility functions ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
 var
-  HomeDir, ZasmCmd, TnylpoCmd, NanoCmd, VscCmd: String;
+  HomeDir, ZasmCmd, TnylpoCmd, NanoCmd, CodeCmd: String;
 
 function UpperStr(S: String): String;
 var
@@ -223,7 +223,7 @@ begin
     while not Eof(T) do
     begin
       ReadLn(T, S);
-      if not StartsWith(S, '#') then
+      if not StartsWith(S, '#') and (Length(S) <> 0) then
       begin
         P := Pos('=', S);
         if P <> 0 then
@@ -242,7 +242,7 @@ begin
           else if Key = 'nano' then
             NanoCmd := Value
           else if Key = 'vscode' then
-            VscCmd := Value
+            CodeCmd := Value
           else if Key = 'tnylpo' then
             TnylpoCmd := Value
           else
@@ -255,6 +255,27 @@ begin
     end;
     Close(T);
   end
+  else
+  begin
+    WriteLn('Warning: File ~/.pl0.cfg not found. Please consider creating it.');
+    WriteLn;
+
+    HomeDir := ParentDir(ParamStr(0));
+    if Length(HomeDir) = 0 then HomeDir := '.';
+    HomeDir := FExpand(HomeDir);
+
+    RunCommand('which', ['zasm'], ZasmCmd);
+    ZasmCmd := TrimStr(ZasmCmd);
+
+    RunCommand('which', ['nano'], NanoCmd);
+    NanoCmd := TrimStr(NanoCmd);
+
+    RunCommand('which', ['code'], CodeCmd);
+    CodeCmd := TrimStr(CodeCmd);
+
+    RunCommand('which', ['tnylpo'], TnylpoCmd);
+    TnylpoCmd := TrimStr(TnylpoCmd);
+  end;
   {$I+}
 end;
 
@@ -5850,9 +5871,9 @@ begin
   if AltEditor then
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(VscCmd, '-g ' + S + ':' + Int2Str(Line) + ':' + Int2Str(Column))
+      Exec(CodeCmd, '-g ' + S + ':' + Int2Str(Line) + ':' + Int2Str(Column))
     else
-      Exec(VscCmd, S)
+      Exec(CodeCmd, S)
   end
   else
   begin
