@@ -11,8 +11,6 @@ type
 var
   R: MyRec;
 
-  B: Byte;
-
 procedure TestAbs;
 var
   R: MyRec;
@@ -22,10 +20,12 @@ begin
     C := 3;
     D := 4;
   end;
+
+  WriteLn(R.B.C, ' ', R.B.D);
 end;
 
 {$a-}
-procedure Test1;
+procedure TestRel;
 var
   R: MyRec;
 begin
@@ -34,6 +34,8 @@ begin
     C := 5;
     D := 6;
   end;
+
+  WriteLn(R.B.C, ' ', R.B.D);
 end;
 {$a+}
 
@@ -43,4 +45,9 @@ begin
     C := 1;
     D := 2;
   end;
+
+  WriteLn(R.B.C, ' ', R.B.D);
+
+  TestAbs;
+  TestRel;
 end.

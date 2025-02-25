@@ -489,6 +489,9 @@ var
   AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
   FillProc, IncProc, DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
+  ExtraLabel: string;
+  ExtraCount, ExtraIndex: Integer;
+
 procedure OpenScope(AdjustLevel: Boolean);
 var
   Sym: PSymbol;
@@ -1938,6 +1941,28 @@ var
 begin
   L := Level - Sym^.Level;
 
+  if (L = 0) and (Sym^.Tag = '') and (Sym^.IsRef) and (Sym^.Value >= -128) and (Sym^.Value < 126) then
+  begin
+    EmitI('ld l,(' + RelativeAddr('ix', Sym^.Value) + ')');
+    EmitI('ld h,(' + RelativeAddr('ix', Sym^.Value + 1) + ')');
+
+    if Sym^.Value2 <> 0 then
+    begin
+      EmitI('ld de,' + Int2Str(Sym^.Value2));
+      EmitI('add hl,de');
+    end;
+
+    EmitI('push hl');
+    Exit;
+  end;
+
+  if (L = 0) and (Sym^.Tag <> '') and (Sym^.Tag <> 'RESULT') and (Sym^.IsRef) then
+  begin
+    Emit('', 'ld hl,(' + RelativeAddr(Sym^.Tag, Sym^.Value2) + ')', 'GAGA');
+    EmitI('push hl');
+    Exit;
+  end;
+
   if (Sym^.Level = 1) and (Sym^.Tag <> '') then
   begin
     Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
@@ -2721,7 +2746,19 @@ var
   begin
     if Offset >= 0 then
     begin
-      EmitI('ld hl,' + Variable^.Tag + ' + ' + Int2Str(Offset));
+      if Variable^.IsRef then
+      begin
+        EmitI('ld hl,(' + RelativeAddr(Variable^.Tag, Offset) + ')');
+        if Variable^.Value2 <> 0 then
+        begin
+          EmitI('ld de,' + Int2Str(Variable^.Value2));
+          EmitI('add hl,de');
+        end;
+      end
+      else
+        EmitI('ld hl,' + RelativeAddr(Variable^.Tag, Offset + Variable^.Value2));
+
+
       EmitI('push hl');
       Offset := -1;
     end;
@@ -4124,25 +4161,71 @@ begin
   if Sym^.Kind <> scVar then Error('Variable expected');
   NextToken;
 
-  Offset := Offset - 2;
-  Address := Offset;
   DataType := ParseVariableAccess(Sym);
-
   if DataType^.Kind <> scRecordType then Error('Record type expected');
 
-  Field := DataType^.DataType;
-  while Field <> nil do
+  (*
+  if StartsWith(Code^.Prev^.Instruction, 'ld hl,global') then
   begin
-    FieldRef := CreateSymbol(scVar, '');
-    FieldRef^.Name := Field^.Name;
-    FieldRef^.DataType := Field^.DataType;
-    FieldRef^.Value := Address;
-    FieldRef^.Value2 := Field^.Value;
-    FieldRef^.IsRef := True;
-    FieldRef^.Level := Level;
-    // WriteLn('Create ' , Field^.Name, ' at level ', Level, 'in ', Sym^.Name, ' address ', Address, ' Offset ', Field^.Value);
-    Field := Field^.Prev;
-  end;  
+    Field := DataType^.DataType;
+    while Field <> nil do
+    begin
+      FieldRef := CreateSymbol(scVar, '');
+      FieldRef^.Name := Field^.Name;
+      FieldRef^.DataType := Field^.DataType;
+      FieldRef^.Tag := Copy(Code^.Prev^.Instruction, 7, 255);
+      FieldRef^.Value2 := Field^.Value;
+      FieldRef^.IsRef := False;
+      FieldRef^.Level := Level;
+      // WriteLn('Create ' , Field^.Name, ' at level ', Level, 'in ', Sym^.Name, ' address ', Address, ' Offset ', Field^.Value);
+      Field := Field^.Prev;
+    end;
+
+    RemoveCode;
+    RemoveCode;
+  end
+  else *) if AbsCode then
+  begin
+    if ExtraIndex = ExtraCount then Inc(ExtraCount);
+
+    EmitI('pop hl');
+    EmitI('ld (' + RelativeAddr(ExtraLabel, ExtraIndex * 2) + '),hl');
+
+    Field := DataType^.DataType;
+    while Field <> nil do
+    begin
+      FieldRef := CreateSymbol(scVar, '');
+      FieldRef^.Name := Field^.Name;
+      FieldRef^.DataType := Field^.DataType;
+      FieldRef^.Tag := RelativeAddr(ExtraLabel, ExtraIndex * 2);
+      FieldRef^.Value2 := Field^.Value;
+      FieldRef^.IsRef := True;
+      FieldRef^.Level := Level;
+      // WriteLn('Create ' , Field^.Name, ' at level ', Level, 'in ', Sym^.Name, ' address ', Address, ' Offset ', Field^.Value);
+      Field := Field^.Prev;
+    end;  
+
+    Inc(ExtraIndex);
+  end
+  else
+  begin
+    Offset := Offset - 2;
+    Address := Offset;
+
+    Field := DataType^.DataType;
+    while Field <> nil do
+    begin
+      FieldRef := CreateSymbol(scVar, '');
+      FieldRef^.Name := Field^.Name;
+      FieldRef^.DataType := Field^.DataType;
+      FieldRef^.Value := Address;
+      FieldRef^.Value2 := Field^.Value;
+      FieldRef^.IsRef := True;
+      FieldRef^.Level := Level;
+      // WriteLn('Create ' , Field^.Name, ' at level ', Level, 'in ', Sym^.Name, ' address ', Address, ' Offset ', Field^.Value);
+      Field := Field^.Prev;
+    end;  
+  end;
 end;
 
 procedure ParseWith(ContTarget, BreakTarget: String);
@@ -4170,8 +4253,13 @@ begin
 
   ParseStatement(ContTarget, BreakTarget);
 
-  Offset := Offset + 2 * Count;
-  for I := 1 to Count do EmitI('pop bc');
+  if AbsCode then
+    Dec(ExtraIndex, Count)
+  else
+  begin
+    Offset := Offset + 2 * Count;
+    for I := 1 to Count do EmitI('pop bc');
+  end;
 
   while SymbolTable <> OldSymbols do
   begin
@@ -5681,6 +5769,10 @@ begin
   ExitTarget := GetLabel('exit');
   EmitPrologue(Sym);
 
+  ExtraLabel := GetLabel('extra');
+  ExtraCount := 0;
+  ExtraIndex := 0;
+
   Expect(toBegin);
   NextToken;
 
@@ -5690,6 +5782,9 @@ begin
   NextToken;
 
   EmitEpilogue(Sym);
+
+  if ExtraCount > 0 then
+    Emit(ExtraLabel, 'ds ' + Int2Str(2 * ExtraCount), 'with/for temp storage');
 end;
 
 var
