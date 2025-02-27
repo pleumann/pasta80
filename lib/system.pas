@@ -398,10 +398,40 @@ type
 
 (* --- Untyped file routines, use FileControlBlock as representation -------- *)
 
+const
+  LastError: Byte = 0;
+
+function IOResult: Byte;
+begin
+  IOResult := LastError;
+  LastError := 0;
+end;
+
+procedure BDosCatch(Func: Byte; Param: Integer);
+var
+  A: Byte;
+begin
+  if LastError <> 0 then Exit;
+  A := BDos(Func, Param);
+  (*WriteLn('BDos(', Func, ') returned A=' , A);*)
+  if A = 255 then LastError := 1;
+end;
+
+procedure BDosThrow;
+begin
+  if LastError <> 0 then
+  begin
+    WriteLn('BDos error');
+    Halt;
+  end;
+end;
+
 procedure BlockAssign(var F: FileControlBlock; S: String);
 var
   I, L, P, Q: Integer;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
     L := Length(S);
@@ -442,7 +472,8 @@ procedure BlockErase(var F: FileControlBlock);
 var
   A: Byte;
 begin
-  A := Bdos(19, Addr(F));
+  if LastError <> 0 then Exit;
+  A := BDos(*Catch*)(19, Addr(F));
 end;
 
 procedure BlockRename(var F: FileControlBlock; S: String);
@@ -450,15 +481,19 @@ var
   G: FileControlBlock;
   A: Byte;
 begin
+  if LastError <> 0 then Exit;
   BlockAssign(G, S);
+  if LastError <> 0 then Exit;
   Move(G, F.AL, 12);
-  A := Bdos(23, Addr(F));
+  BDosCatch(23, Addr(F));
 end;
 
 procedure BlockReset(var F: FileControlBlock);
 var
   A: Byte;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
     EX := 0;
@@ -471,13 +506,15 @@ begin
     RH := 0;
   end;
 
-  A := Bdos(15, Addr(F));
+  BDosCatch(15, Addr(F));
 end;
 
 procedure BlockRewrite(var F: FileControlBlock);
 var
   A: Byte;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
     EX := 0;
@@ -490,15 +527,13 @@ begin
     RH := 0;
   end;
 
-  A := Bdos(19, Addr(F));
-  A := Bdos(22, Addr(F));
+  A := BDos(*Catch*)(19, Addr(F));
+  BDosCatch(22, Addr(F));
 end;
 
 procedure BlockClose(var F: FileControlBlock);
-var
-  A: Byte;
 begin
-  A := Bdos(16, Addr(F));
+  BDosCatch(16, Addr(F));
 end;
 
 function BlockFilePos(var F: FileControlBlock): Integer;
@@ -509,12 +544,12 @@ end;
 function BlockFileSize(var F: FileControlBlock): Integer;
 var
   I: Integer;
-  A: Byte;
 begin
   with F do
   begin
     I := RL;
-    A := Bdos(35, Addr(F));
+    BDosCatch(35, Addr(F));
+    if LastError <> 0 then Exit;
     BlockFileSize := RL;
     RL := I;
   end;
@@ -522,26 +557,32 @@ end;
 
 function BlockEof(var F: FileControlBlock): Boolean;
 begin
+  if LastError <> 0 then Exit;
+
   BlockEof := BlockFilePos(F) = BlockFileSize(F);
 end;
 
 procedure BlockSeek(var F: FileControlBlock; I: Integer);
 begin
+  if LastError <> 0 then Exit;
+
   F.RL := I;
 end;
 
 procedure BlockBlockRead(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
 var
-  A: Byte;
   DMA: Integer;
 begin
+  if LastError <> 0 then Exit;
+
   DMA := Addr(Buffer);
   Actual := 0;
 
   while Count > 0 do
   begin
-    A := Bdos(26, DMA);
-    A := Bdos(33, Addr(F));
+    BDosCatch(26, DMA);
+    BDosCatch(33, Addr(F));
+    if LastError <> 0 then Exit;
 
     Inc(F.RL);
     Inc(DMA, 128);
@@ -552,16 +593,18 @@ end;
 
 procedure BlockBlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; Actual: Integer);
 var
-  A: Byte;
   DMA: Integer;
 begin
+  if LastError <> 0 then Exit;
+
   DMA := Addr(Buffer);
   (*Actual := 0;*)
 
   while Count > 0 do
   begin
-    A := Bdos(26, DMA);
-    A := Bdos(34, Addr(F));
+    BDosCatch(26, DMA);
+    BDosCatch(34, Addr(F));
+    if LastError <> 0 then Exit;
 
     Inc(F.RL);
     Inc(DMA, 128);
@@ -586,6 +629,8 @@ begin
     BlockReset(FCB);
     BlockBlockRead(FCB, DMA, 1, E);
 
+    if LastError <> 0 then Exit;
+
     Readable := True;
     Writable := False;
 
@@ -598,6 +643,8 @@ begin
   with T do
   begin
     BlockRewrite(FCB);
+
+    if LastError <> 0 then Exit;
 
     Readable := False;
     Writable := True;
@@ -614,20 +661,22 @@ begin
   begin
     BlockSeek(FCB, BlockFileSize(FCB) - 1);
     BlockBlockRead(FCB, DMA, 1, E);
-    
+
+    if LastError <> 0 then Exit;
+
     for Offset := 0 to 127 do
       if DMA[Offset] = #26 then Exit;
   end;
 end;
 
 procedure TextAppend(var T: TextRec);
-var
-  A: Byte;
 begin
   with T do
   begin
     TextReset(T);
     TextSeekEof(T);
+
+    if LastError <> 0 then Exit;
 
     Dec(FCB.RL);
 
@@ -649,6 +698,7 @@ begin
       if Offset = 128 then
       begin
         BlockBlockRead(FCB, DMA, 1, E);
+        if LastError <> 0 then Exit;
         Offset := 0;
       end;
     end;
@@ -662,7 +712,10 @@ begin
   with T do
   begin
     while DMA[Offset] <> #13 do
+    begin
       TextReadChar(T, C);
+      if LastError <> 0 then Exit;
+    end;
   end;
 end;
 
@@ -675,6 +728,7 @@ begin
   while Length(S) < 255 do
   begin
     TextReadChar(T, C);
+    if LastError <> 0 then Exit;
 
     if C = #10 then Break;
     if C = #26 then Break;
@@ -692,6 +746,7 @@ begin
   while Length(S) < 255 do
   begin
     TextReadChar(T, C);
+    if LastError <> 0 then Exit;
 
     if C > ' ' then S := S + C else Break;
   end;
@@ -703,6 +758,7 @@ var
   E: Integer;
 begin
   TextReadWord(T, S);
+  if LastError <> 0 then Exit;
   Val(S, I, E);
 end;
 
@@ -712,6 +768,7 @@ var
   E: Integer;
 begin
   TextReadWord(T, S);
+  if LastError <> 0 then Exit;
   Val(S, R, E);
 end;
 
@@ -726,6 +783,7 @@ begin
     if Offset = 128 then
     begin
       BlockBlockWrite(FCB, DMA, 1, E);
+      if LastError <> 0 then Exit;
       Offset := 0;
     end;
   end;
@@ -743,7 +801,7 @@ begin
     if Offset <> 0 then
       BlockBlockWrite(FCB, DMA, 1, E);
 
-    BlockClose(FCB);
+    if LastError <> 0 then Exit;
 
     Readable := False;
     Writable := False;
@@ -756,15 +814,11 @@ var
 begin
   with T do
   begin
-    if Writable then
-    begin
-      TextWriteChar(T, #26);
-
-      if Offset <> 0 then
-        BlockBlockWrite(FCB, DMA, 1, E);
-    end;
+    if Writable then TextFlush(T);
 
     BlockClose(FCB);
+
+    if LastError <> 0 then Exit;
 
     Readable := False;
     Writable := False;
@@ -776,7 +830,10 @@ var
   I: Byte;
 begin
   for I := 1 to Length(S) do
+  begin
     TextWriteChar(T, S[I]);
+    if LastError <> 0 then Exit;
+  end;
 end;
 
 procedure TextWriteEoln(var T: TextRec);
@@ -801,9 +858,11 @@ end;
 
 procedure FileAssign(var F: FileRec; Name: String; Size: Integer);
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
-    BlockAssign(FCB, Name);
+    BlockAssign(FCB, Name);    
     CompSize := Size;
   end;
 end;
@@ -812,10 +871,14 @@ procedure FileReset(var F: FileRec);
 var
   E: Integer;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
     BlockReset(FCB);
     BlockBlockRead(FCB, DMA, 1, E);
+
+    if LastError <> 0 then Exit;
 
     if CompSize <> HdrSize then WriteLn('Invalid file type'); (* Halt *)
     CompCount := HdrCount;
@@ -832,9 +895,13 @@ procedure FileRewrite(var F: FileRec);
 var
   E: Integer;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
     BlockRewrite(FCB);
+
+    if LastError <> 0 then Exit;
 
     HdrSize := CompSize;
     HdrCount := 0;
@@ -845,7 +912,9 @@ begin
     Offset := 4;
     Modified := True;
 
-    BlockBlockWrite(FCB, DMA, 1, E);
+    BlockBlockWrite(FCB, DMA, 1, E); (* TODO Delay this until Flush/Close? *)
+
+    if LastError <> 0 then Exit;
 
     WriteLn('Created new file, size=', CompSize, ' count=', CompCount);
   end;
@@ -853,16 +922,22 @@ end;
 
 function FileFileSize(var F: FileRec): Integer;
 begin
+  if LastError <> 0 then Exit;
+
   FileFileSize := F.CompCount;
 end;
 
 function FileFilePos(var F: FileRec): Integer;
 begin
+  if LastError <> 0 then Exit;
+
   FileFilePos := F.CompIndex;
 end;
 
 function FileEof(var F: FileRec): Boolean;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
     FileEof := CompIndex = CompCount;
 end;
@@ -871,12 +946,15 @@ procedure FileFlush(var F: FileRec);
 var
   E: Integer;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
     if Modified then
     begin
       Dec(FCB.RL);
       BlockBlockWrite(FCB, DMA, 1, E);
+      if LastError <> 0 then Exit;
       Modified := False;
     end;
   end;
@@ -886,14 +964,20 @@ procedure FileSeek(var F: FileRec; I: Integer);
 var
   P, E: Integer;
 begin
+  if LastError <> 0 then Exit;
+
   with F do
   begin
     FileFlush(F);
+
+    if LastError <> 0 then Exit;
 
     P := 4 + I * CompSize;    (* Should we use Real here?    *)
     BlockSeek(FCB, P div 128);  (* Why does div not work here? *)
     if I < CompCount then
       BlockBlockRead(FCB, DMA, 1, E);
+
+    if LastError <> 0 then Exit;
 
     Offset := P mod 128;
 
@@ -907,6 +991,8 @@ var
   (*Mem: array[0..65535] of Byte absolute 0;*)
   P: ^Byte absolute Address;
 begin
+  if LastError <> 0 then Exit;
+
   WriteLn('Read entry #', FileFilePos(F));
 
   with F do
@@ -932,6 +1018,7 @@ begin
         FileFlush(F);
         (*Inc(FCB.RL);*)
         BlockBlockRead(FCB, DMA, 1, E);
+        if LastError <> 0 then Exit;
         Offset := 0;
       end;
     end;
@@ -946,6 +1033,8 @@ var
   (*Mem: array[0..65535] of Byte absolute 0;*)
   P: ^Byte absolute Address;
 begin
+  if LastError <> 0 then Exit;
+
   WriteLn('Wrote entry #', FileFilePos(F));
 
   with F do
@@ -970,6 +1059,7 @@ begin
       if Offset = 128 then
       begin
         FileFlush(F);
+        if LastError <> 0 then Exit;
         Inc(FCB.RL);
         Offset := 0;
       end;
@@ -984,16 +1074,21 @@ procedure FileClose(var F: FileRec);
 var
   E: Integer;
 begin
+  if LastError <> 0 then Exit;
+  
   with F do
   begin
     FileFlush(F);
 
     BlockSeek(FCB, 0);
     BlockBlockRead(FCB, DMA, 1, E);
+
+    if LastError <> 0 then Exit;
+
     HdrCount := CompCount;
+
     BlockSeek(FCB, 0);
     BlockBlockWrite(FCB, DMA, 1, E);
-
     BlockClose(FCB);
   end;
   WriteLn('Closed file');

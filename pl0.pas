@@ -916,6 +916,7 @@ var
 const
   AbsCode: Boolean = False;
   CheckBreak: Boolean = False;
+  IOMode: Boolean = True;
 
 function IsIdentHead(C: Char): Boolean;
 begin
@@ -1111,12 +1112,14 @@ begin
       until C = '}';
       C := GetChar;
 
-      if LowerStr(Copy(S, 2, 2)) = '$i' then
+      if LowerStr(Copy(S, 2, 3)) = '$i ' then
         SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)))
       else if LowerStr(Copy(S, 2, 2)) = '$u' then
         CheckBreak := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$a' then
         AbsCode := S[4] = '+'
+      else if LowerStr(Copy(S, 2, 2)) = '$i' then
+        IOMode := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$l' then
         SetLibrary(TrimStr(Copy(S, 4, Length(S) - 4)));
 
@@ -3421,6 +3424,8 @@ begin
         end;
 
         EmitI('pop hl');
+
+        if IOMode then EmitCall(LookupGlobal('BDosThrow'));
       end
       else
       begin
@@ -3696,6 +3701,8 @@ begin
     if Sym = nil then Error('Not allowed.');
 
     EmitCall(Sym);
+
+    if IOMode then EmitCall(LookupGlobal('BDosThrow'));
   end
   else if Proc = SeekProc then
   begin
@@ -3719,6 +3726,8 @@ begin
       EmitCall(LookupGlobal('FileSeek'))
     else
       Error('Not allowed.');
+
+    if IOMode then EmitCall(LookupGlobal('BDosThrow'));
   end
   else if (Proc = BlockReadProc) or (Proc = BlockWriteProc) then
   begin
@@ -3751,6 +3760,7 @@ begin
     NextToken;
 
     EmitCall(LookupGlobal('Block' + Proc^.Name));
+    if IOMode then EmitCall(LookupGlobal('BDosThrow'));
 
     // By Name umlenken auf Implementierung.
   end
