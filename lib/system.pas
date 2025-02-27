@@ -105,6 +105,16 @@ end;
 (* Built-in: procedure Continue;                *)
 (* Built-in: procedure Exit;                    *)
 
+const
+  Black   = 0;
+  Blue    = 1;
+  Red     = 2;
+  Magenta = 3;
+  Green   = 4;
+  Cyan    = 5;
+  Yellow  = 6;
+  White   = 7;
+
 procedure ClrScr; register;                 external '__clrscr';
 procedure GotoXY(X, Y: Integer); register;  external '__gotoxy';
 procedure CursorOn; register;               external '__cursor_on';
