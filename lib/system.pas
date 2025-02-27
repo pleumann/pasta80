@@ -329,11 +329,27 @@ var
 function Random(Range: Integer): Integer; register; external '__random';
 function RandomReal: Real; register;                external '__random48';
 
+procedure Randomize; register; inline
+(
+  $ed / $5f /             (* ld   a,r             *)
+  $2a / RandSeed1 /       (* ld   hl,(RandSeed1)  *)
+  $ed / $5b / RandSeed2 / (* ld   de,(RandSeed2)  *)
+  $53 /                   (* ld   d,e             *)
+  $5c /                   (* ld   e,h             *)
+  $65 /                   (* ld   h,l             *)
+  $6f /                   (* ld   l,a             *)
+  $22 / RandSeed1 /       (* ld   (RandSeed1),hl  *)
+  $ed / $53 / RandSeed2 / (* ld   (RandSeed2),de  *)
+  $c9                     (* ret                  *)
+);
+
 procedure CheckBreak; register; external '__checkbreak';
 
 (* Built-in: procedure FillChar(var Dest; Length: Integer; Data); *)
 
 procedure Move(var Source, Dest; Count: Integer); register; external '__move';
+
+(* Built-in: procedure Halt([ExitCode: Byte]) *)
 
 (* -------------------------------------------------------------------------- *)
 (* --- Assertion support ---------------------------------------------------- *)
