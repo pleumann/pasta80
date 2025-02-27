@@ -481,7 +481,7 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtFile, dtText: PSymbol;
 
-  AssertProc, BreakProc, ContProc, ExitProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
+  AssertProc, BreakProc, ContProc, ExitProc, HaltProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
 
   EraseProc, RenameProc, AssignProc, ResetProc, RewriteProc, AppendProc, FlushProc, CloseProc, SeekProc, SeekEofProc, SeekEolnProc,
   BlockReadProc, BlockWriteProc, FilePosFunc, FileSizeFunc, EolFunc, EofFunc: PSymbol;
@@ -793,6 +793,7 @@ begin
   ContProc := RegisterMagic(scProc, 'Continue');
   DisposeProc := RegisterMagic(scProc, 'Dispose');
   ExitProc := RegisterMagic(scProc, 'Exit');
+  HaltProc := RegisterMagic(scProc, 'Halt');
   NewProc := RegisterMagic(scProc, 'New');
   StrProc := RegisterMagic(scProc, 'Str');
   ReadProc := RegisterMagic(scProc, 'Read');
@@ -3218,6 +3219,20 @@ begin
   begin
     Emit('', 'jp ' + ExitTarget, 'Exit');    
     NextToken;
+  end
+  else if Proc = HaltProc then
+    begin
+    NextToken;
+    if Scanner.Token = toLParen then
+    begin
+      NextToken;
+      TypeCheck(dtByte, ParseExpression, tcExpr);
+      (* TODO Currently ignored. CP/M 2.2 does not support this. *)
+      Expect(toRParen);
+      NextToken;
+    end;
+
+    EmitI('jp __done')
   end
   else if (Proc = IncludeProc) or (Proc = ExcludeProc) then
   begin
