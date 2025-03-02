@@ -3770,6 +3770,12 @@ begin
       end
       else
       begin
+        if Sym^.Tag <> '' then
+        begin
+          EmitI('ld hl,' + Sym^.Tag);
+          EmitI('call __loadstr');
+        end
+        else
         EmitLiteral(Sym^.Value);
       end;
       NextToken;
