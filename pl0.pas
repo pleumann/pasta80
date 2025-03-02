@@ -914,6 +914,7 @@ const
   AbsCode: Boolean = False;
   CheckBreak: Boolean = False;
   IOMode: Boolean = True;
+  StackMode: Boolean = False;
 
 function IsIdentHead(C: Char): Boolean;
 begin
@@ -1117,6 +1118,8 @@ begin
         AbsCode := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$i' then
         IOMode := S[4] = '+'
+      else if LowerStr(Copy(S, 2, 2)) = '$k' then
+        StackMode := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$l' then
         SetLibrary(TrimStr(Copy(S, 4, Length(S) - 4)));
 
@@ -1891,6 +1894,10 @@ begin
     EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
 
     EmitSpace(-Offset);
+
+    if StackMode then
+      EmitCall(LookupGlobal('CheckStack'));
+
 //    EmitI('ld hl,' + Int2Str(Offset));
 //    EmitI('add hl,sp');
 //    EmitI('ld sp,hl');

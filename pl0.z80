@@ -2378,6 +2378,16 @@ __checkbreak:
                 rst     0
 #endif
 
+__checkstack:
+                ld      hl,57344
+                and     a
+                sbc     hl,sp
+                ret     c
+                ld      hl,__stackoverflow
+                call    __puts
+                jp      __done
+__stackoverflow:
+                db 14,"Stack overflow"
 ;
 ; Fill Char
 ;
