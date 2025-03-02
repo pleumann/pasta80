@@ -361,6 +361,23 @@ procedure Move(var Source, Dest; Count: Integer); register; external '__move';
 
 (* Built-in: procedure Halt([ExitCode: Byte]) *)
 
+procedure Delay(MS: Integer);
+var
+  A: Byte;
+begin
+  A := BDos(141, MS div 20);
+end;
+
+function KeyPressed: Boolean;
+begin
+  KeyPressed := BDOS(11, 0) <> 0;
+end;
+
+function ReadKey: CHar;
+begin
+  ReadKey := Chr(BDOS(1, 0));
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Assertion support ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
