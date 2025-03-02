@@ -3240,12 +3240,9 @@ begin
       NextToken;
       T := ParseVariableRef();
 
-      if ((Proc = ReadProc) or (Proc = ReadLnProc)) and (T = dtText) then
+      if T = dtText then
       begin
-        while not StartsWith(Code^.Instruction, 'ld hl,') do
-          RemoveCode;
-
-        // EmitI('pop hl');
+        EmitI('pop hl');
         EmitI('ld (__cur_file),hl');
 
         while Scanner.Token = toComma do
@@ -3276,14 +3273,16 @@ begin
           EmitCall(LookupGlobal('TextSeekEoln'));
         end;
       end
-      else if (Proc = ReadProc) and (T^.Kind = scFileType) then
+      else if T^.Kind = scFileType then
       begin
+        EmitI('pop hl');
+        EmitI('ld (__cur_file),hl');
+        
         while Scanner.Token = toComma do
         begin
           NextToken;
 
-          EmitI('pop hl');
-          EmitI('push hl');
+          EmitI('ld hl,(__cur_file)');
           EmitI('push hl');
 
           TT := ParseVariableRef;
@@ -3291,8 +3290,6 @@ begin
 
           EmitCall(LookupGlobal('FileRead'));
         end;
-
-        EmitI('pop hl');
       end
       else
       begin
@@ -3324,10 +3321,9 @@ begin
       
       T := ParseExpression();
 
-      if ((Proc = WriteProc) or (Proc = WriteLnProc)) and (T = dtText) then
+      if T = dtText then
       begin
-        while not StartsWith(Code^.Instruction, 'ld hl,') do
-          RemoveCode;
+        EmitI('pop hl');
 
         EmitI('ld (__cur_file),hl');
         EmitSpace(256);
@@ -3369,19 +3365,16 @@ begin
           EmitCall(LookupGlobal('TextWriteEoln'));
         end;
       end
-      else if (Proc = WriteProc) and (T^.Kind = scFileType) then
+      else if T^.Kind = scFileType then
       begin
-        while not StartsWith(Code^.Instruction, 'ld hl,') do
-          RemoveCode;
-
-        EmitI('push hl');
+        EmitI('pop hl');
+        EmitI('ld (__cur_file),hl');
 
         while Scanner.Token = toComma do
         begin
           NextToken;
 
-          EmitI('pop hl');
-          EmitI('push hl');
+          EmitI('ld hl,(__cur_file)');
           EmitI('push hl');
 
           TT := ParseVariableRef;
@@ -3389,8 +3382,6 @@ begin
 
           EmitCall(LookupGlobal('FileWrite'));
         end;
-
-        EmitI('pop hl');
 
         if IOMode then EmitCall(LookupGlobal('BDosThrow'));
       end
@@ -3758,7 +3749,8 @@ begin
       T := ParseVariableAccess(Sym);
 
       // if not (T^.Kind in [scType, scEnumType]) then Error('" ' + Sym^.Name + '" is not a simple type.');
-      EmitLoad(T);
+      (* File types are never communicated by value, only by reference. *)
+      if (T^.Kind <> scFileType) and (T <> dtText) then EmitLoad(T);
     end
     else if Sym^.Kind = scConst then
     begin
@@ -3776,7 +3768,7 @@ begin
           EmitI('call __loadstr');
         end
         else
-        EmitLiteral(Sym^.Value);
+          EmitLiteral(Sym^.Value);
       end;
       NextToken;
     end

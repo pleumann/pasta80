@@ -440,7 +440,7 @@ var
 begin
   if LastError <> 0 then Exit;
   A := BDos(Func, Param);
-  (*WriteLn('BDos(', Func, ') returned A=' , A);*)
+  (* WriteLn('BDos(', Func, ') returned A=' , A); *)
   if A = 255 then LastError := 1;
 end;
 
@@ -907,14 +907,20 @@ begin
 
     if LastError <> 0 then Exit;
 
-    if CompSize <> HdrSize then WriteLn('Invalid file type'); (* Halt *)
+    if CompSize <> HdrSize then
+    begin
+      WriteLn('Invalid file type');
+      Halt;
+    end;
+  
     CompCount := HdrCount;
     CompIndex := 0;
 
     Offset := 4;
     Modified := False;
 
-    WriteLn('Opened existing file, size=', CompSize, ' count=', CompCount);
+    (*WriteLn('Opened existing file, size=', CompSize, ' count=', CompCount);
+    ReadLn;*)
   end;
 end;
 
@@ -943,7 +949,7 @@ begin
 
     if LastError <> 0 then Exit;
 
-    WriteLn('Created new file, size=', CompSize, ' count=', CompCount);
+    (*WriteLn('Created new file, size=', CompSize, ' count=', CompCount);*)
   end;
 end;
 
@@ -989,7 +995,8 @@ end;
 
 procedure FileSeek(var F: FileRec; I: Integer);
 var
-  P, E: Integer;
+  P, S: Real;
+  E: Integer;
 begin
   if LastError <> 0 then Exit;
 
@@ -997,16 +1004,26 @@ begin
   begin
     FileFlush(F);
 
+    if I > CompCount then
+    begin
+      WriteLn('*** ', I, ' > ', CompCount);
+      Halt;
+    end;
+
     if LastError <> 0 then Exit;
 
-    P := 4 + I * CompSize;    (* Should we use Real here?    *)
-    BlockSeek(FCB, P div 128);  (* Why does div not work here? *)
+    P := 4.0 + I * 1.0 * CompSize;    (* Should we use Real here?    *)
+    S := Int(P / 128);
+    (* WriteLn('Seeking to index ', I, ' offset ', P, ' sector ', S);*)
+    BlockSeek(FCB, Trunc(S));  (* Why does div not work here? *)
     if I < CompCount then
-      BlockBlockRead(FCB, DMA, 1, E);
+      BlockBlockRead(FCB, DMA, 1, E)
+    else
+      Inc(FCB.RL);
 
     if LastError <> 0 then Exit;
 
-    Offset := P mod 128;
+    Offset := Trunc(P - 128 * S); (* Abs(P mod 128); *)
 
     CompIndex := I;
   end;
@@ -1020,7 +1037,7 @@ var
 begin
   if LastError <> 0 then Exit;
 
-  WriteLn('Read entry #', FileFilePos(F));
+  (* WriteLn('Read entry #', FileFilePos(F)); *)
 
   with F do
   begin
@@ -1043,8 +1060,10 @@ begin
       if Offset = 128 then
       begin
         FileFlush(F);
-        (*Inc(FCB.RL);*)
-        BlockBlockRead(FCB, DMA, 1, E);
+        if FileEof(F) then
+          Inc(FCB.RL)
+        else
+          BlockBlockRead(FCB, DMA, 1, E);
         if LastError <> 0 then Exit;
         Offset := 0;
       end;
@@ -1062,7 +1081,7 @@ var
 begin
   if LastError <> 0 then Exit;
 
-  WriteLn('Wrote entry #', FileFilePos(F));
+  (* WriteLn('Wrote entry #', FileFilePos(F)); *)
 
   with F do
   begin
@@ -1087,7 +1106,12 @@ begin
       begin
         FileFlush(F);
         if LastError <> 0 then Exit;
-        Inc(FCB.RL);
+
+        if FileEof(F) then
+          Inc(FCB.RL)
+        else
+          BlockBlockRead(FCB, DMA, 1, E);
+
         Offset := 0;
       end;
     end;
@@ -1114,9 +1138,12 @@ begin
 
     HdrCount := CompCount;
 
+    (*WriteLn('File closing: ', CompCount, '*', CompCount, ' --- ', HdrCount, '*', HdrSize);
+    ReadLn; *)
+
     BlockSeek(FCB, 0);
     BlockBlockWrite(FCB, DMA, 1, E);
     BlockClose(FCB);
   end;
-  WriteLn('Closed file');
+  (* WriteLn('Closed file'); *)
 end;
