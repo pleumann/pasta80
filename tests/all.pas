@@ -1,4 +1,7 @@
+program All;
+
 {$a+}
+
 const
   NumberOfTheBeast = 666;
 

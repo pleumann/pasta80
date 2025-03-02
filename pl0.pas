@@ -5732,6 +5732,11 @@ begin
   NextToken;
   ParseDeclarations(nil);
 
+  Expect(toEnd);
+  NextToken;
+  Expect(toPeriod);
+  NextToken;
+
   OpenScope(False);
   if Scanner.Token = toProgram then
   begin
