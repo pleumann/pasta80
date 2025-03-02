@@ -1683,6 +1683,11 @@ __strs:
                 push    de
                 ret
 
+;
+; Convert floating point to string, format 0 (default)
+;
+; Entry: A (maximum length), DE' (target address), BCDEHL (number)
+; Exit:  -
 __strf:
                 push    af
                 exx
@@ -1695,14 +1700,93 @@ __strf:
                 call    __movestr
                 ret
 
-__strf2:
+__strf_exp:
+        exx
+        push    bc
+        push    af
+        push    de
+        ld      a,c
+        cp      $09
+        jr      nc,__strf_exp_0
+        ld      a,1
+        jr      __strf_exp_1
+__strf_exp_0:             
+        sub     $07
+        cp      $0a
+        jp      c,__strf_exp_1
+        ld      a,$09
+__strf_exp_1:             
+        ld      h,a
+        ld      l,$0d
+        exx
+        call    __ftoa
+        pop     de
+        pop     af
+        push    af
+        push    de
+        call    __movestr
+        pop     hl
+        pop     af
+        pop     de
+        ld      d,a
+        call    __ralign
+        ret
+
+__strf_fix:
+        exx
+        push    bc
+        push    af
+        push    hl
+        ld      a,e
+;        cp      $10
+;        jp      c,__putf_fix_1
+;        ld      a,$0f
+__strf_fix_1:
+        or      $f0
+        ld      h,a
+        ld      l,$0a
+        exx
+        call    __ftoa
+        pop     de
+        pop     af
+        push    af
+        push    de
+        call    __movestr
+        pop     hl
+        pop     af
+        pop     de
+        ld      d,a
+        call    __ralign
+        ret
+
+#if defined(gaga)
+__putf_fix:
         exx
         push    de
         ld      a,c
 ;        cp      $10
 ;        jp      c,__putf_fix_1
 ;        ld      a,$0f
-__str_fix_1:
+__putf_fix_1:
+        or      $f0
+        ld      h,a
+        ld      l,$0a
+        exx
+        call    __ftoa
+        pop     bc
+        call    __puts_fmt
+        ret
+
+
+
+__oldstrf2:
+        exx
+        push    de
+        ld      a,c
+;        cp      $10
+;        jp      c,__putf_fix_1
+;        ld      a,$0f
+__oldstr_fix_1:
         or      $f0
         ld      h,a
         ld      l,$0a
@@ -1724,6 +1808,7 @@ __str_fix_1:
                 pop     af
                 call    __movestr
                 ret
+#endif
 
 __stre:
                 add     hl,bc

@@ -2458,10 +2458,11 @@ begin
   end
   else if DataType = dtReal then
   begin
-    EmitI('pop de');
+    EmitI('pop de'); (* addr *)
+    EmitI('pop bc'); (* width *)
     EmitI('exx');
     EmitI('popfp');
-    EmitI('call __strf');
+    EmitI('call __strf_exp');
   end
   else if DataType^.Kind = scEnumType then
   begin
@@ -2475,13 +2476,16 @@ end;
 
 procedure EmitStr2(DataType, VarType: PSymbol);
 begin
+  EmitI('ld a,' + Int2Str(VarType^.Value - 1));
+
   if DataType = dtReal then
   begin
-    EmitI('pop bc');
-    EmitI('pop de');
+    EmitI('pop hl'); (* address *)
+    EmitI('pop de'); (* decimals  *)
+    EmitI('pop bc'); (* width    *)
     EmitI('exx');
     EmitI('popfp');
-    EmitI('call __strf2');
+    EmitI('call __strf_fix');
   end
   else Error('Unprintable type: ' + DataType^.Name);
 end;
