@@ -2671,12 +2671,11 @@ __malloc_next:
         ld      ix,de
         exx
         jp      __malloc_loop
-; Display error message and freeze
+; Display error message and halt
 __malloc_out_of_memory:
         ld      hl,__malloc_error_message
         call    __puts
-__malloc_infinite_loop:
-        jp      __malloc_infinite_loop
+        jp      __done
 __malloc_error_message:
         db      13,'Out of memory'
 
