@@ -7,8 +7,8 @@ This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_lang
 The supported Pascal dialect is an almost exact clone of the original [Turbo Pascal 3.0](https://en.wikipedia.org/wiki/Turbo_Pascal) for CP/M (see [this manual](https://bitsavers.trailing-edge.com/pdf/borland/turbo_pascal/Turbo_Pascal_Version_3.0_Reference_Manual_1986.pdf) for details). So you have at your disposal these language elements:
 
 * All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Real`, `String` and `Pointer`).
-* `array of`, `record`, `set`, subranges and pointers as a way of building new data types.
-* The typical control flow elements `if..then..else`, `case..of`, `while..do` and `repeat..until`.
+* `array of`, `record`, `set`, enumerations, subranges and pointers as a way of building new data types.
+* The typical control flow elements `if..then..else`, `case..of`, `while..do` and `repeat..until` (including `Break` and `Continue` in loops).
 * `procedure` and `function` including value and `var` parameters and nesting.
 * All conversion and utility procedures and functions that Turbo Pascal 3.0 had.
 * The standard procedures for screen input and output (i.e. `ReadLn`, `WriteLn` etc.).
