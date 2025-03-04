@@ -1,19 +1,20 @@
 # Pascal Compiler for Z80
 
-This is a [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) (cross) compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M 2.2](https://en.wikipedia.org/wiki/CP/M) and the [ZX Spectrum Next](https://www.specnext.com) (the latter is currently not working, but I hope to get it back on par with CP/M soon).
+This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M 2.2](https://en.wikipedia.org/wiki/CP/M) and the [ZX Spectrum Next](https://www.specnext.com) (the latter is currently not working, but I hope to get it back on par with CP/M soon). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent design, so it doesn't have an explicit syntax tree, but generates code on the fly during parsing instead.
 
 ## Supported language elements
 
 The supported Pascal dialect is an almost exact clone of the original [Turbo Pascal 3.0](https://en.wikipedia.org/wiki/Turbo_Pascal) for CP/M (see [this manual](https://bitsavers.trailing-edge.com/pdf/borland/turbo_pascal/Turbo_Pascal_Version_3.0_Reference_Manual_1986.pdf) for details). So you have at your disposal these language elements:
 
 * All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Real`, `String` and `Pointer`).
-* `array of`, `record`, `set` and pointers as a way of building new data types.
+* `array of`, `record`, `set`, subranges and pointers as a way of building new data types.
 * The typical control flow elements `if..then..else`, `case..of`, `while..do` and `repeat..until`.
+* `procedure` and `function` including value and `var` parameters and nesting.
 * All conversion and utility procedures and functions that Turbo Pascal 3.0 had.
 * The standard procedures for screen input and output (i.e. `ReadLn`, `WriteLn` etc.).
 * The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`. 
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
-* Inline assembly (via opcodes, not via mnemonics).
+* Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
 
 Since that list sounds quite exhaustive, so you might ask what is missing. These are the current limitations:
 
@@ -26,7 +27,7 @@ Since that list sounds quite exhaustive, so you might ask what is missing. These
   * `$u(+/-)`   for enabling or disabling Ctrl-C checking
 * `Mark`/`Release` are not currently supported.
 * Overlays are not yet supported.
-* Binary size. The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, following [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent design, is not generating super-efficient Z80 code).
+* Binary size. The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optiizer, is not generating super-efficient Z80 code).
 
 ## Building and setting up the compiler
 
@@ -77,4 +78,4 @@ As a little gimmick the compiler can be started like this
 $ pl0 --ide
 ```
 
-to run it in an interactive mode that has an interface similar to Turbo Pascal 3.0. When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system. You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might have to make available from VCS's settings). In both cases `tnylpo` is expected to be available for running programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
+to run it in an interactive mode that has an interface similar to Turbo Pascal 3.0. When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system. You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)). In both cases `tnylpo` is expected to be available for running programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
