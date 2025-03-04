@@ -9,7 +9,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Real`, `String` and `Pointer`).
 * `array of`, `record`, `set`, enumerations, subranges and pointers as a way of building new data types.
 * The decision-making elements `if..then..else` and `case..of`.
-* The loop elements `while..do` and `repeat..until` (including `Break` and `Continue`).
+* The loop elements `for..do`, `while..do` and `repeat..until` (including `Break` and `Continue`).
 * `procedure` and `function` including value and `var` parameters and nesting.
 * All conversion and utility procedures and functions that Turbo Pascal 3.0 had.
 * The standard procedures for screen input and output (i.e. `ReadLn`, `WriteLn` etc.).
