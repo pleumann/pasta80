@@ -3740,6 +3740,14 @@ var
   S1, S2, S3, Tag: String;
   I, J, K: Integer;
   BA: array[0..31] of Byte;
+
+  function GetCtrlChar: Integer;
+  begin
+    if not (C in ['@'..'_']) then Error('Invalid control character ^' + C);
+    GetCtrlChar := Ord(C) - 64;
+    C := GetChar;
+  end;
+
 begin
   if Scanner.Token = toIdent then
   begin
@@ -3827,6 +3835,12 @@ begin
     end;
     NextToken;
   end
+  else if Scanner.Token = toCaret then
+  begin
+    T := dtChar;
+    EmitLiteral(GetCtrlChar);
+    NextToken;
+  end
   else if Scanner.Token = toFloat then
   begin
     T := dtReal;
@@ -3877,21 +3891,31 @@ begin
           NextToken;
         end
       end
-      else if Scanner.Token = toString then
+      else if (Scanner.Token = toString) or (Scanner.Token = toCaret) then
       begin
         if (T <> nil) and (T <> dtChar) then Error('Char expected');
-        if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+        if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
 
         T := dtChar;
 
+        if Scanner.Token = toCaret then
+          I := GetCtrlChar
+        else
         I := Ord(Scanner.StrValue[1]);
+
         J := I;
         NextToken;
         if Scanner.Token = toRange then
         begin
           NextToken;
-          Expect(toString);
-          if Length(Scanner.StrValue) <> 1 then Error('Char expected');
+
+          if (Scanner.Token <> toString) and (Scanner.Token <> toCaret) then
+            Error('Char expected');
+          if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
+
+          if Scanner.Token = toCaret then
+            J := GetCtrlChar
+          else
           J := Ord(Scanner.StrValue[1]);
           NextToken;
         end
