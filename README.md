@@ -21,6 +21,7 @@ Since that list sounds quite exhaustive, so you might ask what is missing. These
   * `$i <file>` for including Pascal source files
   * `$l <file>` for including an assembly file (aka "linking" a library)
   * `$a(+/-)`   for enabling or disabling absolute mode (default is on, disable for recursion)
+  * `$i(+/-)`   for enabling or disabling IO checking (when off, check `IOResult` after calls)
   * `$k(+/-)`   for enabling or disabling stack overflow checking
   * `$u(+/-)`   for enabling or disabling Ctrl-C checking
 * `Mark`/`Release` are not currently supported.
