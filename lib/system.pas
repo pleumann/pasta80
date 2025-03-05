@@ -370,6 +370,8 @@ procedure Randomize; register; inline
 
 procedure CheckBreak; register; external '__checkbreak';
 
+procedure CheckStack; register; external '__checkstack';
+
 (* Built-in: procedure FillChar(var Dest; Length: Integer; Data); *)
 
 procedure Move(var Source, Dest; Count: Integer); register; external '__move';
