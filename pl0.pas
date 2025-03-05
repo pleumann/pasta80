@@ -4135,7 +4135,7 @@ begin
 
     U := ParseExpression;
     if U^.Kind <> scSetType then Error('Set needed');    
-    if U^.DataType <> T^.DataType then Error('Incompatible');    
+    // if U^.DataType <> T^.DataType then Error('Incompatible');  // FIXME!!!
 
     EmitSetOp(Op);
 
