@@ -375,7 +375,8 @@ end;
 
 function ReadKey: CHar;
 begin
-  ReadKey := Chr(BDOS(1, 0));
+  repeat until KeyPressed;
+  ReadKey := Chr(BDOS(6, 255));
 end;
 
 (* -------------------------------------------------------------------------- *)
