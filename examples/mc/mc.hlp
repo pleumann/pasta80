@@ -1,0 +1,138 @@
+                    INTRODUCTION
+
+MicroCalc is a tiny spread sheet program a la  VisiCalc. It  is
+provided with the TURBO-Pascal system as an example program.
+
+Since MicroCalc is only a demonstation program it has its limita-
+tions (which you may have fun eliminating):
+
+  * You cannot copy formulas from one cell to others.
+  * You cannot insert and delete lines or columns.
+
+In spite of its limitations MicroCalc does provide some interest-
+ing features among which are:
+
+  *  11 digits floating point reals (Thanks to TURBO Pascal!)
+  *  Full set of mathematical functions (SIN,COS,LN,EXP etc.)
+  *  Built in line editor for text and formula editing.
+  *  Text  can  be  entered across cells.
+  *  Once entered a formula is protected from accidental erasure.
+.PA
+
+
+In addition to this MicroCalc offers all the usual features of  a
+spread sheet program:
+
+
+  *  Load a spread sheet from the disk.
+  *  Save a spread sheet on the disk.
+  *  Automatic recalculation after each entry. (May be disabled).
+  *  Print the spread sheet on the printer.
+  *  Clear the current spread sheet.
+
+The spread sheet is an electronic piece of paper on which you can
+enter  text,  numbers and formulas and have MicroCalc do calcula-
+tions automatically.
+
+The next page shows the electronic spread sheet.
+.PA
+----------------------------------------------------------------
+       A          B         C         D  ....
+ 1   22.00
+ 2    1.00
+ 3    2.00
+ 4    3.00
+ 5   28.00
+ .
+ .
+A 5  Formula:
+(A1+A2+A3+A4+A5)
+-----------------------------------------------------------------
+
+In  the example the next last line shows that the active cell  is
+cell  A5  and that A5 contains  a  formula:  (A1+A2+A3+A4)  which
+means  that  the numbers in A1,A2,A3 and A4 should be  added  and
+placed in A5.
+
+The formula can be abbreviated to: (A1>A4) meaning: add all cells
+from A1 to A4.
+.PA
+
+You move the cursor around just like you do in the TURBO editor:
+
+                             (Up)
+                            Ctrl-E
+                (Left) Ctrl-S     Ctrl-G (Right)
+                            Ctrl-X
+                            (Down)
+
+A cell may contain a number, a formula or some text. The type of of the cell
+and its coordinates are shown in the bottom left corner of the screen:
+
+A 5   Formula:         (Means that the current cell is A5 and that it
+                       contains a formula)
+
+A 1   Text             (Cell A1 contains text)
+
+A 2   Numeric          (Cell A2 contains a number and no cell references)
+
+.PA
+                     Summary of MicroCalc
+     Cells are denoted A1 through G21 giving a total of 147 cells.
+
+Summary of standard functions and operators:
+SIN, COS, ARCT, ABS, FACT, EXP, LN, +,-,/,*
+Futhermore the operator '>' can be used to denote a range of cells to add.
+
+Entering data
+To enter data in any field move the cursor to the cell and enter the
+data. MicroCalc automatically determines if the field is numeric or a
+a text field.
+
+
+When moving between fields:
+^S,^D,^E,^X move left right up and down.
+
+When editing a field
+^S,^D moves left and right. ^A,^F moves to beginning/end of line.
+DEL,^G  deletes left or right character.
+ESC makes it possible to regret changes and to edit an existing cell.
+.PA
+
+
+                     Summary of commands
+
+
+    /   will restore the screen
+    Q   will Quit MicroCalc
+    L   will Load a spread sheet from the disk.
+    S   will Save a spread sheet on the disk.
+    R   will Recalculate
+    P   will Print the spread sheet.
+    F   makes it possible to change the output format for numbers.
+    A   switches Autocalc ON and OFF
+
+Note: to use scientific notation use the the F command and enter minus one
+      -1 for the number of decimals.
+
+.PA
+
+                              EXAMPLES
+
+The following are examples of valid cell formulas:
+
+A1+(B2-C7)  subtract cell C7 from B2 and add the result to cell A1
+(A1>A23)    the sum of cells:  A1,A2,A3..A23
+(A1>B5)     the sum of cells:  A1..A5 and B1..B5
+
+The formulas may be as complicated as you want: 
+
+SIN(A1)*COS(A2)/((1.2*A8)+LN(FACT(A8)+8.9E-3))+(C1>C5)
+
+To edit an existing formula or text simply move to the cell and
+press ESC, make your changes and press <RETURN>. If you make
+a mistake you may press ESC again, the old value of the cell will
+then be restored.
+
+To try MicroCalc now you may use the /L command and load the file:
+CALCDEMO.
