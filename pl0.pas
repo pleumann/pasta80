@@ -1223,6 +1223,13 @@ begin
   end;
 end;
 
+function GetCtrlChar: Integer;
+begin
+  if not (C in ['@'..'_']) then Error('Invalid control character ^' + C);
+  GetCtrlChar := Ord(C) - 64;
+  C := GetChar;
+end;
+
 procedure Expect(Token: TToken);
 begin
   (* Write('<', Token, '/', Scanner.Token, '>'); *)
@@ -3733,21 +3740,117 @@ begin
     Error('Cannot handle: ' + Proc^.Name);
 end;
 
+function ParseSetConstant: PSymbol;
+var
+  I, J, K: Integer;
+  Sym, T: PSymbol;
+  S, S3: string;
+  BA: array[0..31] of Byte;
+begin
+  for I := 0 to 31 do BA[I] := 0;
+
+  T := nil;
+  while Scanner.Token <> toRBrack do
+  begin
+    if Scanner.Token = toNumber then
+    begin
+      if (T <> nil) and (T <> dtInteger) then Error('Integer expected');
+
+      T := dtInteger;
+
+      I := Scanner.NumValue;
+      J := I;
+      NextToken;
+      if Scanner.Token = toRange then
+      begin
+        NextToken;
+        Expect(toNumber);
+        J := Scanner.NumValue;
+        NextToken;
+      end
+    end
+    else if (Scanner.Token = toString) or (Scanner.Token = toCaret) then
+    begin
+      if (T <> nil) and (T <> dtChar) then Error('Char expected');
+      if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
+
+      T := dtChar;
+
+      if Scanner.Token = toCaret then
+        I := GetCtrlChar
+      else
+      I := Ord(Scanner.StrValue[1]);
+
+      J := I;
+      NextToken;
+      if Scanner.Token = toRange then
+      begin
+        NextToken;
+
+        if (Scanner.Token <> toString) and (Scanner.Token <> toCaret) then
+          Error('Char expected');
+        if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
+
+        if Scanner.Token = toCaret then
+          J := GetCtrlChar
+        else
+        J := Ord(Scanner.StrValue[1]);
+        NextToken;
+      end
+    end
+    else if Scanner.Token = toIdent then
+    begin
+      Sym := LookupGlobal(Scanner.StrValue);
+      if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
+      if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
+
+      if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
+      T := Sym^.DataType;
+
+      I := Sym^.Value;
+      J := I;
+      NextToken;
+      if Scanner.Token = toRange then
+      begin
+        NextToken;
+        Expect(toIdent);
+        Sym := LookupGlobal(Scanner.StrValue);
+        if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
+        if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
+        if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
+
+        J := Sym^.Value;
+        NextToken;
+      end
+    end
+    else Error('Scalar expected');
+
+    //WriteLn('Adding: ', I, ' to ', J);
+    for K := I to J do
+    begin
+      BA[K shr 3] := BA[K shr 3] or (1 shl (K and 7));
+    end;
+    if Scanner.Token = toComma then NextToken;
+  end;
+
+  S3 := '';
+  for K := 0 to 31 do S3 := S3 + HexStr(BA[K], 2);
+  EmitI('dm $' + S3);
+
+  Sym := CreateSymbol(scSetType, '');
+  Sym^.Value := 32;
+  Sym^.DataType := T;
+  T := Sym;
+
+  ParseSetConstant := T;
+end;
+
 function ParseFactor: PSymbol;
 var
   Sym: PSymbol; T: PSymbol;
   Op: TToken;
   S1, S2, S3, Tag: String;
   I, J, K: Integer;
-  BA: array[0..31] of Byte;
-
-  function GetCtrlChar: Integer;
-  begin
-    if not (C in ['@'..'_']) then Error('Invalid control character ^' + C);
-    GetCtrlChar := Ord(C) - 64;
-    C := GetChar;
-  end;
-
 begin
   if Scanner.Token = toIdent then
   begin
@@ -3868,111 +3971,23 @@ begin
   end
   else if Scanner.Token = toLBrack then
   begin
-    for I := 0 to 31 do BA[I] := 0;
-
-    T := nil;
-    NextToken;
-    while Scanner.Token <> toRBrack do
-    begin
-      if Scanner.Token = toNumber then
-      begin
-        if (T <> nil) and (T <> dtInteger) then Error('Integer expected');
-
-        T := dtInteger;
-
-        I := Scanner.NumValue;
-        J := I;
-        NextToken;
-        if Scanner.Token = toRange then
-        begin
-          NextToken;
-          Expect(toNumber);
-          J := Scanner.NumValue;
-          NextToken;
-        end
-      end
-      else if (Scanner.Token = toString) or (Scanner.Token = toCaret) then
-      begin
-        if (T <> nil) and (T <> dtChar) then Error('Char expected');
-        if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
-
-        T := dtChar;
-
-        if Scanner.Token = toCaret then
-          I := GetCtrlChar
-        else
-        I := Ord(Scanner.StrValue[1]);
-
-        J := I;
-        NextToken;
-        if Scanner.Token = toRange then
-        begin
-          NextToken;
-
-          if (Scanner.Token <> toString) and (Scanner.Token <> toCaret) then
-            Error('Char expected');
-          if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
-
-          if Scanner.Token = toCaret then
-            J := GetCtrlChar
-          else
-          J := Ord(Scanner.StrValue[1]);
-          NextToken;
-        end
-      end
-      else if Scanner.Token = toIdent then
-      begin
-        Sym := LookupGlobal(Scanner.StrValue);
-        if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
-        if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
-
-        if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
-        T := Sym^.DataType;
-
-        I := Sym^.Value;
-        J := I;
-        NextToken;
-        if Scanner.Token = toRange then
-        begin
-          NextToken;
-          Expect(toIdent);
-          Sym := LookupGlobal(Scanner.StrValue);
-          if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
-          if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
-          if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
-
-          J := Sym^.Value;
-          NextToken;
-        end
-      end
-      else Error('Scalar expected');
-
-      //WriteLn('Adding: ', I, ' to ', J);
-      for K := I to J do
-      begin
-        BA[K shr 3] := BA[K shr 3] or (1 shl (K and 7));
-      end;
-      if Scanner.Token = toComma then NextToken;
-    end;
     NextToken;
 
     S1 := GetLabel('set');
     S2 := GetLabel('set');
     EmitI('jr ' + S2);
     Emit(S1, '', '');
-    S3 := '';
-    for K := 0 to 31 do S3 := S3 + HexStr(BA[K], 2);
-    EmitI('dm $' + S3);
-    Emit(S2, '', '');
 
-    Sym := CreateSymbol(scSetType, '');
-    Sym^.Value := 32;
-    Sym^.DataType := T;
-    T := Sym;
+    T := ParseSetConstant();
+
+    Emit(S2, '', '');
 
     Emit('', 'ld hl,' + S1, 'Load set constant');
     EmitI('push hl');
     EmitLoad(T);
+
+    Expect(toRBrack);
+    NextToken;
   end
   else if Scanner.Token in [toAdd, toSub, toNot] then
   begin
@@ -4833,6 +4848,16 @@ begin
       Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
       Emit('', 'ds ' + Int2Str(DataType^.Value - Length(Scanner.StrValue) - 1), '');
       NextToken; 
+    end
+    else if DataType^.Kind = scSetType then
+    begin
+      Expect(toLBrack);
+      NextToken;
+
+      ParseSetConstant; (* FIXME: Type check!!! *)
+      
+      Expect(toRBrack);
+      NextToken;
     end
     else
       Error('Not supported');
