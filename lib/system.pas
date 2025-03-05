@@ -161,6 +161,21 @@ procedure DelLine; register; inline
 procedure TextColor(I: Integer); register;      external '__textfg';
 procedure TextBackground(I: Integer); register; external '__textbg';
 
+procedure HighVideo; register; inline
+(
+  $c9
+);
+
+procedure LowVideo; register; inline
+(
+  $c9
+);
+
+procedure NormVideo; register; inline
+(
+  $c9
+);
+
 (* -------------------------------------------------------------------------- *)
 (* --- Arithmetic functions ------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
