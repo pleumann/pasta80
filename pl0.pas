@@ -1508,29 +1508,15 @@ begin
 
     if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,-1') then
     begin
-      Prev^.Instruction := 'dec de';
-      Code^.Instruction := 'ex de,hl';
-      Exit;
-    end;
-
-    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld hl,-1') then
-    begin
-      Prev^.Instruction := 'dec de';
-      Code^.Instruction := 'ex de,hl';
+      Prev^.Instruction := 'dec hl';
+      RemoveCode;
       Exit;
     end;
 
     if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,-2') then
     begin
-      Prev^.Instruction := 'dec de \ dec de';
-      Code^.Instruction := 'ex de,hl';
-      Exit;
-    end;
-
-    if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld hl,-2') then
-    begin
-      Prev^.Instruction := 'dec de \ dec de';
-      Code^.Instruction := 'ex de,hl';
+      Prev^.Instruction := 'dec hl \ dec hl';
+      RemoveCode;
       Exit;
     end;
 
