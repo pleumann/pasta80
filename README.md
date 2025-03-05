@@ -16,19 +16,30 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`. 
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
 * Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
-
-Since that list sounds quite exhaustive, so you might ask what is missing. These are the current limitations:
-
-* Most compiler directives are not yet supported with the exception of
+* Some compiler directives
   * `$i <file>` for including Pascal source files
   * `$l <file>` for including an assembly file (aka "linking" a library)
   * `$a(+/-)`   for enabling or disabling absolute mode (default is on, disable for recursion)
   * `$i(+/-)`   for enabling or disabling IO checking (when off, check `IOResult` after calls)
   * `$k(+/-)`   for enabling or disabling stack overflow checking
   * `$u(+/-)`   for enabling or disabling Ctrl-C checking
+
+The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
+
+  * You can query the keyboard with `KeyPressed` and `ReadKey`.
+  * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
+  * A simple `assert` procedure that counts passes/fails and shows the failed line number.
+    
+Since that list sounds quite exhaustive, you might ask what is missing. These are the current limitations:
+
+* All the remaining compiler directives are not yet supported.
 * `Mark`/`Release` are not currently supported.
+* The standard files `Input`, `Output`, `Kbd`, `Con` and `Lst` are not supported.
 * Overlays are not yet supported.
-* Binary size. The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optiizer, is not generating super-efficient Z80 code).
+* `Chain` and `Execute` are not supported.
+* Binary size is quite large compared to the original.
+
+The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optizer, is not generating super-efficient Z80 code).
 
 ## Building and setting up the compiler
 
