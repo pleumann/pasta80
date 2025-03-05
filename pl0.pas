@@ -4375,6 +4375,11 @@ begin
     if T <> dtInteger then Error('Invalid type');
     V := Scanner.NumValue;
   end
+  else if Scanner.Token = toCaret then
+  begin
+    if T <> dtChar then Error('Invalid type');
+    V := GetCtrlChar;
+  end
   else (* toString *)
   begin
     if Length(Scanner.StrValue) <> 1 then Error('Invalid type');
@@ -4431,7 +4436,7 @@ begin
   Expect(toOf);
   NextToken;
 
-  while Scanner.Token in [toIdent, toNumber, toString] do
+  while Scanner.Token in [toIdent, toNumber, toString, toCaret] do
   begin
     OfTarget := GetLabel('case');
     NextTest := GetLabel('test');
@@ -4913,6 +4918,11 @@ begin
 
       Sym^.DataType := Sym2^.DataType;
       Sym^.Value := Sym2^.Value;
+    end
+    else if Scanner.Token = toCaret then
+    begin
+      Sym^.DataType := dtChar;
+      Sym^.Value := GetCtrlChar;
     end
     else
     begin
