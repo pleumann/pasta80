@@ -28,7 +28,7 @@ procedure GetFileName(var Line: AnyString; FileType:String3);
 begin
   Line:='';
   repeat
-    Read(Kbd,Ch);
+    Ch := ReadKey;
     if Upcase(Ch) in ['A'..'Z',^M] then
     begin
       write(Upcase(Ch));
@@ -173,7 +173,7 @@ begin
       GotoXY(26,24); HighVideo;
       write('<<< Please press any key to continue >>>');
       LowVideo;
-      read(Kbd,Ch);
+      Ch := ReadKey;
     end;
     GotoXY(20,24); HighVideo;
     write('<<< Please press <RETURN> to start MicroCalc >>>');
@@ -183,7 +183,7 @@ begin
   end else { Help file did not exist }
   begin
     Msg('To get help the file MC.HLP must be on your disk. Press <RETURN>');
-    repeat Read(kbd,Ch) until Ch=^M;
+    repeat Ch := ReadKey until Ch=^M;
     GotoCell(FX,FY);
   end;
 end;

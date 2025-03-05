@@ -40,7 +40,7 @@ begin
   if ErrPos<>0 then X:=ErrPos;
   GotoX;
   repeat
-    Read(Kbd,Ch);
+    Ch := ReadKey;
     if UpperCase then Ch:=UpCase(Ch);
     case Ch of
        ^[: begin
@@ -286,7 +286,7 @@ begin { procedure GetCell }
     end else
     begin
       Flash(15,'Edit formula Y/N?',true);
-      repeat read(Kbd,Ch) until UpCase(CH) in ['Y','N'];
+      repeat Ch := ReadKey until UpCase(CH) in ['Y','N'];
       Flash(15,'                 ',false);
       if UpCase(Ch)='Y' then EditCell Else Abort:=true;
     end;
@@ -301,7 +301,7 @@ begin { procedure GetCell }
       if formula in Screen[FX,FY].CellStatus then
       begin
         Flash(15,'Edit formula Y/N?',true);
-        repeat read(Kbd,Ch) until UpCase(CH) in ['Y','N'];
+        repeat Ch := ReadKey until UpCase(CH) in ['Y','N'];
         Flash(15,'                 ',false);
         if UpCase(Ch)='Y' then EditCell Else Abort:=true;
       end else
@@ -347,7 +347,7 @@ var
   begin
     S:='';
     repeat
-      repeat Read(Kbd,Ch) until Ch in ['0'..'9','-',^M];
+      repeat Ch := ReadKey until Ch in ['0'..'9','-',^M];
       if Ch<>^M then
       begin
         Write(Ch); S:=S+Ch;

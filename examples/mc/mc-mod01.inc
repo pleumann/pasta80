@@ -56,7 +56,7 @@ begin
   HighVideo;
   GotoXY(1,24); ClrEol;
   Write('Clear this worksheet? (Y/N) ');
-  repeat Read(Kbd,Ch) until Upcase(Ch) in ['Y','N'];
+  repeat Ch := ReadKey until Upcase(Ch) in ['Y','N'];
   Write(Upcase(Ch));
   if UpCase(Ch)='Y' then
   begin

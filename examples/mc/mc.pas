@@ -66,12 +66,12 @@ var
 { must let the include directives start in column one and then use   }
 { the TLIST program to generate a listing.                           }
 
- {$I MC-MOD00.INC        Miscelaneous procedures                     }
- {$I MC-MOD01.INC        Initialization procedures                   }
- {$I MC-MOD02.INC        Commands to move between fields             }
- {$I MC-MOD03.INC        Commands to Load,Save,Print                 }
- {$I MC-MOD04.INC        Evaluating an expression in a cell          }
- {$I MC-MOD05.INC        Reading a cell definition and Format command}
+ {$I MC-MOD00.INC} {     Miscelaneous procedures                     }
+ {$I MC-MOD01.INC} {     Initialization procedures                   }
+ {$I MC-MOD02.INC} {     Commands to move between fields             }
+ {$I MC-MOD03.INC} {     Commands to Load,Save,Print                 }
+ {$I MC-MOD04.INC} {     Evaluating an expression in a cell          }
+ {$I MC-MOD05.INC} {     Reading a cell definition and Format command}
 
 
 {.PA}
@@ -92,7 +92,7 @@ begin
   GotoXY(1,24);
   HighVideo;
   Write('/ restore, Quit, Load, Save, Recalculate, Print,  Format, AutoCalc, Help ');
-  Read(Kbd,Ch);
+  Ch := ReadKey;
   Ch:=UpCase(Ch);
   case Ch of                                             { In module }
     'Q': Halt;
@@ -128,7 +128,7 @@ begin { procedure Wellcome }
   Center('Copyright 1983 by Borland International Inc. ');
   Center('Press any key for help or <RETURN> to start');
   GotoXY(40,12);
-  Read(Kbd,Ch);
+  Ch := ReadKey;
   if Ch<>^M then Help;
 end;
 
@@ -143,7 +143,7 @@ begin
   ClrScr; Grid;                                                {  01 }
   GotoCell(FX,FY);
   repeat
-    Read(Kbd,Ch);
+    Ch := ReadKey;
     case Ch of
       ^E:       MoveUp;                                        {  02 }
       ^X,^J:    MoveDown;                                      {  02 }
