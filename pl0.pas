@@ -2396,6 +2396,9 @@ end;
 
 procedure EmitStr(DataType, VarType: PSymbol);
 begin
+  while DataType^.Kind = scSubrangeType do
+    DataType := DataType^.DataType;
+
   EmitI('ld a,' + Int2Str(VarType^.Value - 1));
 
   if (DataType = dtInteger) or (DataType = dtByte) then
@@ -2435,6 +2438,9 @@ end;
 
 procedure EmitStr1(DataType, VarType: PSymbol);
 begin
+  while DataType^.Kind = scSubrangeType do
+    DataType := DataType^.DataType;
+
   EmitI('ld a,' + Int2Str(VarType^.Value - 1));
 
   if (DataType = dtInteger) or (DataType = dtByte) then
@@ -2492,6 +2498,9 @@ end;
 
 procedure EmitWrite(DataType: PSymbol);
 begin
+  while DataType^.Kind = scSubrangeType do
+    DataType := DataType^.DataType;
+
   if (DataType = dtInteger) or (DataType = dtByte) then
   begin
     Emit('', 'pop hl', '');
@@ -2536,6 +2545,9 @@ end;
 
 procedure EmitWrite1(DataType: PSymbol);
 begin
+  while DataType^.Kind = scSubrangeType do
+    DataType := DataType^.DataType;
+
   Emit('', 'pop bc', '');
 
   if (DataType = dtInteger) or (DataType = dtByte) then
@@ -5316,7 +5328,7 @@ begin
     DataType := LookupGlobal(Scanner.StrValue);
 
     if DataType = nil then Error('Unknown identifier');
-    if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType]) then Error('Type expected');
+    if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType]) then Error('Type expected');
   end;
 
   NextToken;
