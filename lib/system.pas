@@ -124,27 +124,27 @@ procedure ConOut(C: Char); register;        external '__conout';
 
 procedure ClrEol; register; inline
 (
-  $2e /                       (* ld   l,27      *)
+  $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
-  $3e / 'K' /                 (* ld   l,'K'     *)
+  $3e / 'K' /                 (* ld   a,'K'     *)
   $cd / ConOut /              (* call ConOut    *)
   $c9                         (* ret            *)
 );
 
 procedure ClrEos; register; inline
 (
-  $2e /                       (* ld   l,27      *)
+  $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
-  $3e / 'J' /                 (* ld   l,'J'     *)
+  $3e / 'J' /                 (* ld   a,'J'     *)
   $cd / ConOut /              (* call ConOut    *)
   $c9                         (* ret            *)
 );
 
 procedure InsLine; register; inline
 (
-  $2e /                       (* ld   l,27      *)
+  $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
-  $3e / 'L' /                 (* ld   l,'L'     *)
+  $3e / 'L' /                 (* ld   a,'L'     *)
   $cd / ConOut /              (* call ConOut    *)
   $c9                         (* ret            *)
 );
