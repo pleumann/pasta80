@@ -1,6 +1,10 @@
+(* -------------------------------------------------------------------------- *)
+(* --- Pascal Compiler ------------------------------------------------------ *)
+(* -------------------------------------------------------------------------- *)
+
 program PL0;
 
-{$Mode delphi}
+{$mode delphi}
 
 uses
   Keyboard, Dos, Math, Process;
@@ -9,9 +13,9 @@ uses
 (* --- Utility functions ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
-var
-  HomeDir, ZasmCmd, TnylpoCmd, NanoCmd, CodeCmd: String;
-
+(**
+ * Converts the given string to upper case.
+ *)
 function UpperStr(S: String): String;
 var
   I: Integer;
@@ -20,6 +24,9 @@ begin
   UpperStr := S;  
 end;
 
+(**
+ * Converts the given string to lower case.
+ *)
 function LowerStr(S: String): String;
 var
   I: Integer;
@@ -28,31 +35,23 @@ begin
   LowerStr := S;  
 end;
 
-function Replace(S: String; C, D: Char): String;
-var
-  I: Integer;
-begin
-  for I := 1 to Length(S) do
-    if S[I] = C then
-      S[I] := D;
-  Replace := S;
-end;
-
-function Int2Str(I: Integer (*); N: Integer*) ): String;
+(**
+ * Converts the given integer to a string.
+ *)
+function IntToStr(I: Integer): String;
 const
   N = 0;
 var
   S: String;
 begin
   Str(I, S);
-  (*)
-  if N < 0 then
-    S := Replace(S, ' ', '0');
-  *)
-  Int2Str := S;
+  IntToStr := S;
 end;
 
-function HexStr(Value: Integer; Digits: Integer): String;
+(**
+ * Converts the given integer to a hex number of the given length.
+ *)
+function IntToHex(Value: Integer; Digits: Integer): String;
 const
   Hex = '0123456789ABCDEF';
 var
@@ -67,9 +66,63 @@ begin
     Digits := Digits - 1;
   end;
 
-  HexStr := S;
+  IntToHex := S;
 end;
 
+(**
+ * Pads the string with spaces at the end, so it has at least the given number
+ * of characters.
+ *)
+function PadStr(S: String; N: Integer): String;
+const
+  Spaces = '                ';
+begin
+  if Length(S) >= Abs(N) then
+    PadStr := S
+  else
+  begin
+    while Length(S) < N do
+      S := S + Spaces;
+    PadStr := Copy(S, 1, N);  
+  end
+end;
+
+(**
+ * Trims the given string by removing all characters <= ' ' from left and right
+ * sides.
+ *)
+function TrimStr(S: String): String;
+var
+  I, J: Integer;
+begin
+  I := 1;
+  while ((I <= Length(S)) and (S[I] <= ' ')) do
+    I := I + 1;
+  J := Length(S) + 1;
+  while ((J > I) and (S[J-1] <= ' ')) do
+    J := J - 1;
+  TrimStr := Copy(S, I, J - I);
+end;
+
+(**
+ * Checks if the given string starts with the given substring.
+ *)
+function StartsWith(Str, SubStr: String): Boolean;
+begin
+  if Length(Str) < Length(SubStr) then
+  begin
+    StartsWith := False;
+    Exit;
+  end;
+
+  SetLength(Str, Length(SubStr));
+  StartsWith := Str = SubStr;
+end;
+
+(**
+ * Encodes the given floating-point number (enclosed in a string) the way
+ * the Real type needs it.
+ *) 
 function EncodeReal(S: String): String;
 var
   Number, Mantissa: Extended;
@@ -110,78 +163,46 @@ begin
   // TODO: If the 11.th. hex digit is larger than 7 the
   // number should be rounded by adding 1 to BCDEH.
 
-  EncodeReal := '0x' + HexStr(Bytes[1], 2) + HexStr(Bytes[0], 2) + ',' +
-                '0x' + HexStr(Bytes[3], 2) + HexStr(Bytes[2], 2) + ',' +
-                '0x' + HexStr(Bytes[5], 2) + HexStr(Bytes[4], 2);
+  EncodeReal := '0x' + IntToHex(Bytes[1], 2) + IntToHex(Bytes[0], 2) + ',' +
+                '0x' + IntToHex(Bytes[3], 2) + IntToHex(Bytes[2], 2) + ',' +
+                '0x' + IntToHex(Bytes[5], 2) + IntToHex(Bytes[4], 2);
 end;
 
-function AlignStr(S: String; N: Integer): String;
-const
-  Spaces = '                ';
-begin
-  if Length(S) >= Abs(N) then
-    AlignStr := S
-  else if N > 0 then
-  begin
-    while Length(S) < N do
-      S := S + Spaces;
-    AlignStr := Copy(S, 1, N);  
-  end
-  else begin
-    N := -N;
-    while Length(S) < N do
-      S := Spaces + S;
-    AlignStr := Copy(S, Length(S) - N + 1, N);
-  end
-end;
-
-function TrimStr(S: String): String;
-var
-  I, J: Integer;
-begin
-  I := 1;
-  while ((I <= Length(S)) and (S[I] <= ' ')) do
-    I := I + 1;
-  J := Length(S) + 1;
-  while ((J > I) and (S[J-1] <= ' ')) do
-    J := J - 1;
-  TrimStr := Copy(S, I, J - I);
-end;
-
-function StartsWith(S, T: String): Boolean;
-begin
-  if Length(S) < Length(T) then
-  begin
-    StartsWith := False;
-    Exit;
-  end;
-
-  SetLength(S, Length(T));
-  StartsWith := S = T;
-end;
-
-function ParentDir(Name: String): String;
+(**
+ * Returns the parent directory of the given directory.
+ *)
+function ParentDir(DirName: String): String;
 var
   I: Integer;
 begin
-  I := Length(Name);
-  while (I > 0) and (Name[I] <> '/') do
+  I := Length(DirName);
+  while (I > 0) and (DirName[I] <> '/') do
     I := I - 1;
 
-  ParentDir := Copy(Name, 1, I - 1);
+  ParentDir := Copy(DirName, 1, I - 1);
 end;
 
-function ChangeExt(Name, Ext: String): String;
+(**
+ * Changes the extension of the given filename to a new one (or appends it, if
+ * there is no file extension at all. The new extension is supposed to start
+ * with a dot.
+ *)
+function ChangeExt(FileName, NewExt: String): String;
 var
   I: Integer;
 begin
-  I := Pos('.', Name);
+  I := Pos('.', FileName);
   if I = 0 then
-    ChangeExt := Name + Ext
+    ChangeExt := FileName + NewExt
   else
-    ChangeExt := Copy(Name, 1, I-1) + Ext;
+    ChangeExt := Copy(FileName, 1, I - 1) + NewExt;
 end;
 
+(**
+ * Returns a given file name as a relative file name based on a given
+ * directory, if that it possible (i.e. if is contained in that directory).
+ * Otherwise it stays unchanged.
+ *)
 function FRelative(Name, Dir: String): String;
 begin
   Dir := Dir + '/';
@@ -191,6 +212,9 @@ begin
     FRelative := Name;  
 end;
 
+(**
+ * Returns the size of the given file, or -1 if the file does not exist.
+ *)
 function FSize(Name: String): Integer;
 var
   F: File;
@@ -207,6 +231,18 @@ begin
   {$I+}
 end;
 
+(* -------------------------------------------------------------------------- *)
+(* --- Config handling ------------------------------------------------------ *)
+(* -------------------------------------------------------------------------- *)
+
+var
+  HomeDir, ZasmCmd, TnylpoCmd, NanoCmd, CodeCmd: String;
+  AltEditor: Boolean;
+
+(**
+ * Tries to setup the compiler's home directory and the paths to various tools,
+ * first by "guessing" via "which", then by loading a config file.
+ *)
 procedure LoadConfig;
 var
   T: Text;
@@ -277,9 +313,9 @@ begin
     WriteLn;
   end;
   {$I+}
-end;
 
-// Debug / Warning / Error
+  AltEditor := GetEnv('TERM_PROGRAM') = 'vscode'; // Are we running inside VSC?
+end;
 
 (* -------------------------------------------------------------------------- *)
 (* --- Input ---------------------------------------------------------------- *)
@@ -300,8 +336,6 @@ var
   Include: Boolean = False;
   StoredState: Jmp_Buf;
   TokenLine, TokenColumn, ErrorLine, ErrorColumn: Integer;
-
-  AltEditor: Boolean;
 
 procedure Error(Message: String);
 var  I: Integer;
@@ -377,7 +411,7 @@ begin
       end;
 
       ReadLn(Input, Buffer);
-      EmitC('[' + Int2Str(Line) + '] ' + Buffer);
+      EmitC('[' + IntToStr(Line) + '] ' + Buffer);
       Buffer := Buffer + #13;
       Line := Line + 1;
       Column := 1;
@@ -1283,7 +1317,7 @@ end;
 
 function GetLabel(Prefix: String): String;
 begin
-  GetLabel := Prefix + Int2Str(NextLabel);
+  GetLabel := Prefix + IntToStr(NextLabel);
   NextLabel := NextLabel + 1;
 end;
 
@@ -1316,13 +1350,13 @@ begin
 
     P := Pos(' ', Instruction);
     if P <> 0 then
-      Instruction := AlignStr(Copy(Instruction, 1, P-1), 8) + Copy(Instruction, P+1, 255);
+      Instruction := PadStr(Copy(Instruction, 1, P-1), 8) + Copy(Instruction, P+1, 255);
 
-    S := AlignStr(S, 16) + Instruction;
+    S := PadStr(S, 16) + Instruction;
   end;
 
   if Comment <> '' then
-    S := AlignStr(S, 40) + '; ' + Comment;
+    S := PadStr(S, 40) + '; ' + Comment;
 
   WriteLn(Target, S);
 end;
@@ -1668,7 +1702,7 @@ begin
   
     if K <> 0 then
     begin
-      EmitC('Post call cleanup ' + Int2Str(K) + ' bytes');
+      EmitC('Post call cleanup ' + IntToStr(K) + ' bytes');
       EmitClear(K);
     end;
   end;
@@ -1724,7 +1758,7 @@ begin
     else
     begin
     if Sym^.Value > 0 then S := S + '+';
-    S := S + Int2Str(Sym^.Value) + ')';
+    S := S + IntToStr(Sym^.Value) + ')';
     end;
   end;
 end;
@@ -1736,7 +1770,7 @@ var
   I: Integer;
   C: Char;
 begin
-  T := Int2Str(Length(S));
+  T := IntToStr(Length(S));
   Quotes := False;
 
   for I := 1 to Length(S) do
@@ -1749,7 +1783,7 @@ begin
         T := T + '"';
         Quotes := False;
       end;
-      T := T + ',' + Int2Str(Ord(C));
+      T := T + ',' + IntToStr(Ord(C));
     end
     else
     begin
@@ -1794,7 +1828,7 @@ begin
   begin
       S := Sym^.Name;
       EmitC('');
-      Emit(Sym^.Tag, 'db ' + Int2Str(Length(S)) + ',"' + S + '"', '');
+      Emit(Sym^.Tag, 'db ' + IntToStr(Length(S)) + ',"' + S + '"', '');
   end;
 end;
 *)
@@ -1861,20 +1895,20 @@ begin
   begin
     Emit(Sym^.Tag, 'push ix', 'Prologue');
 
-    EmitI('ld hl,(display+' + Int2Str(Level * 2) + ')');
+    EmitI('ld hl,(display+' + IntToStr(Level * 2) + ')');
     EmitI('push hl');
 
     EmitI('ld ix,0');
     EmitI('add ix,sp');
 
-    EmitI('ld (display+' + Int2Str(Level * 2) + '),ix');
+    EmitI('ld (display+' + IntToStr(Level * 2) + '),ix');
 
     EmitSpace(-Offset);
 
     if StackMode then
       EmitCall(LookupGlobal('CheckStack'));
 
-//    EmitI('ld hl,' + Int2Str(Offset));
+//    EmitI('ld hl,' + IntToStr(Offset));
 //    EmitI('add hl,sp');
 //    EmitI('ld sp,hl');
 (*
@@ -1901,7 +1935,7 @@ begin
     Emit(ExitTarget, 'ld sp,ix', 'Epilogue');
 
     EmitI('pop hl');
-    EmitI('ld (display+' + Int2Str(Level * 2) + '),hl');
+    EmitI('ld (display+' + IntToStr(Level * 2) + '),hl');
 
     EmitI('pop ix');
   end;
@@ -1912,9 +1946,9 @@ end;
 function RelativeAddr(Base: String; Offset: Integer): String;
 begin
   if Offset < 0 then
-    RelativeAddr := Base + Int2Str(Offset)
+    RelativeAddr := Base + IntToStr(Offset)
   else if Offset > 0 then
-    RelativeAddr := Base + '+' + Int2Str(Offset)
+    RelativeAddr := Base + '+' + IntToStr(Offset)
   else
     RelativeAddr := Base;
 end;
@@ -1933,14 +1967,14 @@ begin
   else if L = 0 then
   begin
     Emit('', 'ld de,ix', '');
-    Emit('', 'ld hl,' + Int2Str(Sym^.Value), '');
+    Emit('', 'ld hl,' + IntToStr(Sym^.Value), '');
     Emit('', 'add hl,de', '');
     Emit('', 'push hl', '');
   end
   else
   begin
-    Emit('', 'ld hl,(display+' + Int2Str(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
-    Emit('', 'ld de,' + Int2Str(Sym^.Value), '');
+    Emit('', 'ld hl,(display+' + IntToStr(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
+    Emit('', 'ld de,' + IntToStr(Sym^.Value), '');
     Emit('', 'add hl,de', '');
     Emit('', 'push hl', '');
   end;
@@ -1955,7 +1989,7 @@ begin
   if Sym^.Value2 <> 0 then
   begin
     EmitI('pop hl');
-    EmitI('ld de,' + Int2Str(Sym^.Value2));
+    EmitI('ld de,' + IntToStr(Sym^.Value2));
     EmitI('add hl,de');
     EmitI('push hl');
   end;
@@ -1993,7 +2027,7 @@ begin
     else
     begin
       Emit('', 'pop hl', 'Load');
-      EmitI('ld bc,' + Int2Str(DataType^.Value));
+      EmitI('ld bc,' + IntToStr(DataType^.Value));
       EmitI('call __load16');
     end
   end;
@@ -2009,13 +2043,13 @@ begin
       begin
         RemoveCode;
         EmitI('pop de');
-        EmitI('ld a,' + Int2Str(DataType^.Value - 1));
+        EmitI('ld a,' + IntToStr(DataType^.Value - 1));
         EmitI('call __movestr');
         Exit;
       end;
     end;
 
-    EmitI('ld a,' + Int2Str(DataType^.Value - 1));
+    EmitI('ld a,' + IntToStr(DataType^.Value - 1));
     EmitI('call __storestr');
     Exit;
   end;
@@ -2051,7 +2085,7 @@ begin
       end
       else
       begin
-        EmitI('ld bc,' + Int2Str(DataType^.Value));
+        EmitI('ld bc,' + IntToStr(DataType^.Value));
         EmitI('call __store16');
       end;
     end;
@@ -2060,7 +2094,7 @@ end;
 
 procedure EmitLiteral(Value: Integer);
 begin
-  Emit('', 'ld de,' + Int2Str(Value), 'Literal ' + Int2Str(Value));
+  Emit('', 'ld de,' + IntToStr(Value), 'Literal ' + IntToStr(Value));
   EmitI('push de');
 end;
 
@@ -2079,7 +2113,7 @@ begin
     EmitI('call __mkstr')
   else
   begin
-    Emit('', 'ld hl,-' + Int2Str(Bytes), 'Space');
+    Emit('', 'ld hl,-' + IntToStr(Bytes), 'Space');
     EmitI('add hl,sp');
     EmitI('ld sp,hl');
   end;
@@ -2100,7 +2134,7 @@ begin
     EmitI('call __rmstr')
   else
   begin
-    Emit('', 'ld hl,' + Int2Str(Bytes), 'Clear');
+    Emit('', 'ld hl,' + IntToStr(Bytes), 'Clear');
     EmitI('add hl,sp');
     EmitI('ld sp,hl');
   end;
@@ -2113,12 +2147,12 @@ begin
 
   if (Op = toGt) or (Op = toLeq) then
   begin
-    Emit('','pop hl', 'RelOp ' + Int2Str(Ord(Op)));
+    Emit('','pop hl', 'RelOp ' + IntToStr(Ord(Op)));
     EmitI('pop de');
   end
   else
   begin
-    Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
+    Emit('','pop de', 'RelOp ' + IntToStr(Ord(Op)));
     EmitI('pop hl');
   end;
 
@@ -2382,7 +2416,7 @@ begin
   while DataType^.Kind = scSubrangeType do
     DataType := DataType^.DataType;
 
-  EmitI('ld a,' + Int2Str(VarType^.Value - 1));
+  EmitI('ld a,' + IntToStr(VarType^.Value - 1));
 
   if (DataType = dtInteger) or (DataType = dtByte) then
   begin
@@ -2424,7 +2458,7 @@ begin
   while DataType^.Kind = scSubrangeType do
     DataType := DataType^.DataType;
 
-  EmitI('ld a,' + Int2Str(VarType^.Value - 1));
+  EmitI('ld a,' + IntToStr(VarType^.Value - 1));
 
   if (DataType = dtInteger) or (DataType = dtByte) then
   begin
@@ -2465,7 +2499,7 @@ end;
 
 procedure EmitStr2(DataType, VarType: PSymbol);
 begin
-  EmitI('ld a,' + Int2Str(VarType^.Value - 1));
+  EmitI('ld a,' + IntToStr(VarType^.Value - 1));
 
   if DataType = dtReal then
   begin
@@ -2724,7 +2758,7 @@ var
   begin
     if Offset >= 0 then
     begin
-      EmitI('ld hl,' + Variable^.Tag + ' + ' + Int2Str(Offset));
+      EmitI('ld hl,' + Variable^.Tag + ' + ' + IntToStr(Offset));
       EmitI('push hl');
       Offset := -1;
     end;
@@ -3135,12 +3169,12 @@ begin
   else if T^.Kind = scEnumType then
   begin
     EmitI('ld de,' + T^.Tag);
-    EmitI('ld b,' + Int2Str(T^.High + 1));
+    EmitI('ld b,' + IntToStr(T^.High + 1));
     EmitI('call __gete');
   end
   else if T^.Kind = scStringType then
   begin
-    EmitI('ld a,' + Int2Str(T^.Value - 1));
+    EmitI('ld a,' + IntToStr(T^.Value - 1));
     EmitI('call __gets');
   end
   else Error('Unreadable type');
@@ -3163,7 +3197,7 @@ begin
 
     Emit('', 'pop bc', '');
     Emit('', 'ld hl, ' + AddString(Source[Include].Name), '');
-    Emit('', 'ld de, ' + Int2Str(Source[Include].Line), '');
+    Emit('', 'ld de, ' + IntToStr(Source[Include].Line), '');
     Emit('', 'call __assert', '');
 
     Expect(toRParen); NextToken;
@@ -3529,7 +3563,7 @@ begin
     else if T^.Kind = scEnumType then
     begin
       EmitI('ld de,' + T^.Tag);
-      EmitI('ld b,' + Int2Str(T^.High + 1));
+      EmitI('ld b,' + IntToStr(T^.High + 1));
       EmitI('call __val_enum');
     end
     else
@@ -3815,7 +3849,7 @@ begin
   end;
 
   S3 := '';
-  for K := 0 to 31 do S3 := S3 + HexStr(BA[K], 2);
+  for K := 0 to 31 do S3 := S3 + IntToHex(BA[K], 2);
   EmitI('dm $' + S3);
 
   Sym := CreateSymbol(scSetType, '');
@@ -4242,7 +4276,7 @@ var
 begin
   if Scanner.Token = toNumber then
   begin
-    S := S + Int2Str(Scanner.NumValue);
+    S := S + IntToStr(Scanner.NumValue);
     if Scanner.NumValue > 255 then W := True;
     NextToken;
   end
@@ -4253,7 +4287,7 @@ begin
 
     if (Sym^.Kind = scConst) and (Sym^.DataType = dtInteger) then
     begin
-      S := S + Int2Str(Sym^.Value);
+      S := S + IntToStr(Sym^.Value);
       if Sym^.Value > 255 then W := True;
     end
     else if (Sym^.Kind = scVar) and (Sym^.Level = 1) then
@@ -4263,7 +4297,7 @@ begin
     end
     else if (Sym^.Kind = scVar) and (Sym^.Level > 1) then
     begin
-      S := S + Int2Str(Sym^.Value);
+      S := S + IntToStr(Sym^.Value);
       W := True;
     end
     else if (Sym^.Kind = scProc) or (Sym^.Kind = scFunc) then
@@ -4284,7 +4318,7 @@ begin
   end
   else if (Scanner.Token = toString) and (Length(Scanner.StrValue) = 1) then
   begin
-    S := S + Int2Str(Ord(Scanner.StrValue[1]));
+    S := S + IntToStr(Ord(Scanner.StrValue[1]));
     NextToken;
   end
   else Error('Invalid inline code');
@@ -4387,15 +4421,15 @@ begin
 
   if High = Low then
   begin
-    EmitI('ld hl,' + Int2Str(High));
+    EmitI('ld hl,' + IntToStr(High));
     EmitI('call __int16_eq');
     EmitI('and a');
     EmitI('jp nz,' + OfTarget);
   end
   else
   begin
-    EmitI('ld bc,' + Int2Str(Low));
-    EmitI('ld hl,' + Int2Str(High));
+    EmitI('ld bc,' + IntToStr(Low));
+    EmitI('ld hl,' + IntToStr(High));
     EmitI('call __int16_case');
     EmitI('and a');
     EmitI('jp nz,' + OfTarget);
@@ -4470,7 +4504,7 @@ begin
 
   if Scanner.Token = toNumber then
   begin
-    Sym := LookupGlobal(Int2Str(Scanner.NumValue));
+    Sym := LookupGlobal(IntToStr(Scanner.NumValue));
     if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
 
     if Sym^.Kind = scLabel then
@@ -4690,7 +4724,7 @@ begin
     end
     else if Scanner.Token = toNumber then
     begin
-      Sym := LookupLocal(Int2Str(Scanner.NumValue));
+      Sym := LookupLocal(IntToStr(Scanner.NumValue));
       // ...
       EmitI('jp ' + Sym^.Tag);
     end
@@ -4743,7 +4777,7 @@ begin
         if Sym^.Value < Offset then Error('Invalid offset');
         if Sym^.Value > Offset then
         begin
-          EmitI('ds ' + Int2Str(Sym^.Value - Offset));
+          EmitI('ds ' + IntToStr(Sym^.Value - Offset));
           Offset := Sym^.Value;
         end;
 
@@ -4764,7 +4798,7 @@ begin
     end;
 
     if Offset < DataType^.Value then
-      EmitI('ds ' + Int2Str(DataType^.Value - Offset));
+      EmitI('ds ' + IntToStr(DataType^.Value - Offset));
 
     Expect(toRParen);
     NextToken;
@@ -4777,7 +4811,7 @@ begin
     if (Sym^.Kind <> scConst) or (Sym^.DataType <> DataType) then
       Error('Invalid enum constant');
 
-    Emit('', 'db ' + Int2Str(Sym^.Value), '');
+    Emit('', 'db ' + IntToStr(Sym^.Value), '');
 
     NextToken;
   end
@@ -4794,7 +4828,7 @@ begin
       Expect(toNumber);
 
       Value := Sign * Scanner.NumValue;
-      Emit('', 'dw ' + Int2Str(Value), '');
+      Emit('', 'dw ' + IntToStr(Value), '');
 
       NextToken;
     end
@@ -4802,7 +4836,7 @@ begin
     begin
       Expect(toNumber);
 
-      Emit('', 'db ' + Int2Str(Scanner.NumValue), '');
+      Emit('', 'db ' + IntToStr(Scanner.NumValue), '');
 
       NextToken;
     end
@@ -4830,9 +4864,9 @@ begin
     else if DataType^.Kind = scStringType then
     begin
       Expect(toString);
-      // Emit('', 'db ' + Int2Str(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
+      // Emit('', 'db ' + IntToStr(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
       Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
-      Emit('', 'ds ' + Int2Str(DataType^.Value - Length(Scanner.StrValue) - 1), '');
+      Emit('', 'ds ' + IntToStr(DataType^.Value - Length(Scanner.StrValue) - 1), '');
       NextToken; 
     end
     else if DataType^.Kind = scSetType then
@@ -5342,7 +5376,7 @@ begin
   if Sym^.Level = 1 then
   begin
     Sym^.Tag := GetLabel('global');
-    Emit0(Sym^.Tag, 'ds ' + Int2Str(Sym^.Bounds * 2), 'Global ' + Sym^.Name);
+    Emit0(Sym^.Tag, 'ds ' + IntToStr(Sym^.Bounds * 2), 'Global ' + Sym^.Name);
   end;
   *)
 end;
@@ -5379,7 +5413,7 @@ begin
 
     NextToken;
     if Scanner.Token = toNumber then
-      Tag := Int2Str(Scanner.NumValue)
+      Tag := IntToStr(Scanner.NumValue)
     else if Scanner.Token = toString then
       Tag := Scanner.StrValue
     else if Scanner.Token = toIdent then
@@ -5408,7 +5442,7 @@ begin
       else if Old^.Level = 1 then
       begin
         Old^.Tag := GetLabel('global');
-        Emit(Old^.Tag, 'ds ' + Int2Str(Old^.DataType^.Value), 'Global ' + Old^.Name);
+        Emit(Old^.Tag, 'ds ' + IntToStr(Old^.DataType^.Value), 'Global ' + Old^.Name);
       end;
     end;
 
@@ -5462,7 +5496,7 @@ begin
   end
   else if Scanner.Token = toNumber then
   begin
-    S := CreateSymbol(scLabel, Int2Str(Scanner.NumValue));
+    S := CreateSymbol(scLabel, IntToStr(Scanner.NumValue));
   end
   else Error('Ident or number expected');
 
@@ -5797,7 +5831,7 @@ begin
   Expect(toPeriod);
 (*
   EmitC('');
-  Emit('globals', 'ds ' + Int2Str(Offset), 'Globals');
+  Emit('globals', 'ds ' + IntToStr(Offset), 'Globals');
 *)
   EmitStrings();
   EmitC('');
@@ -5858,7 +5892,7 @@ begin
 
     Exec(ZasmCmd,  '-v1 -w ' + AsmFile + ' ' + BinFile);
     if DosError <> 0 then
-      Error('Error ' + Int2Str(DosError) + ' starting ' + ZasmCmd);
+      Error('Error ' + IntToStr(DosError) + ' starting ' + ZasmCmd);
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
@@ -5870,9 +5904,9 @@ begin
     HeapBytes := 57343 - HeapStart;
     if HeapBytes < 0 then HeapBytes := 0;
 
-    WriteLn('Code : $', HexStr(Org, 4), '-$', HexStr(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
-    WriteLn('Heap : $', HexStr(HeapStart, 4), '-$', HexStr(57343, 4), ' (', HeapBytes:5, ' bytes)');
-    WriteLn('Stack: $', HexStr(57344, 4), '-$FFFF ( 8192 bytes)');
+    WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
+    WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
+    WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
   end;
 end;
 
@@ -5950,14 +5984,14 @@ begin
   if AltEditor then
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(CodeCmd, '-g ' + S + ':' + Int2Str(Line) + ':' + Int2Str(Column))
+      Exec(CodeCmd, '-g ' + S + ':' + IntToStr(Line) + ':' + IntToStr(Column))
     else
       Exec(CodeCmd, S)
   end
   else
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + Int2Str(Line) + ',' + Int2Str(Column) + ' ' + S)
+      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
     else
       Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + S);
   end;
@@ -6241,12 +6275,6 @@ end;
 begin
   Copyright;
   LoadConfig;
-
-  if HomeDir = '' then
-    HomeDir := ParentDir(FExpand(ParamStr(0)));
-
-  AltEditor := GetEnv('TERM_PROGRAM') = 'vscode';
-
   Parameters;
 end.
 
