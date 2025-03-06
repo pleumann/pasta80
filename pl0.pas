@@ -215,6 +215,22 @@ var
 begin
   UserHome := GetEnv('HOME');
 
+  HomeDir := ParentDir(ParamStr(0));
+  if Length(HomeDir) = 0 then HomeDir := '.';
+  HomeDir := FExpand(HomeDir);
+
+  RunCommand('which', ['zasm'], ZasmCmd);
+  ZasmCmd := TrimStr(ZasmCmd);
+
+  RunCommand('which', ['nano'], NanoCmd);
+  NanoCmd := TrimStr(NanoCmd);
+
+  RunCommand('which', ['code'], CodeCmd);
+  CodeCmd := TrimStr(CodeCmd);
+
+  RunCommand('which', ['tnylpo'], TnylpoCmd);
+  TnylpoCmd := TrimStr(TnylpoCmd);
+
   {$I-}
   Assign(T, UserHome + '/.pl0.cfg');
   Reset(T);
@@ -259,22 +275,6 @@ begin
   begin
     WriteLn('Warning: File ~/.pl0.cfg not found. Please consider creating it.');
     WriteLn;
-
-    HomeDir := ParentDir(ParamStr(0));
-    if Length(HomeDir) = 0 then HomeDir := '.';
-    HomeDir := FExpand(HomeDir);
-
-    RunCommand('which', ['zasm'], ZasmCmd);
-    ZasmCmd := TrimStr(ZasmCmd);
-
-    RunCommand('which', ['nano'], NanoCmd);
-    NanoCmd := TrimStr(NanoCmd);
-
-    RunCommand('which', ['code'], CodeCmd);
-    CodeCmd := TrimStr(CodeCmd);
-
-    RunCommand('which', ['tnylpo'], TnylpoCmd);
-    TnylpoCmd := TrimStr(TnylpoCmd);
   end;
   {$I+}
 end;
