@@ -851,30 +851,6 @@ begin
 
   BDosFunc := RegisterMagic(scFunc, 'Bdos');
   BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
-
-  Sym := RegisterBuiltIn(scProc, 'Poke', 2, '__poke');
-  Sym^.ArgTypes[0] := dtInteger;
-  Sym^.ArgTypes[1] := dtInteger;
-
-  RegisterBuiltIn(scFunc, 'GetHeapStart', 0, '__get_heap_start')^.DataType := dtPointer;
-//  RegisterBuiltIn(scFunc, 'GetHeapBytes', 0, '__get_heap_bytes')^.DataType := dtInteger;
-
-  if Graphics then
-  begin
-    Sym := RegisterBuiltIn(scProc, 'SetPixel', 3, '__set_pixel');
-    Sym^.ArgTypes[0] := dtInteger;
-    Sym^.ArgTypes[1] := dtInteger;
-    Sym^.ArgTypes[2] := dtInteger;
-    Sym := RegisterBuiltIn(scFunc, 'GetPixel', 2, '__get_pixel');
-    Sym^.ArgTypes[0] := dtInteger;
-    Sym^.ArgTypes[1] := dtInteger;
-
-    Sym := RegisterBuiltIn(scProc, 'SetFrontBuffer', 1, '__set_frontbuf');
-    Sym^.ArgTypes[0] := dtInteger;
-    Sym := RegisterBuiltIn(scProc, 'SetBackBuffer', 1, '__set_backbuf');
-    Sym^.ArgTypes[0] := dtInteger;
-    Sym := RegisterBuiltIn(scProc, 'WaitForVSync', 0, '__wait_vsync');
-  end;
 end;
 
 (* --------------------------------------------------------------------- *)
