@@ -323,8 +323,15 @@ begin
   with Source[Include] do
   begin
     Name := FileName;
+    {$I-}
     Assign(Input, FileName);
     Reset(Input);
+    if IOResult <> 0 then
+    begin
+      Include := False;
+      Error('File not found');
+    end;
+    {$I+}
     Buffer := '';
     Line := 0;
     Column := 1;
