@@ -1,6 +1,6 @@
 # Pascal Compiler for Z80
 
-This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M 2.2](https://en.wikipedia.org/wiki/CP/M) and the [ZX Spectrum Next](https://www.specnext.com) (the latter is currently not working, but I hope to get it back on par with CP/M soon). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent design, so it doesn't have an explicit syntax tree, but generates code on the fly during parsing instead.
+This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M 2.2](https://en.wikipedia.org/wiki/CP/M) and the [ZX Spectrum Next](https://www.specnext.com) (the latter is currently not working, but I hope to get it back on par with CP/M soon). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent approach, so it doesn't have an explicit syntax tree, but instead generates code on the fly during parsing.
 
 ## Supported language elements
 
@@ -9,10 +9,11 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Real`, `String` and `Pointer`).
 * `array of`, `record`, `set`, enumerations, subranges and pointers as a way of building new data types.
 * The decision-making elements `if..then..else` and `case..of`.
-* The loop elements `for..do`, `while..do` and `repeat..until` (including `Break` and `Continue`).
+* The loop elements `for..do`, `while..do` and `repeat..until`.
+* The `with..do` notation for "opening" records.
 * `procedure` and `function` including value and `var` parameters and nesting.
-* All conversion and utility procedures and functions that Turbo Pascal 3.0 had.
 * The standard procedures for screen input and output (i.e. `ReadLn`, `WriteLn` etc.).
+* All conversion and utility procedures and functions that Turbo Pascal 3.0 had.
 * The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`. 
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
 * Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
@@ -26,10 +27,11 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
+  * Lopps can be controlled via `Break` and `Continue`.
   * You can query the keyboard with `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
-  * A simple `assert` procedure that counts passes/fails and shows the failed line number.
-    
+  * A simple `Assert` procedure that counts passes/fails and shows the failed line number.
+
 Since that list sounds quite exhaustive, you might ask what is missing. These are the current limitations:
 
 * All the remaining compiler directives are not yet supported.
