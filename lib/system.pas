@@ -151,7 +151,7 @@ procedure InsLine; register; inline
 
 procedure DelLine; register; inline
 (
-  $2e /                       (* ld   l,27      *)
+  $2e / 27 /                  (* ld   l,27      *)
   $cd / ConOut /              (* call ConOut    *)
   $3e / 'M' /                 (* ld   l,'M'     *)
   $cd / ConOut /              (* call ConOut    *)
