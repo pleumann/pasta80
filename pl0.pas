@@ -637,7 +637,7 @@ begin
   begin
     if Sym^.Kind = scVar then
     begin
-      Sym^.Value := Sym^.Value - Offset + 6;    
+      Sym^.Value := Sym^.Value - Offset + 4;    
       I := I + 1;
     end;
     Sym := Sym^.Prev;
@@ -1585,6 +1585,21 @@ begin
       end;
     end;
 
+    if (Code^.Instruction = 'push de') and (Prev^.Instruction = 'ex de,hl') then
+    begin
+      RemoveCode;
+      Code^.Instruction := 'push hl';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'pop de') and StartsWith(Prev^.Instruction, 'ld hl,') and (Prev^.Prev^.Instruction = 'push de') then
+    begin
+      Prev^.Prev^.Instruction := Prev^.Instruction;
+      RemoveCode;
+      RemoveCode;
+      Exit;
+    end;
+
     if (Code^.Instruction = 'pop hl') and StartsWith(Prev^.Instruction, 'ld de,') then
     begin
       if (Prev^.Prev <> nil) and (Prev^.Prev^.Instruction = 'push de') then
@@ -1887,21 +1902,18 @@ begin
   if Sym = Nil then
   begin
     Emit('main', 'call __init', '');
-    EmitI('ld ix,0');
-    EmitI('add ix,sp');
+    EmitI('ld (display+2),sp');
     EmitCall(LookupGlobal('InitHeap'));
   end
   else
   begin
-    Emit(Sym^.Tag, 'push ix', 'Prologue');
+    //Emit(Sym^.Tag, 'push ix', 'Prologue');
 
+    Emit(Sym^.Tag, '', 'Prologue');
     EmitI('ld hl,(display+' + IntToStr(Level * 2) + ')');
     EmitI('push hl');
 
-    EmitI('ld ix,0');
-    EmitI('add ix,sp');
-
-    EmitI('ld (display+' + IntToStr(Level * 2) + '),ix');
+    EmitI('ld (display+' + IntToStr(Level * 2) + '),sp');
 
     EmitSpace(-Offset);
 
@@ -1932,12 +1944,12 @@ begin
     Emit(ExitTarget, 'call __done', '')
   else
   begin
-    Emit(ExitTarget, 'ld sp,ix', 'Epilogue');
+    Emit(ExitTarget, 'ld sp,(display+' + IntToStr(Level * 2) + ')', 'Epilogue');
 
     EmitI('pop hl');
     EmitI('ld (display+' + IntToStr(Level * 2) + '),hl');
 
-    EmitI('pop ix');
+    //EmitI('pop ix');
   end;
 
   EmitI('ret');
@@ -1959,11 +1971,12 @@ var
 begin
   L := Level - Sym^.Level;
 
-  if (Sym^.Level = 1) and (Sym^.Tag <> '') then
+  if (Sym^.Tag <> '') and (Sym^.Tag <> 'RESULT') then
   begin
     Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
     EmitI('push hl');
   end
+  (*
   else if L = 0 then
   begin
     Emit('', 'ld de,ix', '');
@@ -1971,6 +1984,7 @@ begin
     Emit('', 'add hl,de', '');
     Emit('', 'push hl', '');
   end
+  *)
   else
   begin
     Emit('', 'ld hl,(display+' + IntToStr(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
@@ -3066,10 +3080,10 @@ begin
 
     EmitI('pop de');
     EmitI('pop hl');
-    EmitI('push ix');
+    //EmitI('push ix');
     EmitI('ld c,l');
     EmitI('call 5');
-    EmitI('pop ix');
+    //EmitI('pop ix');
 
     if Func = BdosFunc then
     begin
