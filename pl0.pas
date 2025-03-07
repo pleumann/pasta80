@@ -1965,46 +1965,48 @@ begin
     RelativeAddr := Base;
 end;
 
+(**
+ * Emits code that puts the address of the given symbol on the stack. Takes into
+ * account the addressing mode (global vs. local), indirection and a possible
+ * offset.
+ *)
 procedure EmitAddress(Sym: PSymbol);
-var
-  L: Integer;
 begin
-  L := Level - Sym^.Level;
-
-  if (Sym^.Tag <> '') and (Sym^.Tag <> 'RESULT') then
+  if (Sym^.Tag <> '') and (Sym^.Tag <> 'RESULT') then (* TODO: This is ugly. *)
   begin
-    Emit('', 'ld hl,' + Sym^.Tag, 'Get global ' + Sym^.Name);
+    Emit('', 'ld hl,' + Sym^.Tag, 'Global ' + Sym^.Name);
     EmitI('push hl');
   end
-  (*
-  else if L = 0 then
-  begin
-    Emit('', 'ld de,ix', '');
-    Emit('', 'ld hl,' + IntToStr(Sym^.Value), '');
-    Emit('', 'add hl,de', '');
-    Emit('', 'push hl', '');
-  end
-  *)
   else
   begin
-    Emit('', 'ld hl,(display+' + IntToStr(Sym^.Level * 2) + ')', 'Get outer ' + Sym^.Name);
-    Emit('', 'ld de,' + IntToStr(Sym^.Value), '');
-    Emit('', 'add hl,de', '');
+    // TODO: Make this a macro to ease optimization.
+    Emit('', 'ld hl,(display+' + IntToStr(Sym^.Level * 2) + ')', 'Local ' + Sym^.Name);
+    if Sym^.Value <> 0 then
+    begin
+      Emit('', 'ld de,' + IntToStr(Sym^.Value), '');
+      Emit('', 'add hl,de', '');
+    end;
     Emit('', 'push hl', '');
   end;
 
   if Sym^.IsRef then
   begin
+    // TODO: Make this a macro to ease optimization.
     Emit('', 'pop hl', '');
-    Emit('', 'ld de,(hl)', '');
+    Emit('', 'ld e,(hl)', '');
+    Emit('', 'inc hl', '');    
+    Emit('', 'ld d,(hl)', '');
     Emit('', 'push de', '');
   end;
 
   if Sym^.Value2 <> 0 then
   begin
     EmitI('pop hl');
-    EmitI('ld de,' + IntToStr(Sym^.Value2));
-    EmitI('add hl,de');
+    if Sym^.Value2 <> 0 then
+    begin
+      EmitI('ld de,' + IntToStr(Sym^.Value2));
+      EmitI('add hl,de');
+    end;
     EmitI('push hl');
   end;
 end;
