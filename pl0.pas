@@ -321,7 +321,8 @@ end;
 (* --- Input ---------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
-type 
+type
+  PSource = ^TSource; 
   TSource = record
     Name: String;
     Input:  Text;
@@ -329,11 +330,12 @@ type
   (*  Count:  Integer; *)
     Line:   Integer;
     Column: Integer;
+    Next: PSource;
   end;
 
 var
-  Source: array[Boolean] of TSource;
-  Include: Boolean = False;
+  Source: PSource;
+
   StoredState: Jmp_Buf;
   TokenLine, TokenColumn, ErrorLine, ErrorColumn: Integer;
 
@@ -341,7 +343,7 @@ procedure Error(Message: String);
 var  I: Integer;
 begin
   WriteLn;
-  WriteLn(Source[Include].Buffer);
+  WriteLn(Source^.Buffer);
   for I := 1 to TokenColumn - 1 do Write(' ');
   WriteLn('^');
   WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
@@ -353,18 +355,29 @@ begin
 end;
 
 procedure OpenInput(FileName: String);
+var
+  Tmp: PSource;
 begin
-  with Source[Include] do
+  Tmp := Source;
+  while Tmp <> nil do
+  begin
+    if Tmp^.Name = FileName then Error('Cyclic include');
+    Tmp := Tmp^.Next;
+  end;
+
+  New(Tmp);
+
+  Tmp^.Next := Source;
+  Source := Tmp;
+
+  with Source^ do
   begin
     Name := FileName;
     {$I-}
     Assign(Input, FileName);
     Reset(Input);
     if IOResult <> 0 then
-    begin
-      Include := False;
       Error('File not found');
-    end;
     {$I+}
     Buffer := '';
     Line := 0;
@@ -373,17 +386,19 @@ begin
 end;
 
 procedure CloseInput();
+var
+  Tmp: PSource;
 begin
-  with Source[Include] do
-    Close(Input);
+  Tmp := Source;
+  Source := Tmp^.Next;
+  Close(Tmp^.Input);
+  Dispose(Tmp);
 end;
 
 procedure SetInclude(FileName: String);
 begin
-  if Include then
-    Error('Nested includes not allowed');
-
-  Include := True;
+  if not StartsWith(FileName, '/') then
+    FileName := ParentDir(Source^.Name) + '/' + FileName;
 
   OpenInput(FileName);
 end;
@@ -392,16 +407,15 @@ procedure EmitC(S: String); forward;
 
 function GetChar(): Char;
 begin
-  with Source[Include] do
+  with Source^ do
   begin
     if Column > Length(Buffer) then
     begin
       if Eof(Input) then
       begin
-        if Include then
+        if Next <> nil then
         begin
-          Close(Input);
-          Include := False;
+          CloseInput;
           GetChar := ' ';
           Exit;
         end
@@ -427,7 +441,7 @@ end;
 
 procedure UngetChar();
 begin
-  Source[Include].Column := Source[Include].Column - 1;
+  Source^.Column := Source^.Column - 1;
 end; 
     
 (* -------------------------------------------------------------------------- *)
@@ -989,8 +1003,8 @@ begin
     Token := toNone;
     StrValue := '';
     NumValue := 0;
-    TokenLine := Source[Include].Line;
-    TokenColumn := Source[Include].Column - 1;
+    TokenLine := Source^.Line;
+    TokenColumn := Source^.Column - 1;
 
     if IsIdentHead(C) then
     begin
@@ -3215,8 +3229,8 @@ begin
     TypeCheck(dtBoolean, ParseExpression, tcExact);
 
     Emit('', 'pop bc', '');
-    Emit('', 'ld hl, ' + AddString(Source[Include].Name), '');
-    Emit('', 'ld de, ' + IntToStr(Source[Include].Line), '');
+    Emit('', 'ld hl, ' + AddString(Source^.Name), '');
+    Emit('', 'ld de, ' + IntToStr(Source^.Line), '');
     Emit('', 'call __assert', '');
 
     Expect(toRParen); NextToken;
@@ -5888,7 +5902,8 @@ begin
     Level := 0;
     Offset := 0;
     Scanner.Token := toNone;
-    Include := False;
+    while Source <> nil do CloseInput;
+
     C := #0;
 
     while SymbolTable <> nil do CloseScope(True);
