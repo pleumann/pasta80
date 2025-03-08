@@ -1396,6 +1396,9 @@ end;
 
 procedure SetLibrary;
 begin
+  if not StartsWith(FileName, '/') then
+    FileName := ParentDir(Source^.Name) + '/' + FileName;
+
   Flush;
   Emit0('', 'include "' + FileName + '"', '');
 end;
