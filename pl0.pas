@@ -1972,42 +1972,45 @@ end;
  *)
 procedure EmitAddress(Sym: PSymbol);
 begin
-  if (Sym^.Tag <> '') and (Sym^.Tag <> 'RESULT') then (* TODO: This is ugly. *)
+  with Sym^ do
   begin
-    Emit('', 'ld hl,' + Sym^.Tag, 'Global ' + Sym^.Name);
-    EmitI('push hl');
-  end
-  else
-  begin
-    // TODO: Make this a macro to ease optimization.
-    Emit('', 'ld hl,(display+' + IntToStr(Sym^.Level * 2) + ')', 'Local ' + Sym^.Name);
-    if Sym^.Value <> 0 then
+    if (Tag <> '') and (Tag <> 'RESULT') then (* TODO: This is ugly. *)
     begin
-      Emit('', 'ld de,' + IntToStr(Sym^.Value), '');
-      Emit('', 'add hl,de', '');
-    end;
-    Emit('', 'push hl', '');
-  end;
-
-  if Sym^.IsRef then
-  begin
-    // TODO: Make this a macro to ease optimization.
-    Emit('', 'pop hl', '');
-    Emit('', 'ld e,(hl)', '');
-    Emit('', 'inc hl', '');    
-    Emit('', 'ld d,(hl)', '');
-    Emit('', 'push de', '');
-  end;
-
-  if Sym^.Value2 <> 0 then
-  begin
-    EmitI('pop hl');
-    if Sym^.Value2 <> 0 then
+      Emit('', 'ld hl,' + Tag, 'Global ' + Name);
+      EmitI('push hl');
+    end
+    else
     begin
-      EmitI('ld de,' + IntToStr(Sym^.Value2));
-      EmitI('add hl,de');
+      // TODO: Make this a macro to ease optimization?
+      Emit('', 'ld hl,(display+' + IntToStr(Level * 2) + ')', 'Local ' + Name);
+      if Value <> 0 then
+      begin
+        Emit('', 'ld de,' + IntToStr(Value), '');
+        Emit('', 'add hl,de', '');
+      end;
+      Emit('', 'push hl', '');
     end;
-    EmitI('push hl');
+
+    if IsRef then
+    begin
+      // TODO: Make this a macro to ease optimization?
+      Emit('', 'pop hl', '');
+      Emit('', 'ld e,(hl)', '');
+      Emit('', 'inc hl', '');    
+      Emit('', 'ld d,(hl)', '');
+      Emit('', 'push de', '');
+    end;
+
+    if Value2 <> 0 then
+    begin
+      EmitI('pop hl');
+      if Value2 <> 0 then
+      begin
+        EmitI('ld de,' + IntToStr(Value2));
+        EmitI('add hl,de');
+      end;
+      EmitI('push hl');
+    end;
   end;
 end;
 
