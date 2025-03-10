@@ -1927,8 +1927,10 @@ type
 procedure UpperCase(var Strg: Str255);
 begin
   inline(
-    $dd/$6e/<Strg/      (* ld l,[ix+Strg]    *)
-    $dd/$66/<Strg+1/    (* ld h,[ix+Strg+1]  *)
+    $dd/$21/$04/$00/    (* ld id,4           *)
+    $dd/$39/            (* add ix,sp         *)
+    $dd/$6e/0/          (* ld l,[ix+0]       *)
+    $dd/$66/1/          (* ld h,[ix+1]       *)
     $46/                (* ld b,(hl)         *)
     $04/                (* inc b             *)
                         (* l1:               *)
