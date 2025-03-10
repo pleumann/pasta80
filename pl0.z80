@@ -44,6 +44,7 @@ __boolean_enum: dw __boolean0, __boolean1
 ; In:   HL (left), DE (right)
 ; Out:  A=0 if false, A=1 if true
 ;
+__int16_eq0:    ld  de,0
 __int16_eq:     xor a
                 sbc hl,de
                 ; add hl,de
@@ -57,6 +58,7 @@ __int16_eq:     xor a
 ; In:   HL (left), DE (right)
 ; Out:  A=0 if false, A=1 if true
 ;
+__int16_neq0:   ld de,0
 __int16_neq:    xor a
                 sbc hl,de
                 ; add hl,de

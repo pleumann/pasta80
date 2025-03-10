@@ -1643,6 +1643,20 @@ begin
         Exit;
       end;
     end;
+
+    if (Code^.Instruction = 'call __int16_eq') and (Prev^.Instruction = 'ld de,0') then
+    begin
+      Prev^.Instruction := 'call __int16_eq0';
+      RemoveCode;
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'call __int16_neq') and (Prev^.Instruction = 'ld de,0') then
+    begin
+      Prev^.Instruction := 'call __int16_neq0';
+      RemoveCode;
+      Exit;
+    end;
   end;
 
   DoOptimize := False;
