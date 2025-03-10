@@ -1132,7 +1132,7 @@ __dec16by:      ld      e,(hl)
                 ld      (hl),e
                 ret
 
-#include "math48.z80"
+#include "math48.asm"
 
 .macro constfp %xx,%yy,%zz
         ld      hl,%xx
