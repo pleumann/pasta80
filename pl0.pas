@@ -1772,14 +1772,6 @@ begin
     else if Graphics = gmHighRes then 
       Emit('HIRES', 'equ 1', 'High-res graphics support');
   end;
-
-  EmitC('');
-  EmitInclude(Home + '/pl0.z80');
-  EmitC('');
-
-  Emit('', 'jp main', '');
-  EmitC('');
-
 end;
 
 procedure EmitFooter();
