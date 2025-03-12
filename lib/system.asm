@@ -2,31 +2,12 @@
 ; PL0 built-in assembler functions
 ;
 
-#if defined(CPM)
-                org     $100
-#endif
-
-#if defined(NXT)
-                org     $2000
-#endif
-
-                jp      main
-
 __cur_file      dw      0
 __text_buf      dw      0
 
 ;
 ; Some stuff shared between the routines
 ;
-#if defined(CPM)
-__buffer:       ds      32
-#endif
-
-#if defined(NXT)
-__saved_iy:     dw      0
-__win_handle:   dw      0
-__buffer:       equ     23698
-#endif
 
 __linemax:      ds      1
 __linelen:      ds      1
@@ -1576,30 +1557,10 @@ __setgeq:
 ; Exclude shared with in
                 
 
-;
-; Print character to screen
-;
-; Entry:  A (ASCII code)
-; Exit:   -
-; Uses:   C,E,IY
-;
-#if defined(CPM)
-__putc:
-                ld      e,a
-                ld      c,2
-                call    5
-                ret
-#endif
 
-#if defined(NXT)
-__putc:
-                ld      iy,(__saved_iy)
-                rst     16
-                ret
-#endif
 
 __conout:       equ     __putc
-
+             
 ;
 ; Print string to screen
 ;
@@ -1620,20 +1581,107 @@ __putschk:      inc     hl
                 djnz    __putsloop
                 ret
 
-;
-; New line
-;
-; Entry:  -
-; Exit:   -
-; Uses:   -
-;
-__newline:
-                ld      a,13
-                call    __putc
-#if defined(CPM)
-                ld      a,10
-                call    __putc
-#endif
+__lineptr:      ds      2
+
+__blanks:       ld      hl,(__lineptr)
+__blanks1:      ld      a,(hl)
+                cp      '!'
+                ret     nc
+                cp      0
+                ret     z
+                inc     hl
+                ld      (__lineptr),hl
+                jr      __blanks1
+
+WORD:
+__word:         ld      hl,(__lineptr)
+                ld      de,__buffer + 1
+                ld      b,30
+                ld      c,0
+__word1:        ld      a,(hl)
+                ld      (de),a
+                inc     de
+                cp      '!'
+                jr      c, __word2
+                inc     hl
+                inc     c
+                djnz    __word1
+__word2:        ld      (__lineptr),hl
+                ld      a,c
+                ld      (__buffer),a
+                ret
+
+__getn:         push    hl
+                call    __blanks
+                call    __word
+                ld      hl,__buffer + 1
+                ld      a,6
+                call    __atoi
+                pop     hl
+                ld      (hl),de
+                ret
+
+__getr:         push    hl
+                push    ix
+                call    __blanks
+                call    __word
+                ld      ix,__buffer + 1
+                call    CNVN
+                pop     ix
+                exx
+                pop     hl
+                call    __storefp
+                ret
+
+; hl address, de table, b=count
+__gete:         push    hl
+                push    de
+                push    bc
+                call    __blanks
+                call    __word
+                ld      hl,__buffer
+                pop     bc
+                pop     de
+                call    __atoe
+                pop     hl
+                ld      a,d
+                and     a
+                ret     nz
+                ld      (hl),e
+                ret
+
+__getc:         push    hl
+                ld      hl,(__lineptr)
+                ld      a,(hl)
+                pop     de
+                ld      (de),a
+                cp      ' '
+                ret     c
+                inc     hl
+                ld      (__lineptr),hl
+                ret
+
+__gets:         push    hl
+                ld      hl,(__lineptr)
+                ld      de,__linebuf
+                and     a
+                sbc     hl,de
+                ex      de,hl
+                ld      hl,(__linelen)
+                ld      h,0
+                and     a
+                sbc     hl,de
+                ex      de,hl
+                ld      hl,(__lineptr)
+                dec     hl
+                ld      (hl),e
+                pop     de
+                call    __movestr
+                ld      hl,(__lineptr)
+                ld      e,a
+                ld      d,0
+                add     hl,de
+                ld      (__lineptr),hl
                 ret
 
 ;
@@ -1760,57 +1808,6 @@ __strf_fix_1:
         ld      d,a
         call    __ralign
         ret
-
-#if defined(gaga)
-__putf_fix:
-        exx
-        push    de
-        ld      a,c
-;        cp      $10
-;        jp      c,__putf_fix_1
-;        ld      a,$0f
-__putf_fix_1:
-        or      $f0
-        ld      h,a
-        ld      l,$0a
-        exx
-        call    __ftoa
-        pop     bc
-        call    __puts_fmt
-        ret
-
-
-
-__oldstrf2:
-        exx
-        push    de
-        ld      a,c
-;        cp      $10
-;        jp      c,__putf_fix_1
-;        ld      a,$0f
-__oldstr_fix_1:
-        or      $f0
-        ld      h,a
-        ld      l,$0a
-        exx
-        call    __ftoa
-        pop     bc
-        call    __puts_fmt
-        ret
-
-                push    af
-                exx
-                push    de
-                ld      l,$09
-                ld      h,c
-                set     4,h
-                exx
-                call    __ftoa
-                pop     de
-                pop     af
-                call    __movestr
-                ret
-#endif
 
 __stre:
                 add     hl,bc
@@ -1947,174 +1944,6 @@ __pute_fmt:
                 ld      de,(hl)
                 ex      de,hl
                 jp      __puts_fmt
-
-;
-; Read number from keyboard
-;
-; Entry:  -
-; Exit:   HL
-; Uses:   AF,BC,DE
-;
-; TODO Separate input from string-to-integer functionality
-;
-#if defined(CPM)
-__getline:
-                ld      hl,127
-                ld      (__linemax),hl
-                ld      de,__linemax
-                ld      c,10
-                call    5
-                ld      a,13
-                call    __putc
-                ld      a,10
-                call    __putc
-                ld      a,(__linelen)
-                ld      d,0
-                ld      e,a
-                ld      hl,__linebuf
-                add     hl,de
-                ld      (hl),0
-                and     a
-                sbc     hl,de
-                ld      (__lineptr),hl
-                ret
-
-__lineptr:      ds      2
-
-__blanks:       ld      hl,(__lineptr)
-__blanks1:      ld      a,(hl)
-                cp      '!'
-                ret     nc
-                cp      0
-                ret     z
-                inc     hl
-                ld      (__lineptr),hl
-                jr      __blanks1
-
-WORD:
-__word:         ld      hl,(__lineptr)
-                ld      de,__buffer + 1
-                ld      b,30
-                ld      c,0
-__word1:        ld      a,(hl)
-                ld      (de),a
-                inc     de
-                cp      '!'
-                jr      c, __word2
-                inc     hl
-                inc     c
-                djnz    __word1
-__word2:        ld      (__lineptr),hl
-                ld      a,c
-                ld      (__buffer),a
-                ret
-
-__getn:         push    hl
-                call    __blanks
-                call    __word
-                ld      hl,__buffer + 1
-                ld      a,6
-                call    __atoi
-                pop     hl
-                ld      (hl),de
-                ret
-
-__getr:         push    hl
-                push    ix
-                call    __blanks
-                call    __word
-                ld      ix,__buffer + 1
-                call    CNVN
-                pop     ix
-                exx
-                pop     hl
-                call    __storefp
-                ret
-
-; hl address, de table, b=count
-__gete:         push    hl
-                push    de
-                push    bc
-                call    __blanks
-                call    __word
-                ld      hl,__buffer
-                pop     bc
-                pop     de
-                call    __atoe
-                pop     hl
-                ld      a,d
-                and     a
-                ret     nz
-                ld      (hl),e
-                ret
-
-__getc:         push    hl
-                ld      hl,(__lineptr)
-                ld      a,(hl)
-                pop     de
-                ld      (de),a
-                cp      ' '
-                ret     c
-                inc     hl
-                ld      (__lineptr),hl
-                ret
-
-__gets:         push    hl
-                ld      hl,(__lineptr)
-                ld      de,__linebuf
-                and     a
-                sbc     hl,de
-                ex      de,hl
-                ld      hl,(__linelen)
-                ld      h,0
-                and     a
-                sbc     hl,de
-                ex      de,hl
-                ld      hl,(__lineptr)
-                dec     hl
-                ld      (hl),e
-                pop     de
-                call    __movestr
-                ld      hl,(__lineptr)
-                ld      e,a
-                ld      d,0
-                add     hl,de
-                ld      (__lineptr),hl
-                ret
-#endif
-
-#if defined(NXT)
-__getn:
-                push    ix
-                ld      iy, (__saved_iy)
-                ;    ld      a,1
-                ;   rst $18
-                ;   defw    $1601
-                ld a,'>'
-                call __putc
-                ld      de,(23633)      ; save current channel
-                push    de       
-                ld      de,(__win_handle)        ; set current channel to magic window
-                ld      (23633), de 
-                ld      de,$01c3
-                ld      c,7
-                exx
-                ld      hl,__buffer
-                ld      e,0
-                ld      a,10
-                exx
-                rst     8
-                db      $94
-                pop     bc
-                ld      (23633), bc 
-                pop ix
-                push    de
-                pop de
-                ld      a,e
-                ld      hl,__buffer
-                call    __atoi
-                ret
-#endif
 
 ;
 ; Print assertion failed message
@@ -2263,123 +2092,6 @@ __atoe2:        ld      d,0
                 ld      e,c
                 ret
 
-#if defined(CPM)
-__textfg:     ld a,l
-              add a,'0'
-              ld  (__textfg_str+3),a
-              ld hl,__textfg_str
-              call  __puts
-              ret
-__textfg_str: db 3,27,'T',32
-#endif
-
-#if defined(NXT)
-__textfg:     ld a,l
-              ld  (__textfg_str+2),a
-              ld hl,__textfg_str
-              call  __puts
-              ret
-__textfg_str: db 2,16,0 ; No good in LAYER 2,1 - needs mapping
-#endif
-
-#if defined(CPM)
-__textbg:     ld a,l
-              add a,'0'
-              ld  (__textbg_str+3),a
-              ld hl,__textbg_str
-              call  __puts
-              ret
-__textbg_str: db 3,27,'S',32
-#endif
-
-#if defined(NXT)
-__textbg:     ld a,l
-              ld  (__textbg_str+2),a
-              ld hl,__textbg_str
-              call  __puts
-              ret
-__textbg_str: db 2,17,0 ; No good in LAYER 2,1 - needs mapping
-#endif
-
-#if defined(CPM)
-__gotoxy:     ld a,l
-              add a,31
-              ld  (__gotoxy_str+4),a
-              ld a,e
-              add a,31
-              ld  (__gotoxy_str+3),a
-              ld hl,__gotoxy_str
-              call  __puts
-              ret
-__gotoxy_str: db 4,27,'Y',32,32
-#endif
-
-#if defined(NXT)
-__gotoxy:     ld a,l
-              dec   a
-              ld  (__gotoxy_str+3),a
-              ld a,e
-              dec   a
-              ld  (__gotoxy_str+2),a
-              ld hl,__gotoxy_str
-              call  __puts
-              ret
-__gotoxy_str: db 3,22,0,0
-#endif
-
-#if defined(CPM)
-__clrscr:     ld hl,__clrscr_str
-              call  __puts
-              ret
-__clrscr_str: db 4,27,'H',27,'J'
-#endif
-
-#if defined(NXT)
-__clrscr:     ld hl,__clrscr_str
-              call  __puts
-              ret
-__clrscr_str: db 1,14
-#endif
-
-#if defined(CPM)
-__cursor_on:  ld hl,__cur_on_str
-              call  __puts
-              ret
-__cur_on_str: db 2,27,'e'
-#endif
-
-#if defined(NXT)
-__cursor_on:  ret
-#endif
-
-#if defined(CPM)
-__cursor_off: ld hl,__cur_off_str
-              call  __puts
-              ret
-__cur_off_str: db 2,27,'f'
-#endif
-
-#if defined(NXT)
-__cursor_off: ret
-#endif
-
-#if defined(CPM)
-__checkbreak:
-                push    ix
-                ld      c,11
-                call    5
-                pop     ix
-                and     a
-                ret     z
-                push    ix
-                ld      c,1
-                call    5
-                pop     ix
-                cp      3
-                ret     nz
-                rst     0
-#endif
-
 __checkstack:
                 ld      hl,57344
                 and     a
@@ -2443,153 +2155,7 @@ __movedn:
                 lddr
                 ret
 
-;
-; Poke
-;
-; Entry:  HL (addr), E (value)
-; Exit:   -
-; Uses:   -
-;
-__poke:         ld      (hl),e
-                ret
 
-
-#if defined(LORES)
-;
-;
-;
-;
-;
-;
-__pixel_addr:   sla     l
-                rr      e
-                rr      l
-                ld      h,e
-                ld      a,h
-                cp      $18
-                jr      c,__pixel_addr1
-                ld      de,$6000
-                jr      __pixel_addr2
-__pixel_addr1:  ld      de,$4000
-__pixel_addr2:  add     hl,de
-                ret
-;
-; Set a pixel in low-res mode
-;
-; Entry:    HL  x       (0..128)
-;           DE  y       (0..95)
-;           BC  color   (0..255)
-;
-__set_pixel:    call    __pixel_addr
-                ld      (hl),c
-                ret
-
-;
-; Get a pixel in LAYER 2,1
-;
-; Entry:    HL  x       (0..255)
-;           DE  y       (0..191)
-;
-__get_pixel:    call    __pixel_addr
-                ld      l,(hl)
-                ld      h,0
-                ret
-
-
-#endif
-
-#if defined(HIRES)
-__back_buffer:  db      18
-
-
-__set_frontbuf: ld      a,l
-                srl     a
-                db      $ed,$92,$12
-                ret
-
-__set_backbuf:  ld      a,l
-                ld      (__back_buffer),a
-                srl     a
-                db      $ed,$92,$13
-
-                ret
-
-__wait_vsync:   halt
-                ret
-;
-; Set a pixel in LAYER 2,1
-;
-; Entry:    HL  x       (0..255)
-;           DE  y       (0..191)
-;           BC  color   (0..255)
-;
-__set_pixel:    di
-                ld      d,e
-                srl     d
-                srl     d
-                srl     d
-                srl     d
-                srl     d
-                ld      a,(__back_buffer)
-                add     a,d
-
-                db      $ed,$92,$56
-
-                ld      a,e
-                and     31
-                ld      h,a
-
-                ld      de,$c000
-                add     hl,de
-                ld      (hl),c
-
-                db      $ed,$91,$56,$00
-
-                ei
-                ret
-
-;
-; Get a pixel in LAYER 2,1
-;
-; Entry:    HL  x       (0..255)
-;           DE  y       (0..191)
-;
-__get_pixel:    di
-                ld      d,e
-                srl     d
-                srl     d
-                srl     d
-                srl     d
-                srl     d
-                ld      a,(__back_buffer)
-                add     a,d
-
-                db      $ed,$92,$56
-
-                ld      a,e
-                and     31
-                ld      h,a
-
-                ld      de,$c000
-                add     hl,de
-                ld      a,(hl)
-                ld      h,0
-                ld      l,a
-
-                db      $ed,$91,$56,$00
-
-                ei
-                ret
-
-
-#endif
-
-;__peek:
-;__poke:
-
-;__border:
-;__setpixel:
-;__getpixel:
 
 __heapptr:
         dw      0
@@ -2709,52 +2275,3 @@ __get_heap_bytes:
                 sbc     hl,de
                 ret
 
-;
-; Startup (with some help from Melissa O'Neill for NXT case)
-;
-; Entry: -
-; Exit: -
-; Uses: *
-;
-#if defined(CPM)
-__init:         pop     hl
-                ld      sp, ($0006)
-                jp      (hl)
-#endif
-
-#if defined(NXT)
-__init:         ld      (__saved_iy),iy
-                ld      de, $01d5
-                ld      a,1
-                exx
-#if defined(LORES)
-                ld      bc,$0100
-#endif
-#if defined(HIRES)
-                ld      bc,$0201
-#endif
-                exx
-                ld      c,7
-                rst     $08
-                db      $94
-                exx
-                ld   (__win_handle),hl
-                exx
-                ret
-#endif
-
-;
-; Shutdown
-;
-; Entry: -
-; Exit: -
-; Uses: *
-;
-#if defined(CPM)
-__done:         rst     0
-#endif
-
-#if defined(NXT)
-__done:         ld      iy,(__saved_iy)
-                ret
-#endif

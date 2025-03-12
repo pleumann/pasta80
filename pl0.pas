@@ -5851,7 +5851,11 @@ begin
   OpenScope(True);
   RegisterAllBuiltIns((Binary = btDot) and (Graphics <> gmNone));
 
-  SetInclude(HomeDir + '/lib/system.pas');
+  if Binary = btCom then
+    SetInclude(HomeDir + '/lib/cpm.pas')
+  else
+    SetInclude(HomeDir + '/lib/next.pas');
+
   NextToken;
   ParseDeclarations(nil);
 
