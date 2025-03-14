@@ -2788,6 +2788,16 @@ begin
   Error('Type error, expected ' + Left^.Name + ', got ' + Right^.Name);
 end;
 
+(**
+ * Expects a certain token then consumes it. Shorthand for a very frequent
+ * statement sequence. Saves a line of code here and there.
+ *)
+procedure ParseToken(T: TToken);
+begin
+  Expect(T);
+  NextToken;
+end;
+
 function ParseExpression: PSymbol; forward;
 
 function ParseVariableAccess(Symbol: PSymbol): PSymbol;
@@ -2985,15 +2995,17 @@ begin
   ParseVariableRef := ParseVariableAccess(Sym);
 end;
 
+(**
+ * Parses read access to a "magic" built-in variable. Currently only used for
+ * Mem[] and Port[].
+ *)
 function ParseBuiltInVarRead(Sym: PSymbol): PSymbol;
 begin
   if (Sym = MemArray) or (Sym = PortArray) then
   begin
-    Expect(toLBrack);
-    NextToken;
+    ParseToken(toLBrack);
     TypeCheck(dtInteger, ParseExpression, tcAssign);
-    Expect(toRBrack);
-    NextToken;
+    ParseToken(toRBrack);
 
     if Sym = MemArray then
     begin
@@ -3014,17 +3026,18 @@ begin
   ParseBuiltInVarRead := dtByte;
 end;
 
+(**
+ * Parses write access to a "magic" built-in variable. Currently only used for
+ * Mem[] and Port[].
+ *)
 procedure ParseBuiltInVarWrite(Sym: PSymbol);
 begin
   if (Sym = MemArray) or (Sym = PortArray) then
   begin
-    Expect(toLBrack);
-    NextToken;
+    ParseToken(toLBrack);
     TypeCheck(dtInteger, ParseExpression, tcAssign);
-    Expect(toRBrack);
-    NextToken;
-    Expect(toBecomes);
-    NextToken;
+    ParseToken(toRBrack);
+    ParseToken(toBecomes);
     TypeCheck(dtByte, ParseExpression, tcAssign);
 
     if Sym = MemArray then
