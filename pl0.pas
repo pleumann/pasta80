@@ -536,6 +536,8 @@ var
   Level, Offset: Integer;
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtFile, dtText: PSymbol;
 
+  MemArray, PortArray: PSymbol;
+
   AssertProc, BreakProc, ContProc, ExitProc, HaltProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
 
   EraseProc, RenameProc, AssignProc, ResetProc, RewriteProc, AppendProc, FlushProc, CloseProc, SeekProc, SeekEofProc, SeekEolnProc,
@@ -830,15 +832,13 @@ begin
   dtPointer := CreateSymbol(scPointerType, 'Pointer');
   dtPointer^.Value := 2;
 
-  Sym := CreateSymbol(scArrayType, '');
-  Sym^.Low := 0;
-  Sym^.High := 65535;
-  Sym^.DataType := dtByte;
+  MemArray := CreateSymbol(scVar, 'Mem');
+  MemArray^.DataType := dtByte;
+  MemArray^.IsMagic := True;
 
-  Sym2 := CreateSymbol(scVar, 'Mem');
-  Sym2^.DataType := Sym;
-  Sym2^.Tag := '0';
-  Sym2^.Value := 0;
+  PortArray := CreateSymbol(scVar, 'Port');
+  PortArray^.DataType := dtByte;
+  PortArray^.IsMagic := True;
 
   AssertProc := RegisterMagic(scProc, 'Assert');
   BreakProc := RegisterMagic(scProc, 'Break');
@@ -2985,6 +2985,64 @@ begin
   ParseVariableRef := ParseVariableAccess(Sym);
 end;
 
+function ParseBuiltInVarRead(Sym: PSymbol): PSymbol;
+begin
+  if (Sym = MemArray) or (Sym = PortArray) then
+  begin
+    Expect(toLBrack);
+    NextToken;
+    TypeCheck(dtInteger, ParseExpression, tcAssign);
+    Expect(toRBrack);
+    NextToken;
+
+    if Sym = MemArray then
+    begin
+      EmitI('pop hl');
+      EmitI('ld e,(hl)')
+    end
+    else
+    begin
+      EmitI('pop bc');
+      EmitI('in e,(c)');
+    end;
+
+    EmitI('ld d,0');
+    EmitI('push de');
+  end
+  else Error('Invalid magic var: ' + Sym^.Name);
+
+  ParseBuiltInVarRead := dtByte;
+end;
+
+procedure ParseBuiltInVarWrite(Sym: PSymbol);
+begin
+  if (Sym = MemArray) or (Sym = PortArray) then
+  begin
+    Expect(toLBrack);
+    NextToken;
+    TypeCheck(dtInteger, ParseExpression, tcAssign);
+    Expect(toRBrack);
+    NextToken;
+    Expect(toBecomes);
+    NextToken;
+    TypeCheck(dtByte, ParseExpression, tcAssign);
+
+    if Sym = MemArray then
+    begin
+      EmitI('pop de');
+      EmitI('pop hl');
+      EmitI('ld (hl),e');
+    end
+    else
+    begin
+      EmitI('pop hl');
+      EmitI('pop bc');
+      EmitI('out (c),l');
+    end;
+  end
+  else Error('Invalid magic var: ' + Sym^.Name);
+end;
+
 function ParseBuiltInFunction(Func: PSymbol): PSymbol;
 var
   T, Sym: PSymbol;
@@ -3918,7 +3976,12 @@ begin
     if (Sym^.Kind = scVar) and (Sym^.Tag = 'RESULT') then
       Sym := Sym^.Prev^.Prev; 
 
-    if Sym^.Kind = scVar then
+    if (Sym^.Kind = scVar) and (Sym^.IsMagic) then
+    begin
+      NextToken;
+      T := ParseBuiltInVarRead(Sym);
+    end
+    else if Sym^.Kind = scVar then
     begin
       NextToken;
       T := ParseVariableAccess(Sym);
@@ -4588,6 +4651,11 @@ begin
       ParseArguments(Sym);
 
       EmitCall(Sym);
+    end
+    else if (Sym^.Kind = scVar) and (Sym^.IsMagic) then
+    begin
+      NextToken;
+      ParseBuiltInVarWrite(Sym);
     end
     else
     begin
