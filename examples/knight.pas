@@ -5,12 +5,15 @@ program Knight;
 var
   Seen: array[0..24] of Boolean;
   Path: array[0..25] of Char;
-  I, J, Total: Integer;
+  I, J: Byte;
+  Total: Integer;
 
 procedure Tour(X, Y, Move: Integer);
 var
   I, Z: Integer;
 begin
+  CheckBreak;
+
   Z := X * 5 + Y;
   if not Seen[Z] then
   begin
@@ -42,7 +45,9 @@ begin
 end;
 
 begin
-  WriteLn('*** 5x5 Knights Tour ***');
+  WriteLn('*** 5x5 Knight''s Tour ***');
+  WriteLn;
+  WriteLn('(This might take a while.)');
   WriteLn;
 
   Total := 0;
