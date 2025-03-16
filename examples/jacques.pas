@@ -3,7 +3,7 @@ program Jaques;
 procedure Note(Duration: Real; Pitch: Integer);
 begin
   Border((Pitch + 15) mod 8);
-  Beep(Duration * 2, Pitch);
+  Beep(Duration * 1.5, Pitch);
 end;
 
 var
@@ -14,31 +14,43 @@ begin
   TextColor(0);
   ClrScr;
 
-  for I := 1 to 2 do
+  WriteLn;
+  Write('   1... ');
+  Delay(1000);
+  Write('2... ');
+  Delay(1000);
+  Write('3... ');
+  Delay(1000);
+  WriteLn('here we go!');
+
+  for I := 0 to 1 do
   begin
-    WriteLn;
-    WriteLn('Frere Jacques');
+    GotoXY(10, 6 + 2 * I);
+    TextColor(Blue);
+    Write('Frere Jacques');
 
     Note(0.25, 0);
     Note(0.25, 2);
     Note(0.25, 4);
     Note(0.25, 0);
   end;
-  
-  for I := 1 to 2 do
+
+  for I := 0 to 1 do
   begin
-    WriteLn;
-    WriteLn('Dormez vous?');
+    GotoXY(10, 10 + 2 * I);
+    TextColor(Red);
+    Write('Dormez vous?');
 
     Note(0.25, 4);
     Note(0.25, 5);
     Note(0.5, 7);
   end;
-  
-  for I := 1 to 2 do
+
+  for I := 0 to 1 do
   begin
-    WriteLn;
-    WriteLn('Sonnez les matines');
+    GotoXY(8, 14 + 2 * I);
+    TextColor(Magenta);
+    Write('Sonnez les matines');
 
     Note(0.125, 7);
     Note(0.125, 9);
@@ -47,11 +59,12 @@ begin
     Note(0.25, 4);
     Note(0.25, 0);
   end;
-  
-  for I := 1 to 2 do
+
+  for I := 0 to 1 do
   begin
-    WriteLn;
-    WriteLn('Ding ding dong');
+    GotoXY(9, 18 + 2 * I);
+    TextColor(Green);
+    Write('Ding ding dong');
 
     Note(0.25, 0);
     Note(0.25, -5);

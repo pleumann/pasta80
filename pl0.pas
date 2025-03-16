@@ -1272,7 +1272,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TBinaryType = (btCom, btDot);
+  TBinaryType = (btCom, btZX, btDot);
 
   TGraphicsMode = (gmNone, gmLowRes, gmHighRes);
 
@@ -1283,7 +1283,7 @@ type
   end;
 
 const
-  BinaryStr: array[TBinaryType] of String = ('CP/M COM', 'Next DOT');
+  BinaryStr: array[TBinaryType] of String = ('CP/M COM', 'ZX BIN', 'Next DOT');
   GraphicsStr: array[TGraphicsMode] of String = ('None', 'Lo-res', 'Hi-res');
   YesNoStr: array[Boolean] of String = ('No ', 'Yes');
 
@@ -1924,7 +1924,7 @@ begin
 
   if Sym = Nil then
   begin
-    Emit('main', 'call __init', '');
+    Emit('main', '', ''); //), 'call __init', '');
     EmitI('ld (display+2),sp');
     EmitCall(LookupGlobal('InitHeap'));
   end
@@ -1964,7 +1964,7 @@ end;
 procedure EmitEpilogue(Sym: PSymbol);
 begin
   if Sym = nil then
-    Emit(ExitTarget, 'call __done', '')
+    //Emit(ExitTarget, 'call __done', '')
   else
   begin
     Emit(ExitTarget, 'ld sp,(display+' + IntToStr(Level * 2) + ')', 'Epilogue');
@@ -5934,6 +5934,8 @@ begin
 
   if Binary = btCom then
     SetInclude(HomeDir + '/lib/cpm.pas')
+  else if Binary = btZX then
+    SetInclude(HomeDir + '/lib/zx.pas')
   else
     SetInclude(HomeDir + '/lib/next.pas');
 
@@ -5984,6 +5986,8 @@ begin
 
   if Binary = btCom then
     BinFile := ChangeExt(SrcFile, '.com')
+  else if Binary = btZX then
+    BinFile := ChangeExt(SrcFile, '.bin')
   else if Binary = btDot then
     BinFile := ChangeExt(SrcFile, '.dot');
 
@@ -6349,6 +6353,8 @@ begin
     end
     else if SrcFile = '--com' then
       Binary := btCom
+    else if SrcFile = '--zx' then
+      Binary := btZX
     else if SrcFile = '--dot' then
       Binary := btDot
     else if SrcFile = '--gfx' then
