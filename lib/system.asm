@@ -9,6 +9,7 @@ __text_buf      dw      0
 ; Some stuff shared between the routines
 ;
 
+__buffer        ds      32
 __linemax:      ds      1
 __linelen:      ds      1
 __linebuf:      ds      128
@@ -97,7 +98,7 @@ __int16_case:   push    de
                 inc     a
                 ret
 
-; Signed 16 bit left-shift 
+; Signed 16 bit left-shift
 ;
 ; Entry: HL (Number), E (number of Bits)
 ; Exit:  HL (Number)
@@ -111,7 +112,7 @@ __int_shl1:
                 djnz __int_shl1
                 ret
 
-; Signed 16 bit right-shift 
+; Signed 16 bit right-shift
 ;
 ; Entry: HL (Number), E (number of Bits)
 ; Exit:  HL (Number)
@@ -242,7 +243,7 @@ __count:        ds      1
 ; Exit:   HL (product)
 ; Uses:   DE
 ;
-__mul10:    
+__mul10:
                 ex      hl,de
                 add     hl,hl
                 ld      de,hl
@@ -259,7 +260,7 @@ __mul10:
 ; Exit:   HL (quotient), A (remainder)
 ; Uses:   AF, BC
 ;
-__div10:    
+__div10:
                 ld      bc,$0D0A
                 xor     a
                 add     hl,hl
@@ -707,7 +708,7 @@ __okexit2:
         or      a
         ret
 __delerr:
-        ds      1        
+        ds      1
 ;
 ; String "equal" check. Arguments and result on stack.
 ;
@@ -882,7 +883,7 @@ __val_int:
         ld      a,(hl)
         inc     hl
         call    __atoi
-        ld      hl,4        
+        ld      hl,4
         add     hl,sp
         ld      bc,(hl)
         ld      hl,bc
@@ -892,7 +893,7 @@ __val_int:
         add     hl,sp
         ld      sp,hl
         push    de
-        ret                     ; FIXME: Error reporting 
+        ret                     ; FIXME: Error reporting
 
 __val_float:
         ld      hl,6
@@ -910,7 +911,7 @@ __val_float:
         add     hl,sp
         ld      sp,hl
         push    de
-        ret                     ; FIXME: Error reporting 
+        ret                     ; FIXME: Error reporting
 
 ; string on stack, de table, b size, a contains code if found, 255 if not
 __val_enum:     ld      hl,6
@@ -926,7 +927,7 @@ __val_enum:     ld      hl,6
                 ld      hl,bc
                 ld      (hl),e
                 inc     hl
-                ld      (hl),a                
+                ld      (hl),a
                 ld      e,0
 
 __val_enum1:    ld      hl,2            ; Error
@@ -936,17 +937,17 @@ __val_enum1:    ld      hl,2            ; Error
                 ld      (hl),e
                 xor     a
                 inc     hl
-                ld      (hl),a                
+                ld      (hl),a
 
                 pop     de
                 ld      hl,260
                 add     hl,sp
                 ld      sp,hl
                 push    de
-                ret                     ; FIXME: Error reporting 
+                ret                     ; FIXME: Error reporting
 
 __val_enum2:    ld      a,c
-                ld      hl,4        
+                ld      hl,4
                 add     hl,sp
                 ld      bc,(hl)
                 ld      hl,bc
@@ -956,7 +957,7 @@ __val_enum2:    ld      a,c
                 add     hl,sp
                 ld      sp,hl
                 push    de
-                ret                     ; FIXME: Error reporting 
+                ret                     ; FIXME: Error reporting
 
 ;
 ; String length. Arguments and result on stack.
@@ -1221,7 +1222,7 @@ __fltrnd:
 __fltrnd_neg:
         call    FPSUB
         jp      FIX
-        
+
 __atof:
         push    ix
         ld      de,hl
@@ -1274,13 +1275,13 @@ __putf_exp:
         jr      nc,__putf_exp_0
         ld      a,1
         jr      __putf_exp_1
-__putf_exp_0:             
+__putf_exp_0:
         sub     $07
         cp      $0a
         jp      c,__putf_exp_1
-        
+
         ld      a,$09
-__putf_exp_1:             
+__putf_exp_1:
         ld      h,a
         ld      l,$0d
         exx
@@ -1550,17 +1551,17 @@ __setgeq:
 ; *  ... a := a and b
 
 ; =  ... a = b
-; >= ... a or b = a 
+; >= ... a or b = a
 ; <= ... a or b = b
 
 ; Include shared with in
 ; Exclude shared with in
-                
+
 
 
 
 __conout:       equ     __putc
-             
+
 ;
 ; Print string to screen
 ;
@@ -1760,12 +1761,12 @@ __strf_exp:
         jr      nc,__strf_exp_0
         ld      a,1
         jr      __strf_exp_1
-__strf_exp_0:             
+__strf_exp_0:
         sub     $07
         cp      $0a
         jp      c,__strf_exp_1
         ld      a,$09
-__strf_exp_1:             
+__strf_exp_1:
         ld      h,a
         ld      l,$0d
         exx
@@ -1991,7 +1992,7 @@ __assertfailed: dw 0
 ; Uses:   *
 ;
 __itoa:         ld      bc,0
-                bit     7,d                
+                bit     7,d
                 ex      de,hl
                 jr      z,__itoa_loop1
                 ex      de,hl
@@ -2028,7 +2029,7 @@ __itoa_loop2:   pop     af              ; pop and store
 ; Exit:     DE (value)
 ; Uses:     *
 ;
-; TODO Report errors via carry or a register? 
+; TODO Report errors via carry or a register?
 ;
 __atoi:         ld      de,0
                 and     a
@@ -2111,7 +2112,7 @@ __fillchar:
                 ld      a,d             ; Check for zero length
                 or      e
                 ret     z               ; Return if this is the case
-                
+
                 ld      (hl),c          ; Set first byte
 
                 dec     de              ; Decrement counter
@@ -2120,7 +2121,7 @@ __fillchar:
                 or      e
                 ret     z               ; Return if this is the case
 
-                ld      bc,de           ; Let LDIR do the remaining work 
+                ld      bc,de           ; Let LDIR do the remaining work
                 ld      de,hl
                 inc     de
                 ldir
@@ -2200,7 +2201,7 @@ __malloc_loop:
         ld      a,(ix+1)
         ld      (bc),a
         ret
-; Larger blocks can be split, if at least 4 bytes remain 
+; Larger blocks can be split, if at least 4 bytes remain
 __malloc_check_larger:
         ld      a,252
         and     l

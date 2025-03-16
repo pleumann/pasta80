@@ -1,7 +1,6 @@
                 org     $100
 
                 jp      main
-__buffer:       ds      32
 
 ;
 ; Print character to screen
