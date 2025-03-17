@@ -1,33 +1,33 @@
 program Life;
 
 const
-  Width    = 40;
+  Width    = 32;
   Height   = 20;
   Percent  = 20;
 
 var
-  Map: array[0..1] of array[0..19] of array[0..39] of Byte;
+  Map: array[0..1] of array[0..19] of array[0..31] of Byte;
   This, Next, Cycle, Live, Color: Integer;
+  Cell: string[2];
+  C: Char;
 
 procedure Paint;
 var
   X, Y: Integer;
 begin
-  GotoXY(1, 1);
   for Y := 0 to Height - 1 do
   begin
+    GotoXY(8, 1 + Y);
     for X := 0 to Width - 1 do
       if Map[This][Y][X] = 1 then
       begin
         TextBackground(Color);
-        Write('  ');
+        Write(Cell);
         TextBackground(Black);
       end
       else
-        Write('  ');
-    WriteLn;
+        Write(Cell);
   end;
-  WriteLn;
 
   Inc(Color);
   if (Color = 8) then Color := 1;
@@ -73,6 +73,15 @@ procedure Setup;
 var
   X, Y: Integer;
 begin
+  if ScreenWidth = 32 then
+  begin
+    Cell := ' ';
+  end
+  else
+  begin
+    Cell := '  ';
+  end;
+
   Live := 0; This := 0; Next := 1;
 
   for Y := 0 to Height - 1 do
@@ -87,25 +96,31 @@ begin
 end;
 
 begin
+  CursorOff;
+
   ClrScr;
   Randomize;
   Setup;
 
   Color := 1;
 
-  for Cycle := 1 to 800 do
+  while not KeyPressed do
   begin
-    CursorOn;
-    CheckBreak;
-    CursorOff;
-
+    Inc(Cycle);
     TextColor(1 + Cycle mod 6);
     Paint;
+    TextBackground(7);
+    TextColor(0);
+    GotoXY(8, 22);
+    Write(' Cycle:  ', Cycle:3,'  Alive: ', Live:3, '  Press any key to exit. ':40);
+
+    TextBackground(0);
     TextColor(7);
-    Write(#27'p');
-    Write('  Cycle: ', Cycle:3,'  Alive: ', Live:3, '                          Press Ctrl-C to exit.  ');
-    Write(#27'q');
 
     Think;
   end;
+
+  C := ReadKey;
+
+  CursorOn;
 end.
