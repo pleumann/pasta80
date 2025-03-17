@@ -14,10 +14,10 @@ const
   ScreenHeight = 22;
 
 procedure ClrScr; register;                         external 'zx_clrscr';
-procedure GotoXY(X, Y: Integer); register;             external 'zx_gotoxy';
+procedure GotoXY(X, Y: Integer); register;          external 'zx_gotoxy';
 
-procedure TextColor(Color: Integer); register;         external 'zx_color';
-procedure TextBackground(Color: Integer); register;    external 'zx_background';
+procedure TextColor(Color: Integer); register;      external 'zx_color';
+procedure TextBackground(Color: Integer); register; external 'zx_background';
 
 function KeyPressed: Boolean; register;             external 'zx_testkey';
 function ReadKey: Char; register;                   external 'zx_readkey';
@@ -73,7 +73,7 @@ var
   Frequency, Cycles: Real;
   DE, HL: Integer;
 
-  procedure RomBeep(HL, DE: Integer); register; external '$03b5';
+  procedure RomBeep(HL, DE: Integer); register;     external '$03b5';
 
 begin
   Frequency := 440.0 * Exp(((Pitch - 9) / 12.0) * LN2);

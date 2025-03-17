@@ -155,7 +155,6 @@ zx_readkey:     halt
                 ld      l,a
                 ret
 
-;
 ; Sets the foreground color (aka ink).
 ;
 ; In:   l=color (0..7)
