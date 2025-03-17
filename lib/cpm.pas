@@ -6,6 +6,10 @@
 (* --- VT52 terminal support ------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
 
+const
+  ScreenWidth = 80;
+  ScreenHeight = 24;
+
 procedure ConOut(C: Char); register;        external '__conout';
 
 procedure ClrScr; register;                 external '__clrscr';
@@ -574,13 +578,13 @@ function TextEoln(var T: TextRec): Boolean;
 begin
   with T do
     TextEoln := DMA[Offset] = #13;
-end;        
+end;
 
 function TextEof(var T: TextRec): Boolean;
 begin
   with T do
     TextEof := DMA[Offset] = #26;
-end;        
+end;
 
 (* --- Typed file routines, use FileRec as representation ------------------- *)
 
@@ -590,7 +594,7 @@ begin
 
   with F do
   begin
-    BlockAssign(FCB, Name);    
+    BlockAssign(FCB, Name);
     CompSize := Size;
   end;
 end;
@@ -613,7 +617,7 @@ begin
       WriteLn('Invalid file type');
       Halt;
     end;
-  
+
     CompCount := HdrCount;
     CompIndex := 0;
 
@@ -827,7 +831,7 @@ var
   E: Integer;
 begin
   if LastError <> 0 then Exit;
-  
+
   with F do
   begin
     FileFlush(F);
