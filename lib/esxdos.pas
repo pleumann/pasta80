@@ -202,5 +202,3 @@ begin
     Dec(Count);
   end;
 end;
-
-{$i files.pas}

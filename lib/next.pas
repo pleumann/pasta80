@@ -9,5 +9,6 @@
 {$i system.pas  }
 {$i zxrom.pas   }
 {$i esxdos.pas  }
+{$i files.pas   }
 
 end.
