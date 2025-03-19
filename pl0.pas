@@ -987,6 +987,7 @@ var
   C: Char;
 
 procedure SetLibrary(FileName: String); forward;
+procedure EmitI(S: String); forward;
 
 procedure NextToken();
 var
@@ -1143,6 +1144,8 @@ begin
 
       if LowerStr(Copy(S, 2, 3)) = '$i ' then
         SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)))
+      else if LowerStr(Copy(S, 2, 3)) = '$a ' then
+        EmitI(TrimStr(Copy(S, 4, Length(S) - 4)))
       else if LowerStr(Copy(S, 2, 2)) = '$u' then
         CheckBreak := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$a' then
