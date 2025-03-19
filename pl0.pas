@@ -6031,7 +6031,7 @@ begin
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
-    if Binary = btCom then Org := 256 else Org := 8192;
+    if Binary = btCom then Org := 256 else Org := 32768;
     Len := FSize(BinFile);
 
     HeapStart := Org + Len;
