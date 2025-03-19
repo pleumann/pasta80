@@ -175,26 +175,6 @@ type
     RL: Integer; RH: Byte;              (* 24 bit random record number        *)
   end;
 
-  TextRec = record                      (* Internal text file representation  *)
-    FCB: FileControlBlock;              (* FCB, *must* start at offset 0      *)
-    Readable: Boolean;                  (* File is open for reading           *)
-    Writable: Boolean;                  (* File is open for writing           *)
-    Offset: Integer;                    (* Offset within 128 byte buffer      *)
-    DMA: array[0..127] of Char;         (* Internal sector buffer             *)
-  end;
-
-  FileRec = record                      (* Internal typed file representation *)
-    FCB: FileControlBlock;              (* FCB, *must* start at offset 0      *)
-    CompSize: Integer;                  (* Size of component type             *)
-    CompCount: Integer;                 (* Number of components in file       *)
-    CompIndex: Integer;                 (* Index of current component         *)
-    Offset: Integer;                    (* Offset within 128 byte buffer      *)
-    Modified: Boolean;                  (* Current record has been modified   *)
-    case Boolean of
-      False: (DMA: array[0..127] of Char;); (* Internal sector buffer         *)
-      True:  (HdrCount, HdrSize: Integer;); (* Typed file header              *)
-  end;
-
 (* --- Untyped file routines, use FileControlBlock as representation -------- *)
 
 const
