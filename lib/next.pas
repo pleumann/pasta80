@@ -1,13 +1,13 @@
-{$l next.asm}
+(* ===================================================================== *)
+(* === ZX Spectrum Next run-time library =============================== *)
+(* ===================================================================== *)
 
-{$i system.pas}
+{$a org $8000   }
+{$a             }
+{$a jp __init   }
 
-procedure ConOut(C: Char); register;        external '__conout';
-
-procedure ClrScr; register;                 external '__clrscr';
-procedure GotoXY(X, Y: Integer); register;  external '__gotoxy';
-
-procedure TextColor(I: Integer); register;      external '__textfg';
-procedure TextBackground(I: Integer); register; external '__textbg';
+{$i system.pas  }
+{$i zxrom.pas   }
+{$i esxdos.pas  }
 
 end.

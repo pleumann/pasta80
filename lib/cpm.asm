@@ -1,7 +1,3 @@
-                org     $100
-
-                jp      main
-
 ;
 ; Print character to screen
 ;
@@ -180,9 +176,8 @@ __checkbreak:
 ; Exit: -
 ; Uses: *
 ;
-__init:         pop     hl
-                ld      sp, ($0006)
-                jp      (hl)
+__init:         ld      sp, ($0006)
+                call    main
 
 ;
 ; Shutdown

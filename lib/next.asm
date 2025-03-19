@@ -1,178 +1,265 @@
-                org     $8000
+; =========================================================================
+; === ZX Spectrum Next run-time library ===================================
+; =========================================================================
 
-                jp      main
+                ORG     $8000
 
-__saved_iy:     dw      0
-__win_handle:   dw      0
-__buffer:       equ     23698
+; -------------------------------------------------------------------------
+; --- Low-level routines expected by the compiler -------------------------
+; -------------------------------------------------------------------------
 
+; Starts and terminates the program.
 ;
-; Print character to screen
+; In:   -
+; Out:  -
 ;
-; Entry:  A (ASCII code)
-; Exit:   -
-; Uses:   C,E,IY
-;
+__init:         ld      (__saved_iy),iy ; Save sysvar pointer
+                ld      (__saved_sp),sp ; Save original stack
 
-__putc:
-                rst     16
-                ret
+                ld      sp,0            ; We use our own stack
 
-;
-; New line
-;
-; Entry:  -
-; Exit:   -
-; Uses:   -
-;
-__newline:
-                ld      a,13
-                call    __putc
-                ret
+                ld      a,2
+                call    0x1601          ; Open channel #2
 
-__readkey:
-        halt
-        bit    5, 1 (iy)
-        jr     z, __readkey
-        res    5, 1 (iy)
-        ld     a, (23560)
-        ret
-__getline:
-                ld      hl,__linebuf
-                ld      (__lineptr),hl
-                xor     a
-                ld      (__linelen),a
-__readline1:
-                call    __readkey
-                cp      ' '
-                jr      c, __readline2
-                cp      127
-                jr      nc,__readline2
-                ld      hl,(__lineptr)
-                ld      (hl),a
-                inc     hl
-                ld      (__lineptr),hl
-                ld      hl,__linelen
-                inc     (hl)
-                call    __putc
-                jp      __readline1
-__readline2:
-                cp      12
-                jr      nz, __readline3
-                ld      hl,(__lineptr)
-                dec     hl
-                ld      (__lineptr),hl
-                ld      hl,__linelen
-                dec     (hl)
-                ld      a,8
-                call    __putc
-                ld      a,' '
-                call    __putc
-                ld      a,8
-                call    __putc
-                jp      __readline1
-__readline3:
-                cp      13
-                jr      nz,__readline1
-                ld      hl,(__lineptr)
-                ld      (hl),0
-                ld      hl,__linebuf
-                ld      (__lineptr),hl
-                call    __newline
-                ret     
-                
-__getn_old:
-                ld      iy, (__saved_iy)
-                ;    ld      a,1
-                ;   rst $18
-                ;   defw    $1601
-                ld a,'>'
-                call __putc
-                ld      de,(23633)      ; save current channel
-                push    de       
-                ld      de,(__win_handle)        ; set current channel to magic window
-                ld      (23633), de 
-                ld      de,$01c3
-                ld      c,7
-                exx
-                ld      hl,__linebuf
-                ld      e,0
-                ld      a,127
-                exx
-                rst     8
-                db      $94
-                pop     bc
-                ld      (23633), bc 
-                push    de
-                pop de
-                ld      a,e
-                ld      hl,__linebuf
-                call    __atoi
-                ret
-
-__textfg:     ld a,l
-              ld  (__textfg_str+2),a
-              ld hl,__textfg_str
-              call  __puts
-              ret
-__textfg_str: db 2,16,0 ; No good in LAYER 2,1 - needs mapping
-
-__textbg:     ld a,l
-              ld  (__textbg_str+2),a
-              ld hl,__textbg_str
-              call  __puts
-              ret
-__textbg_str: db 2,17,0 ; No good in LAYER 2,1 - needs mapping
-
-__gotoxy:     ld a,l
-              dec   a
-              ld  (__gotoxy_str+3),a
-              ld a,e
-              dec   a
-              ld  (__gotoxy_str+2),a
-              ld hl,__gotoxy_str
-              call  __puts
-              ret
-__gotoxy_str: db 3,22,0,0
-
-__clrscr:     ld hl,__clrscr_str
-              call  __puts
-              ret
-__clrscr_str: db 1,14
-
-;
-; Startup (with some help from Melissa O'Neill for NXT case)
-;
-; Entry: -
-; Exit: -
-; Uses: *
-;
-__init:         ld      (__saved_iy),iy
                 ld      de, $01d5
                 ld      a,1
-                exx
-#if defined(LORES)
-                ld      bc,$0100
-#endif
-#if defined(HIRES)
-                ld      bc,$0201
-#endif
-                exx
+                ; exx
+                ; ld      bc,$0100      ; Low-res
+                ; ld      bc,$0201      ; High-res
+                ; exx
                 ld      c,7
                 rst     $08
                 db      $94
                 exx
-                ld   (__win_handle),hl
+                ld      (__win_handle),hl
                 exx
+
+__done:         ld      sp,(__saved_sp) ; Restore original stack
+                ld      iy,(__saved_iy) ; Restore sysvar pointer
+
                 ret
 
-;
-; Shutdown
-;
-; Entry: -
-; Exit: -
-; Uses: *
-;
+__saved_sp:     dw      0
+__saved_iy:     dw      0
+__win_handle:   dw      0
 
-__done:         ld      iy,(__saved_iy)
+; Prints a line break (fall-through intended).
+;
+; In:   -
+; Out:  -
+;
+__newline:      ld      a,13
+
+; Prints a single character to the screen.
+;
+; In:   l=ASCII code
+; Out:  -
+;
+__putc:         rst     16
                 ret
+
+; Reads a whole line of input from the keyboard into the central buffer, so
+; that other routines can consume it.
+;
+; In:   -
+; Out:  -
+;
+__getline:      ld      hl,__linebuf    ; Setup everything
+                ld      (__lineptr),hl
+                xor     a
+                ld      (__linelen),a
+__readline1:    ld      a,143           ; Display cursor block
+                rst     16
+                ld      a,8
+                rst     16
+
+__readline2:    call    zx_readkey      ; Wait for a key to be pressed
+
+                push    hl
+                ld      d,0
+                ld      e,(iy-1)
+                ld      hl,$00c8
+                call    $03b5           ; Make clicking noise
+                pop     hl
+
+                ld      a,l
+                cp      ' '
+                jp      c,__readline3   ; Handle control characters
+                cp      127
+                jp      nc,__readline2  ; Non-ASCII, read another key
+                ld      hl,(__lineptr)
+                ld      (hl),a          ; Store character
+                inc     hl
+                ld      (__lineptr),hl  ; Adjust pointer
+                ld      hl,__linelen
+                inc     (hl)            ; Increment length
+                rst     16              ; Print character
+                jp      __readline1     ; And repeat
+__readline3:    cp      12
+                jp      nz, __readline4
+                ld      hl,(__lineptr)  ; Handle delete key
+                dec     hl
+                ld      (__lineptr),hl
+                ld      hl,__linelen
+                dec     (hl)
+                ld      a,' '
+                rst     16
+                ld      a,8
+                rst     16
+                ld      a,8
+                rst     16
+                jp      __readline1
+__readline4:    cp      13
+                jp      nz,__readline2
+                ld      hl,(__lineptr)  ; Handle enter key
+                ld      (hl),0
+                ld      hl,__linebuf
+                ld      (__lineptr),hl
+                ld      a,' '
+                rst     16
+                call    __newline
+                ret
+
+; Checks if Shift and Space keys (aka Break) are currently pressed.
+; Terminates the program if this is the case. Works directly on the
+; keyboard matrix and does not consume a pending key press.
+;
+; In:   -
+; Out:  -
+;
+__checkbreak:   ld      a,$fe
+                in      a,($fe)
+                rra
+                ret     c
+
+                ld      a,$7f
+                in      a,($fe)
+                rra
+                ret     c
+
+                jp      __done
+
+; -------------------------------------------------------------------------
+; --- Routines that implement a Pascal procedure or function --------------
+; -------------------------------------------------------------------------
+
+; Checks if a key has been pressed.
+;
+; In:   -
+; Out:  e=1 if key has been pressed, e=0 otherwise
+;
+zx_testkey:     ld      de,0
+                bit     5, 1 (iy)
+                ret     z
+                inc     e
+                ret
+
+; Waits for a key press and returns the ASCII code resulting from it.
+;
+; In:   -
+; Out:  e=ASCII code
+;
+zx_readkey:     halt
+                bit     5, 1 (iy)
+                jr      z,zx_readkey
+                res     5, 1 (iy)
+                ld      a, (#23560)
+                ld      l,a
+                ret
+
+; Sets the foreground color (aka ink).
+;
+; In:   l=color (0..7)
+; Out:  -
+;
+zx_color:       push    hl
+                ld      a,16
+                rst     16
+                pop     hl
+                ld      a,l
+                rst     16
+                ret
+
+; Sets the background color (aka paper).
+;
+; In:   l=color (0..7)
+; Out:  -
+;
+zx_background:  push    hl
+                ld      a,17
+                rst     16
+                pop     hl
+                ld      a,l
+                rst     16
+                ret
+
+; Moves the cursor to a given location.
+;
+; In:   l=column (1..32), e=row (1..24)
+; Out:  -
+;
+zx_gotoxy:      push    hl
+                push    de
+
+                ld      a,22
+                rst     16
+
+                pop     hl
+                ld      a,l
+                dec     a
+                rst     16
+
+                pop     hl
+                ld      a,l
+                dec     a
+                rst     16
+
+                ret
+
+; Clears the screen and applies the attributes currently stored in the
+; system variable at 23695. Sets the cursor position to the top left
+; corner.
+;
+; In:   -
+; Out:  -
+;
+zx_clrscr:      ld      hl, 16384
+                ld      de, 6144
+                ld      c, 0
+                call    __fillchar      ; Clear pixels
+
+                ld      hl, 22528
+                ld      de, 768
+                ld      a, (23695)
+                ld      c, a
+                call    __fillchar      ; Clear attributes
+
+                ld      l, 1
+                ld      e, 1
+                call    zx_gotoxy       ; Set cursor
+
+                ret
+
+; Changes the border color using the appropriate ROM routine.
+;
+; In:   l=border color (0..7)
+; Out:  -
+;
+zx_border:      ld      a,l
+                and     $07
+                call    $229b
+                ret
+
+; Delays the program by (roughly) a given number of milliseconds.
+;
+; In:   hl=milliseconds
+; Out:  -
+;
+zx_delay:       ld      de,20
+                call    __sdiv16
+zx_delay_loop:  ld      a,h
+                or      l
+                ret     z
+                dec     hl
+                halt
+                jr      zx_delay_loop
