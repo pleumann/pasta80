@@ -340,17 +340,19 @@ var
   TokenLine, TokenColumn, ErrorLine, ErrorColumn: Integer;
 
 procedure Error(Message: String);
-var  I: Integer;
+var
+  I: Integer;
 begin
   WriteLn;
+
   if Source <> nil then
   begin
-  WriteLn(Source^.Buffer);
-  for I := 1 to TokenColumn - 1 do Write(' ');
-  WriteLn('^');
-  WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
-  ErrorLine := TokenLine;
-  ErrorColumn := TokenColumn;
+    WriteLn(Source^.Buffer);
+    for I := 1 to TokenColumn - 1 do Write(' ');
+    WriteLn('^');
+    WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
+    ErrorLine := TokenLine;
+    ErrorColumn := TokenColumn;
   end
   else
   begin
