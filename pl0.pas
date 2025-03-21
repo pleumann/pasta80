@@ -343,12 +343,22 @@ procedure Error(Message: String);
 var  I: Integer;
 begin
   WriteLn;
+  if Source <> nil then
+  begin
   WriteLn(Source^.Buffer);
   for I := 1 to TokenColumn - 1 do Write(' ');
   WriteLn('^');
   WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
   ErrorLine := TokenLine;
   ErrorColumn := TokenColumn;
+  end
+  else
+  begin
+    WriteLn('*** Error: ', Message);
+    ErrorLine := 0;
+    ErrorColumn := 0;
+  end;
+
   WriteLn();
 
   LongJmp(StoredState, 1);
@@ -367,22 +377,25 @@ begin
 
   New(Tmp);
 
-  Tmp^.Next := Source;
-  Source := Tmp;
-
-  with Source^ do
+  with Tmp^ do
   begin
     Name := FileName;
     {$I-}
     Assign(Input, FileName);
     Reset(Input);
     if IOResult <> 0 then
-      Error('File not found');
+    begin
+      Dispose(Tmp);
+      Error('File "' + FileName + '" not found');
+    end;
     {$I+}
     Buffer := '';
     Line := 0;
     Column := 1;
+    Next := Source;
   end;
+
+  Source := Tmp;
 end;
 
 procedure CloseInput();
@@ -6008,6 +6021,8 @@ begin
     C := #0;
 
     while SymbolTable <> nil do CloseScope(True);
+
+    Source := nil;
 
     OpenInput(SrcFile);
     OpenTarget(AsmFile);
