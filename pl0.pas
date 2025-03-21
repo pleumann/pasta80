@@ -21,7 +21,7 @@ var
   I: Integer;
 begin
   for I := 1 to Length(S) do S[I] := UpCase(S[I]);
-  UpperStr := S;  
+  UpperStr := S;
 end;
 
 (**
@@ -32,7 +32,7 @@ var
   I: Integer;
 begin
   for I := 1 to Length(S) do S[I] := LowerCase(S[I]);
-  LowerStr := S;  
+  LowerStr := S;
 end;
 
 (**
@@ -83,7 +83,7 @@ begin
   begin
     while Length(S) < N do
       S := S + Spaces;
-    PadStr := Copy(S, 1, N);  
+    PadStr := Copy(S, 1, N);
   end
 end;
 
@@ -122,11 +122,11 @@ end;
 (**
  * Encodes the given floating-point number (enclosed in a string) the way
  * the Real type needs it.
- *) 
+ *)
 function EncodeReal(S: String): String;
 var
   Number, Mantissa: Extended;
-  Sign: Boolean;  
+  Sign: Boolean;
   Exponent, I: Integer;
   Bytes: array[0..5] of Byte;
 begin
@@ -209,7 +209,7 @@ begin
   if Copy(Name, 1, Length(Dir)) = Dir then
     FRelative := Copy(Name, Length(Dir) + 1, 255)
   else
-    FRelative := Name;  
+    FRelative := Name;
 end;
 
 (**
@@ -322,7 +322,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  PSource = ^TSource; 
+  PSource = ^TSource;
   TSource = record
     Name: String;
     Input:  Text;
@@ -457,8 +457,8 @@ end;
 procedure UngetChar();
 begin
   Source^.Column := Source^.Column - 1;
-end; 
-    
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- String table --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
@@ -668,7 +668,7 @@ begin
   begin
     if Sym^.Kind = scVar then
     begin
-      Sym^.Value := Sym^.Value - Offset + 4;    
+      Sym^.Value := Sym^.Value - Offset + 4;
       I := I + 1;
     end;
     Sym := Sym^.Prev;
@@ -748,7 +748,7 @@ begin
   begin
     if Sym^.IsRef then
       Offset := Offset - 2 (* var parameters *)
-    else if DataType^.Value = 1 then 
+    else if DataType^.Value = 1 then
       Offset := Offset - 2 (* Boolean, Char and Byte take 2 bytes on stack. *)
     else
       Offset := Offset - DataType^.Value;
@@ -892,7 +892,7 @@ begin
   IncProc := RegisterMagic(scProc, 'Inc');
   DecProc := RegisterMagic(scProc, 'Dec');
 
-  ConcatFunc := RegisterMagic(scFunc, 'Concat'); 
+  ConcatFunc := RegisterMagic(scFunc, 'Concat');
   ValProc := RegisterMagic(scProc, 'Val');
 
   IncludeProc := RegisterMagic(scProc, 'Include');
@@ -938,7 +938,7 @@ type
   end;
 
 const
-  TokenStr: array[TToken] of String = 
+  TokenStr: array[TToken] of String =
            ('<nul>',
             'Identifier', 'Number', 'String', 'Real', '+', '-', '*', '/',
             '=', '#', '<', '<=', '>', '>=', '(', ')', '[', ']',
@@ -1105,7 +1105,7 @@ begin
           NumValue := NumValue + Ord(C) - Ord('A') + 10
         else
           NumValue := NumValue + Ord(C) - Ord('a') + 10;
-           
+
         C := GetChar;
       until not IsHexDigit(C);
     end
@@ -1175,9 +1175,9 @@ begin
       NextToken;
       Exit;
     end
-    else 
+    else
     begin
-      case C of 
+      case C of
         '+': Token := toAdd;
         '-': Token := toSub;
         '*': Token := toMul;
@@ -1480,7 +1480,7 @@ begin
       //   RemoveCode;
       //   Code^.Instruction := 'ccf';
       //   Code^.Prev.Instruction := 'dec a';
-      //   Exit;    
+      //   Exit;
       // end;
     end;
 
@@ -1731,9 +1731,9 @@ begin
     else
     begin
       if Sym^.Value >= 3 then
-        EmitI('pop bc');    
+        EmitI('pop bc');
       if Sym^.Value >= 2 then
-        EmitI('pop de');    
+        EmitI('pop de');
       if Sym^.Value >= 1 then
         EmitI('pop hl');
     end;
@@ -1763,7 +1763,7 @@ begin
       end;
       K:= K + J;
     end;
-  
+
     if K <> 0 then
     begin
       EmitC('Post call cleanup ' + IntToStr(K) + ' bytes');
@@ -1785,9 +1785,9 @@ begin
   begin
     Emit('NXT', 'equ 1', 'Target is Next .dot file');
 
-    if Graphics = gmLowRes then 
+    if Graphics = gmLowRes then
       Emit('LORES', 'equ 1', 'Low-res graphics support')
-    else if Graphics = gmHighRes then 
+    else if Graphics = gmHighRes then
       Emit('HIRES', 'equ 1', 'High-res graphics support');
   end;
 end;
@@ -1920,7 +1920,7 @@ end;
 *)
 procedure EmitPrologue(Sym: PSymbol);
 var
-  V: String; 
+  V: String;
 begin
 (*
   if Sym = Nil then
@@ -2037,7 +2037,7 @@ begin
       // TODO: Make this a macro to ease optimization?
       Emit('', 'pop hl', '');
       Emit('', 'ld e,(hl)', '');
-      Emit('', 'inc hl', '');    
+      Emit('', 'inc hl', '');
       Emit('', 'ld d,(hl)', '');
       Emit('', 'push de', '');
     end;
@@ -2427,20 +2427,20 @@ begin
   else if DataType = dtReal then
   begin
     EmitI('popfp');
-    
+
     EmitI('ld a,b');
     EmitI('xor a,128');
     EmitI('ld b,a');
 
     EmitI('pushfp');
   end
-  else Error('Invalid type ' + DataType^.Name);  
+  else Error('Invalid type ' + DataType^.Name);
 end;
 
 procedure EmitInc(DataType: PSymbol);
 begin
   EmitI('pop hl');
-  
+
   if DataType = dtInteger then
     EmitI('call __inc16')
   else
@@ -2839,7 +2839,7 @@ begin
 
   if (Symbol^.Tag <> '') and (Symbol^.Tag <> 'RESULT') then
     Offset := 0
-  else 
+  else
   begin
     EmitAddress(Symbol);
     Offset := -1;
@@ -2890,7 +2890,7 @@ begin
         end
         else Error('Not an array or a string');
       until Scanner.Token <> toComma;
-      
+
       Expect(toRBrack);
 
       NextToken;
@@ -2917,7 +2917,7 @@ begin
         EmitBinOp(toAdd, dtInteger);
         end;
       end;
-      
+
       NextToken;
     end
     else
@@ -2962,14 +2962,14 @@ begin
       Error('Not a variable: ' + Scanner.StrValue);
 
     NextToken;
-    
+
     T := ParseVariableAccess(Sym2);
 
     if Sym^.ArgTypes[I] <> nil then
       TypeCheck(Sym^.ArgTypes[I], T, tcAssign);
   end
   else
-    TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);  
+    TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);
 end;
 
 procedure ParseArguments(Sym: PSymbol);
@@ -3243,9 +3243,9 @@ begin
       TypeCheck(dtString, ParseExpression, tcExact);
       EmitI('call __stradd');
       EmitClear(256);
-    end;  
+    end;
 
-    ParseBuiltInFunction := dtString;  
+    ParseBuiltInFunction := dtString;
   end
   else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) then
   begin
@@ -3336,18 +3336,18 @@ begin
   else if Proc = BreakProc then
   begin
     if BreakTarget = '' then Error('Not in loop');
-    Emit('', 'jp ' + BreakTarget, 'Break');    
+    Emit('', 'jp ' + BreakTarget, 'Break');
     NextToken;
   end
   else if Proc = ContProc then
   begin
     if ContTarget = '' then Error('Not in loop');
-    Emit('', 'jp ' + ContTarget, 'Continue');    
+    Emit('', 'jp ' + ContTarget, 'Continue');
     NextToken;
   end
   else if Proc = ExitProc then
   begin
-    Emit('', 'jp ' + ExitTarget, 'Exit');    
+    Emit('', 'jp ' + ExitTarget, 'Exit');
     NextToken;
   end
   else if Proc = HaltProc then
@@ -3369,11 +3369,11 @@ begin
     NextToken;
     Expect(toLParen);
     NextToken;
-   
+
     V := ParseVariableRef;
-    
+
     if V^.Kind <> scSetType then Error('Set variable expected');
-    
+
     Expect(toComma);
     NextToken;
 
@@ -3437,7 +3437,7 @@ begin
       begin
         EmitI('pop hl');
         EmitI('ld (__cur_file),hl');
-        
+
         while Scanner.Token = toComma do
         begin
           NextToken;
@@ -3478,7 +3478,7 @@ begin
     if Scanner.Token = toLParen then
     begin
       NextToken;
-      
+
       T := ParseExpression();
 
       if T = dtText then
@@ -3654,7 +3654,7 @@ begin
 
     T := ParseExpression;
     F := ParseFormat;
-    
+
     Expect(toComma);
     NextToken;
 
@@ -3832,7 +3832,7 @@ begin
 
     Expect(toComma);
     NextToken;
-    
+
     ParseExpression; // ^.DataType <> dtByte and dtInteger then Error('Integer expected');
 
     Expect(toRParen);
@@ -3850,13 +3850,13 @@ begin
   else if (Proc = BlockReadProc) or (Proc = BlockWriteProc) then
   begin
     NextToken;
-    
+
     Expect(toLParen);
     NextToken;
-    
+
     T := ParseVariableRef;
     if T^.Kind <> scFileType then Error('File type expected');
-    
+
     Expect(toComma);
     NextToken;
 
@@ -4005,7 +4005,7 @@ begin
 
     (* This is a dirty hack, but ok for now. *)
     if (Sym^.Kind = scVar) and (Sym^.Tag = 'RESULT') then
-      Sym := Sym^.Prev^.Prev; 
+      Sym := Sym^.Prev^.Prev;
 
     if (Sym^.Kind = scVar) and (Sym^.IsMagic) then
     begin
@@ -4054,7 +4054,7 @@ begin
       end;
       NextToken;
       ParseArguments(Sym);
-      EmitCall(Sym);     
+      EmitCall(Sym);
     end
     else if Sym^.Kind in [scType,scEnumType] then
     begin
@@ -4273,7 +4273,7 @@ begin
 
     NextToken;
     U := ParseExpression;
-    if U^.Kind <> scSetType then Error('Set needed');    
+    if U^.Kind <> scSetType then Error('Set needed');
     (* if U^.DataType <> T then Error('Incompatible');    *) (* FIXME!!! *)
 
     EmitSetOp(toIn);
@@ -4287,7 +4287,7 @@ begin
     NextToken;
 
     U := ParseExpression;
-    if U^.Kind <> scSetType then Error('Set needed');    
+    if U^.Kind <> scSetType then Error('Set needed');
     // if U^.DataType <> T^.DataType then Error('Incompatible');  // FIXME!!!
 
     EmitSetOp(Op);
@@ -4299,7 +4299,7 @@ begin
     Op := Scanner.Token;
     NextToken;
     (*
-      * ii ib bi bb zz cc 
+      * ii ib bi bb zz cc
       *)
     T := TypeCheck(T, ParseSimpleExpression, tcExpr);
     if T^.Kind = scStringType then
@@ -4366,7 +4366,7 @@ begin
     FieldRef^.Level := Level;
     // WriteLn('Create ' , Field^.Name, ' at level ', Level, 'in ', Sym^.Name, ' address ', Address, ' Offset ', Field^.Value);
     Field := Field^.Prev;
-  end;  
+  end;
 end;
 
 procedure ParseWith(ContTarget, BreakTarget: String);
@@ -4375,7 +4375,7 @@ var
   Count, I: Integer;
 begin
   OldSymbols := SymbolTable;
-  
+
   ParseWithVar;
   Count := 1;
 
@@ -4498,7 +4498,7 @@ begin
   NextToken;
 
   if Scanner.Token <> toRParen then
-  begin 
+  begin
     ParseInlineExpr;
     while Scanner.Token = toDiv do
     begin
@@ -4706,7 +4706,7 @@ begin
   else if Scanner.Token = toIf then
   begin
     NextToken; TypeCheck(dtBoolean, ParseExpression, tcExact); Expect(toThen); NextToken;
-    
+
     Tag := GetLabel('false');
 
     EmitJumpIf(False, Tag);
@@ -4765,7 +4765,7 @@ begin
       ParseStatement(Tag, Tag2);
     end;
     Expect(toUntil); NextToken;
-    
+
     TypeCheck(dtBoolean, ParseExpression, tcExact);
 
     EmitJumpIf(False, Tag);
@@ -4818,7 +4818,7 @@ begin
     ParseStatement(Tag4, Tag3);
 
     Emit(Tag4, '', '');
-    
+
     Emit('', 'pop de','Dup and check limit');
     Emit('', 'push de','');
     Emit('', 'push de', '');
@@ -4832,7 +4832,7 @@ begin
 
     EmitAddress(Sym);
     if Delta = 1 then EmitInc(Sym^.DataType) else EmitDec(Sym^.DataType);
-    
+
     EmitJump(Tag);
 
     Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
@@ -4999,8 +4999,8 @@ begin
     begin
       Expect(toString);
       if Length(Scanner.StrValue) <> 1 then Error('Char expected');
-      Emit('', 'db "' + Scanner.StrValue + '"', '');     
-      NextToken; 
+      Emit('', 'db "' + Scanner.StrValue + '"', '');
+      NextToken;
     end
     else if DataType^.Kind = scStringType then
     begin
@@ -5008,7 +5008,7 @@ begin
       // Emit('', 'db ' + IntToStr(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
       Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
       Emit('', 'ds ' + IntToStr(DataType^.Value - Length(Scanner.StrValue) - 1), '');
-      NextToken; 
+      NextToken;
     end
     else if DataType^.Kind = scSetType then
     begin
@@ -5016,7 +5016,7 @@ begin
       NextToken;
 
       ParseSetConstant; (* FIXME: Type check!!! *)
-      
+
       Expect(toRBrack);
       NextToken;
     end
@@ -5309,7 +5309,7 @@ begin
 
     ParseRecord(DataType);
     Expect(toEnd);
-    NextToken;    
+    NextToken;
   end
   else if Scanner.Token = toSet then
   begin
@@ -5394,14 +5394,14 @@ begin
       if Sym^.DataType <> dtInteger then Error('Not an integer');
 
       DataType^.High := Sym^.Value;
-      
+
       if Sym^.Value < 256 then DataType^.Value := 1 else DataType^.Value := 2;
     end
     else
     begin
       Expect(toNumber);
       DataType^.High := Scanner.NumValue;
-      
+
       if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
     end;
 
@@ -5456,14 +5456,14 @@ begin
         if Sym^.DataType <> dtInteger then Error('Not an integer');
 
         DataType^.High := Sym^.Value;
-        
+
         if Sym^.Value < 256 then DataType^.Value := 1 else DataType^.Value := 2;
       end
       else
       begin
         Expect(toNumber);
         DataType^.High := Scanner.NumValue;
-        
+
         if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
       end;
 
@@ -5752,7 +5752,7 @@ begin
         if FwdSym^.SavedParams <> nil then
         begin
           P := FwdSym^.SavedParams;
-          while P^.Prev <> nil do 
+          while P^.Prev <> nil do
           begin
             P := P^.Prev;
           end;
@@ -5791,8 +5791,8 @@ begin
           //SetDataType(SymbolTable, dtInteger, 0);
           ResVar := SymbolTable;
         end;
-        NextToken; 
-        
+        NextToken;
+
         if Scanner.Token = toLParen then
         begin
           NextToken;
@@ -5830,7 +5830,7 @@ begin
           NewSym^.DataType := ParseTypeRef();
           ResVar^.DataType := NewSym^.DataType;
         end;
-        
+
         AdjustOffsets;
 
         Expect(toSemicolon);
@@ -5847,7 +5847,7 @@ begin
               NewSym^.Tag := Scanner.StrValue;
               NextToken;
             end
-            else 
+            else
               NewSym^.Tag := '__' + LowerStr(NewSym^.Name);
           end
           else if Scanner.Token = toForward then
@@ -5942,7 +5942,7 @@ begin
 end;
 
 var
-  SrcFile, MainFile, WorkFile, AsmFile, BinFile, S: String; 
+  SrcFile, MainFile, WorkFile, AsmFile, BinFile, S: String;
   I: Integer;
 
 procedure ParseProgram;
@@ -6080,7 +6080,7 @@ begin
     K:=GetKeyEvent;
     K:=TranslateKeyEvent(K);
   until GetKeyEventFlags(K) = kbASCII;
-  
+
   C := GetKeyEventChar(K);
 
   WriteLn(C);
@@ -6107,7 +6107,7 @@ var
 begin
   Write('New directory: ');
   ReadLn(Dir);
-  ChDir(Dir);  
+  ChDir(Dir);
 end;
 
 procedure DoMainFile;
@@ -6249,7 +6249,7 @@ begin
       Inc(I);
     end
     else T := T + C;
-    
+
     Inc(I);
   end;
 
@@ -6297,7 +6297,7 @@ begin
 
     WriteLn(TermStr('~Directory: '), FExpand('.'));
     WriteLn;
-    
+
     Write(TermStr('~Work file: '), FRelative(WorkFile, FExpand('.')));
     if WorkFile <> '' then
     begin
@@ -6362,7 +6362,7 @@ begin
 
   Ide := False;
 
-  I := 1;  
+  I := 1;
   SrcFile := ParamStr(I);
   while Copy(SrcFile, 1, 2) = '--' do
   begin
