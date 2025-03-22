@@ -2,13 +2,14 @@
 (* === ZX Spectrum Next run-time library =============================== *)
 (* ===================================================================== *)
 
-{$a org $8000   }
-{$a             }
-{$a jp __init   }
+{$a org $8000     }
+{$a               }
+{$a jp __init     }
 
-{$i system.pas  }
-{$i zxrom.pas   }
-{$i esxdos.pas  }
-{$i files.pas   }
+{$i system.pas}
+{$i zxrom.pas}
+{$i esxdos.pas}
+{$i files.pas}
+{$i nextregs.pas}
 
 end.
