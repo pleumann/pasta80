@@ -38,7 +38,7 @@ __newline:      ld      a,13
 
 ; Prints a single character to the screen.
 ;
-; In:   l=ASCII code
+; In:   a=ASCII code
 ; Out:  -
 ;
 __putc:         rst     16
@@ -226,6 +226,7 @@ zx_clrscr:      ld      hl, 16384
 
                 ret
 
+;
 ; Changes the border color using the appropriate ROM routine.
 ;
 ; In:   l=border color (0..7)
@@ -236,6 +237,7 @@ zx_border:      ld      a,l
                 call    $229b
                 ret
 
+;
 ; Delays the program by (roughly) a given number of milliseconds.
 ;
 ; In:   hl=milliseconds
