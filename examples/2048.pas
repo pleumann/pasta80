@@ -1,7 +1,7 @@
 program TwoKay;
 
-const
-  Margin: string = '                         ';
+var
+  Margin: string;
 
 const
   Background: array[0..11] of Integer = (0, 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7);
@@ -20,19 +20,10 @@ var
   Score: Integer;
   Color: Boolean;
 
-function ReadKey: CHar;
-begin
-  ReadKey := Chr(BDOS(1, 0));
-end;
-
 procedure SetColors(Index: Integer);
 begin
-  if Color then
-    Write(#27'S', Background[Index], #27'T', Foreground[Index])
-  else if Index = 0 then 
-    Write(#27'q')
-  else
-    Write(#27'p');
+  TextBackground(Background[Index]);
+  TextColor(Foreground[Index]);
 end;
 
 procedure PrintLogo(S: string);
@@ -74,9 +65,7 @@ procedure DrawBoard;
 var
   I, J, K: Integer;
 begin
-  Write(#27'f');
-
-  GotoXY(1, 13);
+  GotoXY(1, 11);
   WriteLn(Margin, '+------+------+------+------+');
 
   for I := 1 to 4 do
@@ -101,7 +90,6 @@ begin
   end;
 
   WriteLn;
-  Write(#27'e');
 end;
 
 function Max(I, J: Integer): Integer;
@@ -189,7 +177,7 @@ begin
         else B := True;
       end;
     end;
-  end;  
+  end;
 end;
 
 procedure Rotate(Dir: Integer);
@@ -217,50 +205,31 @@ begin
   end;
 end;
 
-procedure Randomize; register; inline
-(
-  $ed / $5f /             (* ld   a,r             *)
-  $2a / RandSeed1 /       (* ld   hl,(RandSeed1)  *)
-  $ed / $5b / RandSeed2 / (* ld   de,(RandSeed2)  *)
-  $53 /                   (* ld   d,e             *)
-  $5c /                   (* ld   e,h             *)
-  $65 /                   (* ld   h,l             *)
-  $6f /                   (* ld   l,a             *)
-  $22 / RandSeed1 /       (* ld   (RandSeed1),hl  *)
-  $ed / $53 / RandSeed2 / (* ld   (RandSeed2),de  *)
-  $c9                     (* ret                  *)
-);
-
-function GetR: Integer; register; inline
-(
-  $ed / $5f /
-  $26 / $00 /
-  $6f /
-  $c9
-);
-
 var
   C: Char;
   Moved: Boolean;
   I, J, K: Integer;
 
 begin
-  Write('Do you want ZX Spectrum Next colors (y/n)? '); C := ReadKey;
-  Color := C = 'y';
+  if ScreenWidth = 80 then
+    Margin := '                         '
+  else
+    Margin := ' ';
 
   Randomize;
+
+  TextBackground(0);
+  TextColor(7);
 
   ClrScr;
 
   SetColors(0);
   WriteLn(Margin, '  Joerg''s Pascal version of');
-  WriteLn;
 
   for I := 0 to 4 do
     PrintLogo(Logo[I]);
 
-  WriteLn;
-  WriteLn(Margin, '  for classic 8-bit CP/M-80');
+  WriteLn(Margin, '  for classic Z-80 machines');
   WriteLn;
   WriteLn(Margin, 'Use WASD to move & X to exit.');
   WriteLn;
@@ -272,7 +241,7 @@ begin
 
   while CanMove and (Score <= 10) do
   begin
-    Write(Margin, 'Your move: '); C := ReadKey;
+    Write(Margin, 'Your move: '); C := ReadKey; Write(C);
 
     Moved := False;
 
@@ -284,24 +253,24 @@ begin
       'x': Break;
     end;
 
-    GotoXY(42, 23);
+    GotoXY(18, 21);
 
     if Moved then
     begin
-      Write(#27'K');
+      Write('             ');
       AddTile;
     end
-    else Write('Invalid move!'#7);
+    else Write('Invalid move!');
 
     DrawBoard;
   end;
 
-  GotoXY(42, 23);
+  GotoXY(18, 21);
 
   if C = 'x' then
     Write('     Goodbye!')
   else if Score > 10 then
-    Write(' You win! :-)') 
+    Write(' You win! :-)')
   else
     Write('You lose! :-(');
 end.
