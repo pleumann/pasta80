@@ -17,6 +17,7 @@
 const
   ScreenWidth = 80;
   ScreenHeight = 24;
+  LineBreak = #13#10;
 
 procedure ConOut(C: Char); register;        external '__conout';
 

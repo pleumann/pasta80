@@ -10,14 +10,19 @@
 
 const
   (**
-   * Defines the standard-with of the screen in characters.
+   * Defines the default with of the screen in characters.
    *)
   ScreenWidth  = 32;
 
   (**
-   * Defines the standard-height of the screen in characters.
+   * Defines the default height of the screen in characters.
    *)
   ScreenHeight = 22;
+
+  (**
+   * Line break convention used for this platform.
+   *)
+  LineBreak = #13;
 
 (**
  * Clears the screen. Uses the most recently defined text color and

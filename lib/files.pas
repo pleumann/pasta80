@@ -244,8 +244,7 @@ end;
 
 procedure TextWriteEoln(var T: TextRec);
 begin
-  TextWriteChar(T, #13);
-  TextWriteChar(T, #10);
+  TextWriteStr(T, LineBreak);
 end;
 
 function TextEoln(var T: TextRec): Boolean;
