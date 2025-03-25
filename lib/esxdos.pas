@@ -10,21 +10,6 @@
 
 type
   (**
-   * Internally represents an untyped file. Is also used inside the interal
-   * representations of typed files and text files. The name is the same as
-   * for the CP/M implementation because higher-level file functions depend
-   * on it. The size is 36 bytes, just like for CP/M, but that is more of a
-   * coincidence.
-   *)
-  FileControlBlock = record
-    Handle: Byte;                   (* esxDOS file handle, 0=file closed *)
-    FileName: array[0..31] of Char; (* File name, 31 characters only     *)
-    RL: Integer;                    (* Current record number low 16 bits *)
-    RH: Byte;                       (* Current record number high 8 bits *)
-  end;
-
-type
-  (**
    * Represents a standard set of Z80 registers. Used for moving values
    * into and out of esxDOS. Note that HL is always being used here
    * regardless of whether the program is a .dot or not.
@@ -73,9 +58,24 @@ begin
 end;
 
 (* --------------------------------------------------------------------- *)
-(* --- Internal implementation of low-level untyped files follows ------ *)
+(* --- Internal implementation of "raw" untyped files ------------------ *)
 (* --------------------------------------------------------------------- *)
 
+type
+  (**
+   * Internally represents an untyped file. Is also used inside the interal
+   * representations of typed files and text files. The name is the same as
+   * for the CP/M implementation because higher-level file functions depend
+   * on it. The size is 36 bytes, just like for CP/M, but that is more of a
+   * coincidence.
+   *)
+  FileControlBlock = record
+    Handle: Byte;                   (* esxDOS file handle, 0=file closed *)
+    FileName: array[0..31] of Char; (* File name, 31 characters only     *)
+    RL: Integer;                    (* Current record number low 16 bits *)
+    RH: Byte;                       (* Current record number high 8 bits *)
+  end;
+  
 procedure BlockAssign(var F: FileControlBlock; S: String);
 var
   L: Byte;

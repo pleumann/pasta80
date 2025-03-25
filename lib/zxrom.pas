@@ -5,22 +5,22 @@
 {$l zxrom.asm}
 
 (* --------------------------------------------------------------------- *)
-(* --- Standard Pascal screen and keyboard functions ------------------- *)
+(* --- Screen and keyboard standard functions -------------------------- *)
 (* --------------------------------------------------------------------- *)
 
 const
   (**
-   * Defines the default with of the screen in characters.
+   * Defines the default with of the Spectrum screen in characters.
    *)
   ScreenWidth  = 32;
 
   (**
-   * Defines the default height of the screen in characters.
+   * Defines the default height of the Spectrum screen in characters.
    *)
   ScreenHeight = 22;
 
   (**
-   * Line break convention used for this platform.
+   * Defines the line break convention used by the Spectrum.
    *)
   LineBreak = #13;
 
@@ -54,28 +54,15 @@ procedure TextBackground(Color: Integer); register; external 'zx_background';
 function KeyPressed: Boolean; register;             external 'zx_testkey';
 
 (**
- * Reads a key press and returns the corresponding ASCII character.
- * Waits for a key press, if necessary, so use KeyPressed first if you
- * don't want your program to be delayed.
+ * Reads a key press and returns the corresponding ASCII character. Does
+ * echo the character to the screen. Waits for a key press, if necessary,
+ * so use KeyPressed first if you don't want your program to be delayed.
  *)
 function ReadKey: Char; register;                   external 'zx_readkey';
 
 (* --------------------------------------------------------------------- *)
-(* --- Machine-specific functions -------------------------------------- *)
+(* --- Misc. standard functions ---------------------------------------- *)
 (* --------------------------------------------------------------------- *)
-
-const
-  (**
-   * Controls scrolling behavior. If True the screen will auto-scroll
-   * once the bottom row is full. If False the Sinclair-typical "Scroll?"
-   * message will be displayed every 22 rows.
-   *)
-  AutoScroll: Boolean = False;
-
-(**
- * Sets the border color (0..7) using the appropriate ROM routine.
- *)
-procedure Border(Color: Integer); register;         external 'zx_border';
 
 (**
  * Waits for the given interval in milliseconds. Note that, since the
@@ -85,6 +72,15 @@ procedure Border(Color: Integer); register;         external 'zx_border';
  * disabled, calling this procedure will hang the machine.
  *)
 procedure Delay(Duration: Integer); register;       external 'zx_delay';
+
+(* --------------------------------------------------------------------- *)
+(* --- Machine-specific functions -------------------------------------- *)
+(* --------------------------------------------------------------------- *)
+
+(**
+ * Sets the border color (0..7) using the appropriate ROM routine.
+ *)
+procedure Border(Color: Integer); register;         external 'zx_border';
 
 (**
  * Plays a tone. Frequency is in Hz. Duration is in milliseconds. The

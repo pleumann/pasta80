@@ -10,22 +10,55 @@
 
 {$l cpm.asm     }
 
-(* -------------------------------------------------------------------------- *)
-(* --- VT52 terminal support ------------------------------------------------ *)
-(* -------------------------------------------------------------------------- *)
+(* --------------------------------------------------------------------- *)
+(* --- VT52 terminal support ------------------------------------------- *)
+(* --------------------------------------------------------------------- *)
 
 const
+  (**
+   * Defines the default with of the CP/M screen in characters.
+   *)
   ScreenWidth = 80;
+
+  (**
+   * Defines the default height of the CP/M screen in characters.
+   *)
   ScreenHeight = 24;
+
+  (**
+   * Defines the line break convention used by CP/M.
+   *)
   LineBreak = #13#10;
 
 procedure ConOut(C: Char); register;        external '__conout';
 
+(**
+ * Clears the screen. Uses the most recently defined text color and
+ * background for the attribute area.
+ *)
 procedure ClrScr; register;                 external '__clrscr';
+
+(**
+ * Moves the the cursor (aka printing position) to a given location. Note
+ * that Pascal expects the screen column (X) first, followed by the screen
+ * row (Y).
+ *)
 procedure GotoXY(X, Y: Integer); register;  external '__gotoxy';
+
+(**
+ * Shows the cursor.
+ *)
 procedure CursorOn; register;               external '__cursor_on';
+
+(**
+ * Hides the cursor.
+ *)
 procedure CursorOff; register;              external '__cursor_off';
 
+(**
+ * Clear everything from the current cursor position to the end of the
+ * line.
+ *)
 procedure ClrEol; register; inline
 (
   $3e / 27 /                  (* ld   a,27      *)
@@ -35,6 +68,10 @@ procedure ClrEol; register; inline
   $c9                         (* ret            *)
 );
 
+(**
+ * Clear everything from the current cursor position to the end of the
+ * screen.
+ *)
 procedure ClrEos; register; inline
 (
   $3e / 27 /                  (* ld   a,27      *)
@@ -44,6 +81,10 @@ procedure ClrEos; register; inline
   $c9                         (* ret            *)
 );
 
+(**
+ * Inserts an empty line at the current cursor position, scrolling
+ * everything that follows down.
+ *)
 procedure InsLine; register; inline
 (
   $3e / 27 /                  (* ld   a,27      *)
@@ -53,6 +94,10 @@ procedure InsLine; register; inline
   $c9                         (* ret            *)
 );
 
+(**
+ * Deletes a line at the current cursor position, scrolling everything that
+ * follows up.
+ *)
 procedure DelLine; register; inline
 (
   $2e / 27 /                  (* ld   l,27      *)
@@ -62,55 +107,90 @@ procedure DelLine; register; inline
   $c9                         (* ret            *)
 );
 
+(**
+ * Sets the text color (0..7).
+ *)
 procedure TextColor(I: Integer); register;      external '__textfg';
+
+(**
+ * Sets the text background (0..7).
+ *)
 procedure TextBackground(I: Integer); register; external '__textbg';
 
+(**
+ * Sets the video to "high", whatever that is supposed be. Currently a
+ * no-op and just defined to allow other code to build.
+ *)
 procedure HighVideo; register; inline
 (
-  $c9
+  $c9 (* TODO implement me! *)
 );
 
+(**
+ * Sets the video to "low", whatever that is supposed be. Currently a
+ * no-op and just defined to allow other code to build.
+ *)
 procedure LowVideo; register; inline
 (
-  $c9
+  $c9 (* TODO implement me! *)
 );
 
+(**
+ * Sets the video to "norm", whatever that is supposed be. Currently a
+ * no-op and just defined to allow other code to build.
+ *)
 procedure NormVideo; register; inline
 (
-  $c9
+  $c9 (* TODO implement me! *)
 );
 
 (* -------------------------------------------------------------------------- *)
 (* --- Keyboard support ----------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
+(**
+ * Returns True if a key has been pressed (and can be queried using the
+ * ReadKey function), False if not.
+ *)
 function KeyPressed: Boolean;
 begin
   KeyPressed := BDOS(11, 0) <> 0;
 end;
 
+(**
+ * Reads a key press and returns the corresponding ASCII character. Does
+ * echo the character to the screen. Waits for a key press, if necessary,
+ * so use KeyPressed first if you don't want your program to be delayed.
+ *)
 function ReadKey: CHar;
 begin
   repeat until KeyPressed;
   ReadKey := Chr(BDOS(6, 255));
 end;
 
-procedure Delay(MS: Integer);
+(**
+ * Waits for the given interval in milliseconds. Assumes a CP/M platform
+ * with BDOS call 141 (i.e. normally CP/M 3, but tnylpo has this as an
+ * extension) and a "tick" value of 20 ms (which is the case for both the
+ * Spectrum Next's CP/M and tnylpo).
+ *)
+procedure Delay(Duration: Integer);
 var
   A: Byte;
 begin
-  A := BDos(141, MS div 20);
+  A := BDos(141, Duration div 20);
 end;
 
 (* -------------------------------------------------------------------------- *)
-(* --- CP/M 2.2 low-level file support -------------------------------------- *)
+(* --- Command-line parameters ---------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
-var
-  CmdLine: String absolute $80;
-
+(**
+ * Returns the number of command line parameters.
+ *)
 function ParamCount: Byte;
 var
+  CmdLine: String absolute $80;
   C, D: Boolean;
   I, J: Byte;
 begin
@@ -127,8 +207,13 @@ begin
   ParamCount := J;
 end;
 
+(**
+ * Returns the I'th command line parameter, if it exists, or an empty
+ * string otherwise.
+ *)
 function ParamStr(I: Byte): String;
 var
+  CmdLine: String absolute $80;
   C, D: Boolean;
   J, K: Byte;
 begin
@@ -162,31 +247,31 @@ begin
 end;
 
 (* -------------------------------------------------------------------------- *)
-(* --- CP/M 2.2 low-level file support -------------------------------------- *)
+(* --- CP/M BDOS interface including error handling ------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
-type
-  FileControlBlock = record             (* CP/M file control block            *)
-    DR: Byte;                           (* Drive number                       *)
-    FN: array[0..7] of Char;            (* File name, 8 chars, space-padded   *)
-    TN: array[0..2] of Char;            (* Extension, 3 chars, space-padded   *)
-    EX, S1, S2, RC: Byte;               (* CP/M internal stuff                *)
-    AL: array[0..15] of Byte;           (* CP/M internal stuff                *)
-    CR: Byte;                           (* CP/M internal stuff                *)
-    RL: Integer; RH: Byte;              (* 24 bit random record number        *)
-  end;
-
-(* --- Untyped file routines, use FileControlBlock as representation -------- *)
-
 const
+  (**
+   * The last error that occurred during file IO. Most file functions will
+   * be disabled as long as this value is non-zero.
+   *)
   LastError: Byte = 0;
 
+(**
+ * Queries the last error that happened during an esxDOS call and resets
+ * the value to zero, so that further esxDOS calls can be made.
+ *)
 function IOResult: Byte;
 begin
   IOResult := LastError;
   LastError := 0;
 end;
 
+(**
+ * Performs a BDOS call for the given function number and parameter value.
+ * TODO Check if we can merge this with the built-in BDos and BDosHL
+ * functions.
+ *)
 procedure BDosCatch(Func: Byte; Param: Integer);
 var
   A: Byte;
@@ -197,14 +282,37 @@ begin
   if A = 255 then LastError := 1;
 end;
 
+(**
+ * Checks the last BDOS error and terminates the program if it is <> 0.
+ * Calls to this function are automatically generated by the compiler in
+ * {$i+} mode.
+ *)
 procedure BDosThrow;
 begin
   if LastError <> 0 then
   begin
-    WriteLn('BDos error');
+    WriteLn('BDos error ', LastError);
     Halt;
   end;
 end;
+
+(* --------------------------------------------------------------------- *)
+(* --- Internal implementation of "raw" untyped files ------------------ *)
+(* --------------------------------------------------------------------- *)
+
+type
+  (**
+   * Represents a CP/M file control block.
+   *)
+  FileControlBlock = record             
+    DR: Byte;                           (* Drive number                       *)
+    FN: array[0..7] of Char;            (* File name, 8 chars, space-padded   *)
+    TN: array[0..2] of Char;            (* Extension, 3 chars, space-padded   *)
+    EX, S1, S2, RC: Byte;               (* CP/M internal stuff                *)
+    AL: array[0..15] of Byte;           (* CP/M internal stuff                *)
+    CR: Byte;                           (* CP/M internal stuff                *)
+    RL: Integer; RH: Byte;              (* 24 bit random record number        *)
+  end;
 
 procedure BlockAssign(var F: FileControlBlock; S: String);
 var
