@@ -15,7 +15,9 @@ type
    * regardless of whether the program is a .dot or not.
    *)
   Registers = record
-    AF, BC, DE, HL: Integer;
+    case Boolean of
+      False: (F, A, C, B, E, D, L, H: Byte;);
+      True:  (AF, BC, DE, HL: Integer;);
   end;
 
 const
@@ -75,7 +77,7 @@ type
     RL: Integer;                    (* Current record number low 16 bits *)
     RH: Byte;                       (* Current record number high 8 bits *)
   end;
-  
+
 procedure BlockAssign(var F: FileControlBlock; S: String);
 var
   L: Byte;
@@ -97,7 +99,7 @@ var
 begin
   if LastError <> 0 then Exit;
 
-  R.AF := Ord('*') shl 8;
+  R.A := Ord('*');
   R.HL := Addr(F.FileName);
 
   LastError := EsxDos($ad, R);
@@ -111,7 +113,7 @@ begin
   if LastError <> 0 then Exit;
 
   BlockAssign(G, S);
-  R.AF := Ord('*') shl 8;
+  R.A := Ord('*');
   R.HL := Addr(F.FileName);
   R.DE := Addr(G.FileName);
 
@@ -125,7 +127,7 @@ var
 begin
   if LastError <> 0 then Exit;
 
-  R.AF := Ord('*') shl 8;
+  R.A := Ord('*');
   R.HL := Addr(F.FileName);
   R.BC := $0300;
 
@@ -143,7 +145,7 @@ var
 begin
   if LastError <> 0 then Exit;
 
-  R.AF := Ord('*') shl 8;
+  R.A := Ord('*');
   R.HL := Addr(F.FileName);
   R.BC := $0f00;
 
@@ -161,7 +163,7 @@ var
 begin
   if LastError <> 0 then Exit;
 
-  R.AF := F.Handle shl 8;
+  R.A := F.Handle;
 
   LastError := EsxDos($9b, R);
   if LastError = 0 then F.Handle := 0;
@@ -179,7 +181,7 @@ var
 begin
   if LastError <> 0 then Exit;
 
-  R.AF := F.Handle shl 8;
+  R.A := F.Handle;
   R.HL := Addr(B);
 
   LastError := EsxDos($a1, R);
@@ -201,7 +203,7 @@ begin
 
   F.RL := I;
 
-  R.AF := F.Handle shl 8;
+  R.A := F.Handle;
   R.BC := 0; (*I shr 9;*)
   R.DE := I * 128; (*shl 7;*)
   R.HL := 0;
@@ -220,7 +222,7 @@ begin
 
   while Count > 0 do
   begin
-    R.AF := F.Handle shl 8;
+    R.A := F.Handle;
     R.BC := 128;
 
     LastError := EsxDos($9d, R);
@@ -243,7 +245,7 @@ begin
 
   while Count > 0 do
   begin
-    R.AF := F.Handle shl 8;
+    R.A := F.Handle;
     R.BC := 128;
 
     LastError := EsxDos($9e, R);
