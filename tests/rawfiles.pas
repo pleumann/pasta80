@@ -21,9 +21,9 @@ begin
     BlockWrite(Raw, Buffer, 1, Actual);
   end;
 
-  Close(Raw);
-
   WriteLn('File size: ', FileSize(Raw));
+
+  Close(Raw);
 
   Reset(Raw);
 
@@ -42,9 +42,9 @@ begin
   FillChar(Buffer, 256, 'Z');
   BlockWrite(Raw, Buffer, 2, Actual);
 
-  Close(Raw);
-
   WriteLn('File size: ', FileSize(Raw));
+
+  Close(Raw);
 
   WriteLn('Let''s walk through the file contents...');
 
