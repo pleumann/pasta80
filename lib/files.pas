@@ -373,7 +373,7 @@ begin
   begin
     if Modified then
     begin
-      Dec(FCB.RL);
+      BlockSeek(FCB, FCB.RL - 1);
       BlockBlockWrite(FCB, DMA, 1, E);
       if LastError <> 0 then Exit;
       Modified := False;
@@ -407,7 +407,7 @@ begin
     if I < CompCount then
       BlockBlockRead(FCB, DMA, 1, E)
     else
-      Inc(FCB.RL);
+      BlockSeek(FCB, FCB.RL + 1);
 
     if LastError <> 0 then Exit;
 
@@ -449,7 +449,7 @@ begin
       begin
         FileFlush(F);
         if FileEof(F) then
-          Inc(FCB.RL)
+          BlockSeek(FCB, FCB.RL + 1)
         else
           BlockBlockRead(FCB, DMA, 1, E);
         if LastError <> 0 then Exit;
@@ -496,7 +496,7 @@ begin
         if LastError <> 0 then Exit;
 
         if FileEof(F) then
-          Inc(FCB.RL)
+          BlockSeek(FCB, FCB.RL + 1)
         else
           BlockBlockRead(FCB, DMA, 1, E);
 
