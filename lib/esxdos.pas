@@ -15,9 +15,9 @@ type
    * regardless of whether the program is a .dot or not.
    *)
   Registers = record
-    case Boolean of
-      False: (F, A, C, B, E, D, L, H: Byte;);
-      True:  (AF, BC, DE, HL: Integer;);
+    case Bytes of
+      1: (F, A, C, B, E, D, L, H: Byte;);
+      2: (AF, BC, DE, HL: Integer;);
   end;
 
 const
@@ -231,6 +231,8 @@ begin
     Inc(F.RL);
     Inc(Actual);
     Dec(Count);
+
+    if R.BC < 128 then FillChar(R.HL, 128 - R.BC, #26);
   end;
 end;
 

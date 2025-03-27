@@ -59,38 +59,6 @@ begin
   end;
 end;
 
-procedure TextSeekEof(var T: TextRec);
-var
-  E: Integer;
-begin
-  with T do
-  begin
-    BlockSeek(FCB, BlockFileSize(FCB) - 1);
-    BlockBlockRead(FCB, DMA, 1, E);
-
-    if LastError <> 0 then Exit;
-
-    for Offset := 0 to 127 do
-      if DMA[Offset] = #26 then Exit;
-  end;
-end;
-
-procedure TextAppend(var T: TextRec);
-begin
-  with T do
-  begin
-    TextReset(T);
-    TextSeekEof(T);
-
-    if LastError <> 0 then Exit;
-
-    Dec(FCB.RL);
-
-    Readable := False;
-    Writable := True;
-  end;
-end;
-
 procedure TextReadChar(var T: TextRec; var C: Char);
 var
   E: Integer;
@@ -107,20 +75,6 @@ begin
         if LastError <> 0 then Exit;
         Offset := 0;
       end;
-    end;
-  end;
-end;
-
-procedure TextSeekEoln(var T: TextRec);
-var
-  C: Char;
-begin
-  with T do
-  begin
-    while DMA[Offset] <> #13 do
-    begin
-      TextReadChar(T, C);
-      if LastError <> 0 then Exit;
     end;
   end;
 end;
@@ -257,6 +211,53 @@ function TextEof(var T: TextRec): Boolean;
 begin
   with T do
     TextEof := DMA[Offset] = #26;
+end;
+
+procedure TextSeekEof(var T: TextRec);
+var
+  E: Integer;
+  C: Char;
+begin
+  with T do
+  begin
+    BlockSeek(FCB, BlockFileSize(FCB) - 1);
+    BlockBlockRead(FCB, DMA, 1, E);
+
+    if LastError <> 0 then Exit;
+
+    while not TextEof(T) do
+      TextReadChar(T, C);
+  end;
+end;
+
+procedure TextSeekEoln(var T: TextRec);
+var
+  C: Char;
+begin
+  with T do
+  begin
+    while DMA[Offset] <> #13 do
+    begin
+      TextReadChar(T, C);
+      if LastError <> 0 then Exit;
+    end;
+  end;
+end;
+
+procedure TextAppend(var T: TextRec);
+begin
+  with T do
+  begin
+    TextReset(T);
+    TextSeekEof(T);
+
+    if LastError <> 0 then Exit;
+
+    Dec(FCB.RL);
+
+    Readable := False;
+    Writable := True;
+  end;
 end;
 
 (* --- Typed file routines, use FileRec as representation ------------------- *)

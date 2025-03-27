@@ -279,7 +279,7 @@ begin
   if LastError <> 0 then Exit;
   A := BDos(Func, Param);
   (* WriteLn('BDos(', Func, ') returned A=' , A); *)
-  if A = 255 then LastError := 1;
+  if A <> 0 then LastError := A;
 end;
 
 (**
@@ -470,6 +470,13 @@ begin
   begin
     BDosCatch(26, DMA);
     BDosCatch(33, Addr(F));
+
+    if LastError = 1 then
+    begin
+      Mem[DMA] := 26;
+      LastError := 0;
+    end;
+
     if LastError <> 0 then Exit;
 
     Inc(F.RL);
