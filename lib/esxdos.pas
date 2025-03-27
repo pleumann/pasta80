@@ -226,7 +226,7 @@ begin
     R.BC := 128;
 
     LastError := EsxDos($9d, R);
-    if LastError <> 0 then Exit;
+    if (LastError <> 0) or (R.BC = 0) then Exit;
 
     Inc(F.RL);
     Inc(Actual);

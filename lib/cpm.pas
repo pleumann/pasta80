@@ -473,8 +473,8 @@ begin
 
     if LastError = 1 then
     begin
-      Mem[DMA] := 26;
       LastError := 0;
+      Exit;
     end;
 
     if LastError <> 0 then Exit;

@@ -5,6 +5,7 @@ type
     FCB: FileControlBlock;              (* FCB, *must* start at offset 0      *)
     Readable: Boolean;                  (* File is open for reading           *)
     Writable: Boolean;                  (* File is open for writing           *)
+    EndOfFile: Boolean;
     Offset: Integer;                    (* Offset within 128 byte buffer      *)
     DMA: array[0..127] of Char;         (* Internal sector buffer             *)
   end;
@@ -41,6 +42,7 @@ begin
     Writable := False;
 
     Offset := 0;
+    EndOfFile := E = 0;
   end;
 end;
 
@@ -65,6 +67,12 @@ var
 begin
   with T do
   begin
+    if EndOfFile then
+    begin
+      C := #26;
+      Exit;
+    end;
+
     C := DMA[Offset];
     if C <> #26 then
     begin
@@ -74,6 +82,7 @@ begin
         BlockBlockRead(FCB, DMA, 1, E);
         if LastError <> 0 then Exit;
         Offset := 0;
+        EndOfFile := E = 0;
       end;
     end;
   end;
@@ -210,7 +219,7 @@ end;
 function TextEof(var T: TextRec): Boolean;
 begin
   with T do
-    TextEof := DMA[Offset] = #26;
+    TextEof := EndOfFile or (DMA[Offset] = #26);
 end;
 
 procedure TextSeekEof(var T: TextRec);
