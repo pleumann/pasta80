@@ -15,7 +15,7 @@ type
    * regardless of whether the program is a .dot or not.
    *)
   Registers = record
-    case Bytes of
+    case Byte of
       1: (F, A, C, B, E, D, L, H: Byte;);
       2: (AF, BC, DE, HL: Integer;);
   end;
