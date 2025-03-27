@@ -62,7 +62,7 @@ var
 begin
   WriteLn('--- TestComment ---');
 
-  I := 0; 
+  I := 0;
   (* I := 1; *)
   Assert(I = 0);
   (* Left *) I := 1; (* Right *)
@@ -92,7 +92,7 @@ const
   Global: Integer = 666;
 begin
   Assert(Global = Expected);
-  Global := Global + 1;  
+  Global := Global + 1;
 end;
 
 procedure TestConst;
@@ -210,7 +210,7 @@ end;
 procedure TestShift;
 begin
   WriteLn('--- TestShift ---');
-  
+
   Assert(1 shl 0 = 1);
   Assert(1 shl 1 = 2);
   Assert(1 shl 8 = 256);
@@ -392,7 +392,7 @@ begin
   Assert('Z' = 'Z');
   Assert('Z' <= 'Z');
   Assert('Z' >= 'Z');
-  
+
   Assert('A' < 'Z');
   Assert('A' <= 'Z');
   Assert('A' <> 'Z');
@@ -404,11 +404,11 @@ begin
   Assert(not('A' <> 'A'));
   Assert(not('A' > 'A'));
   Assert(not('A' < 'A'));
-  
+
   Assert(not('Z' <> 'Z'));
   Assert(not('Z' > 'Z'));
   Assert(not('Z' < 'Z'));
-  
+
   Assert(not('A' >= 'Z'));
   Assert(not('A' > 'Z'));
   Assert(not('A' = 'Z'));
@@ -473,9 +473,9 @@ begin
   Assert(X = 5);
 
   X := 0;
-  Assert(X = 0);  
+  Assert(X = 0);
   X := 32767;
-  Assert(X = 32767);  
+  Assert(X = 32767);
   X := -32768;
   Assert(X = -32768);
 
@@ -509,9 +509,9 @@ begin
   Assert(X = 5);
 
   X := 0;
-  Assert(X = 0);  
+  Assert(X = 0);
   X := 32767;
-  Assert(X = 32767);  
+  Assert(X = 32767);
   X := -32768;
   Assert(X = -32768);
 
@@ -534,7 +534,7 @@ var
 
   procedure Inner;
   var
-    X: Integer;  
+    X: Integer;
   begin
     X := 42;
     Assert(X = 42);
@@ -582,7 +582,7 @@ var
   P, Q: Boolean;
 begin
   WriteLn('--- TestArrays ---');
-  
+
   BeforeA := 32767;
 
   for I := 0 to 99 do
@@ -615,7 +615,7 @@ begin
   WriteLn('Color: ', Low(Color), '..', High(Color));
   WriteLn('RgbLed: ', Low(RgbLed), '..', High(RgbLed));
   WriteLn('IsPrime: ', Low(IsPrime), '..', High(IsPrime));
-  
+
   Assert(Low(Color) = Red);
   Assert(High(Color) = Blue);
   Assert(Low(RgbLed) = Red);
@@ -789,21 +789,21 @@ type
          );
   end;
 
-  Rec4 = record  
-    X : Integer;  
-    case Byte of  
+  Rec4 = record
+    X : Integer;
+    case Byte of
       2 : ( Y : Integer;
-            case Byte of  
+            case Byte of
               3 : ( Z : Integer; );
               4:  ( P : Char; );
           );
-      5: ( Q: Char; ); 
+      5: ( Q: Char; );
   end;
 
 var
   R1: Rec1;
   R2: Rec2;
-  
+
 const
   R2a: Rec2 = (
     C: 'A';
@@ -943,7 +943,7 @@ end;
 
 function Check(B: Boolean): String5;
 begin
-  if B then Check := '  X  ' else Check := '     ';  
+  if B then Check := '  X  ' else Check := '     ';
 end;
 
 begin
@@ -1003,11 +1003,11 @@ begin
   WriteLn;
 
   WriteLn('Chr Lower Upper Digit Alpha');
-  WriteLn('''m'' ', Check('m' in Lower), ' ', Check('m' in Upper), ' ', 
+  WriteLn('''m'' ', Check('m' in Lower), ' ', Check('m' in Upper), ' ',
                    Check('m' in Digit), ' ', Check('m' in Alpha));
-  WriteLn('''M'' ', Check('M' in Lower), ' ', Check('M' in Upper), ' ', 
+  WriteLn('''M'' ', Check('M' in Lower), ' ', Check('M' in Upper), ' ',
                    Check('M' in Digit), ' ', Check('M' in Alpha));
-  WriteLn('''5'' ', Check('5' in Lower), ' ', Check('5' in Upper), ' ', 
+  WriteLn('''5'' ', Check('5' in Lower), ' ', Check('5' in Upper), ' ',
                    Check('5' in Digit), ' ', Check('5' in Alpha));
 
   Assert('m' in Lower);
@@ -1033,18 +1033,18 @@ begin
   Assert(42 in Primes);
   Exclude(Primes, 42);
   Assert(not (42 in Primes));
-  
+
   WriteLn;
 end;
 
 procedure NoParamProc;
 begin
-  X := 1234;  
+  X := 1234;
 end;
 
 function NoParamFunc: Integer;
 begin
-  NoParamFunc := 5678;  
+  NoParamFunc := 5678;
 end;
 
 procedure SumProc(A, B: Integer);
@@ -1227,7 +1227,7 @@ var
 begin
   for I := 0 to Count - 1 do
     Numbers[I] := Random(Count);
-  
+
   Sort(Numbers, Count);
 
   I := 1;
@@ -1250,7 +1250,7 @@ begin
 
   I := 1234;
   J := 5678;
-  SwapInteger(I, J);  
+  SwapInteger(I, J);
   Assert(I = 5678);
   Assert(J = 1234);
 
@@ -1277,7 +1277,7 @@ begin
   else if I = 1 then
     Fibonacci := 1
   else
-    Fibonacci := Fibonacci(I - 1) + Fibonacci(I - 2);  
+    Fibonacci := Fibonacci(I - 1) + Fibonacci(I - 2);
 end;
 
 function Factorial(I: Integer): Integer;
@@ -1532,7 +1532,7 @@ begin
 
   123:
     S := S + 'D';
-  
+
   Assert(S = 'ABCD');
 
   S := '';
@@ -1597,7 +1597,7 @@ begin
   end;
 
   WriteLn;
-  
+
   Assert(S = 'ntppsptptshtd');
 
   S := 'ZX Spectrum+ 128K';
@@ -1642,7 +1642,7 @@ begin
 
   Assert(I = 55);
   Assert(J = 10);
-  
+
   I := 0;
   J := 0;
   while J < 10 do
@@ -1723,7 +1723,7 @@ begin
     if J = 8 then Break;
     I := I + J;
   until J = 10;
-  
+
   Assert(I = 24);
   Assert(J = 8);
 end;
@@ -1923,7 +1923,7 @@ end;
 
 type
   Str255 = string[255];
-  
+
 procedure UpperCase(var Strg: Str255);
 begin
   inline(
@@ -1975,7 +1975,7 @@ end;
 procedure TestWriteBoolean;
 begin
   WriteLn('--- TestWriteBoolean ---');
-  
+
   WriteLn;
   WriteLn('*True* is ', True);   (* TODO: Want double quotes here *)
   WriteLn('*False* is ', False); (* TODO: Want double quotes here *)
@@ -2037,7 +2037,7 @@ begin
 
   C := Green;
   Assert(C = Green);
-  
+
   C := Green;
   Assert(C > Red);
   Assert(C >= Green);
@@ -2103,7 +2103,7 @@ end;
 procedure TestSizeOf;
 begin
   WriteLn('--- TestSizeOf ---');
-  
+
   Assert(SizeOf(Integer) = 2);
   Assert(SizeOf(Boolean) = 1);
   Assert(SizeOf(Char) = 1);
@@ -2206,7 +2206,7 @@ begin
 
   MyStr255 := 'Hello, ZX Spectrum Next!';
   Assert(Length(MyStr255) = 24);
-  
+
   MyStr15 := 'Hello, ZX Spectrum Next!';
   Assert(Length(MyStr15) = 15);
 
@@ -2259,7 +2259,7 @@ begin
   WriteLn;
 
   Sort(A, 8);
-  
+
   for I := 0 to 7 do
     WriteLn('#', I, ': ', A[I]);
 
@@ -2644,7 +2644,7 @@ var
   S, T: String[15];
 begin
   WriteLn('--- TestBuiltIns ---');
-  
+
   Assert(MaxInt = 32767);
 
   Assert(Hi($1234) = $12);
@@ -2731,7 +2731,7 @@ begin
   TestVarParams;
   TestRecursion;
   TestForward;
-  
+
   TestTypeChecks;
 
   TestIfThen;
