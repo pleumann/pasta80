@@ -99,7 +99,7 @@ begin
     TextReadChar(T, C);
     if LastError <> 0 then Exit;
 
-    if C = #10 then Break;
+    if C = #13 then Break;
     if C = #26 then Break;
 
     if C >= ' ' then S := S + C;
@@ -262,7 +262,7 @@ begin
 
     if LastError <> 0 then Exit;
 
-    Dec(FCB.RL);
+    BlockSeek(FCB, FCB.RL - 1);
 
     Readable := False;
     Writable := True;

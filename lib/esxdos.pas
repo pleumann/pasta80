@@ -232,7 +232,11 @@ begin
     Inc(Actual);
     Dec(Count);
 
-    if R.BC < 128 then FillChar(R.HL, 128 - R.BC, #26);
+    if R.BC < 128 then
+    begin
+      FillChar(R.HL, 128 - R.BC, #26);
+      Exit;
+    end;
   end;
 end;
 
