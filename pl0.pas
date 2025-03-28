@@ -1301,7 +1301,7 @@ type
   end;
 
 const
-  BinaryStr: array[TBinaryType] of String = ('CP/M COM', 'ZX BIN', 'Next DOT');
+  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX Next');
   GraphicsStr: array[TGraphicsMode] of String = ('None', 'Lo-res', 'Hi-res');
   YesNoStr: array[Boolean] of String = ('No ', 'Yes');
 
@@ -6007,7 +6007,7 @@ begin
   else if Binary = btZX then
     BinFile := ChangeExt(SrcFile, '.bin')
   else if Binary = btDot then
-    BinFile := ChangeExt(SrcFile, '.dot');
+    BinFile := ChangeExt(SrcFile, '.bin');
 
   if SetJmp(StoredState) = 0 then
   begin
@@ -6261,14 +6261,14 @@ var
   C: Char;
 begin
   repeat
-    Write(TermStr('~Target:   '), BinaryStr[Binary]);
-    if Binary = btDot then WriteLn('  ', TermStr('~Graphics: '), GraphicsStr[Graphics]) else WriteLn;
-    WriteLn(TermStr('~Optimize: '), YesNoStr[Optimize], '       ', TermStr('~Back'));
+    Write(TermStr('~Target: '), BinaryStr[Binary]:7, '  ');
+    (*if Binary = btDot then WriteLn('  ', TermStr('~Graphics: '), GraphicsStr[Graphics]) else WriteLn;*)
+    WriteLn(TermStr('~Optimize: '), YesNoStr[Optimize]:3, '  ', TermStr('~Back'));
 
     C := GetKey;
     case C of
-      't': if Binary = btCom then Binary := btDot else Binary := btCom;
-      'g': if Graphics = gmHighRes then Graphics := gmNone else Inc(Graphics);
+      't': if Binary = btDot then Binary := btCom else Binary := Succ(Binary);
+      (*'g': if Graphics = gmHighRes then Graphics := gmNone else Inc(Graphics);*)
       'o': Optimize := not Optimize;
     end;
   until C = 'b';
@@ -6277,7 +6277,7 @@ end;
 procedure Copyright;
 begin
   WriteLn('----------------------------------------');
-  WriteLn('Pascal Compiler for Z80     Version 0.90');
+  WriteLn('Pascal Compiler for Z80     Version 0.91');
   WriteLn;
   WriteLn('Copyright (C) 2020-2025 by Jörg Pleumann');
   WriteLn('----------------------------------------');
@@ -6349,11 +6349,11 @@ begin
     WriteLn('  pl0 { <option> } <input>');
     WriteLn;
     WriteLn('Options:');
-(*    WriteLn('  --asm <path>   sets assembler binary'); *)
-    WriteLn('  --com          compiles to CP/M ''.com''');
-    WriteLn('  --dot          compiles to Next ''.dot''');
-    WriteLn('  --gfx <lo|hi>  enables graphics mode');
+    WriteLn('  --cpm          generates ''.com'' file for CP/M');
+    WriteLn('  --zx           generates ''.bin'' file for ZX Spectrum');
+    WriteLn('  --zxn          generates ''.bin'' file for ZX Spectrum Next');
     WriteLn('  --opt          enables optimizations');
+    WriteLn('  --asm <path>   sets assembler binary');
 (*  WriteLn('  --chk          enables run-time checks'); *)
     WriteLn('  --ide          starts interactive mode');
     WriteLn;
@@ -6371,12 +6371,13 @@ begin
       ZasmCmd := ParamStr(I + 1);
       I := I + 1;
     end
-    else if SrcFile = '--com' then
+    else if SrcFile = '--cpm' then
       Binary := btCom
     else if SrcFile = '--zx' then
       Binary := btZX
-    else if SrcFile = '--dot' then
+    else if SrcFile = '--zxn' then
       Binary := btDot
+    (**
     else if SrcFile = '--gfx' then
     begin
       S := LowerStr(ParamStr(I + 1));
@@ -6390,6 +6391,7 @@ begin
 
       I := I + 1;
     end
+    *)
     else if SrcFile = '--opt' then
       Optimize := True
     else if SrcFile = '--ide' then
