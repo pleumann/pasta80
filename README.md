@@ -18,7 +18,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
 * Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
 * Some compiler directives
-  * `$i <file>` for including Pascal source files
+  * `$i <file>` for including Pascal source files (including nesting and cycle detection)
   * `$l <file>` for including an assembly file (aka "linking" a library)
   * `$a(+/-)`   for enabling or disabling absolute mode (default is on, disable for recursion)
   * `$i(+/-)`   for enabling or disabling IO checking (when off, check `IOResult` after calls)
