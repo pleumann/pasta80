@@ -40,8 +40,9 @@ Since that list sounds quite exhaustive, you might ask what is missing. These ar
 * The standard files `Input`, `Output`, `Kbd`, `Con` and `Lst` are not supported.
 * Overlays are not yet supported.
 * `Chain` and `Execute` are not supported.
-* Binary size is quite large compared to the original.
+* The additional instructions of the Z80N CPU inside the ZX Spectrum Next are not yet being leveraged.
 * No separate compilation. Everything is compiled from source, always.
+* Binary size is quite large compared to the original.
 
 The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optizer, is not generating super-efficient Z80 code).
 
@@ -69,7 +70,7 @@ TNYLPO = ~/Library/bin/tnylpo
 
 ## Using the compiler
 
-To run the compiler just invoke the executable with the name of a Pascal source file to translate. There is an optional parameter that enables some simple peephole optimizations:
+To run the compiler just invoke the executable with the name of a Pascal source file to translate. The default target is CP/M. There is an optional parameter that enables some simple peephole optimizations:
 
 ```
 $ pl0 hello.pas        # Compiles hello.pas to hello.com
@@ -84,7 +85,12 @@ $ tnylpo -s -t @ hello        # Run in b/w full-screen mode, wait for key press 
 $ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) colors
 ```
 
-There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
+To generate binaries for the ZX Spectrum 48K and ZX Spectrum Next target, use the `--zx` and `--zxn` parameters, respectively.
+
+$ pl0 --zx hello.pas        # Compiles for ZX Spectrum 48K 
+$ pl0 --zxn hello.pas       # Compiles for ZX Spectrum Next
+
+There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K. Both the examples and the tests should give you a pretty good overview of what the compiler can do. 
 
 ## Minimalistic IDE
 
