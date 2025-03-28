@@ -1,6 +1,6 @@
 # Pascal Compiler for Z80
 
-This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M 2.2](https://en.wikipedia.org/wiki/CP/M) and the [ZX Spectrum Next](https://www.specnext.com) (the latter is currently not working, but I hope to get it back on par with CP/M soon). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent approach, so it doesn't have an explicit syntax tree, but instead generates code on the fly during parsing.
+This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M](https://en.wikipedia.org/wiki/CP/M), the classic [ZX Spectreum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum) and the [ZX Spectrum Next](https://www.specnext.com). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent approach, so it doesn't have an explicit syntax tree, but instead generates code on the fly during parsing.
 
 ## Supported language elements
 
@@ -27,9 +27,10 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
-  * Lopps can be controlled via `Break` and `Continue`.
+  * Loops can be controlled via `Break` and `Continue`.
   * You can query the keyboard with `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
+  * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
   * A simple `Assert` procedure that counts passes/fails and shows the failed line number.
 
 Since that list sounds quite exhaustive, you might ask what is missing. These are the current limitations:
@@ -40,6 +41,7 @@ Since that list sounds quite exhaustive, you might ask what is missing. These ar
 * Overlays are not yet supported.
 * `Chain` and `Execute` are not supported.
 * Binary size is quite large compared to the original.
+* No separate compilation. Everything is compiled from source, always.
 
 The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optizer, is not generating super-efficient Z80 code).
 
