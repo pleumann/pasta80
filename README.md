@@ -53,7 +53,7 @@ The compiler is itself written in Pascal. You can compile it with [Free Pascal](
 $ fpc pl0
 ```
 
-The Pascal compiler generates Z80 assembler code and relies on [zasm](https://k1.spdns.de/Develop/Projects/zasm/Documentation/index.html) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below) make use of `nano`, Visual Studio Code (needs `code` command in path on MacOS) and `tnylpo`.
+The Pascal compiler generates Z80 assembler code and relies on [zasm](https://k1.spdns.de/Develop/Projects/zasm/Documentation/index.html) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below) make use of `nano`, Visual Studio Code (via the `code` command) and `tnylpo`.
 
 The compiler tries to detect external tools automatically, but it's best to create a file `.pl0.cfg` in your home directory specifying necessary paths (there is a sample in `etc` that you can adapt):
 
@@ -94,4 +94,4 @@ As a little gimmick the compiler can be started like this
 $ pl0 --ide
 ```
 
-to run it in an interactive mode that has an interface similar to Turbo Pascal 3.0. When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system. You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)). In both cases `tnylpo` is expected to be available for running programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
+to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0. When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple preloads `pico` but calls it `nano`). You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)). In both cases `tnylpo` is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
