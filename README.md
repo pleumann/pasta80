@@ -33,7 +33,7 @@ The compiler also has some features that were borrowed from or inspired by later
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
   * A simple `Assert` procedure that counts passes/fails and shows the failed line number.
 
-Since that list sounds quite exhaustive, you might ask what is missing. These are the current limitations:
+Since that covers most of the functionality of Turbo Pascal 3 you might ask what is missing. These are the current limitations:
 
 * All the remaining compiler directives are not yet supported.
 * `Mark`/`Release` are not currently supported.
@@ -44,7 +44,7 @@ Since that list sounds quite exhaustive, you might ask what is missing. These ar
 * No separate compilation. Everything is compiled from source, always.
 * Binary size is quite large compared to the original.
 
-The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optizer, is not generating super-efficient Z80 code).
+The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optimizer, is not generating super-efficient Z80 code).
 
 ## Building and setting up the compiler
 
@@ -73,8 +73,9 @@ TNYLPO = ~/Library/bin/tnylpo
 To run the compiler just invoke the executable with the name of a Pascal source file to translate. The default target is CP/M. There is an optional parameter that enables some simple peephole optimizations:
 
 ```
-$ pl0 hello.pas        # Compiles hello.pas to hello.com
-$ pl0 --opt hello.pas  # Does the same with optimizations
+$ pl0 hello.pas               # Compiles hello.pas to hello.com
+$ pl0 --opt hello.pas         # Does the same with optimizations
+$ pl0 --opt hello             # Source file .pas suffix is optional
 ```
 
 You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend [tnylpo](https://gitlab.com/gbrein/tnylpo). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
@@ -88,20 +89,22 @@ $ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) col
 To generate binaries for the ZX Spectrum 48K and ZX Spectrum Next target, use the `--zx` and `--zxn` parameters, respectively.
 
 ```
-$ pl0 --zx hello.pas   # Compiles for ZX Spectrum 48K 
-$ pl0 --zxn hello.pas  # Compiles for ZX Spectrum Next
+$ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K 
+$ pl0 --zxn hello.pas         # Compiles for ZX Spectrum Next
 ```
 
-The main difference (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are the same and often ROM-based. 
+The main difference (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM.
 
-There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K. Both the examples and the tests should give you a pretty good overview of what the compiler can do. 
+There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K (neither of the Spectrum targets can currently handle it due to its size). Both the examples and the tests should give you a pretty good overview of what the compiler can do. 
 
 ## Minimalistic IDE
 
-As a little gimmick the compiler can be started like this
+As a fun little gimmick the compiler can be started like this
 
 ```
 $ pl0 --ide
 ```
 
-to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0. When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple preloads `pico` but calls it `nano`). You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)). In both cases `tnylpo` is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
+to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0.
+
+When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells yu the much more limited `pico` editor as `nano`). You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)). In both cases `tnylpo` is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
