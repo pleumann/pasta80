@@ -93,7 +93,7 @@ $ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K
 $ pl0 --zxn hello.pas         # Compiles for ZX Spectrum Next
 ```
 
-The main difference between the two (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000. You'd usually do that with commands like the following:
+The main difference between the two (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000. You'd usually do that with BASIC commands like the following:
 
 ```
 CLEAR 32767
