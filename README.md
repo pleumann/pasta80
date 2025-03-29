@@ -93,7 +93,13 @@ $ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K
 $ pl0 --zxn hello.pas         # Compiles for ZX Spectrum Next
 ```
 
-The main difference (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM.
+The main difference (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000. You'd usually do that with commands like the following:
+
+```
+CLEAR 32767
+LOAD "hello.bin" CODE 32768
+RANDOMIZE USR 32768
+```
 
 There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K (neither of the Spectrum targets can currently handle it due to its size). Both the examples and the tests should give you a pretty good overview of what the compiler can do. 
 
