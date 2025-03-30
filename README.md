@@ -31,7 +31,8 @@ The compiler also has some features that were borrowed from or inspired by later
   * You can query the keyboard with `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
-  * A simple `Assert` procedure that counts passes/fails and shows the failed line number.
+  * `Include` and `Exclude` for more efficient handling of sets.
+  * A simple `Assert` facility that counts passes/fails and shows the failed line number.
 
 Since that covers most of the functionality of Turbo Pascal 3 you might ask what is missing. These are the current limitations:
 
