@@ -14,7 +14,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * `procedure` and `function` including value and `var` parameters and nesting.
 * The standard procedures for screen input and output (i.e. `ReadLn`, `WriteLn` etc.).
 * All conversion and utility procedures and functions that Turbo Pascal 3.0 had.
-* The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`. 
+* The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`.
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
 * Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
 * Some compiler directives
@@ -83,14 +83,18 @@ You can run the resulting `.com` files on a real CP/M machine or in a CP/M emula
 
 ```
 $ tnylpo hello                # Run in line-mode
-$ tnylpo -s -t @ hello        # Run in b/w full-screen mode, wait for key press when finished
+$ tnylpo -s -t @ hello        # Run in b/w full-screen mode, wait for key when finished
 $ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) colors
 ```
+
+| "Hello, World" in line mode  | "Hello, World" in fullscreen |
+| :-------: | :----: |
+| ![Screenshot](images/hello1.png) | ![Screenshot](images/hello2.png) |
 
 To generate binaries for the ZX Spectrum 48K and ZX Spectrum Next targets, use the `--zx` and `--zxn` parameters, respectively.
 
 ```
-$ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K 
+$ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K
 $ pl0 --zxn hello.pas         # Compiles for ZX Spectrum Next
 ```
 
@@ -104,7 +108,7 @@ The main difference between the two (currently) is that the ZX Spectrum Next tar
 
 ## Examples and tests
 
-There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K (neither of the Spectrum targets can currently handle it). Both the examples and the tests should give you a pretty good overview of what the compiler can do. 
+There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K (neither of the Spectrum targets can currently handle it). Both the examples and the tests should give you a pretty good overview of what the compiler can do.
 
 ## Minimalistic IDE
 
@@ -116,8 +120,24 @@ $ pl0 --ide
 
 to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0.
 
+| Main menu | Editor |
+| :-------: | :----: |
+| ![Screenshot](images/idemenu.png) | ![Screenshot](images/ideedit.png) |
+
 When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`).
 
 You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)).
 
 In both cases `tnylpo` is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
+
+## Application Gallery
+
+The following screenshots show some applications compiled for the CP/M target and running in the `tnylpo` emulator.
+
+| 2048 | Game of Life |
+| :-------: | :----: |
+| ![Screenshot](images/2048.png) | ![Screenshot](images/life.png) |
+
+| Micro Calc | Galactic Empire |
+| :-------: | :----: |
+| ![Screenshot](images/microcalc.png) | ![Screenshot](images/empire.png) |
