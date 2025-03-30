@@ -40,7 +40,8 @@ Since that covers most of the functionality of Turbo Pascal 3 you might ask what
 * The standard files `Input`, `Output`, `Kbd`, `Con` and `Lst` are not supported.
 * Overlays are not yet supported.
 * `Chain` and `Execute` are not supported.
-* The additional instructions of the Z80N CPU inside the ZX Spectrum Next are not yet being leveraged.
+* Add-on libraries from the PC version of Turbo Pascal 3.0 (graphics etc.) are not yet supported.
+* The new instructions of the Z80N CPU inside the ZX Spectrum Next are not yet being leveraged.
 * No separate compilation. Everything is compiled from source, always.
 * Binary size is quite large compared to the original.
 
