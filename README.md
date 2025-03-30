@@ -93,13 +93,15 @@ $ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K
 $ pl0 --zxn hello.pas         # Compiles for ZX Spectrum Next
 ```
 
-The main difference between the two (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000. You'd usually do that with BASIC commands like the following:
+The main difference between the two (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000. You'd usually do that with a little BASIC loader like the following one:
 
 ```
-CLEAR 32767
-LOAD "hello.bin" CODE 32768
-RANDOMIZE USR 32768
+10 CLEAR 32767
+20 LOAD "hello.bin" CODE 32768
+30 RANDOMIZE USR 32768
 ```
+
+## Examples and tests
 
 There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt` because of its size. Otherwise it won't fit into 64K (neither of the Spectrum targets can currently handle it). Both the examples and the tests should give you a pretty good overview of what the compiler can do. 
 
@@ -113,4 +115,8 @@ $ pl0 --ide
 
 to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0.
 
-When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells yu the much more limited `pico` editor as `nano`). You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)). In both cases `tnylpo` is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
+When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`).
+
+You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)).
+
+In both cases `tnylpo` is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
