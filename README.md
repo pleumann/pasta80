@@ -42,7 +42,7 @@ Since that covers most of the functionality of Turbo Pascal 3 you might ask what
 * Overlays are not yet supported.
 * `Chain` and `Execute` are not supported.
 * Add-on libraries from the PC version of Turbo Pascal 3.0 (graphics etc.) are not yet supported.
-* The new instructions of the Z80N CPU inside the ZX Spectrum Next are not yet being leveraged.
+* The [new instructions of the Z80N CPU](https://wiki.specnext.dev/Extended_Z80_instruction_set) inside the ZX Spectrum Next are not yet being leveraged.
 * No separate compilation. Everything is compiled from source, always.
 * Binary size is quite large compared to the original.
 
@@ -140,3 +140,5 @@ The following screenshots show some applications compiled for the CP/M target an
 | Micro Calc | Galactic Empire |
 | :-------: | :----: |
 | ![Screenshot](images/microcalc.png) | ![Screenshot](images/empire.png) |
+
+I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
