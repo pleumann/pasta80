@@ -88,7 +88,7 @@ $ tnylpo -s -t @ hello        # Run in b/w full-screen mode, wait for key when f
 $ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) colors
 ```
 
-| "Hello, World" in line mode  | "Hello, World" in fullscreen |
+| "Hello, World" in line mode  | "Hello, World" in full-screen |
 | :-------: | :----: |
 | ![Screenshot](images/hello1.png) | ![Screenshot](images/hello2.png) |
 
