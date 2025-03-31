@@ -142,10 +142,10 @@ __checkbreak:   ld      a,$fe
 ; In:   -
 ; Out:  e=1 if key has been pressed, e=0 otherwise
 ;
-zx_testkey:     ld      de,0
+zx_testkey:     ld      hl,0
                 bit     5, 1 (iy)
                 ret     z
-                inc     e
+                inc     l
                 ret
 
 ; Waits for a key press and returns the ASCII code resulting from it.
