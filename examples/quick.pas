@@ -26,7 +26,7 @@ procedure Sort(var A: TIntArray; Low, High: Integer);
 var
   Pivot, I, J, Temp: Integer;
 begin
-  Pivot := A[(Low + High) / 2];
+  Pivot := A[(Low + High) div 2];
 
   I := Low;
   J := High;
