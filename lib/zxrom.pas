@@ -127,3 +127,40 @@ begin
   Cycles := 3500000.0 / (2 * Frequency);
   RomBeep(Trunc(Cycles / 4 - 30.125), Trunc(Duration * Frequency));
 end;
+
+(**
+ * Plots a point.
+ *)
+procedure Plot(X, Y: Integer);
+  procedure AsmPlot(XY: Integer); register;         external 'zx_plot';
+begin
+  AsmPlot(Lo(X) or Lo(Y) shl 8);
+end;
+
+(**
+ * Draws a line.
+ *)
+procedure Draw(X1, Y1, X2, Y2: Integer);
+  procedure AsmDraw(XY1, XY2: Integer);             external 'zx_draw';
+begin
+  AsmDraw(Lo(X1) or Lo(Y1) shl 8, Lo(X2) or Lo(Y2) shl 8);
+end;
+
+(**
+ * Draws a circle.
+ *)
+procedure Circle(X, Y, Radius: Integer);
+var
+  N, I: Integer;
+  Theta, XR, YR: Real;
+begin
+  N := 100;
+
+  for I := 0 to N - 1 do
+  begin
+    Theta := (2 * Pi / N) * I;
+    XR := X + Cos(Theta) * Radius;
+    YR := Y + Sin(Theta) * Radius;
+    Plot(Round(XR), Round(YR));
+  end;
+end;

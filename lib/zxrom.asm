@@ -259,3 +259,24 @@ zx_delay_loop:  ld      a,h
                 dec     hl
                 halt
                 jr      zx_delay_loop
+
+;
+; Plots a point.
+;
+; In:   hl=coordinate
+; Out:  -
+;
+zx_plot:        ld      bc,hl
+                call    $22e5
+                ret
+
+;
+; Plots a point.
+;
+; In:   hl=1st coordinate, de=2nd coordinate
+; Out:  -
+;
+zx_draw:
+                ld      bc,hl
+                call    $24BA
+                ret
