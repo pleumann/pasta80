@@ -11,23 +11,31 @@
 ; In:   -
 ; Out:  -
 ;
-__init:         ld      (__saved_iy),iy ; Save sysvar pointer
+__init:         di
+                exx
+                ld      (__saved_hl),hl ; Save alternate HL
+                ld      (__saved_iy),iy ; Save sysvar pointer
                 ld      (__saved_sp),sp ; Save original stack
-
                 ld      sp,0            ; We use our own stack
+                ei
 
                 ld      a,2
                 call    0x1601          ; Open channel #2
 
                 call    main            ; Call user program
 
-__done:         ld      sp,(__saved_sp) ; Restore original stack
+__done:         di
+                ld      sp,(__saved_sp) ; Restore original stack
                 ld      iy,(__saved_iy) ; Restore sysvar pointer
+                ld      hl,(__saved_hl) ; Restore alternate HL
+                exx
+                ei
 
                 ret
 
-__saved_sp:     dw 0
-__saved_iy:     dw 0
+__saved_sp:     dw      0
+__saved_iy:     dw      0
+__saved_hl:     dw      0
 
 ; Prints a line break (fall-through intended).
 ;

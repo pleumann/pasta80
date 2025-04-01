@@ -1235,7 +1235,9 @@ __atof:
 __ftoa:
         push    ix
         ld      ix,__ftoatmp + 1
+        di
         call    FSTRR
+        ei
         jr      nc,__ftoaok
         ld      hl,__ftoaerr
         pop     ix
