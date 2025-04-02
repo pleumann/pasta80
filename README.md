@@ -141,4 +141,14 @@ The following screenshots show some applications compiled for the CP/M target an
 | :-------: | :----: |
 | ![Screenshot](images/microcalc.png) | ![Screenshot](images/empire.png) |
 
+These screenshots show some applications compiled for the ZX Spectrum 48K target and running in the FUSE emulator.
+
+| 2048 | Game of Life |
+| :-------: | :----: |
+| ![Screenshot](images/2048zx.png) | ![Screenshot](images/lifezx.png) |
+
+| Graphics Demo | Equation Solver |
+| :-------: | :----: |
+| ![Screenshot](images/graphics.png) | ![Screenshot](images/pqformula.png) |
+
 I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
