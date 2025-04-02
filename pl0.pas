@@ -236,7 +236,7 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 var
-  HomeDir, ZasmCmd, TnylpoCmd, NanoCmd, CodeCmd: String;
+  HomeDir, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
   AltEditor: Boolean;
 
 (**
@@ -267,6 +267,9 @@ begin
   RunCommand('which', ['tnylpo'], TnylpoCmd);
   TnylpoCmd := TrimStr(TnylpoCmd);
 
+  RunCommand('which', ['fuse'], FuseCmd);
+  FuseCmd := TrimStr(FuseCmd);
+
   {$I-}
   Assign(T, UserHome + '/.pl0.cfg');
   Reset(T);
@@ -280,8 +283,7 @@ begin
         P := Pos('=', S);
         if P <> 0 then
         begin
-          S := LowerStr(S);
-          Key := TrimStr(Copy(S, 1, P - 1));
+          Key := LowerStr(TrimStr(Copy(S, 1, P - 1)));
           Value := TrimStr(Copy(S, P + 1, 255));
 
           if StartsWith(Value, '~') then
@@ -297,6 +299,8 @@ begin
             CodeCmd := Value
           else if Key = 'tnylpo' then
             TnylpoCmd := Value
+          else if Key = 'fuse' then
+            FuseCmd := Value
           else
           begin
             WriteLn('Invalid config key: ' + Key);
@@ -6042,7 +6046,7 @@ begin
     WriteLn('  ', FRelative(AsmFile, Dir), ' -> ', FRelative(BinFile, Dir));
     WriteLn;
 
-    Exec(ZasmCmd,  '-v1 -w ' + AsmFile + ' ' + BinFile);
+    Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting ' + ZasmCmd);
     if DosExitCode <> 0 then
@@ -6050,6 +6054,14 @@ begin
 
     if Binary = btCom then Org := 256 else Org := 32768;
     Len := FSize(BinFile);
+
+    if Binary = btZX then
+    begin
+      WriteLn('Converting...');
+      WriteLn('  ', FRelative(BinFile, Dir), ' -> ', FRelative(ChangeExt(BinFile, '.tap'), Dir));
+      Exec(HomeDir + '/maketap', ChangeExt(BinFile, '.tap') + ' -h loader 0,55,0,55 -d ' + HomeDir + '/etc/loader.bas -h mcode 3,' + IntToStr(Len) + ',32768,32768 -d ' + BinFile);
+      WriteLn;
+    end;
 
     HeapStart := Org + Len;
     if HeapStart < 24576 then HeapStart := 24576;
@@ -6177,6 +6189,13 @@ begin
         Exec(TnylpoCmd, '-soy -t @ ' + BinFile)
       else
         Exec(TnylpoCmd, BinFile)
+    end
+    else if Binary = btZX then
+    begin
+      if Alt then
+        Exec('/usr/bin/open', '-a ' + FuseCmd + ' --args --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
+      else
+        Exec('/usr/bin/open', '-a ' + FuseCmd + ' --args --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
     end
     else
     begin
