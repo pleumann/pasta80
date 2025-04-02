@@ -129,7 +129,7 @@ begin
 end;
 
 (**
- * Plots a point.
+ * Plots a point at the given coordinates.
  *)
 procedure Plot(X, Y: Integer);
   procedure AsmPlot(XY: Integer); register;         external 'zx_plot';
@@ -138,29 +138,59 @@ begin
 end;
 
 (**
- * Draws a line.
+ * Draws a line from the first coordinate pair to the second.
  *)
 procedure Draw(X1, Y1, X2, Y2: Integer);
-  procedure AsmDraw(XY1, XY2: Integer);             external 'zx_draw';
+var
+  DX, DY, AX, AY, SX, SY: Integer;
+
+  procedure AsmDraw(DXY, Sgn: Integer); register;   external 'zx_draw';
+
 begin
-  AsmDraw(Lo(X1) or Lo(Y1) shl 8, Lo(X2) or Lo(Y2) shl 8);
+  Plot(X1, Y1);
+
+  DX := X2 - X1;
+  DY := Y2 - Y1;
+
+  AX := Abs(DX);
+  AY := Abs(DY);
+
+  if DX >= 0 then SX := 1 else SX := 255;
+  if DY >= 0 then SY := 1 else SY := 255;
+
+  AsmDraw(AX or AY shl 8, SX or SY shl 8);
 end;
 
 (**
- * Draws a circle.
+ * Draws a circle of the given radius around the given center point.
  *)
-procedure Circle(X, Y, Radius: Integer);
+procedure Circle(CX, CY, Radius: Integer);
 var
-  N, I: Integer;
-  Theta, XR, YR: Real;
+  X, Y, D: Integer;
 begin
-  N := 100;
+  X := 0;
+  Y := Radius;
+  D := 3 - 2 * Radius;
 
-  for I := 0 to N - 1 do
+  while X <= Y do
   begin
-    Theta := (2 * Pi / N) * I;
-    XR := X + Cos(Theta) * Radius;
-    YR := Y + Sin(Theta) * Radius;
-    Plot(Round(XR), Round(YR));
+    Plot(CX + X, CY + Y);
+    Plot(CX - X, CY + Y);
+    Plot(CX + X, CY - Y);
+    Plot(CX - X, CY - Y);
+    Plot(CX + Y, CY + X);
+    Plot(CX - Y, CY + X);
+    Plot(CX + Y, CY - X);
+    Plot(CX - Y, CY - X);
+
+    if D < 0 then
+      D := D + 4 * X + 6
+    else
+    begin
+      D := D + 4 * (X - Y) + 10;
+      Dec(Y);
+    end;
+
+    Inc(X);
   end;
 end;
