@@ -18,11 +18,9 @@ begin
 
   Write('p='); ReadLn(P);
   Write('q='); ReadLn(Q);
-
   WriteLn;
-
+  
   D := P * P / 4 - Q;
-
 
   if D < 0 then
     WriteLn('The equation is unsolvable!')
@@ -36,7 +34,9 @@ begin
   begin
     WriteLn('The equation has two solutions:');
     WriteLn;
-    WriteLn('x1=', -P / 2+Sqr(D):10:5);
-    WriteLn('x2=', -P / 2-Sqr(D):10:5);
+    WriteLn('x1=', -P / 2+Sqrt(D):10:5);
+    WriteLn('x2=', -P / 2-Sqrt(D):10:5);
   end;
+
+  WriteLn;
 end.
