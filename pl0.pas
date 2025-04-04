@@ -51,7 +51,7 @@ end;
 (**
  * Converts the given integer to a hex number of the given length.
  *)
-function IntToHex(Value: Integer; Digits: Integer): String;
+function IntToHex(Value, Digits: Integer): String;
 const
   Hex = '0123456789ABCDEF';
 var
@@ -326,54 +326,40 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
+  (**
+   * Represents a source file being processed. We maintain a linked list of such
+   * sources that we treat like a stack to deal with (potentially nested)
+   * includes.
+   *)
   PSource = ^TSource;
   TSource = record
     Name: String;
     Input:  Text;
     Buffer: String;
-  (*  Count:  Integer; *)
     Line:   Integer;
     Column: Integer;
     Next: PSource;
   end;
 
 var
+  (**
+   * The pointer to the current source file.
+   *)
   Source: PSource;
 
-  StoredState: Jmp_Buf;
-  TokenLine, TokenColumn, ErrorLine, ErrorColumn: Integer;
+procedure Error(Message: String); forward;
 
-procedure Error(Message: String);
-var
-  I: Integer;
-begin
-  WriteLn;
-
-  if Source <> nil then
-  begin
-    WriteLn(Source^.Buffer);
-    for I := 1 to TokenColumn - 1 do Write(' ');
-    WriteLn('^');
-    WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
-    ErrorLine := TokenLine;
-    ErrorColumn := TokenColumn;
-  end
-  else
-  begin
-    WriteLn('*** Error: ', Message);
-    ErrorLine := 0;
-    ErrorColumn := 0;
-  end;
-
-  WriteLn();
-
-  LongJmp(StoredState, 1);
-end;
-
+(**
+ * Open the given input file. The same procedure is called for the initial
+ * input file and for all nested includes.
+ *)
 procedure OpenInput(FileName: String);
 var
   Tmp: PSource;
 begin
+  if (Source <> nil) and not StartsWith(FileName, '/') then
+    FileName := ParentDir(Source^.Name) + '/' + FileName;
+
   Tmp := Source;
   while Tmp <> nil do
   begin
@@ -404,6 +390,10 @@ begin
   Source := Tmp;
 end;
 
+(**
+ * Closes the current input file and resumes scanning/parsing of the enclosing
+ * input file (if one exists).
+ *)
 procedure CloseInput();
 var
   Tmp: PSource;
@@ -414,16 +404,12 @@ begin
   Dispose(Tmp);
 end;
 
-procedure SetInclude(FileName: String);
-begin
-  if not StartsWith(FileName, '/') then
-    FileName := ParentDir(Source^.Name) + '/' + FileName;
-
-  OpenInput(FileName);
-end;
-
 procedure EmitC(S: String); forward;
 
+(**
+ * Returns (and consumes) the next input character. This function is called
+ * routinely by the scanner.
+ *)
 function GetChar(): Char;
 begin
   with Source^ do
@@ -439,25 +425,25 @@ begin
           Exit;
         end
         else Error('Unexpected end of source');
-        (* GetChar := #26;
-        Exit; *)
       end;
 
       ReadLn(Input, Buffer);
-      EmitC('[' + IntToStr(Line) + '] ' + Buffer);
+      EmitC('[' + IntToStr(Line) + '] ' + Buffer); // TODO Make this configurable?
       Buffer := Buffer + #13;
       Line := Line + 1;
       Column := 1;
-
-      (* WriteLn('[', Line, '] ', Buffer); *)
     end;
 
     GetChar := Buffer[Column];
-    (* Write(Source.Buffer[Source.Column]); *)
     Inc(Column);
   end;
 end;
 
+(**
+ * Pushes back a single character. This - admittedly slighly ugly - procedure
+ * is called by the scanner. It must not be called at the beginning of a line
+ * or source code file, but this never happens.
+ *)
 procedure UngetChar();
 begin
   Source^.Column := Source^.Column - 1;
@@ -470,6 +456,13 @@ end;
 function GetLabel(Prefix: String): String; forward;
 
 type
+  (**
+   * A linked list of string constants used in the program. No duplicates. The
+   * strings are written at the end of parsing.
+   *
+   * TODO Make this a hash table in case we want to run on 8 bit.
+   * TODO Add something similar for Real constants and maybe for set constants. 
+   *)
   PStringLiteral = ^TStringLiteral;
   TStringLiteral = record
     Tag: String;
@@ -478,8 +471,16 @@ type
   end;
 
 var
+  (**
+   * The head of our list.
+   *)
   Strings: PStringLiteral;
 
+(**
+ * Adds a string to the list and returns a label under which it is accessible
+ * for assembly code. If the string is already part of the list the existing
+ * label will be returned.
+ *)
 function AddString(S: String): String;
 var
   Temp: PStringLiteral;
@@ -958,6 +959,7 @@ const
 
 var
   Scanner: TScanner;
+  TokenLine, TokenColumn: Integer;
 
 (* Doesn't belong here. Fix later. *)
 const
@@ -1162,7 +1164,7 @@ begin
       C := GetChar;
 
       if LowerStr(Copy(S, 2, 3)) = '$i ' then
-        SetInclude(TrimStr(Copy(S, 4, Length(S) - 4)))
+        OpenInput(TrimStr(Copy(S, 4, Length(S) - 4)))
       else if LowerStr(Copy(S, 2, 3)) = '$a ' then
         EmitI(TrimStr(Copy(S, 4, Length(S) - 4)))
       else if LowerStr(Copy(S, 2, 2)) = '$u' then
@@ -1245,7 +1247,7 @@ begin
             C := GetChar;
 
             if LowerStr(Copy(S, 3, 2)) = '$i' then
-              SetInclude(TrimStr(Copy(S, 5, Length(S) - 6)));
+              OpenInput(TrimStr(Copy(S, 5, Length(S) - 6)));
 
             NextToken;
             Exit;
@@ -1287,6 +1289,52 @@ procedure Expect(Token: TToken);
 begin
   (* Write('<', Token, '/', Scanner.Token, '>'); *)
   if Scanner.Token <> Token then Error('Expected "' + TokenStr[Token] + '", but got "' + TokenStr[Scanner.Token] + '"');
+end;
+
+(* -------------------------------------------------------------------------- *)
+(* --- Error handling ------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+var
+  (**
+   * The line and column where an error occurred.
+   *)
+  ErrorLine, ErrorColumn: Integer;
+
+  (**
+   * The stored execution state to LongJmp to after an error.
+   *)
+  StoredState: Jmp_Buf;
+
+(**
+ * Reports an error and performs a LongJmp back to the point where parsing was
+ * started.
+ *)
+procedure Error(Message: String);
+var
+  I: Integer;
+begin
+  WriteLn;
+
+  if Source <> nil then
+  begin
+    WriteLn(Source^.Buffer);
+    for I := 1 to TokenColumn - 1 do Write(' ');
+    WriteLn('^');
+    WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
+    ErrorLine := TokenLine;
+    ErrorColumn := TokenColumn;
+  end
+  else
+  begin
+    WriteLn('*** Error: ', Message);
+    ErrorLine := 0;
+    ErrorColumn := 0;
+  end;
+
+  WriteLn();
+
+  LongJmp(StoredState, 1);
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -5955,11 +6003,11 @@ begin
   RegisterAllBuiltIns((Binary = btDot) and (Graphics <> gmNone));
 
   if Binary = btCom then
-    SetInclude(HomeDir + '/lib/cpm.pas')
+    OpenInput(HomeDir + '/lib/cpm.pas')
   else if Binary = btZX then
-    SetInclude(HomeDir + '/lib/zx.pas')
+    OpenInput(HomeDir + '/lib/zx.pas')
   else
-    SetInclude(HomeDir + '/lib/next.pas');
+    OpenInput(HomeDir + '/lib/next.pas');
 
   NextToken;
   ParseDeclarations(nil);
