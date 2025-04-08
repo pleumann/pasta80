@@ -461,7 +461,7 @@ type
    * strings are written at the end of parsing.
    *
    * TODO Make this a hash table in case we want to run on 8 bit.
-   * TODO Add something similar for Real constants and maybe for set constants. 
+   * TODO Add something similar for Real constants and maybe for set constants.
    *)
   PStringLiteral = ^TStringLiteral;
   TStringLiteral = record
@@ -524,48 +524,86 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scFileType, scVar, scLabel, scProc, scFunc, scScope);
+  TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType,
+                  scStringType, scSetType, scSubrangeType, scPointerType,
+                  scFileType, scVar, scLabel, scProc, scFunc, scScope);
 
   // Flags: Forward, External, Register, Magic, Reference, Writable, Relative, Sizable, Addressable
 
+  (**
+   * Represents an entry in our symbol table. The symbol table is a linked list
+   * that operates a bit like a stack: New identifiers are put at the front and
+   * may shadow existing ones. Identifiers are removed in reverse order once
+   * they fall out of scope. Not all fields are used by all kinds of sybols,
+   * some have a different meaning depending on the symbol they are used for.
+   * "Value", for instance, can be the integer value of a constant, but also the
+   * size of a type. This, although working, is slightly ugly and maybe worth a
+   * clean-up.
+   *)
   PSymbol = ^TSymbol;
   TSymbol = record
-    Name: String;
-    Kind: TSymbolClass;
-    DataType: PSymbol;
-    ArgTypes: array[0..15] of PSymbol;
-    ArgIsRef: array[0..15] of Boolean;
-    Level: Integer;
-    Value, Value2: Integer;
-    StrVal: String;
-    Tag: String;
-    //Bounds: Integer;
-    IndexType: PSymbol;
-    Low, High: Integer;  // Range types
-    Prev, Next: PSymbol;
-    IsMagic: Boolean;
-    IsRef: Boolean;
-    IsStdCall: Boolean;
-    IsForward: Boolean;
-    IsExternal: Boolean;
-    SavedParams: PSymbol;
+    Name: String;                       // Name of the symbol
+    Kind: TSymbolClass;                 // Kind of the symbol
+    DataType: PSymbol;                  // Data type, array type or return type
+    ArgTypes: array[0..15] of PSymbol;  // Procecure/function parameter types
+    ArgIsRef: array[0..15] of Boolean;  // Procedure/function "var" parameters
+    Level: Integer;                     // Level of procedure/function, 0=global
+    Value, Value2: Integer;             // Value(s) or size(s) of symbol
+    Tag: String;                        // External label or address of symbol
+    IndexType: PSymbol;                 // Index type of arrays
+    Low, High: Integer;                 // Values of a range or an array index
+    Prev, Next: PSymbol;                // Previous and next in linked list
+    IsMagic: Boolean;                   // Magics are built into the compiler
+    IsRef: Boolean;                     // Symbol is a reference (var param)
+    IsStdCall: Boolean;                 // Procedure/function calling convention
+    IsForward: Boolean;                 // Forward-declared procedure/function
+    IsExternal: Boolean;                // External, to be resolved by assembler
+    SavedParams: PSymbol;               // Original parameter, forward-case only
   end;
 
 var
+  (**
+   * The head (aka newest entry) of our symbol table. Searches for an identifier
+   * usually start from here.
+   *)
   SymbolTable: PSymbol = nil;
-  Level, Offset: Integer;
-  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtFile, dtText: PSymbol;
 
+  (**
+   * Nesting level and variable offset. Maintained by compiler.
+   *)
+  Level, Offset: Integer;
+
+  (**
+   * Pointers to several important built-in base types.
+   *)
+  dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtFile,
+  dtText: PSymbol;
+
+  (**
+   * Pointers to the built-in Mem[] and Port[] pseudo-arrays.
+   *)
   MemArray, PortArray: PSymbol;
 
-  AssertProc, BreakProc, ContProc, ExitProc, HaltProc, StrProc, ReadProc, ReadLnProc, WriteProc, WriteLnProc: PSymbol;
+  (**
+   * Pointers to a whole lot of built-in procedures and fucntions that are
+   * considered "magic" and cannot be defined in Pascal. This is mostly because
+   * their number or type of parameters is not fixed.
+   *)
+  AssertProc, BreakProc, ContProc, ExitProc, HaltProc, StrProc, ReadProc,
+  ReadLnProc, WriteProc, WriteLnProc, EraseProc, RenameProc, AssignProc,
+  ResetProc, RewriteProc, AppendProc, FlushProc, CloseProc, SeekProc,
+  SeekEofProc, SeekEolnProc, BlockReadProc, BlockWriteProc, FilePosFunc,
+  FileSizeFunc, EolFunc, EofFunc, AbsFunc, AddrFunc, DisposeProc, EvenFunc,
+  HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc, FillProc, IncProc,
+  DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc,
+  SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
-  EraseProc, RenameProc, AssignProc, ResetProc, RewriteProc, AppendProc, FlushProc, CloseProc, SeekProc, SeekEofProc, SeekEolnProc,
-  BlockReadProc, BlockWriteProc, FilePosFunc, FileSizeFunc, EolFunc, EofFunc: PSymbol;
-
-  AbsFunc, AddrFunc, DisposeProc, EvenFunc, HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc,
-  FillProc, IncProc, DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc, SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
-
+(**
+ * Opens a scope, which mainly adds a new scope marker at the front of the
+ * symbol table. If AdjustLevel is true (which is the case for procedures and
+ * functions, especially nested ones) level and variable offset are affected,
+ * too.
+ *)
 procedure OpenScope(AdjustLevel: Boolean);
 var
   Sym: PSymbol;
@@ -584,6 +622,12 @@ begin
   end;
 end;
 
+(**
+ * Closes a scope, removing all symbols up to and including the most recent
+ * scope marker. Adjusts level, if requested. Will also detect unimplemented
+ * forward procedures/functions in that scope and raise errors if any are
+ * found.
+ *)
 procedure CloseScope(AdjustLevel: Boolean);
 var
   Sym: PSymbol;
@@ -605,6 +649,20 @@ begin
   if AdjustLevel then Level := Level - 1;
 end;
 
+const
+  lfLocal    = 1;
+  lfNew      = 2;
+  lfExisting = 4;
+// lfNew lfExisting lfLocal
+
+function Lookup(const Name: string; Symbol: PSymbol; Flags: LookupFlag): PSymbol;
+
+(**
+ * Searches the symbol table for the given identifier. Returns the symbol or
+ * nil if it does not exist. Search is local, so it stops at the first scope
+ * marker encountered. Runtime is O(n) due to the fact that we use a linked
+ * list for the symbol table (but modern machine are so fast we don't notice.
+ *)
 function LookupLocal(Name: String): PSymbol;
 var
   Sym: PSymbol;
@@ -622,6 +680,19 @@ begin
   end;
 
   LookupLocal := nil;
+end;
+
+(**
+ * Searches the symbol table for the given identifier. Like LookupLocal,
+ * but throws an error if the identifier is not found.
+ *)
+function GetLocal(Name: String): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Sym := LookupLocal(Name);
+  if Sym = nil then Error('Unknown identifier "' + Name + '"');
+  GetLocal := Sym;
 end;
 
 function LookupGlobal(Name: String): PSymbol;
@@ -642,6 +713,10 @@ begin
 
   LookupGlobal := nil;
 end;
+
+// GetGlobal with error?
+
+// GetBuiltIn with error?
 
 function FindField(Fields: PSymbol; Name: String): PSymbol;
 var
