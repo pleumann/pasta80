@@ -321,6 +321,10 @@ begin
   AltEditor := GetEnv('TERM_PROGRAM') = 'vscode'; // Are we running inside VSC?
 end;
 
+procedure EmitI(S: String); forward;
+procedure Error(Message: String); forward;
+procedure SetLibrary(FileName: String); forward;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Input ---------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
@@ -346,8 +350,6 @@ var
    * The pointer to the current source file.
    *)
   Source: PSource;
-
-procedure Error(Message: String); forward;
 
 (**
  * Open the given input file. The same procedure is called for the initial
@@ -686,7 +688,6 @@ begin
   Sym := Start;
   while Sym <> Stop do
   begin
-    //WriteLn(Integer(Sym));
     if UpperStr(Sym^.Name) = Name then
     begin
       Lookup := Sym;
@@ -737,6 +738,12 @@ begin
   LookupBuiltInOrFail := Sym;
 end;
 
+(**
+ * This procedure is called when a procedure or function header is fully
+ * parsed. It calculates the final offsets of all parameters relative to the
+ * base pointer according to their sizes. We cannot do this earlier because we
+ * don't know in advance the number of parameters, nor their sizes.
+ *)
 procedure AdjustOffsets;
 var
   Sym, Sym2: PSymbol;
@@ -772,6 +779,10 @@ begin
   Offset := 0;
 end;
 
+(**
+ * Creates a new symbol of the given kind. Makes sure the given name (if any)
+ * is unique within the local scope.
+ *)
 function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
@@ -790,50 +801,37 @@ begin
   SymbolTable^.Next := Sym;
   SymbolTable := Sym;
 
-(*
-  if Kind = scVar then
-  begin
-    if Bounds = 0 then SIze := 2 else Size := 2 * Bounds;
-    if Level = 1 then
-    begin
-      Sym^.Value := Offset;
-      Offset := Offset + Size;
-    end
-    else
-    begin
-      Offset := Offset - Size;
-      Sym^.Value := Offset + 2;
-    end;
-  end;
-*)
   CreateSymbol := Sym;
 end;
 
+(**
+ * Sets the data type of a variable or parameter. This is also the moment when
+ * the offset of the symbol on the stack will be assigned (although, for
+ * parameters, it will be adjusted later once all parameters are known).
+ *)
 procedure SetDataType(Sym: PSymbol; DataType: PSymbol);
 begin
   Sym^.DataType := DataType;
-//  Sym^.Bounds := Bounds;
 
-//  if Bounds = 0 then Size := 2 else Size := 2 * Bounds;
   if (Level = 1) and (Sym^.Tag = '') then
   begin
-(* TODO This is be distinguished in a better way
-    Sym^.Value := Offset;
-    Offset := Offset + DataType^.Value;
-*)
+    // TODO Improve this! It's an ugly way of detecting global variables.
+    // TODO Move away from mixed code/data to a separate data segment.
   end
   else
   begin
     if Sym^.IsRef then
-      Offset := Offset - 2 (* var parameters *)
+      Offset := Offset - 2                // A var parameter requires two bytes
     else if DataType^.Value = 1 then
-      Offset := Offset - 2 (* Boolean, Char and Byte take 2 bytes on stack. *)
+      Offset := Offset - 2                // Two bytes is also the minimum on the stack
     else
-      Offset := Offset - DataType^.Value;
+      Offset := Offset - DataType^.Value; // Everything else just uses its real size
+
     Sym^.Value := Offset;
   end;
 end;
 
+// TODO Do we really need this?
 function RegisterType(Name: String; Size: Integer): PSymbol;
 var
   Sym: PSymbol;
@@ -844,6 +842,7 @@ begin
   RegisterType := Sym;
 end;
 
+// TODO Do we really need this?
 function NewEnumType(Name: String): PSymbol;
 var
   Sym: PSymbol;
@@ -853,6 +852,7 @@ begin
   NewEnumType := Sym;
 end;
 
+// TODO Do we really need this?
 function NewConst(Name: String; DataType: PSymbol; Value: Integer): PSymbol;
 var
   Sym: PSymbol;
@@ -863,19 +863,11 @@ begin
   NewConst := Sym;
 end;
 
-function RegisterBuiltIn(Kind: TSymbolClass; Name: String; Args: Integer; Tag: String): PSymbol;
-var
-  Sym: PSymbol;
-begin
-  Sym := CreateSymbol(Kind, Name);
-  Sym^.Level := 0;
-  Sym^.Value := Args;
-  Sym^.Tag := Tag;
-  Sym^.IsStdCall := False;
-
-  RegisterBuiltIn := Sym;
-end;
-
+(**
+ * Registers a new magic symbol of the given type and with the given name.
+ * Magic symbols are those that get their own parsing, usually because
+ * they have a variable parameter list.
+ *)
 function RegisterMagic(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
@@ -885,10 +877,11 @@ begin
   RegisterMagic := Sym;
 end;
 
-
+(**
+ * Registers all symbols that must be baked into the compiler and cannot be
+ * defined by means of Pascal source code.
+ *)
 procedure RegisterAllBuiltIns(Graphics: Boolean);
-var
-  Sym, Sym2: PSymbol;
 begin
   dtInteger := RegisterType('Integer', 2);
   dtInteger^.Low := -32768;
@@ -999,6 +992,12 @@ end;
 (* --------------------------------------------------------------------- *)
 
 type
+  (**
+   * An enumeration type containing all possible tokens. The order is
+   * significant and must not be changed without changing the TokenStr array
+   * accordingly. Also all tokens representing keywords are in one large,
+   * alphabetically sorted block.
+   *)
   TToken = (toNone,
             toIdent, toNumber, toString, toFloat, toAdd, toSub, toMul, toDiv,
             toEq, toNeq, toLt, toLeq, toGt, toGeq, toLParen, toRParen, toLBrack, toRBrack,
@@ -1009,6 +1008,10 @@ type
             toShl, toShr, toStringKw, toThen, toTo, toType, toUntil, toVar, toWhile, toWith, toXor,
             toEof);
 
+  (**
+   * Describes the state of our scanner, basically the last generated token.
+   * TODO Eliminate this type. We only ever need a single one.
+   *)
   TScanner = record
     Token:    TToken;
     StrValue: String;
@@ -1016,6 +1019,12 @@ type
   end;
 
 const
+  (**
+   * An array containing textual representations of all possible tokens. The
+   * order is significant and must not be changed without changing the TToken
+   * type accordingly. Also all tokens representing keywords are in one large,
+   * alphabetically sorted block.
+   *)
   TokenStr: array[TToken] of String =
            ('<nul>',
             'Identifier', 'Number', 'String', 'Real', '+', '-', '*', '/',
@@ -1027,40 +1036,69 @@ const
             'shl', 'shr', 'string', 'then', 'to', 'type', 'until', 'var', 'while', 'with', 'xor',
             '<eof>');
 
+  (**
+   * Indices of the first and last keywords. Required for keyword detection.
+   *)
   FirstKeyword = toAbsolute;
   LastKeyword = toXor;
 
 var
+  (**
+   * The state of our scanner. Basically the lookahead token, i.e. the next
+   * token to process.
+   *)
   Scanner: TScanner;
+
+  (**
+   * The line and column of the current token.
+   *)
   TokenLine, TokenColumn: Integer;
 
-(* Doesn't belong here. Fix later. *)
+(* TODO Doesn't belong here. Fix later. *)
 const
   AbsCode: Boolean = False;
   CheckBreak: Boolean = False;
   IOMode: Boolean = True;
   StackMode: Boolean = False;
 
+(**
+ * Returns True if the given character is a valid Pascal identifier head.
+ *)
 function IsIdentHead(C: Char): Boolean;
 begin
   IsIdentHead := (C >= 'A') and (C <= 'Z') or (C >= 'a') and (C <= 'z') or (C = '_');
 end;
 
+(**
+ * Returns True if the given character is a valid Pascal identifier tail.
+ *)
 function IsIdentTail(C: Char): Boolean;
 begin
   IsIdentTail := IsIdentHead(C) or (C >= '0') and (C <= '9');
 end;
 
+(**
+ * Returns True if the given character is a decimal digit.
+ *)
 function IsDecDigit(C: Char): Boolean;
 begin
   IsDecDigit := (C >= '0') and (C <= '9');
 end;
 
+(**
+ * Returns True if the given character is a valid hexadecimal digit.
+ *)
 function IsHexDigit(C: Char): Boolean;
 begin
   IsHexDigit := IsDecDigit(C) or (C >= 'A') and (C <= 'F') or (C >= 'a') and (C <= 'f');
 end;
 
+(**
+ * Looks up a keyword and returns its token. Returns toIdent if the string is
+ * an ordinary identifier.
+ *
+ * TODO Make this a binary search or use hashing.
+ *)
 function LookupKeyword(Ident: String): TToken;
 var
   T: TToken;
@@ -1078,16 +1116,23 @@ begin
 end;
 
 var
+  (**
+   * The lookahead character, i.e. the next character to process.
+   *)
   C: Char;
 
-procedure SetLibrary(FileName: String); forward;
-procedure EmitI(S: String); forward;
-
+(**
+ * Scans the input and generates the next token. A bit lengthy, but it does the
+ * job.
+ *
+ * TODO Pull a couple of longer blocks into their own procedures.
+ *)
 procedure NextToken();
 var
   S: String;
   I: Integer;
 begin
+  // Ignore whitespace
   while (C <= ' ') do
   begin
     C := GetChar;
@@ -1095,6 +1140,7 @@ begin
 
   with Scanner do
   begin
+    // Start a new token
     Token := toNone;
     StrValue := '';
     NumValue := 0;
@@ -1103,6 +1149,7 @@ begin
 
     if IsIdentHead(C) then
     begin
+      // Identifier
       StrValue := C;
       C := GetChar;
       while IsIdentTail(C) do
@@ -1114,6 +1161,7 @@ begin
     end
     else if IsDecDigit(C) then
     begin
+      // Let's start with an integer number
       Token := toNumber;
       StrValue := C;
       NumValue := Ord(C) - Ord('0');
@@ -1125,6 +1173,7 @@ begin
         C := GetChar;
       end;
 
+      // Might turn out to be floating point
       if C = '.' then
       begin
         C := GetChar;
@@ -1144,6 +1193,7 @@ begin
         end;
       end;
 
+      // And even have an exponential part
       if (C = 'E') or (C = 'e') then
       begin
         Token := toFloat;
@@ -1169,6 +1219,7 @@ begin
     end
     else if C = '$' then
     begin
+      // Hex numbers are numbers, too.
       Token := toNumber;
       StrValue := '$';
       C := GetChar;
@@ -1190,11 +1241,13 @@ begin
     end
     else if (C = '''') or (C = '#') then
     begin
+      // Strings come in various forms
       Token := toString;
 
       repeat
         if C = '''' then
         begin
+          // Standard string delimited by apostrophes
           C := GetChar;
           while True do
           begin
@@ -1216,6 +1269,7 @@ begin
         end
         else
         begin
+          // Hash sign followed by an ASCII code
           I := 0;
           C := GetChar;
           if not IsDecDigit(C) then Error('Dec digit expected');
@@ -1229,6 +1283,7 @@ begin
     end
     else if C = '{' then
     begin
+      // Standard Pascal comments
       S := '{';
       repeat
         C := GetChar;
@@ -1236,6 +1291,7 @@ begin
       until C = '}';
       C := GetChar;
 
+      // Might turn out to be compiler directives
       if LowerStr(Copy(S, 2, 3)) = '$i ' then
         OpenInput(TrimStr(Copy(S, 4, Length(S) - 4)))
       else if LowerStr(Copy(S, 2, 3)) = '$a ' then
@@ -1256,6 +1312,7 @@ begin
     end
     else
     begin
+      // Various Single-character tokens
       case C of
         '+': Token := toAdd;
         '-': Token := toSub;
@@ -1278,33 +1335,34 @@ begin
 
       C := GetChar;
 
+      // These might turn out to be multi-character tokens
       case Token of
         toLt:
-          if C = '>' then
+          if C = '>' then               // Not equal
           begin
             Token := toNeq;
             C := GetChar;
           end
-          else if C = '=' then
+          else if C = '=' then          // Less than or equal
           begin
             Token := toLeq;
             C := GetChar;
           end;
 
         toGt:
-          if C = '=' then
+          if C = '=' then               // Greater than or equal
           begin
             Token := toGeq;
             C := GetChar;
           end;
 
         toLParen:
-          if C = '.' then
+          if C = '.' then               // Alternative notation for [
           begin
             Token := toLBrack;
             C := GetChar;
           end
-          else if C = '*' then
+          else if C = '*' then          // Alternative notation for comments
           begin
             C := GetChar;
             S := '(*' + C;
@@ -1319,6 +1377,7 @@ begin
             until C = ')';
             C := GetChar;
 
+            // TODO Do we really need to support directives for both comment types?
             if LowerStr(Copy(S, 3, 2)) = '$i' then
               OpenInput(TrimStr(Copy(S, 5, Length(S) - 6)));
 
@@ -1327,30 +1386,31 @@ begin
           end;
 
         toColon:
-          if C = '=' then
+          if C = '=' then               // Assignment operator
           begin
             Token := toBecomes;
             C := GetChar;
           end;
 
         toPeriod:
-          if C = ')' then
+          if C = ')' then               // Alternative notation for ]
           begin
             Token := toRBrack;
             C := GetChar;
           end
-          else if C = '.' then
+          else if C = '.' then          // Double dot for ranges
           begin
             Token := toRange;
             C := GetChar;
           end;
       end;
     end;
-
-    // WriteLn('{', Token, '->', StrValue , '}');
   end;
 end;
 
+(**
+ * Returns a control character. Called if the previous character was a '^'.
+ *)
 function GetCtrlChar: Integer;
 begin
   if not (C in ['@'..'_']) then Error('Invalid control character ^' + C);
@@ -1360,8 +1420,8 @@ end;
 
 procedure Expect(Token: TToken);
 begin
-  (* Write('<', Token, '/', Scanner.Token, '>'); *)
-  if Scanner.Token <> Token then Error('Expected "' + TokenStr[Token] + '", but got "' + TokenStr[Scanner.Token] + '"');
+  if Scanner.Token <> Token then
+    Error('Expected "' + TokenStr[Token] + '", but got "' + TokenStr[Scanner.Token] + '"');
 end;
 
 (* -------------------------------------------------------------------------- *)
