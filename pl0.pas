@@ -569,6 +569,16 @@ var
   SymbolTable: PSymbol = nil;
 
   (**
+   * The most recent scope marker.
+   *)
+  CurrentScope: PSymbol = nil;
+
+  (**
+   * The last built-in identifier.
+   *)
+  LastBuiltIn: PSymbol = nil;
+
+  (**
    * Nesting level and variable offset. Maintained by compiler.
    *)
   Level, Offset: Integer;
@@ -611,9 +621,11 @@ begin
   New(Sym);
   Sym^.Kind := scScope;
   Sym^.Prev := SymbolTable;
+  Sym^.DataType := CurrentScope;
   if SymbolTable <> nil then SymbolTable^.Next := Sym;
   Sym^.Value := Offset;
   SymbolTable := Sym;
+  CurrentScope := Sym;
 
   if AdjustLevel then
   begin
@@ -633,20 +645,29 @@ var
   Sym: PSymbol;
   Kind: TSymbolClass;
 begin
-  repeat
+  while SymbolTable <> CurrentScope do
+  begin
     Kind := SymbolTable^.Kind;
 
     if ((Kind = scProc) or (Kind = scFunc)) and (SymbolTable^.IsForward) then
-      Error('Unimplemented forward proc/func: ' + SymbolTable^.Name);
-
-    if AdjustLevel then Offset := SymbolTable^.Value;
+      Error('Unresolved forward declaration "' + SymbolTable^.Name + '"');
 
     Sym := SymbolTable^.Prev;
     Dispose(SymbolTable);
     SymbolTable := Sym;
-  until Kind = scScope;
+  end;
 
-  if AdjustLevel then Level := Level - 1;
+  CurrentScope := SymbolTable^.DataType;
+
+  if AdjustLevel then
+  begin
+    Level := Level - 1;
+    Offset := SymbolTable^.Value;
+  end;
+
+  Sym := SymbolTable^.Prev;
+  Dispose(SymbolTable);
+  SymbolTable := Sym;
 end;
 
 (**
@@ -665,6 +686,7 @@ begin
   Sym := Start;
   while Sym <> Stop do
   begin
+    //WriteLn(Integer(Sym));
     if UpperStr(Sym^.Name) = Name then
     begin
       Lookup := Sym;
@@ -677,71 +699,41 @@ begin
 end;
 
 (**
- * Searches the symbol table for the given identifier. Returns the symbol or
- * nil if it does not exist. Search is local, so it stops at the first scope
- * marker encountered. Runtime is O(n) due to the fact that we use a linked
- * list for the symbol table (but modern machine are so fast we don't notice.
+ * Searches the local scope for the given identifier and returns the
+ * corresponding symbol. Throws an error if the symbol cannot be found.
  *)
-function LookupLocal(Name: String): PSymbol;
+function LookupLocalOrFail(Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Name := UpperStr(Name);
-  Sym := SymbolTable;
-  while Sym^.Kind <> scScope do
-  begin
-    if UpperStr(Sym^.Name) = Name then
-    begin
-      LookupLocal := Sym;
-      Exit;
-    end;
-    Sym := Sym^.Prev;
-  end;
-
-  LookupLocal := nil;
+  Sym := Lookup(Name, SymbolTable, CurrentScope);
+  if Sym = nil then Error('Unknown identifier "' + Name + '"');
+  LookupLocalOrFail := Sym;
 end;
 
 (**
- * Performs a global search for the given identifier. Returns the symbol, if
- * found, or nil if it does not exist.
- *)
-function LookupGlobal(Name: String): PSymbol;
-begin
-  LookupGlobal := Lookup(Name, SymbolTable, nil);
-end;
-
-(**
- * Performs a global search for the given identifier, expecting it to be found.
- * Throws an error if the symbol cannot be found.
+ * Searches the global scope for the given identifier and returns the
+ * corresponding symbol. Throws an error if the symbol cannot be found.
  *)
 function LookupGlobalOrFail(Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Sym := LookupGlobal(Name);
+  Sym := Lookup(Name, SymbolTable, nil);
   if Sym = nil then Error('Unknown identifier "' + Name + '"');
   LookupGlobalOrFail := Sym;
 end;
 
 (**
- * Performs a search for the given identifier within the built-ins. Returns the
- * symbol, if found, or nil if it does not exist.
- *)
-function LookupBuiltIn(Name: String): PSymbol;
-begin
-  LookupBuiltIn := Lookup(Name, SymbolTable, nil);
-end;
-
-(**
- * Performs a search for the given identifier within the built-ins, expecting it
- * to be found. Throws an error if the symbol cannot be found.
+ * Searches the built-ins for the given identifier and returns the
+ * corresponding symbol. Throws an error if the symbol cannot be found.
  *)
 function LookupBuiltInOrFail(Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Sym := LookupBuiltIn(Name);
-  if Sym = nil then Error('Invalid or unsupported operation.');
+  Sym := Lookup(Name, LastBuiltIn, nil);
+  if Sym = nil then Error('Not supported.');
   LookupBuiltInOrFail := Sym;
 end;
 
@@ -784,10 +776,8 @@ function CreateSymbol(Kind: TSymbolClass; Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  if (Length(Name) <> 0) and (LookupLocal(Name) <> nil) then
-  begin
-    Error('Duplicate symbol "' + Name + '".');
-  end;
+  if (Length(Name) <> 0) and (Lookup(Name, SymbolTable, CurrentScope) <> nil) then
+    Error('Duplicate symbol "' + Name + '"');
 
   New(Sym);
   FillChar(Sym^, SizeOf(TSymbol), 0);
@@ -4973,13 +4963,13 @@ begin
 
     if Scanner.Token = toIdent then
     begin
-      Sym := LookupLocal(Scanner.StrValue);
+      Sym := LookupLocalOrFail(Scanner.StrValue);
       // ...
       EmitI('jp ' + Sym^.Tag);
     end
     else if Scanner.Token = toNumber then
     begin
-      Sym := LookupLocal(IntToStr(Scanner.NumValue));
+      Sym := LookupLocalOrFail(IntToStr(Scanner.NumValue));
       // ...
       EmitI('jp ' + Sym^.Tag);
     end
@@ -5446,7 +5436,7 @@ begin
 
     if Scanner.Token = toIdent then
     begin
-      DataType^.DataType := LookupGlobal(Scanner.StrValue);
+      DataType^.DataType := Lookup(Scanner.StrValue, SymbolTable, nil);
       if DataType^.DataType = nil then DataType^.Tag := Scanner.StrValue;
       NextToken;
     end
@@ -5545,7 +5535,7 @@ begin
       DataType^.DataType := Sym^.DataType;
       DataType^.Value := 1;
 
-      Sym := LookupGlobal(Scanner.StrValue);
+      Sym := LookupGlobalOrFail(Scanner.StrValue);
       DataType^.Low := Sym^.Value;
       NextToken;
       Expect(toRange);
@@ -5781,7 +5771,8 @@ begin
       repeat
         Name := Scanner.StrValue;
 
-        if LookupLocal(Name) <> nil then Error('Duplicate identifier ' + Name);
+        if Lookup(Name, SymbolTable, CurrentScope) <> nil then
+          Error('Duplicate identifier "' + Name + '"');
 
         NextToken;
         Expect(toEq);
@@ -5798,8 +5789,8 @@ begin
       begin
         if (P^.Kind = scPointerType) and (P^.DataType = nil) then
         begin
-          P^.DataType := LookupGlobal(P^.Tag);
-          if P^.DataType = nil then Error('Unresolved forward pointer ' + P^.Name);
+          P^.DataType := Lookup(P^.Tag, SymbolTable, CurrentScope);
+          if P^.DataType = nil then Error('Unresolved forward declaration "' + P^.Name + '"');
           P^.Tag := '';
         end;
 
@@ -5835,7 +5826,7 @@ begin
       Token := Scanner.Token;
       NextToken; Expect(toIdent);
 
-      FwdSym := LookupLocal(Scanner.StrValue);
+      FwdSym := Lookup(Scanner.StrValue, SymbolTable, CurrentScope);
       if (FwdSym <> nil) and (FwdSym^.IsForward) then
       begin
         if Token = toProcedure then
@@ -6065,6 +6056,8 @@ begin
   NextToken;
   Expect(toPeriod);
   NextToken;
+
+  LastBuiltIn := SymbolTable;
 
   OpenScope(False);
   if Scanner.Token = toProgram then
