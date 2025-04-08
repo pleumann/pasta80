@@ -745,25 +745,6 @@ begin
   LookupBuiltInOrFail := Sym;
 end;
 
-function FindField(Fields: PSymbol; Name: String): PSymbol;
-var
-  Sym: PSymbol;
-begin
-  Name := UpperStr(Name);
-  Sym := Fields;
-  while Sym <> nil do
-  begin
-    if UpperStr(Sym^.Name) = Name then
-    begin
-      FindField := Sym;
-      Exit;
-    end;
-    Sym := Sym^.Prev;
-  end;
-
-  FindField := nil;
-end;
-
 procedure AdjustOffsets;
 var
   Sym, Sym2: PSymbol;
@@ -3056,8 +3037,8 @@ begin
 
       NextToken;
       Expect(toIdent);
-      Symbol := FindField(DataType^.DataType, Scanner.StrValue);
-      if Symbol = nil  then Error('Field not found: ' + Scanner.StrValue);
+      Symbol := Lookup(Scanner.StrValue, DataType^.DataType, nil);
+      if Symbol = nil  then Error('Unknown field "' + Scanner.StrValue + '"');
 
       DataType := Symbol^.DataType;
 
@@ -5045,8 +5026,8 @@ begin
 
       if Scanner.Token = toIdent then
       begin
-        Sym := findField(DataType^.DataType, Scanner.StrValue);
-        if Sym = nil then Error('Unknown identifier');
+        Sym := Lookup(Scanner.StrValue, DataType^.DataType, nil);
+        if Sym = nil then Error('Unknown field "' + Scanner.StrValue + '"');
 
         if Sym^.Value < Offset then Error('Invalid offset');
         if Sym^.Value > Offset then
@@ -5236,7 +5217,7 @@ var
   Sym: PSymbol;
 begin
   Expect(toIdent);
-  if FindField(Fields, Scanner.StrValue) <> nil then Error('Duplicate field');
+  if Lookup(Scanner.StrValue, Fields, nil) <> nil then Error('Duplicate field "' + Scanner.StrValue + '"');
 
   New(Sym);
   FillChar(Sym^, SizeOf(TSymbol), 0);
