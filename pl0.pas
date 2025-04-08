@@ -558,7 +558,7 @@ type
     IsStdCall: Boolean;                 // Procedure/function calling convention
     IsForward: Boolean;                 // Forward-declared procedure/function
     IsExternal: Boolean;                // External, to be resolved by assembler
-    SavedParams: PSymbol;               // Original parameter, forward-case only
+    SavedParams: PSymbol;               // Original parameters, forward-case only
   end;
 
 var
@@ -649,13 +649,32 @@ begin
   if AdjustLevel then Level := Level - 1;
 end;
 
-const
-  lfLocal    = 1;
-  lfNew      = 2;
-  lfExisting = 4;
-// lfNew lfExisting lfLocal
+(**
+ * Searches the symbol table for the given identifier. Returns the symbol or
+ * nil if it does not exist. The search starts and stops at the given symbols,
+ * so passing the current scope as the second symbol would perform a local
+ * search, while passing nil would perform a global one. Runtime is O(n) due
+ * to the fact that we use a linked list for the symbol table (but modern
+ * machines are so fast we don't notice).
+ *)
+function Lookup(Name: string; Start, Stop: PSymbol): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Name := UpperStr(Name);
+  Sym := Start;
+  while Sym <> Stop do
+  begin
+    if UpperStr(Sym^.Name) = Name then
+    begin
+      Lookup := Sym;
+      Exit;
+    end;
+    Sym := Sym^.Prev;
+  end;
 
-function Lookup(const Name: string; Symbol: PSymbol; Flags: LookupFlag): PSymbol;
+  Lookup := nil;
+end;
 
 (**
  * Searches the symbol table for the given identifier. Returns the symbol or
@@ -683,40 +702,48 @@ begin
 end;
 
 (**
- * Searches the symbol table for the given identifier. Like LookupLocal,
- * but throws an error if the identifier is not found.
+ * Performs a global search for the given identifier. Returns the symbol, if
+ * found, or nil if it does not exist.
  *)
-function GetLocal(Name: String): PSymbol;
-var
-  Sym: PSymbol;
-begin
-  Sym := LookupLocal(Name);
-  if Sym = nil then Error('Unknown identifier "' + Name + '"');
-  GetLocal := Sym;
-end;
-
 function LookupGlobal(Name: String): PSymbol;
+begin
+  LookupGlobal := Lookup(Name, SymbolTable, nil);
+end;
+
+(**
+ * Performs a global search for the given identifier, expecting it to be found.
+ * Throws an error if the symbol cannot be found.
+ *)
+function LookupGlobalOrFail(Name: String): PSymbol;
 var
   Sym: PSymbol;
 begin
-  Name := UpperStr(Name);
-  Sym := SymbolTable;
-  while Sym <> nil do
-  begin
-    if UpperStr(Sym^.Name) = Name then
-    begin
-      LookupGlobal := Sym;
-      Exit;
-    end;
-    Sym := Sym^.Prev;
-  end;
-
-  LookupGlobal := nil;
+  Sym := LookupGlobal(Name);
+  if Sym = nil then Error('Unknown identifier "' + Name + '"');
+  LookupGlobalOrFail := Sym;
 end;
 
-// GetGlobal with error?
+(**
+ * Performs a search for the given identifier within the built-ins. Returns the
+ * symbol, if found, or nil if it does not exist.
+ *)
+function LookupBuiltIn(Name: String): PSymbol;
+begin
+  LookupBuiltIn := Lookup(Name, SymbolTable, nil);
+end;
 
-// GetBuiltIn with error?
+(**
+ * Performs a search for the given identifier within the built-ins, expecting it
+ * to be found. Throws an error if the symbol cannot be found.
+ *)
+function LookupBuiltInOrFail(Name: String): PSymbol;
+var
+  Sym: PSymbol;
+begin
+  Sym := LookupBuiltIn(Name);
+  if Sym = nil then Error('Invalid or unsupported operation.');
+  LookupBuiltInOrFail := Sym;
+end;
 
 function FindField(Fields: PSymbol; Name: String): PSymbol;
 var
@@ -2071,7 +2098,7 @@ begin
   begin
     Emit('main', '', ''); //), 'call __init', '');
     EmitI('ld (display+2),sp');
-    EmitCall(LookupGlobal('InitHeap'));
+    EmitCall(LookupBuiltInOrFail('InitHeap'));
   end
   else
   begin
@@ -2086,7 +2113,7 @@ begin
     EmitSpace(-Offset);
 
     if StackMode then
-      EmitCall(LookupGlobal('CheckStack'));
+      EmitCall(LookupBuiltInOrFail('CheckStack'));
 
 //    EmitI('ld hl,' + IntToStr(Offset));
 //    EmitI('add hl,sp');
@@ -3082,9 +3109,7 @@ begin
   if Sym^.ArgIsRef[I] then
   begin
     Expect(toIdent);
-    Sym2 := LookupGlobal(Scanner.StrValue);
-    if Sym2 = nil then
-      Error('Identifier not found: ' + Scanner.StrValue);
+    Sym2 := LookupGlobalOrFail(Scanner.StrValue);
     if Sym2^.Kind <> scVar then
       Error('Not a variable: ' + Scanner.StrValue);
 
@@ -3133,8 +3158,7 @@ var
   Sym: PSymbol;
 begin
   Expect(toIdent);
-  Sym := LookupGlobal(Scanner.StrValue);
-  if Sym = nil then Error('Unknown identifier');
+  Sym := LookupGlobalOrFail(Scanner.StrValue);
   if Sym^.Kind <> scVar then Error('Variable expected');
   NextToken;
   ParseVariableRef := ParseVariableAccess(Sym);
@@ -3236,8 +3260,7 @@ begin
   else if Func = AddrFunc then
   begin
     Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
     NextToken;
     ParseVariableAccess(Sym);
     ParseBuiltInFunction := dtInteger;
@@ -3250,8 +3273,7 @@ begin
   else if Func = SizeFunc then
   begin
     Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
     NextToken;
 
     if Sym^.Kind = scVar then
@@ -3342,9 +3364,8 @@ begin
   else if (Func = HighFunc) or (Func = LowFunc) then
   begin
     Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
     NextToken;
-    if Sym = nil then Error('Not found');
     if Sym^.Kind = scVar then
     begin
       Old := Code;
@@ -3382,13 +3403,11 @@ begin
     if T^.Kind <> scFileType then Error('File type expected');
 
     if (T = dtFile) or (T^.DataType = dtFile) then
-      Sym := LookupGlobal('Block' + Func^.Name)
+      Sym := LookupBuiltInOrFail('Block' + Func^.Name)
     else if T = dtText then
-      Sym := LookupGlobal('Text' + Func^.Name)
+      Sym := LookupBuiltInOrFail('Text' + Func^.Name)
     else
-      Sym := LookupGlobal('File' + Func^.Name);
-
-    if Sym = nil then Error('Not allowed.');
+      Sym := LookupBuiltInOrFail('File' + Func^.Name);
 
     EmitCall(Sym);
     ParseBuiltInFunction := Sym^.DataType;
@@ -3542,13 +3561,13 @@ begin
           T := ParseVariableRef;
 
           if T^.Kind = scStringType then
-            EmitCall(LookupGlobal('TextReadStr'))
+            EmitCall(LookupBuiltInOrFail('TextReadStr'))
           else if T = dtChar then
-            EmitCall(LookupGlobal('TextReadChar'))
+            EmitCall(LookupBuiltInOrFail('TextReadChar'))
           else if T = dtInteger then
-            EmitCall(LookupGlobal('TextReadInt'))
+            EmitCall(LookupBuiltInOrFail('TextReadInt'))
           else if T = dtReal then
-            EmitCall(LookupGlobal('TextReadFloat'))
+            EmitCall(LookupBuiltInOrFail('TextReadFloat'))
           else
             Error('Unreadable type');
         end;
@@ -3557,7 +3576,7 @@ begin
         begin
           EmitI('ld hl,(__cur_file)');
           EmitI('push hl');
-          EmitCall(LookupGlobal('TextSeekEoln'));
+          EmitCall(LookupBuiltInOrFail('TextSeekEoln'));
         end;
       end
       else if T^.Kind = scFileType then
@@ -3575,7 +3594,7 @@ begin
           TT := ParseVariableRef;
           if TT <> T^.DataType then Error('Type mismatch');
 
-          EmitCall(LookupGlobal('FileRead'));
+          EmitCall(LookupBuiltInOrFail('FileRead'));
         end;
       end
       else
@@ -3640,7 +3659,7 @@ begin
           EmitI('push hl');
           EmitI('ld hl,(__text_buf)');
           EmitI('call __loadstr');
-          EmitCall(LookupGlobal('TextWriteStr'));
+          EmitCall(LookupBuiltInOrFail('TextWriteStr'));
         end;
 
         EmitClear(256);
@@ -3649,7 +3668,7 @@ begin
         begin
           EmitI('ld hl,(__cur_file)');
           EmitI('push hl');
-          EmitCall(LookupGlobal('TextWriteEoln'));
+          EmitCall(LookupBuiltInOrFail('TextWriteEoln'));
         end;
       end
       else if T^.Kind = scFileType then
@@ -3667,10 +3686,10 @@ begin
           TT := ParseVariableRef;
           if TT <> T^.DataType then Error('Type mismatch');
 
-          EmitCall(LookupGlobal('FileWrite'));
+          EmitCall(LookupBuiltInOrFail('FileWrite'));
         end;
 
-        if IOMode then EmitCall(LookupGlobal('BDosThrow'));
+        if IOMode then EmitCall(LookupBuiltInOrFail('BDosThrow'));
       end
       else
       begin
@@ -3835,8 +3854,7 @@ begin
     NextToken; Expect(toLParen); NextToken;
 
     Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
     NextToken;
     T := ParseVariableAccess(Sym);
 
@@ -3847,7 +3865,7 @@ begin
     // EmitI('push de');
 
     EmitLiteral(T^.DataType^.Value);
-    EmitCall(LookupGlobal('GetMem'));
+    EmitCall(LookupBuiltInOrFail('GetMem'));
 
     Expect(toRParen); NextToken;
   end
@@ -3871,7 +3889,7 @@ begin
     // EmitI('push de');
 
     EmitLiteral(T^.DataType^.Value);
-    EmitCall(LookupGlobal('FreeMem'));
+    EmitCall(LookupBuiltInOrFail('FreeMem'));
 
     Expect(toRParen); NextToken;
   end
@@ -3917,13 +3935,13 @@ begin
     NextToken;
 
     if (T = dtFile) or (T^.DataType = dtFile) then
-      EmitCall(LookupGlobal('BlockAssign'))
+      EmitCall(LookupBuiltInOrFail('BlockAssign'))
     else if T = dtText then
-      EmitCall(LookupGlobal('TextAssign'))
+      EmitCall(LookupBuiltInOrFail('TextAssign'))
     else
     begin
       EmitLiteral(T^.DataType^.Value);
-      EmitCall(LookupGlobal('FileAssign'));
+      EmitCall(LookupBuiltInOrFail('FileAssign'));
     end;
   end
   else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = AppendProc) or (Proc = CloseProc) or (Proc = FlushProc) or (Proc = SeekEofProc) or (Proc = SeekEolnProc) then
@@ -3937,17 +3955,15 @@ begin
     NextToken;
 
     if (T = dtFile) or (T^.DataType = dtFile) or (Proc = EraseProc) or (Proc = RenameProc) then
-      Sym := LookupGlobal('Block' + Proc^.Name)
+      Sym := LookupBuiltInOrFail('Block' + Proc^.Name)
     else if T = dtText then
-      Sym := LookupGlobal('Text' + Proc^.Name)
+      Sym := LookupBuiltInOrFail('Text' + Proc^.Name)
     else
-      Sym := LookupGlobal('File' + Proc^.Name);
-
-    if Sym = nil then Error('Not allowed.');
+      Sym := LookupBuiltInOrFail('File' + Proc^.Name);
 
     EmitCall(Sym);
 
-    if IOMode then EmitCall(LookupGlobal('BDosThrow'));
+    if IOMode then EmitCall(LookupBuiltInOrFail('BDosThrow'));
   end
   else if Proc = SeekProc then
   begin
@@ -3966,13 +3982,13 @@ begin
     NextToken;
 
     if (T = dtFile) or (T^.DataType = dtFile) then
-      EmitCall(LookupGlobal('BlockSeek'))
+      EmitCall(LookupBuiltInOrFail('BlockSeek'))
     else if T <> dtText then
-      EmitCall(LookupGlobal('FileSeek'))
+      EmitCall(LookupBuiltInOrFail('FileSeek'))
     else
       Error('Not allowed.');
 
-    if IOMode then EmitCall(LookupGlobal('BDosThrow'));
+    if IOMode then EmitCall(LookupBuiltInOrFail('BDosThrow'));
   end
   else if (Proc = BlockReadProc) or (Proc = BlockWriteProc) then
   begin
@@ -4004,8 +4020,8 @@ begin
     Expect(toRParen);
     NextToken;
 
-    EmitCall(LookupGlobal('Block' + Proc^.Name));
-    if IOMode then EmitCall(LookupGlobal('BDosThrow'));
+    EmitCall(LookupBuiltInOrFail('Block' + Proc^.Name));
+    if IOMode then EmitCall(LookupBuiltInOrFail('BDosThrow'));
 
     // By Name umlenken auf Implementierung.
   end
@@ -4073,8 +4089,7 @@ begin
     end
     else if Scanner.Token = toIdent then
     begin
-      Sym := LookupGlobal(Scanner.StrValue);
-      if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
+      Sym := LookupGlobalOrFail(Scanner.StrValue);
       if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
 
       if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
@@ -4087,8 +4102,7 @@ begin
       begin
         NextToken;
         Expect(toIdent);
-        Sym := LookupGlobal(Scanner.StrValue);
-        if Sym = nil then Error('Identifier ' + Scanner.StrValue + ' not found');
+        Sym := LookupGlobalOrFail(Scanner.StrValue);
         if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
         if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
 
@@ -4127,8 +4141,7 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
 
     (* This is a dirty hack, but ok for now. *)
     if (Sym^.Kind = scVar) and (Sym^.Tag = 'RESULT') then
@@ -4470,8 +4483,7 @@ var
   Address: Integer;
 begin
   Expect(toIdent);
-  Sym := LookupGlobal(Scanner.StrValue);
-  if Sym = nil then Error('Identifier not found');
+  Sym := LookupGlobalOrFail(Scanner.StrValue);
   if Sym^.Kind <> scVar then Error('Variable expected');
   NextToken;
 
@@ -4545,8 +4557,7 @@ begin
   end
   else if Scanner.Token = toIdent then
   begin
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Unknown identifier: ' + Scanner.StrValue);
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
 
     if (Sym^.Kind = scConst) and (Sym^.DataType = dtInteger) then
     begin
@@ -4644,8 +4655,7 @@ var
 begin
   if Scanner.Token = toIdent then
   begin
-    C := LookupGlobal(Scanner.StrValue);
-    if C = nil then Error('Not found');
+    C := LookupGlobalOrFail(Scanner.StrValue);
     if C^.Kind <> scConst then Error('Const expected');
     if C^.DataType <> T then Error('Invalid type');
     V := C^.Value;
@@ -4767,8 +4777,7 @@ begin
 
   if Scanner.Token = toNumber then
   begin
-    Sym := LookupGlobal(IntToStr(Scanner.NumValue));
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(IntToStr(Scanner.NumValue));
 
     if Sym^.Kind = scLabel then
     begin
@@ -4780,8 +4789,7 @@ begin
   end
   else if Scanner.Token = toIdent then
   begin
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
 
     if Sym^.Kind = scLabel then
     begin
@@ -4794,8 +4802,7 @@ begin
 
   if Scanner.Token = toIdent then
   begin
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
 
     if (Sym^.Kind = scProc) and (Sym^.IsMagic) then
     begin
@@ -4905,8 +4912,7 @@ begin
     NextToken;
     Expect(toIdent);
 
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Identifier "' + Scanner.StrValue + '" not found.');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
     if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
 
     EmitAddress(Sym);
@@ -5074,8 +5080,7 @@ begin
   else if DataType^.Kind = scEnumType then
   begin
     Expect(toIdent);
-    Sym := LookupGlobal(Scanner.StrValue);
-    if Sym = nil then Error('Unknown ident');
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
     if (Sym^.Kind <> scConst) or (Sym^.DataType <> DataType) then
       Error('Invalid enum constant');
 
@@ -5197,8 +5202,7 @@ begin
     end
     else if Scanner.Token = toIdent then
     begin
-      Sym2 := LookupGlobal(Scanner.StrValue);
-      if Sym2 = nil then Error('Identifier not found: ' + Scanner.StrValue);
+      Sym2 := LookupGlobalOrFail(Scanner.StrValue);
       if Sym2^.Kind <> scConst then Error('Not a constant: ' + Scanner.StrValue);
 
       Sym^.DataType := Sym2^.DataType;
@@ -5297,8 +5301,7 @@ begin
     begin
       NextToken;
       Expect(toIdent);
-      CaseType := LookupGlobal(Scanner.StrValue);
-      if CaseType = nil then Error('Type not found');
+      CaseType := LookupGlobalOrFail(Scanner.StrValue);
 
       New(Sym);
       FillChar(Sym^, SizeOf(TSymbol), 0);
@@ -5315,8 +5318,7 @@ begin
     end
     else
     begin
-      CaseType := LookupGlobal(Ident);
-      if CaseType = nil then Error('Type not found');
+      CaseType := LookupGlobalOrFail(Ident);
     end;
 
     FixedSize := RecSym^.Value;
@@ -5513,10 +5515,8 @@ begin
 
     if Scanner.Token = toIdent then
     begin
-      Sym := LookupGlobal(Scanner.StrValue);
+      Sym := LookupGlobalOrFail(Scanner.StrValue);
 
-      if Sym = nil then
-        Error('Identifier not found: ' + Scanner.StrValue);
       if Sym^.Kind <> scConst then Error('Not a constant');
       if Sym^.DataType <> dtInteger then Error('Not an integer');
 
@@ -5556,10 +5556,7 @@ begin
   else begin
     Expect(toIdent);
 
-    Sym := LookupGlobal(Scanner.StrValue);
-
-    if Sym = nil then
-      Error('Identifier not found: ' + Scanner.StrValue);
+    Sym := LookupGlobalOrFail(Scanner.StrValue);
 
     if Sym^.Kind = scConst then
     begin
@@ -5575,10 +5572,8 @@ begin
 
       if Scanner.Token = toIdent then
       begin
-        Sym := LookupGlobal(Scanner.StrValue);
+        Sym := LookupGlobalOrFail(Scanner.StrValue);
 
-        if Sym = nil then
-          Error('Identifier not found: ' + Scanner.StrValue);
         if Sym^.Kind <> scConst then Error('Not a constant');
         if Sym^.DataType <> dtInteger then Error('Not an integer');
 
@@ -5620,9 +5615,8 @@ begin
   else
   begin
     Expect(toIdent);
-    DataType := LookupGlobal(Scanner.StrValue);
+    DataType := LookupGlobalOrFail(Scanner.StrValue);
 
-    if DataType = nil then Error('Unknown identifier');
     if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType]) then Error('Type expected');
   end;
 
@@ -5686,8 +5680,7 @@ begin
       Tag := Scanner.StrValue
     else if Scanner.Token = toIdent then
     begin
-      Sym := LookupGlobal(Scanner.StrValue);
-      if Sym = nil then Error('Ident not found');
+      Sym := LookupGlobalOrFail(Scanner.StrValue);
       if Sym^.Tag = '' then Error('Not addressable');
       Tag := Sym^.Tag;
     end
