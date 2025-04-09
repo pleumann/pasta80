@@ -1467,6 +1467,7 @@ begin
 
   WriteLn();
 
+  // TODO Get rid of need for LongJmp by making "IDE" a separate program?
   LongJmp(StoredState, 1);
 end;
 
