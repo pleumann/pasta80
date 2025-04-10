@@ -2017,6 +2017,9 @@ begin
   end;
 end;
 
+(**
+ * Emits the file header.
+ *)
 procedure EmitHeader(Home: String; SrcFile: String);
 begin
   EmitC('');
@@ -2032,6 +2035,9 @@ begin
   end;
 end;
 
+(**
+ * Emits the file footer.
+ *)
 procedure EmitFooter();
 begin
   EmitC('');
@@ -2041,6 +2047,10 @@ begin
   EmitC('');
 end;
 
+(**
+ * Collects (textual) info about all variables from the given symbol to the most
+ * recent scope marker, so they can be added to the generated assembly.
+ *)
 procedure CollectVars(Sym: PSymbol; var S: String);
 begin
   if Sym^.Kind <> scScope then CollectVars(Sym^.Prev, S);
@@ -2059,6 +2069,10 @@ begin
   end;
 end;
 
+(**
+ * Encodes the given Pascal string so that the assembler will accept it in a db
+ * statement. Mostly escaping of problematic characters.
+ *)
 function EncodeAsmStr(const S: String): String;
 var
   T: String;
@@ -2097,6 +2111,10 @@ begin
   EncodeAsmStr := T;
 end;
 
+(**
+ * Emits all strings collected in the string list as db items. Called once after
+ * the whole program code has been processed.
+ *)
 procedure EmitStrings();
 var
   Temp: PStringLiteral;
@@ -2113,65 +2131,32 @@ end;
 
 procedure EmitSpace(Bytes: Integer); forward;
 
-(*)
-procedure CollectString(Sym: PSymbol);
-var
-  S: String;
-begin
-  if Sym^.Kind <> scScope then CollectString(Sym^.Prev);
-
-  if Sym^.Kind = scString then
-  begin
-      S := Sym^.Name;
-      EmitC('');
-      Emit(Sym^.Tag, 'db ' + IntToStr(Length(S)) + ',"' + S + '"', '');
-  end;
-end;
-*)
-
 (*
-  Stack frame layout
-
-          +------------------+
-          | result (if any)  |
-          | 1st argument     |
-          | ...              |
-          | nth argument     |
-          | return addr      |
-  ix+2 -> | old ix           |
-  ix ---> | old display      |
-  ix-2 -> | 1st local        |
-          | ...              |
-  sp ---> | nth local        |
-          +------------------+
-
-  Caller cleans up arguments.
-
-  ix used for arguments and
-  local variables.
-
-  iy used for intermediate-level
-  variables (neither local nor
-  global), happens when procedures
-  are nested (Pascal-speciality).
-
-  Fast call via registers possible
-  for run-time library functions.
-*)
+ * Emits the prologue for a procedure or function that uses the standard
+ * calling convention. The stack frame looks like this:
+ *
+ * +------------------+
+ * | result (if any)  |
+ * | 1st argument     |
+ * | ...              |
+ * | nth argument     |
+ * | return addr      |
+ * | old base pointer | <-- frame pointer
+ * | 1st local        |
+ * | ...              |
+ * | nth local        | <-- stack pointer
+ * +------------------+
+ *
+ * All access to local variables that are stored on the stack happens via the
+ * frame pointer. The frame pointer is kept in the display entry matching the
+ * nesting level of the procedure of function. It is not kept in a register
+ * pair. The old frame pointer for that nesting level is stored on the stack.
+ * Arguments are cleanup up by the caller.
+ *)
 procedure EmitPrologue(Sym: PSymbol);
 var
   V: String;
 begin
-(*
-  if Sym = Nil then
-    EmitC('main entry point')
-  else if Sym^.Kind = scFunc then
-    EmitC('function ' + Sym^.Name)
-  else
-    EmitC('procedure ' + Sym^.Name);
-
-  EmitC('');
-*)
   V := '';
   CollectVars(SymbolTable, V);
   if V <> '' then
@@ -2182,14 +2167,12 @@ begin
 
   if Sym = Nil then
   begin
-    Emit('main', '', ''); //), 'call __init', '');
+    Emit('main', '', '');
     EmitI('ld (display+2),sp');
     EmitCall(LookupBuiltInOrFail('InitHeap'));
   end
   else
   begin
-    //Emit(Sym^.Tag, 'push ix', 'Prologue');
-
     Emit(Sym^.Tag, '', 'Prologue');
     EmitI('ld hl,(display+' + IntToStr(Level * 2) + ')');
     EmitI('push hl');
@@ -2200,50 +2183,24 @@ begin
 
     if StackMode then
       EmitCall(LookupBuiltInOrFail('CheckStack'));
-
-//    EmitI('ld hl,' + IntToStr(Offset));
-//    EmitI('add hl,sp');
-//    EmitI('ld sp,hl');
-(*
-    I := Offset;
-    if I < 0 then
-    begin
-      Emit('', 'ld de,0', 'Space for locals');
-      while I < 0 do
-      begin
-        EmitI('push de');
-        I := I + 2;
-      end;
-    end;
-*)
   end;
 end;
 
+(**
+ * Emits the epilogue to a procedure or function that uses standard calling
+ * convention. Restores the old frame pointer.
+ *)
 procedure EmitEpilogue(Sym: PSymbol);
 begin
-  if Sym = nil then
-    //Emit(ExitTarget, 'call __done', '')
-  else
+  if Sym <> nil then
   begin
     Emit(ExitTarget, 'ld sp,(display+' + IntToStr(Level * 2) + ')', 'Epilogue');
 
     EmitI('pop hl');
     EmitI('ld (display+' + IntToStr(Level * 2) + '),hl');
-
-    //EmitI('pop ix');
   end;
 
   EmitI('ret');
-end;
-
-function RelativeAddr(Base: String; Offset: Integer): String;
-begin
-  if Offset < 0 then
-    RelativeAddr := Base + IntToStr(Offset)
-  else if Offset > 0 then
-    RelativeAddr := Base + '+' + IntToStr(Offset)
-  else
-    RelativeAddr := Base;
 end;
 
 (**
@@ -2295,6 +2252,11 @@ begin
   end;
 end;
 
+(**
+ * Emits code that pops an address off the stack and pushes data located at
+ * that address on the stack. Takes into accout the given datatype (mostly
+ * for the size)
+ *)
 procedure EmitLoad(DataType: PSymbol);
 begin
   if DataType^.Kind = scStringType then
@@ -2333,7 +2295,11 @@ begin
   end;
 end;
 
-procedure EmitStore(DataType: PSymbol);
+(**
+ * Emits code that pops an address off the stack and pushes data located at
+ * that address on the stack. Takes into accout the given datatype (mostly
+ * for the size)
+ *)procedure EmitStore(DataType: PSymbol);
 begin
   if DataType^.Kind = scStringType then
   begin
@@ -2398,6 +2364,9 @@ begin
   EmitI('push de');
 end;
 
+(**
+ * Emits code that grows the stack by the given number of bytes.
+ *)
 procedure EmitSpace(Bytes: Integer);
 begin
   if Bytes <= 10 then
@@ -2419,6 +2388,9 @@ begin
   end;
 end;
 
+(**
+ * Emits code that shrinks the stack by the given number of bytes.
+ *)
 procedure EmitClear(Bytes: Integer);
 begin
   if Bytes <= 10 then
@@ -2440,11 +2412,11 @@ begin
   end;
 end;
 
+(**
+ * Emits code implementing the given relational operator for 16 bit integers.
+ *)
 procedure EmitRelOp(Op: TToken);
 begin
-//  EmitI('pop de');
-//  EmitI('pop hl');
-
   if (Op = toGt) or (Op = toLeq) then
   begin
     Emit('','pop hl', 'RelOp ' + IntToStr(Ord(Op)));
@@ -2455,8 +2427,6 @@ begin
     Emit('','pop de', 'RelOp ' + IntToStr(Ord(Op)));
     EmitI('pop hl');
   end;
-
-//  if (Op = toGt) or (Op = toLeq) then EmitI('ex hl,de');
 
   case Op of
     toEq:         EmitI('call __int16_eq');
@@ -2472,13 +2442,13 @@ end;
 
 procedure EmitUnOp(Op: TToken; DataType: PSymbol); forward;
 
+(**
+ * Emits code implementing the given relational operator for strings.
+ *)
 procedure EmitStrOp(Op: TToken);
 var
   Invert: Boolean;
 begin
-//  EmitI('pop de');
-//  EmitI('pop hl');
-
   Invert := (Op = toNeq) or (Op = toGt) or (Op = toGeq);
 
   case Op of
@@ -2495,13 +2465,13 @@ end;
 
 procedure EmitNeg(DataType: PSymbol); forward;
 
+(**
+ * Emits the given set operation.
+ *)
 procedure EmitSetOp(Op: TToken);
 var
   Invert: Boolean;
 begin
-//  EmitI('pop de');
-//  EmitI('pop hl');
-
   Invert := Op = toNeq;
 
   if Op = toIn then
@@ -2534,6 +2504,9 @@ begin
   end;
 end;
 
+(**
+ * Emits code implementing the given mathematic operation for floats.
+ *)
 procedure EmitFloatOp(Op: TToken);
 var
   Invert: Boolean;
@@ -2565,11 +2538,17 @@ begin
   if Invert then EmitUnOp(toNot, dtBoolean);
 end;
 
+(**
+ * Emits code that performs an unconditional jump to the given target.
+ *)
 procedure EmitJump(Target: String);
 begin
     EmitI('jp ' + Target);
 end;
 
+(**
+ * Emits code that performs a conditional jump to the given target.
+ *)
 procedure EmitJumpIf(When: Boolean; Target: String);
 begin
   EmitI('pop hl');
@@ -2580,6 +2559,11 @@ begin
     EmitI('jp z,' + Target);
 end;
 
+(**
+ * Emits code the performs the given math or bit binary operation on integers.
+ * Data type is also passed as a parameter because some 8 bit cases can be
+ * implemented by shorter code.
+ *)
 procedure EmitBinOp(Op: TToken; DataType: PSymbol);
 begin
   Emit('', 'pop de', '');
@@ -2625,6 +2609,11 @@ begin
   Emit('', 'push hl', '');
 end;
 
+(**
+ * Emits code the performs the given math or bit unary operation on integers.
+ * Data type is also passed as a parameter because some 8 bit cases can be
+ * implemented by shorter code.
+ *)
 procedure EmitUnOp(Op: TToken; DataType: PSymbol);
 begin
   case Op of
@@ -2654,6 +2643,9 @@ begin
   end;
 end;
 
+(**
+ * Emits code that implements negation for the data type passed as a parameter.
+ *)
 procedure EmitNeg(DataType: PSymbol);
 begin
   if (DataType = dtInteger) or (DataType = dtByte) then
@@ -2677,6 +2669,10 @@ begin
   else Error('Invalid type ' + DataType^.Name);
 end;
 
+(**
+ * Emits code that performs increment-by-one for the given data type (basically
+ * 8 or 16 bit integer).
+ *)
 procedure EmitInc(DataType: PSymbol);
 begin
   EmitI('pop hl');
@@ -2687,6 +2683,10 @@ begin
     EmitI('inc (hl)');
 end;
 
+(**
+ * Emits code that performs decrement-by-one for the given data type (basically
+ * 8 or 16 bit integer).
+ *)
 procedure EmitDec(DataType: PSymbol);
 begin
   EmitI('pop hl');
@@ -2697,6 +2697,10 @@ begin
     EmitI('dec (hl)');
 end;
 
+(**
+ * Emits code that performs shift-left-by-one for the given data type (basically
+ * 8 or 16 bit integer).
+ *)
 procedure EmitShl;
 begin
   EmitI('pop hl');
@@ -2704,13 +2708,10 @@ begin
   EmitI('push hl');
 end;
 
-procedure EmitInputNum(S: String);
-begin
-  Emit('', 'call __getn', 'Get ' + S);
-  EmitI('push de');
-  Emit('', 'call __newline', '');
-end;
-
+(**
+ * Emits the Str(V, S) statement with zero format specifiers. Type of value
+ * and string variable are given as parameters. All values are on the stack.
+ *)
 procedure EmitStr(DataType, VarType: PSymbol);
 begin
   while DataType^.Kind = scSubrangeType do
@@ -2753,6 +2754,10 @@ begin
   else Error('Unprintable type: ' + DataType^.Name);
 end;
 
+(**
+ * Emits the Str(V, S) statement with one format specifier. Type of value
+ * and string variable are given as parameters. All values are on the stack.
+ *)
 procedure EmitStr1(DataType, VarType: PSymbol);
 begin
   while DataType^.Kind = scSubrangeType do
@@ -2797,6 +2802,10 @@ begin
   else Error('Unprintable type: ' + DataType^.Name);
 end;
 
+(**
+ * Emits the Str(V, S) statement with two format specifiers. Type of value
+ * and string variable are given as parameters. All values are on the stack.
+ *)
 procedure EmitStr2(DataType, VarType: PSymbol);
 begin
   EmitI('ld a,' + IntToStr(VarType^.Value - 1));
@@ -2813,6 +2822,12 @@ begin
   else Error('Unprintable type: ' + DataType^.Name);
 end;
 
+(**
+ * Emits the console Write statement with zero format specifiers. The type of
+ * the value is given as parameter. The value resides on the stack.
+ *
+ * TODO Merge with or leverage code from EmitStr?
+ *)
 procedure EmitWrite(DataType: PSymbol);
 begin
   while DataType^.Kind = scSubrangeType do
@@ -2860,6 +2875,12 @@ begin
   else Error('Unprintable type: ' + DataType^.Name);
 end;
 
+(**
+ * Emits the console Write statement with one format specifier. The type of
+ * the value is given as parameter. All values reside on the stack.
+ *
+ * TODO Merge with or leverage code from EmitStr1?
+ *)
 procedure EmitWrite1(DataType: PSymbol);
 begin
   while DataType^.Kind = scSubrangeType do
@@ -2899,6 +2920,12 @@ begin
   else Error('Unprintable type: ' + DataType^.Name);
 end;
 
+(**
+ * Emits the console Write statement with two format specifiers. The type of
+ * the value is given as parameter. All values reside on the stack.
+ *
+ * TODO Merge with or leverage code from EmitStr2?
+ *)
 procedure EmitWrite2(DataType: PSymbol);
 begin
   if DataType <> dtReal then Error('Unprintable type for format 2: ' + DataType^.Name);
@@ -2910,12 +2937,18 @@ begin
   EmitI('call __putf_fix');
 end;
 
+(**
+ * Flushes and closes the assembly target file.
+ *)
 procedure CloseTarget();
 begin
   Flush;
   Close(Target);
 end;
 
+(**
+ * Emits a promotion from a single character to a string.
+ *)
 procedure EmitCharToString;
 begin
   EmitI('pop de');
@@ -2923,10 +2956,15 @@ begin
 end;
 
 (* -------------------------------------------------------------------------- *)
-(* --- Parser --------------------------------------------------------------- *)
+(* --- Type checker --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
 type
+  (**
+   * The types of type check we can perform.
+   *
+   * TODO Check whether this distinction still makes sense.
+   *)
   TTypeCheck = (tcExact, tcAssign, tcExpr);
 
 (**
@@ -3045,6 +3083,10 @@ begin
 
   Error('Type error, expected ' + Left^.Name + ', got ' + Right^.Name);
 end;
+
+(* -------------------------------------------------------------------------- *)
+(* --- Parser --------------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
 
 (**
  * Expects a certain token then consumes it. Shorthand for a very frequent
