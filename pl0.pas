@@ -235,6 +235,18 @@ end;
 (* --- Config handling ------------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
 
+type
+  (**
+   * The three platforms we currently support.
+   *)
+  TBinaryType = (btCPM, btZX, btZXN);
+
+var
+  (**
+   * The type of binary we are generating.
+   *)
+  Binary: TBinaryType;
+
 var
   HomeDir, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
   AltEditor: Boolean;
@@ -881,7 +893,7 @@ end;
  * Registers all symbols that must be baked into the compiler and cannot be
  * defined by means of Pascal source code.
  *)
-procedure RegisterAllBuiltIns(Graphics: Boolean);
+procedure RegisterAllBuiltIns;
 begin
   dtInteger := RegisterType('Integer', 2);
   dtInteger^.Low := -32768;
@@ -983,8 +995,11 @@ begin
   SizeFunc := RegisterMagic(scFunc, 'SizeOf');
   SuccFunc := RegisterMagic(scFunc, 'Succ');
 
-  BDosFunc := RegisterMagic(scFunc, 'Bdos');
-  BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
+  if Binary = btCPM then
+  begin
+    BDosFunc := RegisterMagic(scFunc, 'Bdos');
+    BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
+  end;
 end;
 
 (* --------------------------------------------------------------------- *)
@@ -1418,6 +1433,10 @@ begin
   C := GetChar;
 end;
 
+(**
+ * Throws an error if the current (lookahead) token type is not the expected
+ * one.
+ *)
 procedure Expect(Token: TToken);
 begin
   if Scanner.Token <> Token then
@@ -1476,31 +1495,60 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 type
-  TBinaryType = (btCom, btZX, btDot);
-
-  TGraphicsMode = (gmNone, gmLowRes, gmHighRes);
-
+  (**
+   * An element of "outgoing code". These are organized in a linked list and
+   * subject to optimization. The list will be flushed on each label that is
+   * being written and at the end of a procedure or function.
+   *
+   * TODO Simplify this. Write either a label (which always goes directly into
+   * the file) or an instruction. Split instruction into opcode and the two
+   * arguments, so the optimizer's life gets easier. Maybe drop comments
+   * completely.
+   *)
   PCode = ^TCode;
   TCode = record
-    Tag, Instruction, Comment: String;
-    Next, Prev: PCode;
+    Tag, Instruction, Comment: String;  // Label, instruction, and comment
+    Next, Prev: PCode;                  // Successor and predecessor
+ 
+    // TODO Make this Instr, Oper1, Oper2
   end;
 
-const
-  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX Next');
-  GraphicsStr: array[TGraphicsMode] of String = ('None', 'Lo-res', 'Hi-res');
-  YesNoStr: array[Boolean] of String = ('No ', 'Yes');
-
 var
-  Binary: TBinaryType;
-  Graphics: TGraphicsMode;
+  (**
+   * The text file we are writing assembly code to.
+   *)
   Target: Text;
+
+  (**
+   * The index of the next label we will generate.
+   *)
   NextLabel: Integer;
+
+  (**
+   * Reflects whether the optimizer is enabled.
+   *
+   * TODO Move this into a central place together with other compiler switches.
+   *)
   Optimize: Boolean;
+
+  (**
+   * Contains the current jump target for the Exit statement.
+   *
+   * TODO Should this be elsewhere, maybe together with Break/Continue? 
+   *)
   ExitTarget: String;
 
+  (**
+   * The most recent line of assembly code generated.
+   *
+   * TODO Should we have a sentinel here to make the optimizer code simpler?
+   *)
   Code: PCode = nil;
 
+(**
+ * Appends a line of assembly code consisting of the three given elements, any
+ * of which may be the empty string.
+ *)
 procedure AppendCode(Tag, Instruction, Comment: String);
 var
   Temp: PCode;
@@ -1516,6 +1564,9 @@ begin
   Code := Temp;
 end;
 
+(**
+ * Removes the most-recently generated line of assembly code.
+ *)
 procedure RemoveCode();
 var
   Temp: PCode;
@@ -1527,12 +1578,20 @@ begin
   Dispose(Temp);
 end;
 
+(**
+ * Opens the target file.
+ *)
 procedure OpenTarget(Filename: String);
 begin
   Assign(Target, Filename);
   Rewrite(Target);
 end;
 
+(**
+ * Generates a new, unique label with the given prefix.
+ *
+ * TODO Is this in the right place?
+ *)
 function GetLabel(Prefix: String): String;
 begin
   GetLabel := Prefix + IntToStr(NextLabel);
@@ -1963,18 +2022,13 @@ begin
   EmitC('');
   EmitC('program ' + SrcFile);
   EmitC('');
-  if Binary = btCom then
+  if Binary = btCPM then
   begin
     Emit('CPM', 'equ 1', 'Target is CP/M .com file');
   end
-  else if Binary = btDot then
+  else if Binary = btZXN then
   begin
     Emit('NXT', 'equ 1', 'Target is Next .dot file');
-
-    if Graphics = gmLowRes then
-      Emit('LORES', 'equ 1', 'Low-res graphics support')
-    else if Graphics = gmHighRes then
-      Emit('HIRES', 'equ 1', 'High-res graphics support');
   end;
 end;
 
@@ -6101,9 +6155,9 @@ var
 procedure ParseProgram;
 begin
   OpenScope(True);
-  RegisterAllBuiltIns((Binary = btDot) and (Graphics <> gmNone));
+  RegisterAllBuiltIns;
 
-  if Binary = btCom then
+  if Binary = btCPM then
     OpenInput(HomeDir + '/lib/cpm.pas')
   else if Binary = btZX then
     OpenInput(HomeDir + '/lib/zx.pas')
@@ -6157,11 +6211,11 @@ begin
   WriteLn('Compiling...');
   WriteLn('  ', FRelative(SrcFile, Dir), ' -> ', FRelative(AsmFile, Dir));
 
-  if Binary = btCom then
+  if Binary = btCPM then
     BinFile := ChangeExt(SrcFile, '.com')
   else if Binary = btZX then
     BinFile := ChangeExt(SrcFile, '.bin')
-  else if Binary = btDot then
+  else if Binary = btZXN then
     BinFile := ChangeExt(SrcFile, '.bin');
 
   if SetJmp(StoredState) = 0 then
@@ -6203,7 +6257,7 @@ begin
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
-    if Binary = btCom then Org := 256 else Org := 32768;
+    if Binary = btCPM then Org := 256 else Org := 32768;
     Len := FSize(BinFile);
 
     if Binary = btZX then
@@ -6227,8 +6281,16 @@ end;
 
 (* --- Interactive Menu --- *)
 
-type
-  TCharSet = set of Char;
+const
+  (**
+   * Printable names of supported platforms. Must be aligned with TBinaryType.
+   *)
+  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX Next');
+  
+  (**
+   * Yes/no strings. Why is this here and not in the IDE sestion?
+   *)
+  YesNoStr: array[Boolean] of String = ('No ', 'Yes');
 
 function GetKey: Char;
 var
@@ -6334,7 +6396,7 @@ procedure DoRun(Alt: Boolean);
 begin
   if Length(BinFile) <> 0 then
   begin
-    if Binary = btCom then
+    if Binary = btCPM then
     begin
       if Alt then
         Exec(TnylpoCmd, '-soy -t @ ' + BinFile)
@@ -6432,13 +6494,11 @@ var
 begin
   repeat
     Write(TermStr('~Target: '), BinaryStr[Binary]:7, '  ');
-    (*if Binary = btDot then WriteLn('  ', TermStr('~Graphics: '), GraphicsStr[Graphics]) else WriteLn;*)
     WriteLn(TermStr('~Optimize: '), YesNoStr[Optimize]:3, '  ', TermStr('~Back'));
 
     C := GetKey;
     case C of
-      't': if Binary = btDot then Binary := btCom else Binary := Succ(Binary);
-      (*'g': if Graphics = gmHighRes then Graphics := gmNone else Inc(Graphics);*)
+      't': if Binary = btZXN then Binary := btCPM else Binary := Succ(Binary);
       'o': Optimize := not Optimize;
     end;
   until C = 'b';
@@ -6542,26 +6602,11 @@ begin
       I := I + 1;
     end
     else if SrcFile = '--cpm' then
-      Binary := btCom
+      Binary := btCPM
     else if SrcFile = '--zx' then
       Binary := btZX
     else if SrcFile = '--zxn' then
-      Binary := btDot
-    (**
-    else if SrcFile = '--gfx' then
-    begin
-      S := LowerStr(ParamStr(I + 1));
-
-      if S = 'lo' then
-        Graphics := gmLowRes
-      else if S = 'hi' then
-        Graphics := gmHighRes
-      else
-        Error('Invalid graphics mode: ' + S);
-
-      I := I + 1;
-    end
-    *)
+      Binary := btZXN
     else if SrcFile = '--opt' then
       Optimize := True
     else if SrcFile = '--ide' then
