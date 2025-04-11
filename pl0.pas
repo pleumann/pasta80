@@ -1617,13 +1617,14 @@ begin
 
   if Instruction <> '' then
   begin
+(*
     if Instruction = 'ld de,(hl)' then
       Instruction := 'ld e,(hl) \ inc hl \ ld d,(hl)'
     else if Instruction = 'ld (hl),de' then
       Instruction := 'ld (hl),e \ inc hl \ ld (hl),d'
     else if Instruction = 'ld bc,(hl)' then
       Instruction := 'ld c,(hl) \ inc hl \ ld b,(hl)';
-
+*)
 
     P := Pos(' ', Instruction);
     if P <> 0 then
@@ -1784,8 +1785,8 @@ begin
 
     if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,2') then
     begin
-      Prev^.Instruction := 'inc hl \ inc hl';
-      RemoveCode;
+      Prev^.Instruction := 'inc hl';
+      Code^.Instruction := 'inc hl';
       Exit;
     end;
 
@@ -1812,8 +1813,8 @@ begin
 
     if (Code^.Instruction = 'add hl,de') and (Prev^.Instruction = 'ld de,-2') then
     begin
-      Prev^.Instruction := 'dec hl \ dec hl';
-      RemoveCode;
+      Prev^.Instruction := 'dec hl';
+      Code^.Instruction := 'dec hl';
       Exit;
     end;
 
@@ -4289,9 +4290,9 @@ begin
     if Scanner.Token = toComma then NextToken;
   end;
 
-  S3 := '';
-  for K := 0 to 31 do S3 := S3 + IntToHex(BA[K], 2);
-  EmitI('dm $' + S3);
+  S3 := '$' + IntToHex(BA[0], 2);;
+  for K := 1 to 31 do S3 := S3 + ',$' + IntToHex(BA[K], 2);
+  EmitI('db ' + S3);
 
   Sym := CreateSymbol(scSetType, '');
   Sym^.Value := 32;

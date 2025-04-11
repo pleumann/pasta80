@@ -326,12 +326,12 @@ __rand16:
 ;;160cc or 148cc if using SMC
 ;;26 bytes
 ;;cycle: 4,294,901,760 (almost 4.3 billion)
-#if defined(smc)
-seed1=$+1
-    ld hl,9999
-#else
+;#if defined(smc)
+;seed1=$+1
+;    ld hl,9999
+;#else
     ld hl,(seed1)
-#endif
+;#endif
     ld b,h
     ld c,l
     add hl,hl
@@ -339,12 +339,12 @@ seed1=$+1
     inc l
     add hl,bc
     ld (seed1),hl
-#if defined(smc)
-seed2=$+1
-    ld hl,9999
-#else
+;#if defined(smc)
+;seed2=$+1
+;    ld hl,9999
+;#else
     ld hl,(seed2)
-#endif
+;#endif
     add hl,hl
     sbc a,a
     and %00101101
@@ -1114,25 +1114,25 @@ __dec16by:      ld      e,(hl)
                 ld      (hl),e
                 ret
 
-#include "math48.asm"
+                include "math48.asm"
 
-.macro constfp %xx,%yy,%zz
-        ld      hl,%xx
-        ld      de,%yy
-        ld      bc,%zz
-.endm
+                macro constfp xx,yy,zz
+                        ld      hl,xx
+                        ld      de,yy
+                        ld      bc,zz
+                endm
 
-.macro pushfp
-        push    bc
-        push    de
-        push    hl
-.endm
+                macro pushfp
+                        push    bc
+                        push    de
+                        push    hl
+                endm
 
-.macro popfp
-        pop     hl
-        pop     de
-        pop     bc
-.endm
+                macro popfp
+                        pop     hl
+                        pop     de
+                        pop     bc
+                endm
 
 ; Load FP at address HL into BCDEHL
 __loadfp:
