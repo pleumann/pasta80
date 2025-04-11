@@ -3100,6 +3100,13 @@ end;
 
 function ParseExpression: PSymbol; forward;
 
+(**
+ * Parses access to a variable, result in the final address being on the stack.
+ * This includes potentially multiple stages of array indexing, record field
+ * seletion or following pointers. We try to delay the emitting of the address
+ * as long as possible in order to avoid additions at runtime when could let
+ * the assembler do them at compile-time.
+ *)
 function ParseVariableAccess(Symbol: PSymbol): PSymbol;
 var
   Variable, DataType: PSymbol;
@@ -3230,6 +3237,9 @@ begin
   ParseVariableAccess := DataType;
 end;
 
+(**
+ * Parses a single actual argument for a procedure or function call.
+ *)
 procedure ParseArgument(Sym: PSymbol; I: Integer);
 var
   Sym2, T: PSymbol;
@@ -3252,6 +3262,9 @@ begin
     TypeCheck(Sym^.ArgTypes[I], ParseExpression, tcAssign);
 end;
 
+(**
+ * Parses the list of actual arguments for a procedure or function call.
+ *)
 procedure ParseArguments(Sym: PSymbol);
 var
   I, J: Integer;
@@ -3281,6 +3294,9 @@ begin
   else if Scanner.Token = toLParen then Error('Arguments not allowed here')
 end;
 
+(**
+ * Parses a reference to a variable.
+ *)
 function ParseVariableRef: PSymbol;
 var
   Sym: PSymbol;
@@ -3353,6 +3369,12 @@ begin
   else Error('Invalid magic var: ' + Sym^.Name);
 end;
 
+(**
+ * Parses a built-in function, which is basically every pre-defined function
+ * that does not have a fixed syntax (variable parameters, for instance).
+ *
+ * TODO Split this into multiple procedures?
+ *)
 function ParseBuiltInFunction(Func: PSymbol): PSymbol;
 var
   T, Sym: PSymbol;
@@ -3546,6 +3568,10 @@ begin
     Expect(toRParen); NextToken;
 end;
 
+(**
+ * Parses a format specifier (used in Write, WriteLn and Str statements)
+ * and puts the results on the stack.
+ *)
 function ParseFormat: Integer;
 begin
   if Scanner.Token = toColon then
@@ -3563,6 +3589,9 @@ begin
   else ParseFormat := 0;
 end;
 
+(**
+ * Emits a console read for the given data type.
+ *)
 procedure EmitReadConsole(T: PSymbol);
 begin
   if T = dtInteger then
@@ -3585,6 +3614,12 @@ begin
   else Error('Unreadable type');
 end;
 
+(**
+ * Parses a built-in procedure, which is basically every pre-defined procedure
+ * that does not have a fixed syntax (variable parameters, for instance).
+ *
+ * TODO Split this into multiple procedures?
+ *)
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
   Sym, T, TT, V, U: PSymbol;
@@ -4157,6 +4192,13 @@ begin
     Error('Cannot handle: ' + Proc^.Name);
 end;
 
+(**
+ * Parses a set constant and generates a 32 byte block containing the proper
+ * bits.
+ *
+ * TODO Can we keep set constants in a table similar to strings, ensure
+ * uniqueness and write them later in one go?
+ *)
 function ParseSetConstant: PSymbol;
 var
   I, J, K: Integer;
@@ -4260,6 +4302,11 @@ begin
   ParseSetConstant := T;
 end;
 
+(**
+ * Parses a factor, which is the smallest building block of an expression. A
+ * factor can be a constant, a variable, a function call or a literal number,
+ * string, set or pointer. We also handle unary operators on this level.
+ *)
 function ParseFactor: PSymbol;
 var
   Sym: PSymbol; T: PSymbol;
@@ -4425,6 +4472,10 @@ begin
   ParseFactor := T;
 end;
 
+(**
+ * Parses a term, which can be a factor or any number of factors connected by
+ * multiplicative, dividing or bitshifting operators.
+ *)
 function ParseTerm: PSymbol;
 var
   Op: TToken;
@@ -4469,6 +4520,10 @@ begin
   ParseTerm := T;
 end;
 
+(**
+ * Parses a simple expression, which can be a term or any number of terms
+ * connected by additive or subtrative operators.
+ *)
 function ParseSimpleExpression: PSymbol;
 var
   Op: TToken;
@@ -4528,6 +4583,10 @@ begin
   ParseSimpleExpression := T;
 end;
 
+(**
+ * Parses an expression, which can be one simple expression or two simple
+ * expressions connected by a relational operator.
+ *)
 function ParseExpression: PSymbol;
 var
   Op: TToken;
@@ -4584,7 +4643,10 @@ begin
   ParseExpression := T;
 end;
 
-procedure ParseAssignment(Sym: PSymbol; Again: Boolean);
+(**
+ * Parses an assignment.
+ *)
+procedure ParseAssignment(Sym: PSymbol);
 var
   T: PSymbol;
 begin
@@ -4605,6 +4667,13 @@ end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String); forward;
 
+(**
+ * Parses a single "with" variable, which must be of a record type. Creates
+ * "proxy" variables for all fields contained in the record.
+ *
+ * TODO Should we simply create a scope instead of this "stunt" using anonymous
+ * variables?
+ *)
 procedure ParseWithVar;
 var
   Sym, Field, FieldRef, DataType: PSymbol;
@@ -4624,8 +4693,8 @@ begin
   Field := DataType^.DataType;
   while Field <> nil do
   begin
-    FieldRef := CreateSymbol(scVar, '');
-    FieldRef^.Name := Field^.Name;
+    FieldRef := CreateSymbol(scVar, ''); // Create anonymously so duplicate
+    FieldRef^.Name := Field^.Name;       // identifiers are not a problem
     FieldRef^.DataType := Field^.DataType;
     FieldRef^.Value := Address;
     FieldRef^.Value2 := Field^.Value;
@@ -4636,6 +4705,11 @@ begin
   end;
 end;
 
+(**
+ * Parses a "with" statement, "opening" the scopes of a single record variable
+ * or a list of such variables and making the contained fields directly
+ * accessible as variables.
+ *)
 procedure ParseWith(ContTarget, BreakTarget: String);
 var
   OldSymbols, Sym: PSymbol;
@@ -4659,6 +4733,9 @@ begin
   // TODO Check global (not in unit tests), Local, Var, Nested, Comma
   // Optimize simple case 'with R do X := 5;' to avoid double addressing
 
+  // TODO What happens to the stack if we exit a with statement early via
+  // Break or Exit?
+
   ParseStatement(ContTarget, BreakTarget);
 
   Offset := Offset + 2 * Count;
@@ -4673,6 +4750,14 @@ begin
   end;
 end;
 
+(**
+ * Parses an inline term, which is, in the easiest case, a number representing
+ * a Z80 opcode, but can also refer to identifiers such as constants, variables,
+ * procedures or functions (in which case either the value or the address would
+ * be inserted into the outgoing assembly code). The special symbol "*" refers
+ * to the "current address" and allows PC-relative addressing (useful for
+ * relative jumps).
+ *)
 procedure ParseInlineTerm(var S: String; var W: Boolean);
 var
   Sym: PSymbol;
@@ -4726,6 +4811,10 @@ begin
   else Error('Invalid inline code');
 end;
 
+(**
+ * Parses a single expression inside an inline statement, which is mainly a list
+ * of inline terms connected by additive or subtractive operators.
+ *)
 procedure ParseInlineExpr;
 var
   S: String;
@@ -4758,6 +4847,10 @@ begin
   else EmitI('db ' + S);
 end;
 
+(**
+ * Parses an inline statement including the opening and closing parentheses. It
+ * consists of a number of inline expressions separated by "/" characters.
+ *)
 procedure ParseInline;
 begin
   Expect(toLParen);
@@ -4894,6 +4987,11 @@ begin
   NextToken;
 end;
 
+(**
+ * Parses a statement, which can be an atomic statement like a procedure call,
+ * an assignment, a label or a piece of inline assembly, or a compound statement
+ * like if/while/repeat/for or a begin..end block.
+ *)
 procedure ParseStatement(ContTarget, BreakTarget: String);
 var
   Sym: PSymbol;
@@ -4952,7 +5050,7 @@ begin
     end
     else
     begin
-      ParseAssignment(Sym, false);
+      ParseAssignment(Sym);
     end;
   end
   else if Scanner.Token = toBegin then
@@ -5138,6 +5236,10 @@ end;
 
 function ParseTypeDef: PSymbol; forward;
 
+(**
+ * Parses a typed constant (aka an initialized variable). Typed constants are
+ * always allocated statically.
+ *)
 procedure ParseConstValue(DataType: PSymbol);
 var
   I, Sign, Value, Offset: Integer;
@@ -5285,6 +5387,10 @@ begin
   end;
 end;
 
+(**
+ * Parses a constant declaration, which can either be a real constant or a
+ * so-called typed constant, which is basically an initialized variable.
+ *)
 procedure ParseConst;
 var
   Name: String;
@@ -5359,6 +5465,9 @@ begin
   end;
 end;
 
+(**
+ * Parses a single record field name (just the name, no type).
+ *)
 procedure ParseField(var Fields: PSymbol);
 var
   Sym: PSymbol;
@@ -5376,6 +5485,10 @@ begin
   NextToken;
 end;
 
+(**
+ * Parses a field group, that is, a comma-separated list of record field names
+ * with a single type specification.
+ *)
 procedure ParseFieldGroup(var Fields: PSymbol; var Offset: Integer);
 var
   Sym, Typ: PSymbol;
@@ -5406,6 +5519,9 @@ begin
   end;
 end;
 
+(**
+ * Parses a record type definition including a potentially variant part.
+ *)
 procedure ParseRecord(RecSym: PSymbol);
 var
   Sym, CaseType: PSymbol;
@@ -5485,6 +5601,13 @@ begin
   end;
 end;
 
+(**
+ * Parses an array type definition. We support the standard form (array of
+ * array) and the alternative shorthand form (one pair of brackets overall,
+ * comma-separated dimensions specifiers).
+ *
+ * TODO Allow C-style array sizes with array[n] meaning array[0..n-1]?
+ *)
 procedure ParseArray(DataType: PSymbol; First: Boolean);
 begin
   if First then
@@ -5517,6 +5640,11 @@ begin
   DataType^.Value := (DataType^.IndexType^.High - DataType^.IndexType^.Low + 1) * DataType^.DataType^.Value;
 end;
 
+(**
+ * Parses a type definition, which can be an array, a string, a file, a record,
+ * a pointer, a set, a range, or a reference to an existing type (and
+ * potentially nested, of course).
+ *)
 function ParseTypeDef: PSymbol;
 var
   DataType, Sym: PSymbol;
@@ -5732,6 +5860,11 @@ begin
   ParseTypeDef := DataType;
 end;
 
+(**
+ * Parses a type reference, which is basically the name of a built-in or
+ * user-defined type. Needed for parameters. These are not allowed to come
+ * up with new (and hence anonymous) types.
+ *)
 function ParseTypeRef: PSymbol;
 var
   DataType: PSymbol;
@@ -5753,6 +5886,11 @@ begin
   ParseTypeRef := DataType;
 end;
 
+(**
+ * Parses a single variable or parameter name.
+ *
+ * TODO Is this worth its own procedure? Only used by variable and parameter lists.
+ *)
 procedure ParseVar;
 var
   Name: String;
@@ -5771,6 +5909,11 @@ begin
   *)
 end;
 
+(**
+ * Parses a variable list (actually this should probably be called a variable
+ * group), that is, a comma separated list of variable identifiers followed by a
+ * type name or definition.
+ *)
 procedure ParseVarList();
 var
   Old: PSymbol;
@@ -5827,6 +5970,7 @@ begin
 
       SetDataType(Old, DataType);
 
+      // TODO Should this be part of SetDataType?
       if IsAbs then Old^.Tag := Tag
       else if Old^.Level = 1 then
       begin
@@ -5842,6 +5986,12 @@ begin
   end;
 end;
 
+(**
+ * Parses a parameter list (actually this should probably be called a parameter
+ * group), that is, a comma-separated list of variable names followed by a
+ * single type reference. Whether these are "var" parameters or not is being
+ * passed as a parameter.
+ *)
 procedure ParseParamList(IsRef: Boolean);
 var
   Old: PSymbol;
@@ -5875,6 +6025,9 @@ begin
   end;
 end;
 
+(**
+ * Parses a label definition, which can be numeric or alphanimeric.
+ *)
 procedure ParseLabelDef;
 var
   S: PSymbol;
@@ -5887,7 +6040,7 @@ begin
   begin
     S := CreateSymbol(scLabel, IntToStr(Scanner.NumValue));
   end
-  else Error('Ident or number expected');
+  else Error('Identifier or number expected');
 
   S^.Tag := GetLabel('label');
   NextToken;
@@ -5895,6 +6048,11 @@ end;
 
 procedure ParseBlock(Sym: PSymbol); forward;
 
+(**
+ * Parses a declaration part, which can contain the following elements any
+ * number of times and in any order: constants, types, variables, labels,
+ * procedures, and functions.
+ *)
 procedure ParseDeclarations(Sym: PSymbol);
 var
   NewSym, ResVar, FwdSym, OldSyms, P: PSymbol;
@@ -6162,6 +6320,10 @@ begin
   end;
 end;
 
+(**
+ * Parses a statement list, which is a (possibly emtpy) list of statements
+ * separated by semicolons.
+ *)
 procedure ParseStatementList(ContTarget, BreakTarget: String);
 begin
   ParseStatement(ContTarget, BreakTarget);
@@ -6172,6 +6334,10 @@ begin
   end;
 end;
 
+(**
+ * Parses a block, which is a set of declarations followed by a statement list
+ * enclose in "begin" and "end".
+ *)
 procedure ParseBlock(Sym: PSymbol);
 begin
   ParseDeclarations(Sym);
@@ -6194,6 +6360,11 @@ var
   SrcFile, MainFile, WorkFile, AsmFile, BinFile, S: String;
   I: Integer;
 
+(**
+ * Parses the main program. This includes automatic inclusion of the correct
+ * system library (which needs its own "end." so we know when exactly the actual
+ * program code starts).
+ *)
 procedure ParseProgram;
 begin
   OpenScope(True);
@@ -6241,6 +6412,11 @@ begin
   CloseScope(True);
 end;
 
+(**
+ * Performs a build. All relevant information is assumed to be in the respective
+ * global variables. The procedure does everything up to and including a
+ * possible conversion to a specialized file format.
+ *)
 function Build: Integer;
 var
   Dir: String;
@@ -6334,6 +6510,9 @@ const
    *)
   YesNoStr: array[Boolean] of String = ('No ', 'Yes');
 
+(**
+ * Reads a key from console.
+ *)
 function GetKey: Char;
 var
   C: Char;
@@ -6355,6 +6534,9 @@ begin
   DoneKeyboard;
 end;
 
+(**
+ * Asks the user for a filename.
+ *)
 function GetFile(const S: String): String;
 var
   T: String;
@@ -6368,6 +6550,9 @@ begin
   end;
 end;
 
+(**
+ * Changes the current directory.
+ *)
 procedure DoDirectory;
 var
   Dir: String;
@@ -6377,16 +6562,26 @@ begin
   ChDir(Dir);
 end;
 
+(**
+ * Changes the project's main file.
+ *)
 procedure DoMainFile;
 begin
   MainFile := GetFile('Main file name: ');
 end;
 
+(**
+ * Changes the current work file.
+ *)
 procedure DoWorkFile;
 begin
   WorkFile := GetFile('Work file name: ');
 end;
 
+(**
+ * Starts the editor. Asks for a file name, if necessary. Jumps to the given
+ * line and column if these are non-zero (after a compile error).
+ *)
 procedure DoEdit(Line, Column: Integer);
 var
   S: String;
@@ -6416,6 +6611,11 @@ begin
   end;
 end;
 
+(**
+ * Starts a compilation. Asks for a file name if necessary. In case of an error
+ * during the Pascal to Assembly translation opens the editor with the Pascal
+ * file and jumps to the error position.
+ *)
 procedure DoCompile;
 begin
   if (WorkFile = '') and (MainFile = '') then DoWorkFile;
@@ -6434,6 +6634,10 @@ begin
   end
 end;
 
+(**
+ * Runs a compiles program by invoking a suitable emulator for the current
+ * target platform.
+ *)
 procedure DoRun(Alt: Boolean);
 begin
   if Length(BinFile) <> 0 then
@@ -6463,6 +6667,9 @@ begin
   end;
 end;
 
+(**
+ * Runs a shell command without leaving interactive mode.
+ *)
 procedure DoShell(Alt: Boolean);
 var
   Cmd: String;
@@ -6476,6 +6683,9 @@ begin
   end;
 end;
 
+(**
+ * Lists files in the current directory that match a given pattern.
+ *)
 procedure DoFiles;
 var
   Pattern, S: String;
@@ -6508,6 +6718,10 @@ begin
   WriteLn;
 end;
 
+(**
+ * Translates a given string into a string with highlights for VT100. Basically,
+ * any character following a ~ will be highlighted. Used for displaying menus.
+ *)
 function TermStr(S: String): String;
 var
   T: String;
@@ -6530,6 +6744,10 @@ begin
   TermStr := T;
 end;
 
+(**
+ * Implements the options menu of interactive mode, which is where the user can
+ * select the target platform and change compiler switches.
+ *)
 procedure DoOptions;
 var
   C: Char;
@@ -6546,16 +6764,23 @@ begin
   until C = 'b';
 end;
 
+(**
+ * Shows the copyright header.
+ *)
 procedure Copyright;
 begin
   WriteLn('----------------------------------------');
   WriteLn('Pascal Compiler for Z80     Version 0.91');
+  WriteLn(BinaryStr[Binary] + ', Z80':40);
   WriteLn;
   WriteLn('Copyright (C) 2020-2025 by Jörg Pleumann');
   WriteLn('----------------------------------------');
   WriteLn;
 end;
 
+(**
+ * Implements the main screen/menu of interactive mode.
+ *)
 procedure Interactive;
 var
   C: Char;
@@ -6611,6 +6836,10 @@ begin
   end;
 end;
 
+(**
+ * Process command-line parameters and, ultimately, either start a build or
+ * enter interactive mode.
+ *)
 procedure Parameters;
 var
   Ide: Boolean;
