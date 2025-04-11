@@ -1669,7 +1669,7 @@ end;
 function DoOptimize: Boolean;
 var
   Op1, Op2, S: String;
-  Prev, Next: PCode;
+  Prev: PCode;
 begin
   (* Try to eliminate the most embarrassing generated instruction pairs. *)
 
@@ -3623,7 +3623,6 @@ end;
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
   Sym, T, TT, V, U: PSymbol;
-  Tag: String;
   F: Integer;
 begin
   if Proc^.Kind <> scProc then
@@ -4203,7 +4202,7 @@ function ParseSetConstant: PSymbol;
 var
   I, J, K: Integer;
   Sym, T: PSymbol;
-  S, S3: string;
+  S3: string;
   BA: array[0..31] of Byte;
 begin
   for I := 0 to 31 do BA[I] := 0;
@@ -4311,8 +4310,7 @@ function ParseFactor: PSymbol;
 var
   Sym: PSymbol; T: PSymbol;
   Op: TToken;
-  S1, S2, S3, Tag: String;
-  I, J, K: Integer;
+  S1, S2, Tag: String;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -6357,7 +6355,7 @@ begin
 end;
 
 var
-  SrcFile, MainFile, WorkFile, AsmFile, BinFile, S: String;
+  SrcFile, MainFile, WorkFile, AsmFile, BinFile: String;
   I: Integer;
 
 (**
