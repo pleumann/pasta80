@@ -1509,7 +1509,7 @@ type
   TCode = record
     Tag, Instruction, Comment: String;  // Label, instruction, and comment
     Next, Prev: PCode;                  // Successor and predecessor
- 
+
     // TODO Make this Instr, Oper1, Oper2
   end;
 
@@ -1534,7 +1534,7 @@ var
   (**
    * Contains the current jump target for the Exit statement.
    *
-   * TODO Should this be elsewhere, maybe together with Break/Continue? 
+   * TODO Should this be elsewhere, maybe together with Break/Continue?
    *)
   ExitTarget: String;
 
@@ -2662,7 +2662,7 @@ begin
     EmitI('popfp');
 
     EmitI('ld a,b');
-    EmitI('xor a,128');
+    EmitI('xor 128');
     EmitI('ld b,a');
 
     EmitI('pushfp');
@@ -6503,7 +6503,7 @@ const
    * Printable names of supported platforms. Must be aligned with TBinaryType.
    *)
   BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX Next');
-  
+
   (**
    * Yes/no strings. Why is this here and not in the IDE sestion?
    *)
