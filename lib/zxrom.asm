@@ -143,7 +143,7 @@ __checkbreak:   ld      a,$fe
 ; Out:  e=1 if key has been pressed, e=0 otherwise
 ;
 zx_testkey:     ld      hl,0
-                bit     5, 1 (iy)
+                bit     5, (iy+1)
                 ret     z
                 inc     l
                 ret
@@ -154,10 +154,10 @@ zx_testkey:     ld      hl,0
 ; Out:  e=ASCII code
 ;
 zx_readkey:     halt
-                bit     5, 1 (iy)
+                bit     5, (iy+1)
                 jr      z,zx_readkey
-                res     5, 1 (iy)
-                ld      a, (#23560)
+                res     5, (iy+1)
+                ld      a, (23560)
                 ld      l,a
                 ret
 
