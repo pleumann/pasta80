@@ -47,17 +47,17 @@ end;
 
 procedure StartGame;
 var
-  I, J: Integer;
+  I: Integer;
 begin
+  Score := 0;
+  FillChar(Board, SizeOf(Board), 0);
+
   for I := 1 to 4 do
   begin
     Board[0, I] := -1;
-    Board[4, I] := -1;
+    Board[5, I] := -1;
     Board[I, 0] := -1;
-    Board[I, 4] := -1;
-
-    for J := 1 to 4 do
-      Board[I, J] := 0;
+    Board[I, 5] := -1;
   end;
 end;
 
