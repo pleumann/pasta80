@@ -138,6 +138,15 @@ begin
 end;
 
 (**
+ * Queries a point at the given coordinates.
+ *)
+function Point(X, Y: Integer): Boolean;
+  function AsmPoint(XY: Integer): Boolean; register; external 'zx_point';
+begin
+  Point := AsmPoint(Lo(X) or Lo(Y) shl 8);
+end;
+
+(**
  * Draws a line from the first coordinate pair to the second.
  *)
 procedure Draw(X1, Y1, X2, Y2: Integer);
