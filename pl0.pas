@@ -1921,6 +1921,21 @@ begin
       RemoveCode;
       Exit;
     end;
+
+    if (Code^.Instruction = 'call __int_shl') and (Prev^.Instruction = 'ld de,8') then
+    begin
+      Prev^.Instruction := 'ld h,l';
+      Code^.Instruction := 'ld l,0';
+      Exit;
+    end;
+
+    if (Code^.Instruction = 'call __int_shr') and (Prev^.Instruction = 'ld de,8') then
+    begin
+      Prev^.Instruction := 'ld l,h';
+      Code^.Instruction := 'ld h,0';
+      Exit;
+    end;
+
   end;
 
   DoOptimize := False;
