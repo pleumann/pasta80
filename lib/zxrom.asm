@@ -263,20 +263,216 @@ zx_delay_loop:  ld      a,h
 ;
 ; Plots a point.
 ;
-; In:   hl=coordinate
+; In:   l=x, e=y
 ; Out:  -
 ;
-zx_plot:        ld      bc,hl
+zx_plot:        ld      a,175
+                sub     e
+                ld      b,a
+                ld      c,l
                 call    $22e5
                 ret
 
 ;
-; Plots a point.
+; Draws a relative line starting at the most recent plot position.
 ;
-; In:   hl=1st coordinate, de=2nd coordinate
+; In:   hl=unsigned relative movement, de=signs
 ; Out:  -
 ;
-zx_draw:
-                ld      bc,hl
+zx_draw:        ld      bc,hl
                 call    $24BA
                 ret
+
+;
+; Calculates the address and bit position of a pixel on the ULA screen.
+;
+; In:   DE=coordinate
+; Out:  DE=coordinate, HL=address, a=bit mask
+;
+zx_pixelad:     ifdef ZXN
+                push    de
+                ld      a,175
+                sub     d
+                ld      d,a
+                pixelad
+                setae
+                pop     de
+                ret
+                else
+                push    bc
+                ld      bc,de
+                call    $22aa           ; Get pixel address and bit number
+                ld      b,a
+                inc     b
+                xor     a
+                scf
+zx_pixelad_lp:  rra                     ; Shift working bit into place
+                djnz    zx_pixelad_lp
+                pop     bc
+                ret
+                endif
+
+;
+; Checks whether a given point is set.
+;
+; In:   L=X, E=Y
+; Out:  HL=result
+;
+zx_point:       ld      a,175
+                sub     e
+                ld      d,a
+                ld      e,l
+                call    zx_pixelad
+                and     (hl)
+                ld      hl,0
+                ret     z
+                inc     l
+                ret
+
+;
+; Floodfill
+;
+; In:   L=X, E=Y
+; Out:  -
+;
+
+zx_fill:
+                ld d,e
+                ld e,l
+
+; Scanline fill, originally by John Metcalf
+; adapted to Spectrum Next by Joerg Pleumann
+; call with e=x-coord, d=y-coord
+;
+; set end marker
+
+fill:
+                ld h,255
+                push hl
+
+; calculate bit position of pixel
+
+nextrun:
+        ifdef ZXN
+                ld c,0
+        else
+                ld a,e
+                and 7
+                inc a
+                ld b,a
+                ld a,1
+bitpos:
+                rrca
+                djnz bitpos
+                ld c,b
+                ld b,a
+        endif
+
+; move left until hitting a set pixel or the screen edge
+
+seekleft:
+                ld a,e
+                or a
+                jr z,goright
+                dec e
+        ifdef ZXN
+                pixelad
+                setae
+                or (hl)
+                cp (hl)
+        else
+                rlc b
+                call scrpos
+        endif
+                jr nz,seekleft
+
+; move right until hitting a set pixel or the screen edge,
+; setting pixels as we go. Check rows above and below and
+; save their coordinates to fill later if necessary
+
+seekright:
+        ifndef ZXN
+                rrc b
+        endif
+                inc e
+                jr z,rightedge
+goright:
+        ifdef ZXN
+                pixelad
+                setae
+                or (hl)
+                cp (hl)
+        else
+                call scrpos
+        endif
+                jr z,rightedge
+                ld (hl),a
+                inc d
+                call checkadj
+                dec d
+                dec d
+                call checkadj
+                inc d
+                jr seekright
+
+; check to see if there's another row waiting to be filled
+
+rightedge:
+                pop de
+                ld a,d
+                inc a
+                jr nz,nextrun
+                ret
+
+; calculate the pixel address and whether or not it's set
+; not used in Spectrum Next case because opcodes are inlined
+
+        ifndef ZXN
+scrpos:
+                ld      a,d
+                and     248
+                rra
+                scf
+                rra
+                rra
+                ld      l,a
+                xor     d
+                and     248
+                xor     d
+                ld      h,a
+                ld      a,l
+                xor     e
+                and     7
+                xor     e
+                rrca
+                rrca
+                rrca
+                ld      l,a
+                ld      a,b
+                or      (hl)
+                cp      (hl)
+                ret
+        endif
+
+; check and save the coordinates of an adjacent row
+
+checkadj:
+                sla     c
+                ld      a,d
+                cp      175
+                ret     nc
+        ifdef ZXN
+                pixelad
+                setae
+                or      (hl)
+                cp      (hl)
+        else
+                call    scrpos+1
+        endif
+                ret     z
+                inc     c
+                bit     2,c
+                ret     nz
+                pop     hl
+                push    de
+                jp      (hl)

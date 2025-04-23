@@ -129,37 +129,46 @@ begin
 end;
 
 (**
+ * Returns the value of the 24 bit frame counter that is normally increased by
+ * one during the 50 Hz interrupt routine. Multiplying this value by 20 results
+ * in the machine's uptime in milliseconds (minus the time interrupts where
+ * disabled).
+ *)
+function Frames: Real;
+begin
+  Frames := 65536.0 * Mem[23674] + 256.0 * Mem[23673] + Mem[23672];
+end;
+
+(* --------------------------------------------------------------------- *)
+(* --- Simple graphics primitives -------------------------------------- *)
+(* --------------------------------------------------------------------- *)
+
+(* Note: Turbo Pascal has point (0,0) in the upper left corner, and so do we.
+ * This is in contrast to ZX BASIC, so keep this in mind when porting graphics
+ * code from there.
+ *)
+
+(**
  * Plots a point at the given coordinates.
  *)
-procedure Plot(X, Y: Integer);
-  procedure AsmPlot(XY: Integer); register;         external 'zx_plot';
-begin
-  AsmPlot(Lo(X) or Lo(Y) shl 8);
-end;
+procedure Plot(X, Y: Byte); register;               external 'zx_plot';
 
 (**
  * Queries a point at the given coordinates.
  *)
-function Point(X, Y: Integer): Boolean;
-  function AsmPoint(XY: Integer): Boolean; register; external 'zx_point';
-begin
-  Point := AsmPoint(Lo(X) or Lo(Y) shl 8);
-end;
+function Point(X, Y: Byte): Boolean; register;      external 'zx_point';
 
 (**
- * Draws a line from the first coordinate pair to the second.
+ * Draws a line from the last plot position to the given (relative) coordinates.
  *)
-procedure Draw(X1, Y1, X2, Y2: Integer);
+procedure Draw(DX, DY: Integer);
 var
-  DX, DY, AX, AY, SX, SY: Integer;
+  AX, AY, SX, SY: Integer;
 
   procedure AsmDraw(DXY, Sgn: Integer); register;   external 'zx_draw';
 
 begin
-  Plot(X1, Y1);
-
-  DX := X2 - X1;
-  DY := Y2 - Y1;
+  DY := -DY;
 
   AX := Abs(DX);
   AY := Abs(DY);
@@ -203,3 +212,8 @@ begin
     Inc(X);
   end;
 end;
+
+(**
+ * Performs a recursive flood-fill starting at the given point.
+ *)
+procedure FloodFill(X, Y: Integer); register;       external 'zx_fill';
