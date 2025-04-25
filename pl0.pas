@@ -533,6 +533,18 @@ begin
   end;
 end;
 
+procedure ClearStrings;
+var
+  Tmp: PStringLiteral;
+begin
+  while Strings <> nil do
+  begin
+    Tmp := Strings;
+    Strings := Tmp^.Next;
+    Dispose(Tmp);
+  end;
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Symbol table --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
@@ -6465,7 +6477,19 @@ begin
 
     while SymbolTable <> nil do CloseScope(True);
 
+    CurrentScope := nil;
+    LastBuiltIn := nil;
+
+    ClearStrings;
+
     Source := nil;
+
+    Code := nil;
+
+    AbsCode := True;
+    CheckBreak := False;
+    IOMode := False;
+    StackMode := False;
 
     OpenInput(SrcFile);
     OpenTarget(AsmFile);
