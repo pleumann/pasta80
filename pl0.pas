@@ -231,6 +231,37 @@ begin
   {$I+}
 end;
 
+(**
+ * Copies a file, returns Boolean reflecting success or failure.
+ *)
+function CopyFile(SrcName, DstName: String): Boolean;
+var
+  Src, Dst: File;
+  Buffer: array[0..511] of Byte;
+  Count: Integer;
+begin
+  {$I-}
+  Assign(Dst, DstName);
+  Rewrite(Dst, 1);
+
+  Assign(Src, SrcName);
+  Reset(Src, 1);
+
+  BlockRead(Src, Buffer, 512, Count);
+
+  while (IOResult = 0) and (Count <> 0) do
+  begin
+    BlockWrite(Dst, Buffer, Count);
+    BlockRead(Src, Buffer, 512, Count);
+  end;
+
+  Close(Src);
+  Close(Dst);
+  {$I+}
+
+  CopyFile := IOResult = 0;
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Config handling ------------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
@@ -241,14 +272,24 @@ type
    *)
   TBinaryType = (btCPM, btZX, btZXN);
 
+  (**
+   * The possible output formats.
+   *)
+  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape);
+
 var
   (**
    * The type of binary we are generating.
    *)
   Binary: TBinaryType;
 
+  (**
+   * The format we are producing.
+   *)
+  Format: TTargetFormat;
+
 var
-  HomeDir, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
+  HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
   AltEditor: Boolean;
 
 (**
@@ -266,6 +307,9 @@ begin
   HomeDir := ParentDir(ParamStr(0));
   if Length(HomeDir) = 0 then HomeDir := '.';
   HomeDir := FExpand(HomeDir);
+
+  RunCommand('which', ['sjasmplus'], SjAsmCmd);
+  SjAsmCmd := TrimStr(SjAsmCmd);
 
   RunCommand('which', ['zasm'], ZasmCmd);
   ZasmCmd := TrimStr(ZasmCmd);
@@ -303,6 +347,8 @@ begin
 
           if Key = 'home' then
             HomeDir := Value
+          else if Key = 'sjasm' then
+            SjAsmCmd := Value
           else if Key = 'zasm' then
             ZasmCmd := Value
           else if Key = 'nano' then
@@ -2056,23 +2102,37 @@ begin
   if Binary = btCPM then
   begin
     Emit('CPM', 'equ 1', 'Target is CP/M .com file');
+    EmitI('device NOSLOT64K');
+  end
+  else if Binary = btZX then
+  begin
+    Emit('ZX', 'equ 1', 'Target is ZX 48K .tap file');
+    EmitI('device ZXSPECTRUM48');
   end
   else if Binary = btZXN then
   begin
     Emit('NXT', 'equ 1', 'Target is Next .dot file');
+    EmitI('device ZXSPECTRUMNEXT');
   end;
 end;
 
 (**
  * Emits the file footer.
  *)
-procedure EmitFooter();
+procedure EmitFooter(BinFile: String);
 begin
   EmitC('');
-  EmitC('HEAP:');
+  Emit('HEAP', '', '');
   EmitC('');
   EmitC('end');
   EmitC('');
+
+  if (Binary = btCPM) or (Format = tfBinary) then
+    EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
+  else if Format = tfPlus3Dos then
+    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
+  else if Format = tfTape then
+    EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000');
 end;
 
 (**
@@ -5307,7 +5367,7 @@ begin
         if Sym^.Value < Offset then Error('Invalid offset');
         if Sym^.Value > Offset then
         begin
-          EmitI('ds ' + IntToStr(Sym^.Value - Offset));
+          EmitI('ds ' + IntToStr(Sym^.Value - Offset) + ',0');
           Offset := Sym^.Value;
         end;
 
@@ -5328,7 +5388,7 @@ begin
     end;
 
     if Offset < DataType^.Value then
-      EmitI('ds ' + IntToStr(DataType^.Value - Offset));
+      EmitI('ds ' + IntToStr(DataType^.Value - Offset) + ',0');
 
     Expect(toRParen);
     NextToken;
@@ -5395,7 +5455,7 @@ begin
       Expect(toString);
       // Emit('', 'db ' + IntToStr(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
       Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
-      Emit('', 'ds ' + IntToStr(DataType^.Value - Length(Scanner.StrValue) - 1), '');
+      Emit('', 'ds ' + IntToStr(DataType^.Value - Length(Scanner.StrValue) - 1) + ',0', '');
       NextToken;
     end
     else if DataType^.Kind = scSetType then
@@ -6001,7 +6061,7 @@ begin
       else if Old^.Level = 1 then
       begin
         Old^.Tag := GetLabel('global');
-        Emit(Old^.Tag, 'ds ' + IntToStr(Old^.DataType^.Value), 'Global ' + Old^.Name);
+        Emit(Old^.Tag, 'ds ' + IntToStr(Old^.DataType^.Value) + ',0', 'Global ' + Old^.Name);
       end;
     end;
 
@@ -6382,10 +6442,6 @@ begin
   EmitEpilogue(Sym);
 end;
 
-var
-  SrcFile, MainFile, WorkFile, AsmFile, BinFile: String;
-  I: Integer;
-
 (**
  * Parses the main program. This includes automatic inclusion of the correct
  * system library (which needs its own "end." so we know when exactly the actual
@@ -6430,13 +6486,16 @@ begin
 *)
   EmitStrings();
   EmitC('');
-  Emit('display', 'ds 32', 'Display');
+  Emit('display', 'ds 32,0', 'Display');
   EmitC('');
   Emit('eof', '', 'End of file');
 
   CloseScope(False);
   CloseScope(True);
 end;
+
+var
+  SrcFile, AsmFile, BinFile: String;
 
 (**
  * Performs a build. All relevant information is assumed to be in the respective
@@ -6452,19 +6511,19 @@ begin
 
   AsmFile := ChangeExt(SrcFile, '.z80');
 
-  WriteLn('Compiling...');
-  WriteLn('  ', FRelative(SrcFile, Dir), ' -> ', FRelative(AsmFile, Dir));
-
   if Binary = btCPM then
     BinFile := ChangeExt(SrcFile, '.com')
-  else if Binary = btZX then
+  else if (Format = tfBinary) or (Format = tfPlus3Dos) then
     BinFile := ChangeExt(SrcFile, '.bin')
-  else if Binary = btZXN then
-    BinFile := ChangeExt(SrcFile, '.bin');
+  else if Format = tfTape then
+    BinFile := ChangeExt(SrcFile, '.tap');
 
   if SetJmp(StoredState) = 0 then
   begin
     Build := 1;
+
+    WriteLn('Compiling...');
+    WriteLn('  ', FRelative(SrcFile, Dir), ' -> ', FRelative(AsmFile, Dir));
 
     ErrorLine := 0;
     ErrorColumn := 0;
@@ -6497,32 +6556,31 @@ begin
 
     ParseProgram;
 
-    EmitFooter();                  (* TODO Move this elsewhere. *)
+    EmitFooter(BinFile);           (* TODO Move this elsewhere. *)
     CloseTarget();
     CloseInput();
 
     Build := 2;
 
+    CopyFile(HomeDir + '/etc/loader.tap', BinFile);
+
     WriteLn('Assembling...');
     WriteLn('  ', FRelative(AsmFile, Dir), ' -> ', FRelative(BinFile, Dir));
     WriteLn;
 
-    Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
+    //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
+    if Binary = btZXN then
+      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + AsmFile)
+    else
+      Exec(SjAsmCmd,  '--syntax=abf --nologo --msg=err ' + AsmFile);
+
     if DosError <> 0 then
-      Error('Error ' + IntToStr(DosError) + ' starting ' + ZasmCmd);
+      Error('Error ' + IntToStr(DosError) + ' starting assembler');
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
     if Binary = btCPM then Org := 256 else Org := 32768;
     Len := FSize(BinFile);
-
-    if Binary = btZX then
-    begin
-      WriteLn('Converting...');
-      WriteLn('  ', FRelative(BinFile, Dir), ' -> ', FRelative(ChangeExt(BinFile, '.tap'), Dir));
-      Exec(HomeDir + '/maketap', ChangeExt(BinFile, '.tap') + ' -h loader 0,55,0,55 -d ' + HomeDir + '/etc/loader.bas -h mcode 3,' + IntToStr(Len) + ',32768,32768 -d ' + BinFile);
-      WriteLn;
-    end;
 
     HeapStart := Org + Len;
     if HeapStart < 24576 then HeapStart := 24576;
@@ -6544,9 +6602,17 @@ const
   BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX Next');
 
   (**
+   * Printable names of supported formats. Must be aligned with TTargetFormat.
+   *)
+  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file');
+
+  (**
    * Yes/no strings. Why is this here and not in the IDE sestion?
    *)
   YesNoStr: array[Boolean] of String = ('No ', 'Yes');
+
+var
+  MainFile, WorkFile: String;
 
 (**
  * Reads a key from console.
@@ -6763,6 +6829,7 @@ end;
 function TermStr(S: String): String;
 var
   T: String;
+  I: Integer;
 begin
   T := '';
   I := 1;
@@ -6791,12 +6858,18 @@ var
   C: Char;
 begin
   repeat
-    Write(TermStr('~Target: '), BinaryStr[Binary]:7, '  ');
-    WriteLn(TermStr('~Optimize: '), YesNoStr[Optimize]:3, '  ', TermStr('~Back'));
+    Write(#27'[2J'#27'[H');
+
+    WriteLn(TermStr('~Target:   '), BinaryStr[Binary]);
+    WriteLn(TermStr('~Format:   '), FormatStr[Format]);
+    WriteLn(TermStr('~Optimize: '), YesNoStr[Optimize]);
+    WriteLn;
+    WriteLn(TermStr('~Back'));
 
     C := GetKey;
     case C of
       't': if Binary = btZXN then Binary := btCPM else Binary := Succ(Binary);
+      'f': if Format = tfTape then Format := tfBinary else Format := Succ(Format);
       'o': Optimize := not Optimize;
     end;
   until C = 'b';
@@ -6881,6 +6954,7 @@ end;
 procedure Parameters;
 var
   Ide: Boolean;
+  I: Integer;
 begin
   if ParamCount = 0 then
   begin
@@ -6888,12 +6962,15 @@ begin
     WriteLn('  pl0 { <option> } <input>');
     WriteLn;
     WriteLn('Options:');
-    WriteLn('  --cpm          generates ''.com'' file for CP/M');
-    WriteLn('  --zx           generates ''.bin'' file for ZX Spectrum');
-    WriteLn('  --zxn          generates ''.bin'' file for ZX Spectrum Next');
+    WriteLn('  --cpm          Set target to CP/M (default)');
+    WriteLn('  --zx           Set target to ZX Spectrum 48K');
+    WriteLn('  --zxn          Set target to ZX Spectrum Next');
+    WriteLn;
+    WriteLn('  --bin          Generate raw binary file (default)');
+    WriteLn('  --dos          Generate +3DOS binary file');
+    WriteLn('  --tap          Generate tape file with loader');
+    WriteLn;
     WriteLn('  --opt          enables optimizations');
-    WriteLn('  --asm <path>   sets assembler binary');
-(*  WriteLn('  --chk          enables run-time checks'); *)
     WriteLn('  --ide          starts interactive mode');
     WriteLn;
     Halt(1);
@@ -6905,17 +6982,18 @@ begin
   SrcFile := ParamStr(I);
   while Copy(SrcFile, 1, 2) = '--' do
   begin
-    if SrcFile = '--asm' then
-    begin
-      ZasmCmd := ParamStr(I + 1);
-      I := I + 1;
-    end
-    else if SrcFile = '--cpm' then
+    if SrcFile = '--cpm' then
       Binary := btCPM
     else if SrcFile = '--zx' then
       Binary := btZX
     else if SrcFile = '--zxn' then
       Binary := btZXN
+    else if SrcFile = '--bin' then
+      Format := tfBinary
+    else if SrcFile = '--dos' then
+      Format := tfPlus3Dos
+    else if SrcFile = '--tap' then
+      Format := tfTape
     else if SrcFile = '--opt' then
       Optimize := True
     else if SrcFile = '--ide' then
