@@ -56,18 +56,18 @@ The compiler is itself written in Pascal. You can compile it with [Free Pascal](
 $ fpc pl0
 ```
 
-The Pascal compiler generates Z80 assembler code and relies on [zasm](https://k1.spdns.de/Develop/Projects/zasm/Documentation/index.html) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of `nano`, Visual Studio Code (via the `code` command) and `tnylpo`.
+The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of `nano`, Visual Studio Code (via the `code` command) and `tnylpo`.
 
 The compiler tries to detect external tools automatically, but it's best to create a file `.pl0.cfg` in your home directory specifying necessary paths (there is a sample in `etc` that you can adapt):
 
 ```
 # PL/0 config
 
-HOME   = ~/Projects/pl0
-ZASM   = ~/Library/bin/zasm
-NANO   = /opt/local/bin/nano
-VSCODE = /usr/local/bin/code
-TNYLPO = ~/Library/bin/tnylpo
+HOME      = ~/Projects/pl0
+SJASMPLUS = ~/Library/bin/sjasmplus
+NANO      = /opt/local/bin/nano
+VSCODE    = /usr/local/bin/code
+TNYLPO    = ~/Library/bin/tnylpo
 ```
 
 ## Using the compiler
@@ -99,13 +99,15 @@ $ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K
 $ pl0 --zxn hello.pas         # Compiles for ZX Spectrum Next
 ```
 
-The main difference between the two (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000. You'd usually do that with a little BASIC loader like the following one:
+The main difference between the two (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000.
+
+The default output format is a raw binary file that contains exactly the bytes of the compiled program. For your convenience, the compiler can also generate tape files or files with a +3DOS header:
 
 ```
-10 CLEAR 32767
-20 LOAD "hello.bin" CODE 32768
-30 RANDOMIZE USR 32768
+$ pl0 --zx --tap hello.pas    # .tap file with BASIC loader
+$ pl0 --zxn --dos hello.pas   # .bin file with +3DOS header
 ```
+
 
 ## Examples and tests
 
