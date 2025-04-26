@@ -281,12 +281,12 @@ var
   (**
    * The type of binary we are generating.
    *)
-  Binary: TBinaryType;
+  Binary: TBinaryType = btCPM;
 
   (**
    * The format we are producing.
    *)
-  Format: TTargetFormat;
+  Format: TTargetFormat = tfBinary;
 
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -2127,8 +2127,10 @@ begin
   EmitC('end');
   EmitC('');
 
-  if (Binary = btCPM) or (Format = tfBinary) then
+  if Binary = btCPM then
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
+  else if Format = tfBinary then
+    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
   else if Format = tfPlus3Dos then
     EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
