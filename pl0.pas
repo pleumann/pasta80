@@ -1517,6 +1517,11 @@ var
   StoredState: Jmp_Buf;
 
 (**
+   * Whether we have assigned a stored state we can jump to.
+   *)
+  HasStoredState: Boolean;
+
+(**
  * Reports an error and performs a LongJmp back to the point where parsing was
  * started.
  *)
@@ -1545,7 +1550,10 @@ begin
   WriteLn();
 
   // TODO Get rid of need for LongJmp by making "IDE" a separate program?
-  LongJmp(StoredState, 1);
+  if HasStoredState then
+    LongJmp(StoredState, 1)
+  else
+    Halt(1);
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -6522,6 +6530,8 @@ begin
 
   if SetJmp(StoredState) = 0 then
   begin
+    HasStoredState := True;
+
     Build := 1;
 
     WriteLn('Compiling...');
@@ -6593,6 +6603,8 @@ begin
     WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
     WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
   end;
+
+  HasStoredState := False;
 end;
 
 (* --- Interactive Menu --- *)
