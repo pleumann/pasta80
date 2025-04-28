@@ -701,6 +701,8 @@ begin
 
   if AdjustLevel then
   begin
+    if Level = 7 then Error('Nesting too deep.');
+
     Level := Level + 1;
     Offset := 0;
   end;
@@ -883,7 +885,7 @@ procedure SetDataType(Sym: PSymbol; DataType: PSymbol);
 begin
   Sym^.DataType := DataType;
 
-  if (Level = 1) and (Sym^.Tag = '') then
+  if (Level = 0) and (Sym^.Tag = '') then
   begin
     // TODO Improve this! It's an ugly way of detecting global variables.
     // TODO Move away from mixed code/data to a separate data segment.
@@ -2266,7 +2268,7 @@ begin
   if Sym = Nil then
   begin
     Emit('main', '', '');
-    EmitI('ld (display+2),sp');
+    EmitI('ld (display),sp');
     EmitCall(LookupBuiltInOrFail('InitHeap'));
   end
   else
@@ -4873,12 +4875,12 @@ begin
       S := S + IntToStr(Sym^.Value);
       if Sym^.Value > 255 then W := True;
     end
-    else if (Sym^.Kind = scVar) and (Sym^.Level = 1) then
+    else if (Sym^.Kind = scVar) and (Sym^.Level = 0) then
     begin
       S := S + Sym^.Tag;
       W := True;
     end
-    else if (Sym^.Kind = scVar) and (Sym^.Level > 1) then
+    else if (Sym^.Kind = scVar) and (Sym^.Level > 0) then
     begin
       S := S + IntToStr(Sym^.Value);
       W := True;
@@ -5504,7 +5506,7 @@ begin
     Sym := CreateSymbol(scVar, Name);
     Sym^.DataType := ParseTypeDef();
     Sym^.Tag := GetLabel('const');
-    Sym^.Level := 1; (* Force global *)
+    Sym^.Level := 0; (* Force global *)
 
     Emit(Sym^.Tag, '', '');
 
@@ -5997,7 +5999,7 @@ begin
 
   CreateSymbol(scVar, Name);
   (*
-  if Sym^.Level = 1 then
+  if Sym^.Level = 0 then
   begin
     Sym^.Tag := GetLabel('global');
     Emit0(Sym^.Tag, 'ds ' + IntToStr(Sym^.Bounds * 2), 'Global ' + Sym^.Name);
@@ -6062,13 +6064,13 @@ begin
     Old := Old^.Next;
     if Old^.Kind = scVar then
     begin
-      if AbsCode and (DataType^.Value <= 32) then Old^.Level := 1;
+      if AbsCode and (DataType^.Value <= 32) then Old^.Level := 0;
 
       SetDataType(Old, DataType);
 
       // TODO Should this be part of SetDataType?
       if IsAbs then Old^.Tag := Tag
-      else if Old^.Level = 1 then
+      else if Old^.Level = 0 then
       begin
         Old^.Tag := GetLabel('global');
         Emit(Old^.Tag, 'ds ' + IntToStr(Old^.DataType^.Value) + ',0', 'Global ' + Old^.Name);
@@ -6459,7 +6461,7 @@ end;
  *)
 procedure ParseProgram;
 begin
-  OpenScope(True);
+  OpenScope(False);
   RegisterAllBuiltIns;
 
   if Binary = btCPM then
@@ -6496,12 +6498,12 @@ begin
 *)
   EmitStrings();
   EmitC('');
-  Emit('display', 'ds 32,0', 'Display');
+  Emit('display', 'ds 16,0', 'Display');
   EmitC('');
   Emit('eof', '', 'End of file');
 
   CloseScope(False);
-  CloseScope(True);
+  CloseScope(False);
 end;
 
 var
