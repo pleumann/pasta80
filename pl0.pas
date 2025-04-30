@@ -379,6 +379,7 @@ begin
   AltEditor := GetEnv('TERM_PROGRAM') = 'vscode'; // Are we running inside VSC?
 end;
 
+procedure Emit(Tag, Instruction, Comment: String); forward;
 procedure EmitI(S: String); forward;
 procedure Error(Message: String); forward;
 procedure SetLibrary(FileName: String); forward;
@@ -631,6 +632,9 @@ type
     IsForward: Boolean;                 // Forward-declared procedure/function
     IsExternal: Boolean;                // External, to be resolved by assembler
     SavedParams: PSymbol;               // Original parameters, forward-case only
+    IsAlive: Boolean;
+    Deps: array[0..127] of PSymbol;
+    DepCount: Integer;
   end;
 
 var
@@ -649,6 +653,8 @@ var
    * The last built-in identifier.
    *)
   LastBuiltIn: PSymbol = nil;
+
+  CurrentBlock: PSymbol = nil;
 
   (**
    * Nesting level and variable offset. Maintained by compiler.
@@ -679,6 +685,8 @@ var
   HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc, FillProc, IncProc,
   DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc,
   SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+
+  SmartLink: Boolean; (* TODO Move elsewhere *)
 
 (**
  * Opens a scope, which mainly adds a new scope marker at the front of the
@@ -718,13 +726,29 @@ procedure CloseScope(AdjustLevel: Boolean);
 var
   Sym: PSymbol;
   Kind: TSymbolClass;
+  I: Integer;
 begin
   while SymbolTable <> CurrentScope do
   begin
     Kind := SymbolTable^.Kind;
 
-    if ((Kind = scProc) or (Kind = scFunc)) and (SymbolTable^.IsForward) then
-      Error('Unresolved forward declaration "' + SymbolTable^.Name + '"');
+    if ((Kind = scProc) or (Kind = scFunc)) then with SymbolTable^ do
+    begin
+      if IsForward then
+        Error('Unresolved forward declaration "' + SymbolTable^.Name + '"');
+
+      if SmartLink and IsStdCall and not IsExternal then
+      begin
+        if IsAlive then
+        begin
+          Emit('__USE' + Tag, 'equ 1', '');
+          for I := 0 to DepCount - 1 do
+            Deps[I]^.IsAlive := True;
+        end
+        else
+          Emit('__USE' + Tag, 'equ 0', '');
+      end;
+    end;
 
     Sym := SymbolTable^.Prev;
     Dispose(SymbolTable);
@@ -762,6 +786,19 @@ begin
   begin
     if UpperStr(Sym^.Name) = Name then
     begin
+      with Sym^ do
+        if ((Kind = scProc) or (Kind = scFunc)) and IsStdCall and not IsExternal then
+        begin
+          if CurrentBlock <> nil then with CurrentBlock^ do
+          begin
+            if DepCount = 128 then Error('Too many dependencies'); (* TODO Fix me! *)
+
+            Deps[DepCount] := Sym;
+            Inc(DepCount);
+          end
+          else Sym^.IsAlive := True
+        end;
+
       Lookup := Sym;
       Exit;
     end;
@@ -6269,6 +6306,8 @@ begin
         NextToken;
         Expect(toSemicolon);
         NextToken;
+
+        NewSym := FwdSym;
       end
       else
       begin
@@ -6437,7 +6476,11 @@ end;
  * enclose in "begin" and "end".
  *)
 procedure ParseBlock(Sym: PSymbol);
+var
+  PrevBlock: PSymbol;
 begin
+  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then EmitI('if __USE' + Sym^.Tag);
+
   ParseDeclarations(Sym);
 
   ExitTarget := GetLabel('exit');
@@ -6445,13 +6488,30 @@ begin
 
   Expect(toBegin);
   NextToken;
+(*
+  if Sym <> nil then
+    WriteLn('Entering level ', Sym^.Level , ' block ', Sym^.Name)
+  else
+    Writeln('Entering main block');
+*)
+  PrevBlock := CurrentBlock;
+  CurrentBlock := Sym;
 
   ParseStatementList('', '');
 
+  CurrentBlock := PrevBlock;
+(*
+  if Sym <> nil then
+    WriteLn('Leaving level ', Sym^.Level , ' block ', Sym^.Name)
+  else
+    Writeln('Leaving main block');
+*)
   Expect(toEnd);
   NextToken;
 
   EmitEpilogue(Sym);
+
+  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then EmitI('endif');
 end;
 
 (**
@@ -6986,7 +7046,9 @@ begin
     WriteLn('  --dos          Generates binary with +3DOS header');
     WriteLn('  --tap          Generates tape file with loader');
     WriteLn;
-    WriteLn('  --opt          enables optimizations');
+    WriteLn('  --dep          enable dependency analysis');
+    WriteLn('  --opt          enable peephole optimizations');
+    WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn;
     Halt(1);
@@ -7012,6 +7074,8 @@ begin
       Format := tfTape
     else if SrcFile = '--opt' then
       Optimize := True
+    else if SrcFile = '--dep' then
+      SmartLink := True
     else if SrcFile = '--ide' then
       Ide := True
     else
