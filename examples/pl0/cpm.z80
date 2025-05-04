@@ -1,0 +1,129 @@
+; ----------------------------------------------------------------------------
+; PL0 built-in assembler functions
+; ----------------------------------------------------------------------------
+
+;
+; PUTC
+;
+__PUTC:
+            ld      e,a
+            ld      c,2
+            call    5
+            ret
+
+;
+; PUTS
+;
+__PUTS:
+            ld      b,(hl)
+            inc     b
+            jr      __PUTSCHCK
+__PUTSLOOP: ld      a,(hl)
+            push    hl
+            push    bc
+            call    __PUTC
+            pop     bc
+            pop     hl
+__PUTSCHCK: inc     hl
+            djnz    __PUTSLOOP
+            ld      a,13
+            call    __PUTC
+            ld      a,10
+            call    __PUTC
+            ret
+
+;
+; PUTI
+;
+__PUTN:
+            ld      a,128
+            and     h
+            jr      z,__PUTNPOS
+            ld      de,0
+            ex      de,hl
+            sbc     hl,de
+            ld      a,'-'
+            push    af
+            jp      __PUTNGO
+__PUTNPOS:
+            ld      a,' '
+            push    af
+__PUTNGO:
+            ld      de,__PUTNBUF+6
+__PUTNLOOP:
+            call    __DIV10
+            add     '0'
+            ld      (de),a
+            dec     de
+
+            ld      a,h
+            or      l
+            jr      nz,__PUTNLOOP
+            pop     af
+            ld      (de),a
+            ld      hl,__PUTNBUF+7
+            and     a
+            sbc     hl,de
+            ld      a,l
+            dec     de
+            ld      (de),a
+            ex      de,hl
+            call    __PUTS
+            ret
+__PUTNBUF:
+            db      0,"-32768"
+
+__GETN:
+            ld      a,'>'
+            call    __PUTC
+
+            ld      de,__GETNBUF
+            ld      c,10
+            call    5
+
+            ld      a,'>'
+            call    __PUTC
+
+            ld      hl,__GETNBUF+1
+            call    __PUTS
+
+            ld      de,0
+            ld      a,(__GETNBUF+1)
+            cp     0
+            ret     z
+
+            ld      b,a
+            ld      hl,__GETNBUF+2
+            ld      a,(hl)
+            cp     '-'
+            jr      z,__GETNCHK
+__GETNLOOP:
+            sub     '0'
+            push    hl
+            call    __MUL10
+            ld      l,a
+            ld      h,0
+            add     hl,de
+            ex      de,hl
+            pop     hl
+__GETNCHK:
+            inc     hl
+            ld      a,(hl)
+            djnz    __GETNLOOP
+
+            ld      a,(__GETNBUF+2)
+            cp     '-'
+            ret     nz
+
+            xor     a
+            ld      hl,0
+            sbc     hl,de
+            ex      de,hl
+
+            ret
+
+__GETNBUF:
+            db      10,0,"-32768"
+
+__DISPLAY:
+            ds      32
