@@ -699,6 +699,8 @@ var
   Sym: PSymbol;
 begin
   New(Sym);
+  FillChar(Sym^, SizeOf(TSymbol), 0);
+
   Sym^.Kind := scScope;
   Sym^.Prev := SymbolTable;
   Sym^.DataType := CurrentScope;
@@ -737,13 +739,13 @@ begin
       if IsForward then
         Error('Unresolved forward declaration "' + SymbolTable^.Name + '"');
 
-      if SmartLink and IsStdCall and not IsExternal then
+      if SmartLink and (Level = 0) and IsStdCall and not IsExternal then
       begin
         if IsAlive then
         begin
           Emit('__USE' + Tag, 'equ 1', '');
-          for I := 0 to DepCount - 1 do
-            Deps[I]^.IsAlive := True;
+//          for I := 0 to DepCount - 1 do
+//            Deps[I]^.IsAlive := True;
         end
         else
           Emit('__USE' + Tag, 'equ 0', '');
@@ -768,6 +770,50 @@ begin
   SymbolTable := Sym;
 end;
 
+procedure Dependencies(Sym: PSymbol);
+var
+  I: Integer;
+begin
+  with Sym^ do
+  begin
+    //WriteLn('*** ', Name);
+
+    if IsAlive then Exit;
+
+    //WriteLn(Name, ' is alive');
+
+    IsAlive := True;
+
+    for I := 0 to DepCount - 1 do
+      Dependencies(Deps[I]);
+  end;
+end;
+
+procedure AddDependency(Src, Dst: PSymbol);
+var
+  I: Integer;
+begin
+    if (Src <> nil) then
+    begin
+      if Dst <> Src then with Src^ do
+      begin
+        for I := 0 to DepCount - 1 do
+          if Deps[I] = Dst then Exit;
+
+        if DepCount = 128 then Error('Too many dependencies'); (* TODO Fix me! *)
+
+        //WriteLn(CurrentBlock^.Name, ' depends on ', Sym^.Name);
+
+        Deps[DepCount] := Dst;
+        Inc(DepCount);
+      end
+    end
+    else
+    begin
+      //WriteLn('Main program depends on ', Sym^.Name);
+      Dependencies(Dst);
+    end;
+  end;
 (**
  * Searches the symbol table for the given identifier. Returns the symbol or
  * nil if it does not exist. The search starts and stops at the given symbols,
@@ -779,6 +825,7 @@ end;
 function Lookup(Name: string; Start, Stop: PSymbol): PSymbol;
 var
   Sym: PSymbol;
+  I: Integer;
 begin
   Name := UpperStr(Name);
   Sym := Start;
@@ -786,20 +833,15 @@ begin
   begin
     if UpperStr(Sym^.Name) = Name then
     begin
-      with Sym^ do
-        if ((Kind = scProc) or (Kind = scFunc)) and IsStdCall and not IsExternal then
-        begin
-          if CurrentBlock <> nil then with CurrentBlock^ do
-          begin
-            if DepCount = 128 then Error('Too many dependencies'); (* TODO Fix me! *)
-
-            Deps[DepCount] := Sym;
-            Inc(DepCount);
-          end
-          else Sym^.IsAlive := True
-        end;
-
       Lookup := Sym;
+
+      (*
+      Wenn lookup in main block stattfindet, nimm Symbol als Wurzel in irgendeine
+      Liste auf. Noch nicht aktivieren. Beim Schließen des main blocks rekursive
+      Durchläufe bei allen Wurzeln starten.
+      *)
+
+
       Exit;
     end;
     Sym := Sym^.Prev;
@@ -2087,6 +2129,10 @@ procedure EmitCall(Sym: PSymbol);
 var
   I, J, K: Integer;
 begin
+  with Sym^ do
+    if SmartLink and (Level = 0) and IsStdCall and not IsExternal then
+      AddDependency(CurrentBlock, Sym);
+
   if not Sym^.IsStdCall then
   begin
     (* This is a bit broken. Checks should probably be done when parsing the
@@ -6483,29 +6529,38 @@ begin
 
   ParseDeclarations(Sym);
 
+  //if Sym = nil then
+    //WriteLn('Entering level ', Sym^.Level , ' block ', Sym^.Name)
+  //else
+  //begin
+    //Writeln('Entering main block');
+    //MainBlock := True;
+  //end;
+
   ExitTarget := GetLabel('exit');
   EmitPrologue(Sym);
 
   Expect(toBegin);
   NextToken;
-(*
-  if Sym <> nil then
-    WriteLn('Entering level ', Sym^.Level , ' block ', Sym^.Name)
-  else
-    Writeln('Entering main block');
-*)
+
+  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then
+  begin
   PrevBlock := CurrentBlock;
   CurrentBlock := Sym;
+  end;
 
   ParseStatementList('', '');
 
+  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then
+  begin
   CurrentBlock := PrevBlock;
-(*
-  if Sym <> nil then
-    WriteLn('Leaving level ', Sym^.Level , ' block ', Sym^.Name)
-  else
-    Writeln('Leaving main block');
-*)
+  end;
+
+  //if Sym <> nil then
+    //WriteLn('Leaving level ', Sym^.Level , ' block ', Sym^.Name)
+  //else
+    //Writeln('Leaving main block');
+
   Expect(toEnd);
   NextToken;
 
