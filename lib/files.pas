@@ -99,7 +99,12 @@ begin
     TextReadChar(T, C);
     if LastError <> 0 then Exit;
 
-    if C = #13 then Break;
+    if C = #10 then Break;
+    if C = #13 then
+    begin
+      if T.DMA[T.Offset] = #10 then TextReadChar(T, C);
+      Break;
+    end;
     if C = #26 then Break;
 
     if C >= ' ' then S := S + C;
