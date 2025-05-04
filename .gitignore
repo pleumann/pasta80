@@ -1,9 +1,9 @@
 .vscode
 .DS_Store
-pl0
-pl0.o
-maketap
-maketap.o
+/pl0
+/pl0.o
+/maketap
+/maketap.o
 examples/*.z80
 examples/*.lst
 examples/*.com
