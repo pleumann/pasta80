@@ -2,7 +2,7 @@
 (* --- Pascal Compiler ------------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
 
-program PL0;
+program Pasta80;
 
 {$mode delphi}
 
@@ -327,7 +327,7 @@ begin
   FuseCmd := TrimStr(FuseCmd);
 
   {$I-}
-  Assign(T, UserHome + '/.pl0.cfg');
+  Assign(T, UserHome + '/.pasta80.cfg');
   Reset(T);
   if IOResult = 0 then
   begin
@@ -371,7 +371,7 @@ begin
   end
   else
   begin
-    WriteLn('Warning: File ~/.pl0.cfg not found. Please consider creating it.');
+    WriteLn('Warning: File ~/.pasta80.cfg not found. Please consider creating it.');
     WriteLn;
   end;
   {$I+}
@@ -6840,9 +6840,9 @@ begin
   else
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
+      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
     else
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pl0.nanorc ' + S);
+      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pascal.nanorc ' + S);
   end;
 end;
 
@@ -7012,7 +7012,7 @@ end;
 procedure Copyright;
 begin
   WriteLn('----------------------------------------');
-  WriteLn('Pascal Compiler for Z80     Version 0.91');
+  WriteLn(#27'[1m', 'PASTA/80 Pascal System', #27'[m', 'Version 0.91':18);
   WriteLn(BinaryStr[Binary] + ', Z80':40);
   WriteLn;
   WriteLn('Copyright (C) 2020-2025 by Jörg Pleumann');
@@ -7090,7 +7090,7 @@ begin
   if ParamCount = 0 then
   begin
     WriteLn('Usage:');
-    WriteLn('  pl0 { <option> } <input>');
+    WriteLn('  pasta80 { <option> } <input>');
     WriteLn;
     WriteLn('Options:');
     WriteLn('  --cpm          Sets target to CP/M (default)');

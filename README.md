@@ -1,7 +1,8 @@
 ![Logo](images/logo.png)
-# Pascal Compiler for Z80
 
-This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M](https://en.wikipedia.org/wiki/CP/M), the classic [ZX Spectrum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum) and the [ZX Spectrum Next](https://www.specnext.com). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent approach, so it doesn't have an explicit syntax tree, but instead generates code on the fly during parsing.
+# Z80 Pascal Compiler
+
+PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M](https://en.wikipedia.org/wiki/CP/M), the classic [ZX Spectrum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum) and the [ZX Spectrum Next](https://www.specnext.com). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent approach, so it doesn't have an explicit syntax tree, but instead generates code on the fly during parsing.
 
 ## Supported language elements
 
@@ -54,17 +55,17 @@ The runtime library, being partially written in Pascal itself, gets quite large 
 The compiler is itself written in Pascal. You can compile it with [Free Pascal](https://www.freepascal.org) (I use version 3.2.2). Just run
 
 ```
-$ fpc pl0
+$ fpc pasta
 ```
 
 The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of `nano`, Visual Studio Code (via the `code` command) and `tnylpo`.
 
-The compiler tries to detect external tools automatically, but it's best to create a file `.pl0.cfg` in your home directory specifying necessary paths (there is a sample in `etc` that you can adapt):
+The compiler tries to detect external tools automatically, but it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `etc` that you can adapt):
 
 ```
-# PL/0 config
+# PASTA/80 config
 
-HOME      = ~/Projects/pl0
+HOME      = ~/Projects/pasta80
 SJASMPLUS = ~/Library/bin/sjasmplus
 NANO      = /opt/local/bin/nano
 VSCODE    = /usr/local/bin/code
@@ -73,12 +74,13 @@ TNYLPO    = ~/Library/bin/tnylpo
 
 ## Using the compiler
 
-To run the compiler just invoke the executable with the name of a Pascal source file to translate. The default target is CP/M. There is an optional parameter that enables some simple peephole optimizations:
+To run the compiler just invoke the executable with the name of a Pascal source file to translate. The default target is CP/M. There is an optional parameter that enables some simple peephole optimizations and another one that uses dependency analysis to eliminate unused Pascal procedures and functions:
 
 ```
-$ pl0 hello.pas               # Compiles hello.pas to hello.com
-$ pl0 --opt hello.pas         # Does the same with optimizations
-$ pl0 --opt hello             # Source file .pas suffix is optional
+$ pasta hello.pas             # Compiles hello.pas to hello.com
+$ pasta hello                 # Source file .pas suffix is optional
+$ pasta --opt hello.pas       # Enables peephole optimizations
+$ pasta --opt --dep hello.pas # The same plus dependency analysis
 ```
 
 You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend [tnylpo](https://gitlab.com/gbrein/tnylpo). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
@@ -96,8 +98,8 @@ $ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) col
 To generate binaries for the ZX Spectrum 48K and ZX Spectrum Next targets, use the `--zx` and `--zxn` parameters, respectively.
 
 ```
-$ pl0 --zx hello.pas          # Compiles for ZX Spectrum 48K
-$ pl0 --zxn hello.pas         # Compiles for ZX Spectrum Next
+$ pasta --zx hello.pas        # Compiles for ZX Spectrum 48K
+$ pasta --zxn hello.pas       # Compiles for ZX Spectrum Next
 ```
 
 The main difference between the two (currently) is that the ZX Spectrum Next target supports file IO, while the ZX Spectrum 48K target does not. The other routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000.
@@ -105,8 +107,8 @@ The main difference between the two (currently) is that the ZX Spectrum Next tar
 The default output format is a raw binary file that contains exactly the bytes of the compiled program. For your convenience, the compiler can also generate tape files or files with a +3DOS header:
 
 ```
-$ pl0 --zx --tap hello.pas    # .tap file with BASIC loader
-$ pl0 --zxn --dos hello.pas   # .bin file with +3DOS header
+$ pasta --zx --tap hello.pas  # .tap file with BASIC loader
+$ pasta --zxn --dos hello.pas # .bin file with +3DOS header
 ```
 
 
@@ -119,7 +121,7 @@ There is a folder containing `examples` and a folder containing `tests` for the 
 As a fun little gimmick the compiler can be started like this
 
 ```
-$ pl0 --ide
+$ pasta --ide
 ```
 
 to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0.
