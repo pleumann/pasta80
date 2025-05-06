@@ -1,6 +1,6 @@
 ![Logo](images/logo.png)
 
-# Z80 Pascal Compiler
+# PASTA/80
 
 PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M](https://en.wikipedia.org/wiki/CP/M), the classic [ZX Spectrum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum) and the [ZX Spectrum Next](https://www.specnext.com). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent approach, so it doesn't have an explicit syntax tree, but instead generates code on the fly during parsing.
 
@@ -8,8 +8,8 @@ PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_
 
 The supported Pascal dialect is an almost exact clone of the original [Turbo Pascal 3.0](https://en.wikipedia.org/wiki/Turbo_Pascal) for CP/M (see [this manual](https://bitsavers.trailing-edge.com/pdf/borland/turbo_pascal/Turbo_Pascal_Version_3.0_Reference_Manual_1986.pdf) for details). So you have at your disposal these language elements:
 
-* All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Real`, `String` and `Pointer`).
-* `array of`, `record`, `set`, enumerations, subranges and pointers as a way of building new data types.
+* All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Pointer`, `Real` and `String`).
+* `array of`, `record`, `set of`, enumerations, subranges and pointers as a way of building new data types.
 * The decision-making elements `if..then..else` and `case..of`.
 * The loop elements `for..do`, `while..do` and `repeat..until`.
 * The `with..do` notation for "opening" records.
