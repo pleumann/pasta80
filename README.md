@@ -1,3 +1,4 @@
+![Logo](images/logo.png)
 # Pascal Compiler for Z80
 
 This is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for [CP/M](https://en.wikipedia.org/wiki/CP/M), the classic [ZX Spectrum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum) and the [ZX Spectrum Next](https://www.specnext.com). The compiler follows [Niklaus Wirth's](https://de.wikipedia.org/wiki/Niklaus_Wirth) classical single-pass recursive-descent approach, so it doesn't have an explicit syntax tree, but instead generates code on the fly during parsing.
