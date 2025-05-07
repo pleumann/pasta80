@@ -6991,9 +6991,10 @@ begin
   repeat
     Write(#27'[2J'#27'[H');
 
-    WriteLn(TermStr('~Target:   '), BinaryStr[Binary]);
-    WriteLn(TermStr('~Format:   '), FormatStr[Format]);
-    WriteLn(TermStr('~Optimize: '), YesNoStr[Optimize]);
+    WriteLn(TermStr('~Target machine     : '), BinaryStr[Binary]);
+    WriteLn(TermStr('Output ~Format      : '), FormatStr[Format]);
+    WriteLn(TermStr('Peephole ~optimizer : '), YesNoStr[Optimize]);
+    WriteLn(TermStr('~Dependency analysis: '), YesNoStr[SmartLink]);
     WriteLn;
     WriteLn(TermStr('~Back'));
 
@@ -7002,6 +7003,7 @@ begin
       't': if Binary = btZXN then Binary := btCPM else Binary := Succ(Binary);
       'f': if Format = tfTape then Format := tfBinary else Format := Succ(Format);
       'o': Optimize := not Optimize;
+      'd': SmartLink := not SmartLink;
     end;
   until C = 'b';
 end;
@@ -7012,8 +7014,11 @@ end;
 procedure Copyright;
 begin
   WriteLn('----------------------------------------');
-  WriteLn(#27'[1m', 'PASTA/80 Pascal System', #27'[m', 'Version 0.91':18);
-  WriteLn(BinaryStr[Binary] + ', Z80':40);
+  WriteLn(#27'[1m', 'PASTA/80 Pascal System', #27'[m', 'Version 0.92':18);
+  if Binary = btZXN then
+    WriteLn(BinaryStr[Binary] + ', Z80N':40)
+  else
+    WriteLn(BinaryStr[Binary] + ', Z80':40);
   WriteLn;
   WriteLn('Copyright (C) 2020-2025 by Jörg Pleumann');
   WriteLn('----------------------------------------');
