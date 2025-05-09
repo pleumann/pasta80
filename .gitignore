@@ -1,9 +1,7 @@
 .vscode
 .DS_Store
-/pl0
-/pl0.o
-/maketap
-/maketap.o
+/pasta
+/pasta.o
 examples/*.z80
 examples/*.lst
 examples/*.com
@@ -16,4 +14,3 @@ tests/*.com
 tests/*.dot
 tests/*.tap
 tests/*.bin
-
