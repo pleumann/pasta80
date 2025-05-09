@@ -67,9 +67,9 @@ The compiler tries to detect external tools automatically, but it's best to crea
 
 HOME      = ~/Projects/pasta80
 SJASMPLUS = ~/Library/bin/sjasmplus
+TNYLPO    = ~/Library/bin/tnylpo
 NANO      = /opt/local/bin/nano
 VSCODE    = /usr/local/bin/code
-TNYLPO    = ~/Library/bin/tnylpo
 ```
 
 ## Using the compiler
@@ -110,7 +110,6 @@ The default output format is a raw binary file that contains exactly the bytes o
 $ pasta --zx --tap hello.pas  # .tap file with BASIC loader
 $ pasta --zxn --dos hello.pas # .bin file with +3DOS header
 ```
-
 
 ## Examples and tests
 
@@ -157,3 +156,38 @@ These screenshots show some applications compiled for the ZX Spectrum 48K target
 | ![Screenshot](images/graphics.png) | ![Screenshot](images/pqformula.png) |
 
 I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
+
+# License
+
+**PASTA/80 Pascal Compiler**
+
+Copyright (c) 2020-2025 by Jörg Pleumann
+
+The PASTA/80 compiler is free software: you can redistribute it and/or modify
+it under the terms of the **GNU General Public License (GPL)** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+* The runtime library (folder `rtl`) comes with a **linking exception** that makes sure the GPL does not transfer to binaries created using PASTA/80.
+
+* The examples (folder `examples`) are considered **public domain** or whatever comes closest to that in your jurisdiction.
+
+* Individual files or folders may use different licenses, so you might want to double check.
+
+Everything is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+What does this mean for you?
+
+* You can **use the compiler**, free of charge, to build any application, open-source or prioprietary, free or paid, and distribute the generated binary without restriction. You can **distribute binaries** created with PASTA/80 under a **license of your choosing**.
+
+* You can **modify the compiler** according to your needs. If you **distribute the compiler** or parts of it, binary or source, modified or not, you have to **comply with the rules laid out in the GPL** (copyright info, source code, ...) unless the linking exception applies.
+
+# Acknowledgements
+
+The math48 library is coypright (c) 1980 by Anders Hejlsberg.
+
+Some assembly routines adapted from Leventhal/Saville, "Z80 Assembly Subroutines", Osborne/McGraw-Hill 1983.
+
+Turbo Pascal is a registered trademark of Code Gear LLC / Embarcadero.
+
+Z80 is a registered trademark of Zilog, Inc.
