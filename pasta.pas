@@ -6580,11 +6580,11 @@ begin
   RegisterAllBuiltIns;
 
   if Binary = btCPM then
-    OpenInput(HomeDir + '/lib/cpm.pas')
+    OpenInput(HomeDir + '/rtl/cpm.pas')
   else if Binary = btZX then
-    OpenInput(HomeDir + '/lib/zx.pas')
+    OpenInput(HomeDir + '/rtl/zx.pas')
   else
-    OpenInput(HomeDir + '/lib/next.pas');
+    OpenInput(HomeDir + '/rtl/next.pas');
 
   NextToken;
   ParseDeclarations(nil);
