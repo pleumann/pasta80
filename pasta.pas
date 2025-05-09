@@ -347,10 +347,8 @@ begin
 
           if Key = 'home' then
             HomeDir := Value
-          else if Key = 'sjasm' then
+          else if Key = 'sjasmplus' then
             SjAsmCmd := Value
-          else if Key = 'zasm' then
-            ZasmCmd := Value
           else if Key = 'nano' then
             NanoCmd := Value
           else if Key = 'vscode' then
