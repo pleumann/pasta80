@@ -6,10 +6,10 @@ the runtime library of the compiler:
 
 You have permission to distribute a Z80 binary formed by combining the
 PASTA/80 runtime library (folder "rtl") with independent modules, even if
-such distribution would otherwise violate the terms of GPL version 3,
-provided that the binary was generated with the PASTA/80 compiler. You may
-distribute such a combination under terms of your choice, consistent with
-the licensing of the independent modules.
+such distribution would otherwise violate the terms of GNU General Public
+License version 3, provided that the Z80 binary was generated with the
+PASTA/80 compiler. You may distribute such a combination under terms of
+your choice, consistent with the licensing of the independent modules.
 
 
 
