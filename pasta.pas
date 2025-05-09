@@ -7014,7 +7014,7 @@ end;
 procedure Copyright;
 begin
   WriteLn('----------------------------------------');
-  WriteLn(#27'[1m', 'PASTA/80 Pascal System', #27'[m', 'Version 0.92':18);
+  WriteLn(#27'[1m', 'PASTA/80 Pascal System', #27'[m', 'Version 0.95':18);
   if Binary = btZXN then
     WriteLn(BinaryStr[Binary] + ', Z80N':40)
   else
