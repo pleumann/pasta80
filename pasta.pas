@@ -6886,18 +6886,26 @@ begin
     end
     else if Binary = btZX then
     begin
+      {$ifdef darwin}
       if Alt then
-        Exec('/usr/bin/open', '-a ' + FuseCmd + ' --args --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
+        Exec('/usr/bin/open', '-a Fuse --args --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
       else
-        Exec('/usr/bin/open', '-a ' + FuseCmd + ' --args --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
+        Exec('/usr/bin/open', '-a Fuse --args --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
+      {$else}
+      if Alt then
+        Exec(FuseCmd + ' --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
+      else
+        Exec(FuseCmd + ' --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
+      {$endif}
     end
     else
     begin
-      Exec('/Users/joerg/Library/bin/hdfmonkey', 'put /Users/joerg/Downloads/tbblue.mmc ' + BinFile + ' /autoexec.dot');
-      if Alt then
-        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
-      else
-        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+// FIXME CSpect / Zesarux
+//      Exec('/Users/joerg/Library/bin/hdfmonkey', 'put /Users/joerg/Downloads/tbblue.mmc ' + BinFile + ' /autoexec.dot');
+//      if Alt then
+//        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+//      else
+//        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
     end;
   end;
 end;
