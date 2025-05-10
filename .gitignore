@@ -1,16 +1,3 @@
 .vscode
 .DS_Store
 /pasta
-/pasta.o
-examples/*.z80
-examples/*.lst
-examples/*.com
-examples/*.dot
-examples/*.tap
-examples/*.bin
-tests/*.z80
-tests/*.lst
-tests/*.com
-tests/*.dot
-tests/*.tap
-tests/*.bin
