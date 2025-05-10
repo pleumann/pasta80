@@ -1,9 +1,0 @@
-var
-  answer;
-
-begin
-  ! "Hello, world! The answer is:";
-
-  answer := 2 + 5 * 8;
-  ! answer;
-end.
