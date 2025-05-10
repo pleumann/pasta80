@@ -6894,9 +6894,9 @@ begin
         Exec('/usr/bin/open', '-a Fuse --args --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
       {$else}
       if Alt then
-        Exec(FuseCmd + ' --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
+        Exec(FuseCmd, ' --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
       else
-        Exec(FuseCmd + ' --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
+        Exec(FuseCmd, ' --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
       {$endif}
     end
     else
