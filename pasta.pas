@@ -6689,7 +6689,7 @@ begin
 
     Build := 2;
 
-    CopyFile(HomeDir + '/etc/loader.tap', BinFile);
+    CopyFile(HomeDir + '/misc/loader.tap', BinFile);
 
     WriteLn('Assembling...');
     WriteLn('  ', FRelative(AsmFile, Dir), ' -> ', FRelative(BinFile, Dir));
@@ -6838,9 +6838,9 @@ begin
   else
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
+      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
     else
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/etc/pascal.nanorc ' + S);
+      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
   end;
 end;
 
