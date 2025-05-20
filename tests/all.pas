@@ -85,6 +85,16 @@ begin
   (* { Different comment types can be nested. } *)
   { *) Different comment types can't be mixed.   }
   (* } Different comment types can't be mixed.  *)
+
+  I := 0;
+  // And we support C-style comments, too!
+  // Inc(I);
+  Inc(I); // They can follow an instruction.
+  // They can also be empty, apparently.
+  //
+  Inc(I);
+
+  Assert(I = 2);
 end;
 
 procedure TestConstHelp(Expected: Integer);
