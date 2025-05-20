@@ -96,8 +96,11 @@ begin
 end;
 
 procedure TestConst;
+const
+  BinConst = %10101010;
+  HexConst = $0F0F;
 var
-  I, J: Integer;
+  I, J, BinVar, HexVar: Integer;
 begin
   WriteLn('--- TestConst ---');
 
@@ -126,6 +129,15 @@ begin
 
   for I := 1 to 5 do
     Assert(FloatArray[I] = I);
+
+  Assert(BinConst = 170);
+  Assert(HexConst = 3855);
+
+  BinVar := %01010101;
+  HexVar := $ABCD;
+
+  Assert(BinVar = 85);
+  Assert(HexVar = -21555);
 end;
 
 procedure TestAdd;
