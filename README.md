@@ -29,6 +29,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
+  * Binary literals are allowed (using % prefix)
   * Loops can be controlled via `Break` and `Continue`.
   * You can query the keyboard with `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
