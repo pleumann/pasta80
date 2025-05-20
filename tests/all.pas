@@ -1370,7 +1370,7 @@ end;
 
 var
   AbsI: Integer;
-  AbsJ: Integer absolute 16384;
+  AbsJ: Integer absolute $6C;
   AbsX: Integer absolute AbsI;
   AbsY: Integer absolute AbsJ;
   AbsZ: Integer absolute '__buffer';
@@ -1379,7 +1379,7 @@ procedure TestAbsolute;
 begin
   WriteLn('--- TestAbsolute ---');
 
-  Assert(Addr(AbsJ) = 16384);
+  Assert(Addr(AbsJ) = $6C);
   Assert(Addr(AbsX) = Addr(AbsI));
   Assert(Addr(AbsY) = Addr(AbsJ));
   Assert(Addr(AbsZ) <> 0);
