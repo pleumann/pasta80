@@ -1313,6 +1313,14 @@ begin
 end;
 
 (**
+ * Returns True if the given character is a valid binary digit.
+ *)
+function IsBinDigit(C: Char): Boolean;
+begin
+  IsBinDigit := (C = '0') or (C = '1');
+end;
+
+(**
  * Looks up a keyword and returns its token. Returns toIdent if the string is
  * an ordinary identifier.
  *
@@ -1457,6 +1465,22 @@ begin
 
         C := GetChar;
       until not IsHexDigit(C);
+    end
+    else if C = '%' then
+    begin
+      // Binary numbers are numbers, too.
+      Token := toNumber;
+      StrValue := '%';
+      C := GetChar;
+
+      if not IsBinDigit(C) then Error('Binary digit expected');
+
+      repeat
+        StrValue := StrValue + C;
+        NumValue := (NumValue shl 1);
+        if C = '1' then NumValue := NumValue + 1;
+        C := GetChar;
+      until not IsBinDigit(C);
     end
     else if (C = '''') or (C = '#') then
     begin
