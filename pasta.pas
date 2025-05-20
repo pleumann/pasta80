@@ -1580,6 +1580,13 @@ begin
 
       // These might turn out to be multi-character tokens
       case Token of
+        toDiv:
+          if C = '/' then               // C-style one-line comment
+          begin
+            Source^.Column := Length(Source^.Buffer) + 1;
+            C := GetChar;
+            NextToken; (* TODO Eliminate recursion??? *)
+          end;
         toLt:
           if C = '>' then               // Not equal
           begin
