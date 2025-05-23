@@ -19,7 +19,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`.
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
 * Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
-* Some compiler directives
+* Some compiler directives:
   * `$i <file>` for including Pascal source files (including nesting and cycle detection)
   * `$l <file>` for including an assembly file (aka "linking" a library)
   * `$a(+/-)`   for enabling or disabling absolute mode (default is on, disable for recursion)
@@ -29,9 +29,10 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
-  * Binary literals are allowed (using % prefix)
-  * Loops can be controlled via `Break` and `Continue`.
-  * You can query the keyboard with `KeyPressed` and `ReadKey`.
+  * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
+  * Binary literals (using a `%` prefix).
+  * `Break` and `Continue` for loop control.
+  * Querying the keyboard via `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
   * `Include` and `Exclude` for more efficient handling of sets.
@@ -185,7 +186,7 @@ What does this mean for you?
 
 # Acknowledgements
 
-The math48 library is coypright (c) 1980 by Anders Hejlsberg.
+The math48 library is coypright (c) 1980 by Anders Hejlsberg, used by [permission](https://github.com/pleumann/pasta80/issues/7).
 
 Some assembly routines adapted from Leventhal/Saville, "Z80 Assembly Subroutines", Osborne/McGraw-Hill 1983.
 
