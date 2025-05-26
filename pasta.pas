@@ -336,7 +336,7 @@ type
   (**
    * The possible output formats.
    *)
-  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape);
+  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot);
 
 var
   (**
@@ -2327,7 +2327,9 @@ begin
   else if Format = tfPlus3Dos then
     EmitI('save3dos "' + BinFile2 + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
-    EmitI('savetap "' + BinFile2 + '",CODE,"mcode",$8000,HEAP-$8000');
+    EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000')
+  else if Format = tfSnapshot then
+    EmitI('savesna "' + BinFile + '",$8000');
 end;
 
 (**
@@ -6743,7 +6745,9 @@ begin
   else if (Format = tfBinary) or (Format = tfPlus3Dos) then
     BinFile := ChangeExt(SrcFile, '.bin')
   else if Format = tfTape then
-    BinFile := ChangeExt(SrcFile, '.tap');
+    BinFile := ChangeExt(SrcFile, '.tap')
+  else if Format = tfSnapshot then
+    BinFile := ChangeExt(SrcFile, '.sna');
 
   if SetJmp(StoredState) = 0 then
   begin
@@ -6809,6 +6813,8 @@ begin
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
+    if (Format <> tfTape) and (Format <> tfSnapshot) then
+    begin
     if Binary = btCPM then Org := 256 else Org := 32768;
     Len := FSize(BinFile);
 
@@ -6820,6 +6826,7 @@ begin
     WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
     WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
     WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
+    end;
   end;
 
   HasStoredState := False;
@@ -6836,7 +6843,7 @@ const
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
    *)
-  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file');
+  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot');
 
   (**
    * Yes/no strings. Why is this here and not in the IDE sestion?
@@ -7114,7 +7121,7 @@ begin
     C := GetKey;
     case C of
       't': if Binary = btZXN then Binary := btCPM else Binary := Succ(Binary);
-      'f': if Format = tfTape then Format := tfBinary else Format := Succ(Format);
+      'f': if Format = tfSnapshot then Format := tfBinary else Format := Succ(Format);
       'o': Optimize := not Optimize;
       'd': SmartLink := not SmartLink;
     end;
@@ -7217,7 +7224,8 @@ begin
     WriteLn;
     WriteLn('  --bin          Generates raw binary file (default)');
     WriteLn('  --dos          Generates binary with +3DOS header');
-    WriteLn('  --tap          Generates tape file with loader');
+    WriteLn('  --tap          Generates .tap file with loader');
+    WriteLn('  --sna          Generates .sna snapshot file');
     WriteLn;
     WriteLn('  --dep          enable dependency analysis');
     WriteLn('  --opt          enable peephole optimizations');
@@ -7246,6 +7254,8 @@ begin
       Format := tfPlus3Dos
     else if SrcFile = '--tap' then
       Format := tfTape
+    else if SrcFile = '--sna' then
+      Format := tfSnapshot
     else if SrcFile = '--opt' then
       Optimize := True
     else if SrcFile = '--dep' then
