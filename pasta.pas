@@ -82,7 +82,7 @@ var
 begin
   S := '';
 
-  while (Value <> 0) or (Digits <> 0) do
+  while (Value <> 0) or (Digits > 0) do
   begin
     S := Hex[1 + Value mod 16] + S;
     Value := Value div 16;
@@ -448,10 +448,21 @@ var
    *)
   Format: TTargetFormat = tfBinary;
 
+  AddrOrigin: Integer = 256;
+
+  AddrLimit: Integer = 61440;
+
+  StackSize: Integer = 4096;
+
+  Overlays: Boolean = False;
+
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
   MonkeyCmd, CSpectCmd, ImagePath: String;
   AltEditor: Boolean;
+
+var
+  SrcFile, AsmFile, BinFile: String;
 
 (**
  * Tries to setup the compiler's home directory and the paths to various tools,
@@ -789,6 +800,8 @@ type
     IsAlive: Boolean;
     Deps: array[0..127] of PSymbol;
     DepCount: Integer;
+    Banked: Boolean;
+    BankNo: Byte;
   end;
 
 var
@@ -841,6 +854,12 @@ var
   SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
   SmartLink: Boolean; (* TODO Move elsewhere *)
+
+const
+  Banked: Boolean = False;
+  CurrentOverlay: Byte = 0;
+  CurrentBank: Byte = 0;
+  ToastrackBanks: array[0..9] of Byte = (0, 0, 1, 1, 3, 3, 4, 4, 6, 6);
 
 (**
  * Opens a scope, which mainly adds a new scope marker at the front of the
@@ -2336,7 +2355,15 @@ begin
     end;
   end;
 
-  EmitI('call ' + Sym^.Tag);
+  if (Sym^.Level = 0) and Sym^.Banked and not (Banked and (CurrentBank = Sym^.BankNo)) then
+  begin
+    //WriteLn('Emitting call to ', Sym^.Name, ' in bank ', Sym^.BankNo);
+    EmitI('ld a,' + IntToStr(Sym^.BankNo));
+    EmitI('ld hl,' + Sym^.Tag);
+    EmitI('call farcall');
+  end
+  else
+    EmitI('call ' + Sym^.Tag);
 
   if not Sym^.IsStdCall then
   begin
@@ -2384,18 +2411,29 @@ begin
   end
   else if Binary = btZX then
   begin
-    Emit('ZX', 'equ 1', 'Target is ZX 48K');
-    EmitI('device ZXSPECTRUM48');
+    Emit('ZX', 'equ 1', 'Target is ZX Spectrum 48K');
+    EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
   end
   else if Binary = btZX128 then
   begin
-    Emit('ZX', 'equ 1', 'Target is ZX 128K');
-    EmitI('device ZXSPECTRUM128');
+    Emit('ZX128', 'equ 1', 'Target is ZX Spectrum 128K');
+    EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4))
   end
   else if Binary = btZXN then
   begin
-    Emit('NXT', 'equ 1', 'Target is Next .dot file');
+    Emit('NXT', 'equ 1', 'Target is ZX Spectrum Next');
     EmitI('device ZXSPECTRUMNEXT');
+  end;
+
+  EmitI('org $' + IntToHex(AddrOrigin, 4));
+  Emit('TEXT', 'jp __init', '');
+  Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
+
+  if Binary in [btZX128, btZXN] then
+  begin
+    Emit('numpages', 'db 0', 'Number of overlay pages');
+    if Overlays then
+      EmitI('include "' + PosixToNative(HomeDir + '/rtl/overlays.asm"'));
   end;
 end;
 
@@ -2403,12 +2441,58 @@ end;
  * Emits the file footer.
  *)
 procedure EmitFooter(BinFile: String);
+var
+  BinFile2, S, T: String;
+  I, Is128K: Integer;
 begin
-  EmitC('');
-  Emit('HEAP', '', '');
+  Emit('TEXT_END', '= $', '');
+  Emit('STACK', '= $' + IntToHex(AddrLimit - StackSize, 4), '');
+  Emit('HEAP', '= STACK-32767', '');
+  EmitI('if HEAP < $');
+  Emit('HEAP', '= $', '');
+  EmitI('endif');
+  EmitI('if HEAP > STACK');
+  Emit('HEAP', '= STACK', '');
+  EmitI('endif');
+
   EmitC('');
   EmitC('end');
   EmitC('');
+
+  BinFile2 := PosixToNative(BinFile);
+
+  EmitI('LUA');
+  EmitI('if sj.calc("__ERRORS__") ~= 0 then print() end');
+
+  EmitI('SegInfo("Program",sj.calc("TEXT"),sj.calc("$"),sj.calc("STACK-TEXT"), "")');
+  EmitI('SegInfo("Heap",sj.calc("HEAP"),sj.calc("STACK"), 32767, "")');
+  EmitI('SegInfo("Stack",sj.calc("STACK"),sj.calc("LIMIT"),' + IntToStr(StackSize) + ', "")');
+
+  if CurrentOverlay <> 0 then
+  begin
+    EmitI('print()');
+
+    Is128K := Ord(Binary = btZX128);
+
+    for I := 0 to CurrentOverlay - 1 do
+      EmitI('OvrInfo("' + IntToStr(I) + '",' + IntToStr(Is128K) + ')');
+  end;
+
+  EmitI('ENDLUA');
+
+  if Binary = btZX128 then
+  begin
+    EmitI('slot 3');
+    EmitI('page 0');
+    EmitI('org 23388');
+    EmitI('db 16');
+  end;
+
+  if (Binary = btZX128) or (Binary = btZXN) then
+  begin
+    EmitI('org numpages');
+    EmitI('db ' + IntToStr(CurrentOverlay));
+  end;
 
   if Binary = btCPM then
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
@@ -2417,7 +2501,40 @@ begin
   else if Format = tfPlus3Dos then
     EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
-    EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000')
+  begin
+    EmitI('emptytap "' + BinFile2 + '"');
+
+    EmitI('org 0');
+
+    if Binary = btZXN then
+      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/specnext.bas"'))
+    else if Binary = btZX128 then
+      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec128.bas"'))
+    else
+      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec48.bas"'));
+
+    EmitI('savetap "' + BinFile2 + '",BASIC,"run",$0080,$-$0080,0');
+    EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,HEAP-$8000');
+
+    for I := 0 to CurrentOverlay - 1 do
+    begin
+      if Binary = btZXN then
+      begin
+        EmitI('slot 7');
+        EmitI('page ' + IntToStr(I + 32));
+      end
+      else
+      begin
+        EmitI('slot 3');
+        EmitI('page ' + IntToStr(ToastrackBanks[I]));
+      end;
+
+      S := IntToStr(I);
+      T := Copy('00', Length(S), 2) + S;
+
+      EmitI('savetap "' + BinFile2 + '",CODE,"' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START');
+    end;
+  end
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
 end;
@@ -2545,6 +2662,14 @@ begin
     Emit('main', '', '');
     EmitI('ld (display),sp');
     EmitCall(LookupBuiltInOrFail('InitHeap'));
+    if Overlays then
+    begin
+      if Binary = btZX128 then
+        EmitI('ld a,0')
+      else
+        EmitI('ld a,32');
+      EmitI('call banksel');
+    end;
   end
   else
   begin
@@ -6612,6 +6737,10 @@ begin
     end
     else
     begin
+      NewSym^.Banked := Banked;
+      NewSym^.BankNo := CurrentBank;
+      //if Banked then WriteLn('Proc/Func ', NewSym^.Name, ' is in bank ', CurrentBank);
+
       ParseBlock(NewSym);
       Expect(toSemicolon);
       NextToken;
@@ -6621,6 +6750,95 @@ begin
   CloseScope(True);
 
   EmitC('');
+end;
+
+procedure ParseOverlay(Sym: PSymbol);
+var
+  S, T: String;
+  Start: Integer;
+begin
+  if CurrentOverlay = 10 then Error('Too many overlays');
+
+  CurrentBank := ToastrackBanks[CurrentOverlay];
+  if Odd(CurrentOverlay) then Start := $E000 else Start := $C000;
+
+  S := IntToStr(CurrentOverlay);
+  T := IntToStr(Start);
+
+  Emit('OLD_ORG_' + S, 'equ $', '');
+  EmitI('slot 3');
+  EmitI('page ' + IntToStr(CurrentBank));
+  EmitI('org ' + T);
+
+  Banked := True;
+
+  while Scanner.Token = toOverlay do
+  begin
+    NextToken;
+
+    if not ((Scanner.Token = toProcedure) or (Scanner.Token = toFunction)) then
+      Error('Procedure or function expected');
+
+    ParseProcFunc(Sym);
+  end;
+
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
+  Emit('OVR_' + S + '_START', 'equ ' + T, '');
+  Emit('OVR_' + S + '_END', 'equ $', '');
+
+  EmitI('slot 3');
+  EmitI('page 0');
+  EmitI('org OLD_ORG_' + S);
+
+  Banked := False;
+
+  Inc(CurrentOverlay);
+end;
+
+procedure ParseNextOverlay(Sym: PSymbol);
+var
+  S, T: String;
+  Start: Integer;
+begin
+  if CurrentOverlay = 64 then Error('Too many overlays');
+
+  CurrentBank := CurrentOverlay + 32;
+  //WriteLn('CurrentPage: ', CurrentBank);
+  Start := $E000;
+
+  S := IntToStr(CurrentOverlay);
+  T := IntToStr(Start);
+
+  Emit('OLD_ORG_' + S, 'equ $', '');
+  EmitI('slot 7');
+  EmitI('page ' + IntToStr(CurrentBank));
+  EmitI('org ' + T);
+
+  Banked := True;
+
+  while Scanner.Token = toOverlay do
+  begin
+    NextToken;
+
+    if not ((Scanner.Token = toProcedure) or (Scanner.Token = toFunction)) then
+      Error('Procedure or function expected');
+
+    ParseProcFunc(Sym);
+  end;
+
+  //EmitI('display "Page:", $$');
+
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
+  Emit('OVR_' + S + '_START', 'equ ' + T, '');
+  Emit('OVR_' + S + '_END', 'equ $', '');
+
+  //EmitI('slot 7');
+  //EmitI('page 32');
+  EmitI('org OLD_ORG_' + S);
+
+  Banked := False;
+
+  Inc(CurrentOverlay);
 end;
 
 (**
@@ -6717,17 +6935,15 @@ begin
 
     else if Scanner.Token = toOverlay then
     begin
-      repeat
+      if Level <> 0 then
+        Error('Overlays only allowed on top level');
+
+      if (Binary = btZX128) and Overlays then
+        ParseOverlay(Sym)
+      else if (Binary = btZXN) and Overlays then
+        ParseNextOverlay(Sym)
+      else
         NextToken;
-
-        if not (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
-          Error('Procedure or function expected');
-
-        if Level <> 0 then
-          Error('Overlays only allowed on top level');
-
-        ParseProcFunc(Sym);
-      until Scanner.Token <> toOverlay;
     end
 
     else if (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
@@ -6816,7 +7032,7 @@ begin
   else if Binary = btZX then
     OpenInput(HomeDir + '/rtl/zx.pas')
   else if Binary = btZX128 then
-    OpenInput(HomeDir + '/rtl/zx.pas')
+    OpenInput(HomeDir + '/rtl/zx128.pas')
   else
     OpenInput(HomeDir + '/rtl/next.pas');
 
@@ -6854,9 +7070,6 @@ begin
   CloseScope(False);
   CloseScope(False);
 end;
-
-var
-  SrcFile, AsmFile, BinFile: String;
 
 (**
  * Performs a build. All relevant information is assumed to be in the respective
@@ -6916,6 +7129,23 @@ begin
     IOMode := False;
     StackMode := False;
 
+    CurrentOverlay := 0;
+    Banked := False;
+
+    if Binary = btCPM then
+      AddrOrigin := $0100
+    else
+      AddrOrigin := $8000;
+
+    if Binary = btCPM then
+      AddrLimit := $f000
+    else if (Binary = btZX128) and Overlays then
+      AddrLimit := $c000
+    else if (Binary = btZXN) and Overlays then
+      AddrLimit := $e000
+    else
+      AddrLimit := $10000;
+
     OpenInput(SrcFile);
     OpenTarget(AsmFile);
     EmitHeader(HomeDir, SrcFile);  (* TODO Move this elsewhere. *)
@@ -6928,7 +7158,7 @@ begin
 
     Build := 2;
 
-    CopyFile(HomeDir + '/misc/loader.tap', BinFile);
+    //CopyFile(HomeDir + '/misc/loader.tap', BinFile);
 
     WriteLn('Assembling...');
     WriteLn('  ', PosixToNative(FRelative(AsmFile)), ' -> ', PosixToNative(FRelative(BinFile)));
@@ -6944,21 +7174,6 @@ begin
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
     if DosExitCode <> 0 then
       Error('Failure! :(');
-
-    if (Format <> tfTape) and (Format <> tfSnapshot) then
-    begin
-      if Binary = btCPM then Org := 256 else Org := 32768;
-      Len := FSize(BinFile);
-
-      HeapStart := Org + Len;
-      if HeapStart < 24576 then HeapStart := 24576;
-      HeapBytes := 57343 - HeapStart;
-      if HeapBytes < 0 then HeapBytes := 0;
-
-      WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
-      WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
-      WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
-    end;
   end;
 
   HasStoredState := False;
@@ -7246,34 +7461,6 @@ begin
 end;
 
 (**
- * Implements the options menu of interactive mode, which is where the user can
- * select the target platform and change compiler switches.
- *)
-procedure DoOptions;
-var
-  C: Char;
-begin
-  repeat
-    Write(#27'[2J'#27'[H');
-
-    WriteLn(TermStr('~Target machine     : '), BinaryStr[Binary]);
-    WriteLn(TermStr('Output ~Format      : '), FormatStr[Format]);
-    WriteLn(TermStr('Peephole ~optimizer : '), YesNoStr[Optimize]);
-    WriteLn(TermStr('~Dependency analysis: '), YesNoStr[SmartLink]);
-    WriteLn;
-    WriteLn(TermStr('~Back'));
-
-    C := GetKey;
-    case C of
-      't': if Binary = btZXN then Binary := btCPM else Binary := Succ(Binary);
-      'f': if Format = tfSnapshot then Format := tfBinary else Format := Succ(Format);
-      'o': Optimize := not Optimize;
-      'd': SmartLink := not SmartLink;
-    end;
-  until C = 'b';
-end;
-
-(**
  * Shows the copyright header.
  *)
 procedure Copyright(Ide: Boolean);
@@ -7292,6 +7479,59 @@ begin
   WriteLn('Copyright (C) 2020-25 by  Joerg Pleumann');
   WriteLn('----------------------------------------');
   WriteLn;
+end;
+
+(**
+ * Implements the options menu of interactive mode, which is where the user can
+ * select the target platform and change compiler switches.
+ *)
+procedure DoOptions;
+var
+  C: Char;
+begin
+  repeat
+    Write(#27'[2J'#27'[H');
+
+    Copyright(True);
+
+    WriteLn(TermStr('Target ~machine     : '), BinaryStr[Binary]);
+    WriteLn(TermStr('Output ~format      : '), FormatStr[Format]);
+    WriteLn(TermStr('~Peephole optimizer : '), YesNoStr[Optimize]);
+    WriteLn(TermStr('~Dependency analysis: '), YesNoStr[SmartLink]);
+    WriteLn(TermStr('Enable ~overlays    : '), YesNoStr[Overlays]);
+    WriteLn;
+    WriteLn(TermStr('~Back'));
+
+    C := GetKey;
+    case C of
+      'm': begin
+             if Binary = btZXN then
+               Binary := btCPM
+             else
+               Binary := Succ(Binary);
+
+            if Binary = btCPM then
+            begin
+              AddrOrigin := $0100;
+              AddrLimit := $0F000;
+              Format := tfBinary;
+            end
+            else
+            begin
+              AddrOrigin := $0100;
+              AddrLimit := $0F000;
+              Format := tfTape;
+            end;
+
+            if (Binary = btCPM) or (Binary = btZX) then Overlays := False;
+          end;
+
+      'f': if Format = tfSnapshot then Format := tfBinary else Format := Succ(Format);
+      'p': Optimize := not Optimize;
+      'd': SmartLink := not SmartLink;
+      'o': Overlays := not Overlays;
+    end;
+  until C = 'b';
 end;
 
 (**
@@ -7344,7 +7584,7 @@ begin
         'r', 'R': DoRun(C = 'R');
         's': DoShell;
         'f': DoFiles;
-        'o', 'O': DoOptions;
+        'o', 'O': begin DoOptions; Break; end;
         'q': begin WriteLn('Bye!'); WriteLn; Halt(0); end;
         else Break;
       end;
@@ -7379,6 +7619,7 @@ begin
     WriteLn;
     WriteLn('  --dep          enable dependency analysis');
     WriteLn('  --opt          enable peephole optimizations');
+    WriteLn('  --ovr          enable banked-switched overlays');
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --version      shows just the version number');
@@ -7393,13 +7634,43 @@ begin
   while Copy(SrcFile, 1, 2) = '--' do
   begin
     if SrcFile = '--cpm' then
-      Binary := btCPM
+    begin
+      Binary := btCPM;
+      AddrOrigin := $0100;
+      AddrLimit := $F000;
+      Overlays := False;
+    end
     else if SrcFile = '--zx48' then
-      Binary := btZX
+    begin
+      Binary := btZX;
+      AddrOrigin := 32768;
+      AddrLimit := 65536;
+      Overlays := False;
+    end
     else if SrcFile = '--zx128' then
-      Binary := btZX128
+    begin
+      Binary := btZX128;
+      AddrOrigin := 32768;
+      AddrLimit := 65536;
+      Overlays := False;
+    end
     else if SrcFile = '--zxnext' then
-      Binary := btZXN
+    begin
+      Binary := btZXN;
+      AddrOrigin := 32768;
+      AddrLimit := 65536;
+      Overlays := False;
+    end
+    else if SrcFile = '--ovr' then
+    begin
+      Overlays := True;
+      if Binary = btZX128 then
+        AddrLimit := $C000
+      else if Binary = btZXN then
+        AddrLimit := $E000
+      else
+        Error('Target ' + BinaryStr[Binary] + ' does not support paging.');
+    end
     else if SrcFile = '--bin' then
       Format := tfBinary
     else if SrcFile = '--3dos' then

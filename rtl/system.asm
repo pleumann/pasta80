@@ -2,6 +2,38 @@
 ; PL0 built-in assembler functions
 ;
 
+                LUA
+                function SegInfo(Name, Start, End, MaxLen, Where)
+                    Len = End - Start
+                    Start = Start % 65536
+                    End = (End - 1) % 65536
+
+                    if Len > 0 then
+                      Str = string.format("%-10s: %5d bytes ($%04X-$%04X) %-10s", Name, Len, Start, End, Where)
+                    else
+                      Str = string.format("%-10s:     0 bytes ($XXXX-$XXXX) %-10s", Name, Where)
+                    end
+
+                    if Len > MaxLen then
+                      print(Str.."  * Too large *")
+                    else
+                      print(Str)
+                    end
+                end
+
+                function OvrInfo(Number, Is128K)
+                    Page = sj.calc(string.format("OVR_%d_PAGE", Number))
+                    Start = sj.calc(string.format("OVR_%d_START", Number))
+                    End = sj.calc(string.format("OVR_%d_END", Number))
+
+                    if Is128K == 1 then
+                        SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in bank %2d", Page))
+                    else
+                        SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in page %2d", Page))
+                    end
+                end
+                ENDLUA
+
 __cur_file      dw      0
 __text_buf      dw      0
 

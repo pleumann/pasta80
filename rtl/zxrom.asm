@@ -16,7 +16,7 @@ __init:         di
                 ld      (__saved_hl),hl ; Save alternate HL
                 ld      (__saved_iy),iy ; Save sysvar pointer
                 ld      (__saved_sp),sp ; Save original stack
-                ld      sp,0            ; We use our own stack
+                ld      sp,LIMIT        ; We use our own stack
                 ei
 
                 ld      a,2

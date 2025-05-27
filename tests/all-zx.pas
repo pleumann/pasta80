@@ -7,8 +7,6 @@ const
 
   MyPi = 3.1415;
 
-  NegPi = -3.1415;
-
   NotTrue = False;
 
   FortyTwo: Integer = 42;
@@ -62,11 +60,23 @@ var
 
 (* Overlay 0 *)
 
+overlay procedure Test(S: String);
+begin
+  WriteLn;
+  WriteLn('--- ', S, ' ', Copy('--------------------------', Length(S), 255));
+  WriteLn;
+
+  Mem[23692] := 255;
+  Delay(1000);
+end;
+
+const Dummy0 = 0;
+
 overlay procedure TestComment;
 var
   I: Integer;
 begin
-  WriteLn('--- TestComment ---');
+  Test('TestComment');
 
   I := 0;
   (* I := 1; *)
@@ -118,7 +128,7 @@ const
 var
   I, J, BinVar, HexVar: Integer;
 begin
-  WriteLn('--- TestConst ---');
+  Test('TestConst');
 
   Assert(NumberOfTheBeast = 666);
   Assert(not NotTrue);
@@ -158,7 +168,7 @@ end;
 
 overlay procedure TestAdd;
 begin
-  WriteLn('--- TestAdd ---');
+  Test('TestAdd');
 
   Assert(0 + 0 = 0);
   Assert(0 + 1 = 1);
@@ -173,7 +183,7 @@ end;
 
 overlay procedure TestSubtract;
 begin
-  WriteLn('--- TestSubtract ---');
+  Test('TestSubtract');
 
   Assert(0 - 0 = 0);
   Assert(1 - 1 = 0);
@@ -188,7 +198,7 @@ end;
 
 overlay procedure TestMultiply;
 begin
-  WriteLn('--- TestMultiply ---');
+  Test('TestMultiply');
 
   Assert(0 * 0 = 0);
   Assert(1 * 1 = 1);
@@ -203,7 +213,7 @@ end;
 
 overlay procedure TestDivide;
 begin
-  WriteLn('--- TestDivide ---');
+  Test('TestDivide');
 
   Assert(0 div 1 = 0);
   Assert(1 div 1 = 1);
@@ -216,7 +226,7 @@ end;
 
 overlay procedure TestModulus;
 begin
-  WriteLn('--- TestModulus ---');
+  Test('TestModulus');
 
   Assert(10 mod 1 = 0);
   Assert(10 mod 2 = 0);
@@ -228,7 +238,7 @@ end;
 
 overlay procedure TestComplex;
 begin
-  WriteLn('--- TestComplex ---');
+  Test('TestComplex');
 
   Assert(4 - 4 - 4 = -4);
   Assert(10 div 2 * 5 = 25);
@@ -237,7 +247,7 @@ end;
 
 overlay procedure TestShift;
 begin
-  WriteLn('--- TestShift ---');
+  Test('TestShift');
 
   Assert(1 shl 0 = 1);
   Assert(1 shl 1 = 2);
@@ -254,7 +264,7 @@ end;
 
 overlay procedure TestRelOpsUnsigned;
 begin
-  WriteLn('--- TestRelOpsUnsigned ---');
+  Test('TestRelOpsUnsigned');
 
   Assert(0 = 0);
   Assert(0 <= 0);
@@ -291,7 +301,7 @@ end;
 
 overlay procedure TestRelOpsSigned;
 begin
-  WriteLn('--- TestRelOpsSigned ---');
+  Test('TestRelOpsSigned');
 
   Assert(-1 = -1);
   Assert(-1 <= -1);
@@ -328,7 +338,7 @@ end;
 
 overlay procedure TestRelOpsLarge;
 begin
-  WriteLn('--- TestRelOpsLarge ---');
+  Test('TestRelOpsLarge');
 
   Assert(-23456 = -23456);
   Assert(-23456 <= -23456);
@@ -365,7 +375,7 @@ end;
 
 overlay procedure TestRelOpsLimits;
 begin
-  WriteLn('--- TestRelOpsLimits ---');
+  Test('TestRelOpsLimits');
 
   Assert(0 < 32767);
   Assert(-32768 < 0);
@@ -374,7 +384,7 @@ end;
 
 overlay procedure TestRelOpsBoolean;
 begin
-  WriteLn('--- TestRelOpsBoolean ---');
+  Test('TestRelOpsBoolean');
 
   Assert(True = True);
   Assert(True <= True);
@@ -411,7 +421,7 @@ end;
 
 overlay procedure TestRelOpsChar;
 begin
-  WriteLn('--- TestRelOpsChar ---');
+  Test('TestRelOpsChar');
 
   Assert('A' = 'A');
   Assert('A' <= 'A');
@@ -448,7 +458,7 @@ end;
 
 overlay procedure TestLogOps;
 begin
-  WriteLn('--- TestLogOps ---');
+  Test('TestLogOps');
 
   Assert(not(False and False));
   Assert(not(False and True));
@@ -471,7 +481,7 @@ end;
 
 overlay procedure TestBitOps;
 begin
-  WriteLn('--- TestBitOps ---');
+  Test('TestBitOps');
 
   Assert(1536 or 768 = 1792);
   Assert(1536 and 768 = 512);
@@ -488,7 +498,7 @@ end;
 
 overlay procedure TestVarGlobal;
 begin
-  WriteLn('--- TestVarGlobal ---');
+  Test('TestVarGlobal');
 
   X := 1;
   Y := 2;
@@ -524,7 +534,7 @@ var
   B : Boolean;
   C: Char;
 begin
-  WriteLn('--- TestVarLocal ---');
+  Test('TestVarLocal');
 
   X := 1;
   Y := 2;
@@ -573,7 +583,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestVarNested ---');
+  Test('TestVarNested');
 
   X := 1;
   Y := 2;
@@ -613,7 +623,7 @@ var
   OrGate: array[Boolean, Boolean] of Boolean;
   P, Q: Boolean;
 begin
-  WriteLn('--- TestArrays ---');
+  Test('TestArrays');
 
   BeforeA := 32767;
 
@@ -724,7 +734,7 @@ end;
 
 overlay procedure TestHighLow;
 begin
-  WriteLn('--- TestHighLow ---');
+  Test('TestHighLow');
 
   Assert(Low(Integer) = -32768);
   Assert(High(Integer) = 32767);
@@ -758,7 +768,7 @@ overlay procedure TestRecords;
 var
   P, Q: TPoint;
 begin
-  WriteLn('--- TestRecords ---');
+  Test('TestRecords');
 
   P.X := 100;
   P.Y := 200;
@@ -877,7 +887,7 @@ var
   A: Integer;
 
 begin
-  WriteLn('--- TestVariantRecords ---');
+  Test('TestVariantRecords');
 
   A := Addr(R1);
   Assert(Addr(R1.C) = A);
@@ -979,8 +989,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestRecords ---');
-  WriteLn;
+  Test('TestRecords');
 
   AllDays := [Mon..Sun];
   Working := [Mon..Fri];
@@ -1104,7 +1113,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestProcFunc ---');
+  Test('TestProcFunc');
 
   NoParamProc;
   Assert(X = 1234);
@@ -1167,7 +1176,7 @@ var
   A, B: TIntArray100;
   I: Integer;
 begin
-  WriteLn('--- TestComplexParams ---');
+  Test('TestComplexParams');
 
   P.X := 1;
   P.Y := 2;
@@ -1281,7 +1290,7 @@ var
   LocalIntArray: TIntArray100;
   R: TPoint;
 begin
-  WriteLn('--- TestVarParams ---');
+  Test('TestVarParams');
   WriteLn('(Might take a while.)');
 
   I := 1234;
@@ -1306,6 +1315,9 @@ begin
   TestSort(LocalIntArray, 100);
 end;
 
+const
+  Foo = 0;
+
 overlay function Fibonacci(I: Integer): Integer;
 begin
   if I = 0 then
@@ -1316,6 +1328,9 @@ begin
     Fibonacci := Fibonacci(I - 1) + Fibonacci(I - 2);
 end;
 
+const
+  Bar = 1;
+
 overlay function Factorial(I: Integer): Integer;
 begin
   if I = 1 then
@@ -1324,9 +1339,12 @@ begin
     Factorial := I * Factorial(I - 1);
 end;
 
+const
+  Hey = 2;
+
 overlay procedure TestRecursion;
 begin
-  WriteLn('--- TestRecursion ---');
+  Test('TestRecursion');
 
   WriteLn('(Might take even longer.)');
 
@@ -1344,7 +1362,7 @@ procedure TestForward;
 var
   Z: Integer;
 begin
-  WriteLn('--- TestForward ---');
+  Test('TestForward');
 
   Z := -1;
   F1;
@@ -1371,16 +1389,16 @@ end;
 
 var
   AbsI: Integer;
-  AbsJ: Integer absolute $6C;
+  AbsJ: Integer absolute 16384;
   AbsX: Integer absolute AbsI;
   AbsY: Integer absolute AbsJ;
   AbsZ: Integer absolute '__buffer';
 
 overlay procedure TestAbsolute;
 begin
-  WriteLn('--- TestAbsolute ---');
+  Test('TestAbsolute');
 
-  Assert(Addr(AbsJ) = $6C);
+  Assert(Addr(AbsJ) = 16384);
   Assert(Addr(AbsX) = Addr(AbsI));
   Assert(Addr(AbsY) = Addr(AbsJ));
   Assert(Addr(AbsZ) <> 0);
@@ -1404,7 +1422,7 @@ overlay procedure TestArraysOfArrays;
 var
   I, J: Integer;
 begin
-  WriteLn('--- TestArraysOfArrays ---');
+  Test('TestArraysOfArrays');
 
   for I := 0 to 9 do
     for J := 0 to 9 do
@@ -1427,7 +1445,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestTypeChecks ---');
+  Test('TestTypeChecks');
 
   B := 255;
   Assert(B = 255);
@@ -1473,7 +1491,7 @@ overlay procedure TestIfThen;
 var
   I, J: Integer;
 begin
-  WriteLn('--- TestIfThen ---');
+  Test('TestIfThen');
 
   I := 0;
   J := 0;
@@ -1493,7 +1511,7 @@ overlay procedure TestIfThenElse;
 var
   I, J: Integer;
 begin
-  WriteLn('--- TestIfThenElse ---');
+  Test('TestIfThenElse');
 
   I := 0;
   J := 0;
@@ -1513,7 +1531,7 @@ overlay procedure TestIfBlocks;
 var
   I, J: Integer;
 begin
-  WriteLn('--- TestIfBlocks ---');
+  Test('TestIfBlocks');
 
   I := 0;
   J := 0;
@@ -1614,7 +1632,7 @@ var
   I: Integer;
   S: String[255];
 begin
-  WriteLn('--- TestCase ---');
+  Test('TestCase');
 
   S := '';
 
@@ -1661,7 +1679,7 @@ overlay procedure TestWhile;
 var
   I, J, K: Integer;
 begin
-  WriteLn('--- TestWhile ---');
+  Test('TestWhile');
 
   I := 0;
   while False do
@@ -1715,7 +1733,7 @@ overlay procedure TestRepeat;
 var
   I, J, K: Integer;
 begin
-  WriteLn('--- TestRepeat ---');
+  Test('TestRepeat');
 
   repeat
     (* Empty *)
@@ -1772,7 +1790,7 @@ var
   B: Boolean;
   C: Char;
 begin
-  WriteLn('--- TestForInteger ---');
+  Test('TestForInteger');
 
   I := 0; J := 0;
   for J := 1 to 0 do
@@ -1850,7 +1868,7 @@ var
   B: Boolean;
   C: Char;
 begin
-  WriteLn('--- TestForBoolean ---');
+  Test('TestForBoolean');
 
   I := 0;
   for B := False to True do
@@ -1876,7 +1894,7 @@ var
   I, J: Integer;
   C: Char;
 begin
-  WriteLn('--- TestForChar ---');
+  Test('TestForChar');
 
   I := 0; J := 0;
   for C := 'A' to 'Z' do
@@ -1916,7 +1934,7 @@ var
   R: WithRec;
   S: array[0..19] of WithRec;
 begin
-  WriteLn('--- TestWith ---');
+  Test('TestWith');
 
   WithD := Ptr(Addr(WithC));
 
@@ -1987,7 +2005,7 @@ overlay procedure TestInline;
 var
   S: Str255;
 begin
-  WriteLn('--- TestInline ---');
+  Test('TestInline');
 
   S := 'hello, inline world!';
   UpperCase(S);
@@ -1996,22 +2014,20 @@ end;
 
 overlay procedure TestWriteInteger;
 begin
-  WriteLn('--- TestWriteInteger ---');
+  Test('TestWriteInteger');
 
-  WriteLn;
   WriteLn('Expected output: 0,1,10,100,1000,10000,32767');
   WriteLn('Actual output  : ', 0, ',', 1, ',',  10, ',', 100, ',', 1000, ',', 10000, ',', 32767);
   WriteLn;
-  WriteLn('Expected output: 0,-1,-10,-100,-1000,-10000,-32767');
+  WriteLn('Expected output: 0,-1,-10,-100,-1000,-10000,-32768');
   WriteLn('Actual output  : ', -0, ',', -1, ',', -10, ',', -100, ',', -1000, ',', -10000, ',', -32768);
   WriteLn;
 end;
 
 overlay procedure TestWriteBoolean;
 begin
-  WriteLn('--- TestWriteBoolean ---');
+  Test('TestWriteBoolean');
 
-  WriteLn;
   WriteLn('*True* is ', True);   (* TODO: Want double quotes here *)
   WriteLn('*False* is ', False); (* TODO: Want double quotes here *)
   WriteLn;
@@ -2021,7 +2037,7 @@ overlay procedure TestWriteChar;
 var
   C: Char;
 begin
-  WriteLn('--- TestWriteChar ---');
+  Test('TestWriteChar');
 
   for C := ' ' to '~' do
   begin
@@ -2036,7 +2052,7 @@ overlay procedure TestWriteByte;
 var
   B: Byte;
 begin
-  WriteLn('--- TestWriteByte ---');
+  Test('TestWriteByte');
 
   for B := 0 to 255 do
   begin
@@ -2049,9 +2065,8 @@ end;
 
 overlay procedure TestWriteString;
 begin
-  WriteLn('--- TestWriteString ---');
+  Test('TestWriteString');
 
-  WriteLn;
   WriteLn('(No arguments)');
   WriteLn;      (* TODO Want empty arguments here *)
   WriteLn('(Empty string)');
@@ -2066,7 +2081,7 @@ var
   C: Color;
   I: Integer;
 begin
-  WriteLn('--- TestEnums ---');
+  Test('TestEnums');
   C := Red;
   Assert(C <> Green);
 
@@ -2126,8 +2141,8 @@ overlay procedure TestWriteEnums;
 var
   C: Color;
 begin
-  WriteLn('--- TestWriteEnums ---');
-  WriteLn;
+  Test('TestWriteEnums');
+
   for C := Red to Blue do
   begin
     WriteLn('The light is ', C, '.');
@@ -2137,7 +2152,7 @@ end;
 
 overlay procedure TestSizeOf;
 begin
-  WriteLn('--- TestSizeOf ---');
+  Test('TestSizeOf');
 
   Assert(SizeOf(Integer) = 2);
   Assert(SizeOf(Boolean) = 1);
@@ -2155,7 +2170,7 @@ begin
 
   Assert(SizeOf(GlobalIntArray) = 200);
 end;
-  
+
 overlay procedure TestStrings;
 type
   TStr255 = string[255];
@@ -2228,8 +2243,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestStrings ---');
-  WriteLn;
+  Test('TestStrings');
 
   Assert(SizeOf(TStr255) = 256);
   Assert(SizeOf(TStr15) = 16);
@@ -2363,8 +2377,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestReal ---');
-  WriteLn;
+  Test('TestReal');
 
   WriteLn(' 0.0=', 0.0);
   WriteLn(' 1.0=', 1.0);
@@ -2407,27 +2420,27 @@ begin
   Assert((Z > 0.39) and (Z < 0.40));
 
   Writeln;
-  WriteLn('|        X         |      Sin(X)      |      Cos(X)      |');
-  WriteLn('|------------------|------------------|------------------|');
+  WriteLn('|    X    |  Sin X  |  Cos X  |');
+  WriteLn('|---------|---------|---------|');
 
   X := 0.0;
   I := 0;
   while X <= Y do
   begin
-    WriteLn('| ', X, ' | ', Sin(X), ' | ', Cos(X), ' |');
+    WriteLn('|', X:9, '|', Sin(X):9, '|', Cos(X):9, '|');
     X := X + Z;
     I := I + 1;
   end;
 
   Writeln;
-  WriteLn('|        X         |      Sin(X)      |      Cos(X)      |');
-  WriteLn('|------------------|------------------|------------------|');
+  WriteLn('|    X    |  Sin X  |  Cos X  |');
+  WriteLn('|---------|---------|---------|');
 
   X := 0.0;
   I := 0;
   while X <= Y do
   begin
-    WriteLn('| ', X:16:10, ' | ', Sin(X):16:10, ' | ', Cos(X):16:10, ' |');
+    WriteLn('|', X:9:6, '|', Sin(X):9:6, '|', Cos(X):9:6, '|');
     X := X + Z;
     I := I + 1;
   end;
@@ -2599,8 +2612,7 @@ const
   end;
 
 begin
-  Writeln('--- TestWriteFormat ---');
-  WriteLn;
+  Test('TestWriteFormat');
 
   TestWriteDefault;
 
@@ -2625,7 +2637,7 @@ var
   E: (East, North, West, South);
   Z: Boolean;
 begin
-  WriteLn('--- TestIncDec ---');
+  Test('TestIncDec');
 
   B := 100;
   Inc(B);
@@ -2681,7 +2693,7 @@ overlay procedure TestBuiltIns;
 var
   S, T: String[15];
 begin
-  WriteLn('--- TestBuiltIns ---');
+  Test('TestBuiltIns');
 
   Assert(MaxInt = 32767);
 
@@ -2724,9 +2736,9 @@ begin
 end;
 
 begin
-  repeat until KeyPressed;
-
-  WriteLn('*** PASTA/80 Test Suite ***');
+  WriteLn('***************************');
+  WriteLn('* PASTA/80 Test Suite     *');
+  WriteLn('***************************');
   WriteLn;
 
   TestComment;
@@ -2753,6 +2765,7 @@ begin
 
   TestVarGlobal;
   TestVarLocal;
+
   TestVarNested;
   TestArrays;
   TestRecords;
@@ -2818,9 +2831,10 @@ begin
   TestBuiltIns;
 
   WriteLn;
-  WriteLn('************************');
-  WriteLn('Passed assertions: ', AssertPassed);
-  WriteLn('Failed assertions: ', AssertFailed);
-  WriteLn('************************');
+
+  WriteLn('***************************');
+  WriteLn('* Passed assertions: ', AssertPassed:4, ' *');
+  WriteLn('* Failed assertions: ', AssertFailed:4, ' *');
+  WriteLn('***************************');
   WriteLn;
 end.
