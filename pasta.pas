@@ -6535,7 +6535,7 @@ var
   OldSyms, P: PSymbol;
   Name: String;
 begin
-  while Scanner.Token in [toConst, toType, toVar, toLabel, toProcedure, toFunction] do
+  while Scanner.Token in [toConst, toType, toVar, toLabel, toOverlay, toProcedure, toFunction] do
   begin
     if Scanner.Token = toConst then
     begin
@@ -6609,6 +6609,21 @@ begin
       end;
       Expect(toSemicolon);
       NextToken;
+    end
+
+    else if Scanner.Token = toOverlay then
+    begin
+      repeat
+        NextToken;
+
+        if not (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
+          Error('Procedure or function expected');
+
+        if Level <> 0 then
+          Error('Overlays only allowed on top level');
+
+        ParseProcFunc(Sym);
+      until Scanner.Token <> toOverlay;
     end
 
     else if (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
