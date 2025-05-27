@@ -273,7 +273,7 @@ type
   (**
    * The three platforms we currently support.
    *)
-  TBinaryType = (btCPM, btZX, btZXN);
+  TBinaryType = (btCPM, btZX, btZX128, btZXN);
 
   (**
    * The possible output formats.
@@ -2183,7 +2183,14 @@ begin
     end;
   end;
 
-  EmitI('call ' + Sym^.Tag);
+  if (Sym^.Level = 0) and Sym^.Banked then
+  begin
+    EmitI('ld a,' + IntToStr(Sym^.BankNo));
+    EmitI('ld hl,' + Sym^.Tag);
+    EmitI('call callbank');
+  end
+  else
+    EmitI('call ' + Sym^.Tag);
 
   if not Sym^.IsStdCall then
   begin
@@ -2233,6 +2240,11 @@ begin
   begin
     Emit('ZX', 'equ 1', 'Target is ZX 48K .tap file');
     EmitI('device ZXSPECTRUM48');
+  end
+  else if Binary = btZX128 then
+  begin
+    Emit('ZX128', 'equ 1', 'Target is ZX 128K .tap file');
+    EmitI('device ZXSPECTRUM128');
   end
   else if Binary = btZXN then
   begin
@@ -6643,6 +6655,8 @@ begin
     OpenInput(HomeDir + '/rtl/cpm.pas')
   else if Binary = btZX then
     OpenInput(HomeDir + '/rtl/zx.pas')
+  else if Binary = btZX128 then
+    OpenInput(HomeDir + '/rtl/zx128.pas')
   else
     OpenInput(HomeDir + '/rtl/next.pas');
 
@@ -6795,7 +6809,7 @@ const
   (**
    * Printable names of supported platforms. Must be aligned with TBinaryType.
    *)
-  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX Next');
+  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next');
 
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
@@ -7199,6 +7213,8 @@ begin
       Binary := btCPM
     else if SrcFile = '--zx' then
       Binary := btZX
+    else if SrcFile = '--zx128' then
+      Binary := btZX128
     else if SrcFile = '--zxn' then
       Binary := btZXN
     else if SrcFile = '--bin' then
