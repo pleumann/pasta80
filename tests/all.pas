@@ -41,6 +41,8 @@ type
   SubRange3 = 10 .. Stop;
   SubRange4 = Start .. Stop;
 
+  Str255 = string[255];
+
 var
   X, Y, Z: Integer;
   B: Boolean;
@@ -56,7 +58,9 @@ var
 
   GlobalIntArray: TIntArray100;
 
-procedure TestComment;
+(* Overlay 0 *)
+
+overlay procedure TestComment;
 var
   I: Integer;
 begin
@@ -97,7 +101,7 @@ begin
   Assert(I = 2);
 end;
 
-procedure TestConstHelp(Expected: Integer);
+overlay procedure TestConstHelp(Expected: Integer);
 const
   Global: Integer = 666;
 begin
@@ -105,7 +109,7 @@ begin
   Global := Global + 1;
 end;
 
-procedure TestConst;
+overlay procedure TestConst;
 const
   BinConst = %10101010;
   HexConst = $0F0F;
@@ -150,7 +154,7 @@ begin
   Assert(HexVar = -21555);
 end;
 
-procedure TestAdd;
+overlay procedure TestAdd;
 begin
   WriteLn('--- TestAdd ---');
 
@@ -165,7 +169,7 @@ begin
   Assert(32767 + 1 = -32768);
 end;
 
-procedure TestSubtract;
+overlay procedure TestSubtract;
 begin
   WriteLn('--- TestSubtract ---');
 
@@ -180,7 +184,7 @@ begin
   Assert(-32768 - 1 = 32767);
 end;
 
-procedure TestMultiply;
+overlay procedure TestMultiply;
 begin
   WriteLn('--- TestMultiply ---');
 
@@ -195,7 +199,7 @@ begin
   Assert(-3 * -4 = 12);
 end;
 
-procedure TestDivide;
+overlay procedure TestDivide;
 begin
   WriteLn('--- TestDivide ---');
 
@@ -208,7 +212,7 @@ begin
   Assert(-10 div -5 = 2);
 end;
 
-procedure TestModulus;
+overlay procedure TestModulus;
 begin
   WriteLn('--- TestModulus ---');
 
@@ -220,7 +224,7 @@ begin
   Assert(10 mod 11 = 10);
 end;
 
-procedure TestComplex;
+overlay procedure TestComplex;
 begin
   WriteLn('--- TestComplex ---');
 
@@ -229,7 +233,7 @@ begin
   Assert(2 * (3 + 4 * (5 - 6 * (7 + 8 * (9 div 3)))) = -1442);
 end;
 
-procedure TestShift;
+overlay procedure TestShift;
 begin
   WriteLn('--- TestShift ---');
 
@@ -246,7 +250,7 @@ begin
   Assert(-32768 shr 15 = 1);
 end;
 
-procedure TestRelOpsUnsigned;
+overlay procedure TestRelOpsUnsigned;
 begin
   WriteLn('--- TestRelOpsUnsigned ---');
 
@@ -283,7 +287,7 @@ begin
   Assert(not(1 = 0));
 end;
 
-procedure TestRelOpsSigned;
+overlay procedure TestRelOpsSigned;
 begin
   WriteLn('--- TestRelOpsSigned ---');
 
@@ -320,7 +324,7 @@ begin
   Assert(not(1 = -1));
 end;
 
-procedure TestRelOpsLarge;
+overlay procedure TestRelOpsLarge;
 begin
   WriteLn('--- TestRelOpsLarge ---');
 
@@ -357,7 +361,7 @@ begin
   Assert(not(23456 = -23456));
 end;
 
-procedure TestRelOpsLimits;
+overlay procedure TestRelOpsLimits;
 begin
   WriteLn('--- TestRelOpsLimits ---');
 
@@ -366,7 +370,7 @@ begin
   Assert(-32768 < 32767);
 end;
 
-procedure TestRelOpsBoolean;
+overlay procedure TestRelOpsBoolean;
 begin
   WriteLn('--- TestRelOpsBoolean ---');
 
@@ -403,7 +407,7 @@ begin
   Assert(not(False = True));
 end;
 
-procedure TestRelOpsChar;
+overlay procedure TestRelOpsChar;
 begin
   WriteLn('--- TestRelOpsChar ---');
 
@@ -440,7 +444,7 @@ begin
   Assert(not('Z' = 'A'));
 end;
 
-procedure TestLogOps;
+overlay procedure TestLogOps;
 begin
   WriteLn('--- TestLogOps ---');
 
@@ -463,7 +467,7 @@ begin
   Assert(True);
 end;
 
-procedure TestBitOps;
+overlay procedure TestBitOps;
 begin
   WriteLn('--- TestBitOps ---');
 
@@ -480,7 +484,7 @@ begin
   Assert(not -1 = 0);
 end;
 
-procedure TestVarGlobal;
+overlay procedure TestVarGlobal;
 begin
   WriteLn('--- TestVarGlobal ---');
 
@@ -512,7 +516,7 @@ begin
   Assert(C = 'Z');
 end;
 
-procedure TestVarLocal;
+overlay procedure TestVarLocal;
 var
   X, Y, Z: Integer;
   B : Boolean;
@@ -548,7 +552,7 @@ begin
   Assert(C = 'Z');
 end;
 
-procedure TestVarNested;
+overlay procedure TestVarNested;
 var
   X, Y: Integer;
   B : Boolean;
@@ -584,7 +588,11 @@ begin
   Assert(Z = 4711);
 end;
 
-procedure TestArrays;
+(* Overlay 1 *)
+
+const Dummy1 = 0;
+
+overlay procedure TestArrays;
 const
   Jan = 1;
   Dec = 12;
@@ -712,7 +720,7 @@ begin
   Assert(SizeOf(OrGate[False]) = 2);
 end;
 
-procedure TestHighLow;
+overlay procedure TestHighLow;
 begin
   WriteLn('--- TestHighLow ---');
 
@@ -729,7 +737,7 @@ begin
   Assert(High(Boolean) = True);
 end;
 
-procedure SwapPointProc(var P: TPoint);
+overlay procedure SwapPointProc(var P: TPoint);
 var
   I: Integer;
 begin
@@ -738,13 +746,13 @@ begin
   P.Y := I;
 end;
 
-function SwapPointFunc(P: TPoint): TPoint;
+overlay function SwapPointFunc(P: TPoint): TPoint;
 begin
   SwapPointFunc.X := P.Y;
   SwapPointFunc.Y := P.X;
 end;
 
-procedure TestRecords;
+overlay procedure TestRecords;
 var
   P, Q: TPoint;
 begin
@@ -780,7 +788,7 @@ begin
   Assert(Q.Y = 200);
 end;
 
-procedure TestVariantRecords;
+overlay procedure TestVariantRecords;
 type
   Rec1 = record
     C: Char;
@@ -928,7 +936,7 @@ begin
   Assert(SizeOf(R4) = 6);
 end;
 
-procedure TestSets;
+overlay procedure TestSets;
 type
   Day = (Mon, Tue, Wed, Thu, Fri, Sat, Sun);
 
@@ -945,28 +953,28 @@ var
 
   I: Byte;
 
-procedure DumpSet(DS: DaySet);
-var
-  D: Day;
-  First: Boolean;
-begin
-  Write('[');
-  First := True;
-  for D := Mon to Sun do
+  procedure DumpSet(DS: DaySet);
+  var
+    D: Day;
+    First: Boolean;
   begin
-    if D in DS then
+    Write('[');
+    First := True;
+    for D := Mon to Sun do
     begin
-      if First then First := False else Write(',');
-      Write(D);
+      if D in DS then
+      begin
+        if First then First := False else Write(',');
+        Write(D);
+      end;
     end;
+    WriteLn(']');
   end;
-  WriteLn(']');
-end;
 
-function Check(B: Boolean): String5;
-begin
-  if B then Check := '  X  ' else Check := '     ';
-end;
+  function Check(B: Boolean): String5;
+  begin
+    if B then Check := '  X  ' else Check := '     ';
+  end;
 
 begin
   WriteLn('--- TestRecords ---');
@@ -1059,27 +1067,27 @@ begin
   WriteLn;
 end;
 
-procedure NoParamProc;
+overlay procedure NoParamProc;
 begin
   X := 1234;
 end;
 
-function NoParamFunc: Integer;
+overlay function NoParamFunc: Integer;
 begin
   NoParamFunc := 5678;
 end;
 
-procedure SumProc(A, B: Integer);
+overlay procedure SumProc(A, B: Integer);
 begin
   X := A + B;
 end;
 
-function SumFunc(A, B: Integer): Integer;
+overlay function SumFunc(A, B: Integer): Integer;
 begin
   SumFunc := A + B;
 end;
 
-procedure TestProcFunc;
+overlay procedure TestProcFunc;
 var
   J: Integer;
 
@@ -1115,7 +1123,10 @@ begin
   Assert(J = 10);
 end;
 
-procedure AddPoints1(P, Q: TPoint; var R: TPoint);
+const
+  Overlay1 = 1;
+
+overlay procedure AddPoints1(P, Q: TPoint; var R: TPoint);
 begin
   R.X := P.X + Q.X;
   R.Y := P.Y + Q.Y;
@@ -1126,7 +1137,7 @@ begin
   Q.Y := 0;
 end;
 
-function AddPoints2(P, Q: TPoint): TPoint;
+overlay function AddPoints2(P, Q: TPoint): TPoint;
 begin
   AddPoints2.X := P.X + Q.X;
   AddPoints2.Y := P.Y + Q.Y;
@@ -1137,7 +1148,7 @@ begin
   Q.Y := 0;
 end;
 
-function ReverseArray(A: TIntArray100; Count: Integer): TIntArray100;
+overlay function ReverseArray(A: TIntArray100; Count: Integer): TIntArray100;
 var
   I: Integer;
 begin
@@ -1148,7 +1159,7 @@ begin
   end;
 end;
 
-procedure TestComplexParams;
+overlay procedure TestComplexParams;
 var
   P, Q, R: TPoint;
   A, B: TIntArray100;
@@ -1196,7 +1207,7 @@ begin
   end;
 end;
 
-procedure SwapInteger(var X, Y: Integer);
+overlay procedure SwapInteger(var X, Y: Integer);
 var
   Z: Integer;
 begin
@@ -1205,7 +1216,7 @@ begin
   Y := Z;
 end;
 
-procedure SwapBoolean(var X, Y: Boolean);
+overlay procedure SwapBoolean(var X, Y: Boolean);
 var
   Z: Boolean;
 begin
@@ -1214,7 +1225,7 @@ begin
   Y := Z;
 end;
 
-procedure SwapRecord(var R: TPoint);
+overlay procedure SwapRecord(var R: TPoint);
 var
   Z: Integer;
 begin
@@ -1223,7 +1234,7 @@ begin
   R.Y := Z;
 end;
 
-procedure Sort(var A: TIntArray100; Count: Integer);
+overlay procedure Sort(var A: TIntArray100; Count: Integer);
 var
   I, J: Integer;
   Changed: Boolean;
@@ -1243,7 +1254,7 @@ begin
   end;
 end;
 
-procedure TestSort(var Numbers: TIntArray100; Count: Integer);
+overlay procedure TestSort(var Numbers: TIntArray100; Count: Integer);
 var
   I: Integer;
 begin
@@ -1261,7 +1272,7 @@ begin
   Assert(I = Count);
 end;
 
-procedure TestVarParams;
+overlay procedure TestVarParams;
 var
   I, J: Integer;
   B, C: Boolean;
@@ -1269,6 +1280,7 @@ var
   R: TPoint;
 begin
   WriteLn('--- TestVarParams ---');
+  WriteLn('(Might take a while.)');
 
   I := 1234;
   J := 5678;
@@ -1292,7 +1304,7 @@ begin
   TestSort(LocalIntArray, 100);
 end;
 
-function Fibonacci(I: Integer): Integer;
+overlay function Fibonacci(I: Integer): Integer;
 begin
   if I = 0 then
     Fibonacci := 0
@@ -1302,7 +1314,7 @@ begin
     Fibonacci := Fibonacci(I - 1) + Fibonacci(I - 2);
 end;
 
-function Factorial(I: Integer): Integer;
+overlay function Factorial(I: Integer): Integer;
 begin
   if I = 1 then
     Factorial := I
@@ -1310,9 +1322,11 @@ begin
     Factorial := I * Factorial(I - 1);
 end;
 
-procedure TestRecursion;
+overlay procedure TestRecursion;
 begin
   WriteLn('--- TestRecursion ---');
+
+  WriteLn('(Might take even longer.)');
 
   Assert(Fibonacci(23) = 28657);
   Assert(Factorial(7) = 5040);
@@ -1353,21 +1367,6 @@ begin
   F3 := X + Y;
 end;
 
-procedure TestArraysOfArrays;
-var
-  I, J: Integer;
-begin
-  WriteLn('--- TestArraysOfArrays ---');
-
-  for I := 0 to 9 do
-    for J := 0 to 9 do
-      AA[I][J] := 10 * I + J;
-
-  for I := 0 to 9 do
-    for J := 0 to 9 do
-      Assert(AA[I][J] = 10 * I + J);
-end;
-
 var
   AbsI: Integer;
   AbsJ: Integer absolute $6C;
@@ -1375,7 +1374,7 @@ var
   AbsY: Integer absolute AbsJ;
   AbsZ: Integer absolute '__buffer';
 
-procedure TestAbsolute;
+overlay procedure TestAbsolute;
 begin
   WriteLn('--- TestAbsolute ---');
 
@@ -1399,7 +1398,22 @@ begin
   Assert(AbsY = 201);
 end;
 
-procedure TestTypeChecks;
+overlay procedure TestArraysOfArrays;
+var
+  I, J: Integer;
+begin
+  WriteLn('--- TestArraysOfArrays ---');
+
+  for I := 0 to 9 do
+    for J := 0 to 9 do
+      AA[I][J] := 10 * I + J;
+
+  for I := 0 to 9 do
+    for J := 0 to 9 do
+      Assert(AA[I][J] = 10 * I + J);
+end;
+
+overlay procedure TestTypeChecks;
 var
   I: Integer;
   B: Byte;
@@ -1453,7 +1467,7 @@ begin
   Local(1, 513);
 end;
 
-procedure TestIfThen;
+overlay procedure TestIfThen;
 var
   I, J: Integer;
 begin
@@ -1473,7 +1487,7 @@ begin
   Assert(J = 2);
 end;
 
-procedure TestIfThenElse;
+overlay procedure TestIfThenElse;
 var
   I, J: Integer;
 begin
@@ -1493,7 +1507,7 @@ begin
   Assert(J = 2);
 end;
 
-procedure TestIfBlocks;
+overlay procedure TestIfBlocks;
 var
   I, J: Integer;
 begin
@@ -1527,7 +1541,7 @@ begin
   Assert(J = 2);
 end;
 
-procedure TestGoto;
+overlay procedure TestGoto;
 label
   Foo, Bar, 123, 456, 789, Loop;
 var
@@ -1593,7 +1607,7 @@ begin
   Assert(I = 10);
 end;
 
-procedure TestCase;
+overlay procedure TestCase;
 var
   I: Integer;
   S: String[255];
@@ -1641,7 +1655,7 @@ begin
   Assert(S = 'zx sPECTRUM+ 128k');
 end;
 
-procedure TestWhile;
+overlay procedure TestWhile;
 var
   I, J, K: Integer;
 begin
@@ -1695,7 +1709,7 @@ begin
   Assert(J = 8);
 end;
 
-procedure TestRepeat;
+overlay procedure TestRepeat;
 var
   I, J, K: Integer;
 begin
@@ -1750,7 +1764,7 @@ begin
   Assert(J = 8);
 end;
 
-procedure TestForInteger;
+overlay procedure TestForInteger;
 var
   I, J, K: Integer;
   B: Boolean;
@@ -1828,7 +1842,7 @@ begin
   Assert(K = 1320);
 end;
 
-procedure TestForBoolean;
+overlay procedure TestForBoolean;
 var
   I, J: Integer;
   B: Boolean;
@@ -1855,7 +1869,7 @@ begin
   Assert(I = 2);
 end;
 
-procedure TestForChar;
+overlay procedure TestForChar;
 var
   I, J: Integer;
   C: Char;
@@ -1894,7 +1908,7 @@ var
   WithC: WithRec;
   WithD: ^WithRec;
 
-procedure TestWith;
+overlay procedure TestWith;
 var
   A, B, I, J, K: Integer;
   R: WithRec;
@@ -1943,10 +1957,7 @@ begin
   Assert(S[I * J + K].B = 8.0);
 end;
 
-type
-  Str255 = string[255];
-
-procedure UpperCase(var Strg: Str255);
+overlay procedure UpperCase(var Strg: Str255);
 begin
   inline(
     $dd/$21/$04/$00/    (* ld id,4           *)
@@ -1970,7 +1981,7 @@ begin
   );                    (* l2:               *)
 end;
 
-procedure TestInline;
+overlay procedure TestInline;
 var
   S: Str255;
 begin
@@ -1981,7 +1992,7 @@ begin
   Assert(S = 'HELLO, INLINE WORLD!')
 end;
 
-procedure TestWriteInteger;
+overlay procedure TestWriteInteger;
 begin
   WriteLn('--- TestWriteInteger ---');
 
@@ -1994,7 +2005,7 @@ begin
   WriteLn;
 end;
 
-procedure TestWriteBoolean;
+overlay procedure TestWriteBoolean;
 begin
   WriteLn('--- TestWriteBoolean ---');
 
@@ -2004,7 +2015,7 @@ begin
   WriteLn;
 end;
 
-procedure TestWriteChar;
+overlay procedure TestWriteChar;
 var
   C: Char;
 begin
@@ -2019,7 +2030,7 @@ begin
   WriteLn;
 end;
 
-procedure TestWriteByte;
+overlay procedure TestWriteByte;
 var
   B: Byte;
 begin
@@ -2034,7 +2045,7 @@ begin
   WriteLn;
 end;
 
-procedure TestWriteString;
+overlay procedure TestWriteString;
 begin
   WriteLn('--- TestWriteString ---');
 
@@ -2048,7 +2059,7 @@ begin
   WriteLn;
 end;
 
-procedure TestEnums;
+overlay procedure TestEnums;
 var
   C: Color;
   I: Integer;
@@ -2109,7 +2120,7 @@ begin
   end;
 end;
 
-procedure TestWriteEnums;
+overlay procedure TestWriteEnums;
 var
   C: Color;
 begin
@@ -2122,7 +2133,7 @@ begin
   WriteLn;
 end;
 
-procedure TestSizeOf;
+overlay procedure TestSizeOf;
 begin
   WriteLn('--- TestSizeOf ---');
 
@@ -2142,8 +2153,8 @@ begin
 
   Assert(SizeOf(GlobalIntArray) = 200);
 end;
-
-procedure TestStrings;
+  
+overlay procedure TestStrings;
 type
   TStr255 = string[255];
   TStr31  = string[31];
@@ -2333,7 +2344,10 @@ begin
   WriteLn;
 end;
 
-procedure TestReal;
+const
+  Overlay5 = 5;
+
+overlay procedure TestReal;
 var
   X, Y, Z: Real;
   I: Integer;
@@ -2479,7 +2493,7 @@ begin
   WriteLn;
 end;
 
-procedure TestWriteFormat;
+overlay procedure TestWriteFormat;
 
 const
   C: Char = 'X';
@@ -2601,7 +2615,7 @@ begin
   TestWriteFormat2(20, 5);
 end;
 
-procedure TestIncDec;
+overlay procedure TestIncDec;
 var
   B: Byte;
   I: Integer;
@@ -2661,7 +2675,7 @@ begin
   Assert(Z = False);
 end;
 
-procedure TestBuiltIns;
+overlay procedure TestBuiltIns;
 var
   S, T: String[15];
 begin
@@ -2708,6 +2722,11 @@ begin
 end;
 
 begin
+  repeat until KeyPressed;
+
+  WriteLn('*** PASTA/80 Test Suite ***');
+  WriteLn;
+
   TestComment;
 
   TestConst;
