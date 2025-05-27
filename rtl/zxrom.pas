@@ -217,3 +217,5 @@ end;
  * Performs a recursive flood-fill starting at the given point.
  *)
 procedure FloodFill(X, Y: Integer); register;       external 'zx_fill';
+
+procedure SelectBank(Bank: Byte); register; external 'banksel_hl';
