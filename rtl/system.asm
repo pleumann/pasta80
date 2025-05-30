@@ -2,6 +2,15 @@
 ; PL0 built-in assembler functions
 ;
 
+                macro about name, addr
+                    LUA
+                        s = sj.calc("name")
+                        a = sj.calc("$")
+                        l = a - sj.calc("addr")
+                        str = string.format("Bank %s: %5d bytes ($C000-%4X)",s,l,a)
+                        print(str)
+                    ENDLUA
+                endm
 __cur_file      dw      0
 __text_buf      dw      0
 

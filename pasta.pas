@@ -295,6 +295,9 @@ var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
   AltEditor: Boolean;
 
+var
+  SrcFile, AsmFile, BinFile: String;
+
 (**
  * Tries to setup the compiler's home directory and the paths to various tools,
  * first by "guessing" via "which", then by loading a config file.
@@ -636,6 +639,8 @@ type
     IsAlive: Boolean;
     Deps: array[0..127] of PSymbol;
     DepCount: Integer;
+    Banked: Boolean;
+    BankNo: Byte;
   end;
 
 var
@@ -2155,6 +2160,58 @@ begin
   EmitI('include "' +  S + '"');
 end;
 
+const
+  Banked: Boolean = False;
+  CurrentBank: Byte = 0;
+
+procedure BeginOverlay;
+var
+  S: String;
+begin
+  S := IntToStr(CurrentBank);
+
+  Emit('OLD_ORG_' + S, 'equ $', '');
+  EmitI('slot 3');
+  EmitI('page ' + S);
+  EmitI('org $C000');
+
+  Banked := True;
+end;
+
+procedure EndOverlay;
+var
+  S: String;
+begin
+  S := IntToStr(CurrentBank);
+
+  EmitI('about ' + S + ',49152');
+//  EmitI('LUA');
+//  EmitI('print(string.format("Bank %2s: %5d bytes ($C000-%4X)",' + S + ',sj.calc("$-$C000"), sj.calc("$")))');
+//  EmitI('ENDLUA');
+
+//  EmitI('DISPLAY "Bank ' + S + ': $C000-",/H,$," ",/D,$-$C000," bytes"');
+
+
+  EmitI('if $ > 65535');
+  EmitI('DISPLAY "Bank ' + S + ' too large."');
+  EmitI('endif');
+
+  if Format = tfTape then
+    EmitI('savetap "' + BinFile + '",CODE,"bank' + S + '",$C000,$-$C000')
+  else if Format = tfBinary then
+    EmitI('savebin "' + BinFile + '-' + S + '",$C000,$-$C000');
+
+  EmitI('org OLD_ORG_' + S);
+
+  Banked := False;
+  Inc(CurrentBank);
+
+  if (CurrentBank = 2) or (CurrentBank = 5) then
+    Inc(CurrentBank)
+  else if CurrentBank = 8 then
+    Error('Out of banks');
+end;
+
 procedure EmitClear(Bytes: Integer); forward;
 
 procedure EmitCall(Sym: PSymbol);
@@ -2183,11 +2240,12 @@ begin
     end;
   end;
 
-  if (Sym^.Level = 0) and Sym^.Banked then
+  if (Sym^.Level = 0) and Sym^.Banked and not (Banked and (CurrentBank = Sym^.BankNo)) then
   begin
+    WriteLn('Emitting call to ', Sym^.Name, ' in bank ', Sym^.BankNo);
     EmitI('ld a,' + IntToStr(Sym^.BankNo));
     EmitI('ld hl,' + Sym^.Tag);
-    EmitI('call callbank');
+    EmitI('call farcall');
   end
   else
     EmitI('call ' + Sym^.Tag);
@@ -2239,12 +2297,12 @@ begin
   else if Binary = btZX then
   begin
     Emit('ZX', 'equ 1', 'Target is ZX 48K .tap file');
-    EmitI('device ZXSPECTRUM48');
+    EmitI('device ZXSPECTRUM48,32767');
   end
   else if Binary = btZX128 then
   begin
     Emit('ZX128', 'equ 1', 'Target is ZX 128K .tap file');
-    EmitI('device ZXSPECTRUM128');
+    EmitI('device ZXSPECTRUM128,32767');
   end
   else if Binary = btZXN then
   begin
@@ -2263,6 +2321,18 @@ begin
   EmitC('');
   EmitC('end');
   EmitC('');
+
+  EmitI('if HEAP >= 49152');
+  EmitI('display "Main code segment too large"');
+  EmitI('endif');
+
+  if Binary = btZX128 then
+  begin
+    EmitI('slot 3');
+    EmitI('page 0');
+    EmitI('org 23388');
+    EmitI('db 16');
+  end;
 
   if Binary = btCPM then
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
@@ -6458,6 +6528,10 @@ begin
     end
     else
     begin
+      NewSym^.Banked := Banked;
+      NewSym^.BankNo := CurrentBank;
+      if Banked then WriteLn('Proc/Func ', NewSym^.Name, ' is in bank ', CurrentBank);
+
       ParseBlock(NewSym);
       Expect(toSemicolon);
       NextToken;
@@ -6557,10 +6631,12 @@ begin
 
     else if Scanner.Token = toOverlay then
     begin
+      BeginOverlay;
+
       repeat
         NextToken;
 
-        if not (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
+        if not ((Scanner.Token = toProcedure) or (Scanner.Token = toFunction)) then
           Error('Procedure or function expected');
 
         if Level <> 0 then
@@ -6568,6 +6644,8 @@ begin
 
         ParseProcFunc(Sym);
       until Scanner.Token <> toOverlay;
+
+      EndOverlay;
     end
 
     else if (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
@@ -6694,9 +6772,6 @@ begin
   CloseScope(False);
   CloseScope(False);
 end;
-
-var
-  SrcFile, AsmFile, BinFile: String;
 
 (**
  * Performs a build. All relevant information is assumed to be in the respective
