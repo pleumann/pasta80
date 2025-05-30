@@ -476,32 +476,3 @@ checkadj:
                 pop     hl
                 push    de
                 jp      (hl)
-
-banksel_hl:
-        ld      a,l
-
-; Select memory bank a, return old bank in a
-banksel:
-        push    bc
-        push    de
-
-        out     ($fe),a
-
-        ld      d,a
-        LD      A,(0x5b5c)      ;Previous value of port
-        ld      e,a
-        AND     0xf8
-        OR      d               ;Select bank 4
-        LD      BC,0x7ffd
-        DI
-        LD      (0x5b5c),A
-        OUT     (C),A
-        EI
-
-        ld      a,e
-        and     7
-
-        pop     de
-        pop     bc
-
-        ret
