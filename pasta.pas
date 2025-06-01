@@ -16,6 +16,16 @@ const
 (* --- Utility functions ---------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
+function ReplaceChar(S: String; C, D: Char): String;
+var
+  I: Integer;
+begin
+  for I := 1 to Length(S) do
+    if S[I] = C then S[I] := D;
+
+  ReplaceChar := S;
+end;
+
 (**
  * Converts the given string to upper case.
  *)
@@ -36,6 +46,16 @@ var
 begin
   for I := 1 to Length(S) do S[I] := LowerCase(S[I]);
   LowerStr := S;
+end;
+
+function IsAlpha(C: Char): Boolean;
+begin
+  if (C >= 'a') and (C <= 'z') then
+    IsAlpha := True
+  else if (C >= 'A') and (C <= 'Z') then
+    IsAlpha := True
+  else
+    IsAlpha := False;
 end;
 
 (**
@@ -171,6 +191,32 @@ begin
                 '0x' + IntToHex(Bytes[5], 2) + IntToHex(Bytes[4], 2);
 end;
 
+function NativeToPosix(Native: String): String;
+begin
+  {$ifdef windows}
+  ReplaceChar(Native, '\', '/');
+
+  if (Length(Native) >= 2) then
+    if IsAlpha(Native[1]) and (Native[2] = ':') then
+      Native := '/' + LowerCase(Native[1]) + Copy(Native, 3, 255);
+  {$endif}
+
+  Result := Native;
+end;
+
+function PosixToNative(Posix : string): string;
+begin
+  {$ifdef windows}
+  if (Length(Posix) >= 3) then
+    if (Posix[1] = '/') and IsAlpha(Posix[2]) and (Posix[3] = '/') then
+      Posix := Posix[2] + ':' + Copy(Posix, 3, 255);
+
+  ReplaceChar(Posix, '/', '\');
+  {$endif}
+
+  Result := Posix;
+end;
+
 (**
  * Returns the parent directory of the given directory.
  *)
@@ -202,13 +248,23 @@ begin
 end;
 
 (**
- * Returns a given file name as a relative file name based on a given
- * directory, if that it possible (i.e. if is contained in that directory).
+ *
+ *)
+function FAbsolute(Name: String): String;
+begin
+  FAbsolute := NativeToPosix(FExpand(PosixToNative(Name)));
+end;
+
+(**
+ * Returns a given file name as a relative file name based on the current
+ * directory if that it possible (i.e. if is contained in that directory).
  * Otherwise it stays unchanged.
  *)
-function FRelative(Name, Dir: String): String;
+function FRelative(Name: String): String;
+var
+  Dir: String;
 begin
-  Dir := Dir + '/';
+  Dir := FAbsolute('.') + '/';
   if Copy(Name, 1, Length(Dir)) = Dir then
     FRelative := Copy(Name, Length(Dir) + 1, 255)
   else
@@ -223,7 +279,7 @@ var
   F: File;
 begin
   {$I-}
-  Assign(F, Name);
+  Assign(F, PosixToNative(Name));
   Reset(F, 1);
   if IOResult = 0 then
   begin
@@ -244,10 +300,10 @@ var
   Count: Integer;
 begin
   {$I-}
-  Assign(Dst, DstName);
+  Assign(Dst, PosixToNative(DstName));
   Rewrite(Dst, 1);
 
-  Assign(Src, SrcName);
+  Assign(Src, PosixToNative(SrcName));
   Reset(Src, 1);
 
   BlockRead(Src, Buffer, 512, Count);
@@ -300,37 +356,43 @@ var
  * first by "guessing" via "which", then by loading a config file.
  *)
 procedure LoadConfig;
+const
+  {$ifdef windows}
+  EnvKey = 'USERPROFILE';
+  Which = 'which';
+  {$else}
+  EnvKey = 'HOME';
+  Which = 'where';
+  {$endif}
 var
   T: Text;
   UserHome, S, Key, Value: String;
   P: Integer;
 begin
-  UserHome := GetEnv('HOME');
+  HomeDir := ParentDir(NativeToPosix(FExpand(ParamStr(0))));
 
-  HomeDir := ParentDir(ParamStr(0));
-  if Length(HomeDir) = 0 then HomeDir := '.';
-  HomeDir := FExpand(HomeDir);
-
-  RunCommand('which', ['sjasmplus'], SjAsmCmd);
+  RunCommand(Which, ['sjasmplus'], SjAsmCmd);
   SjAsmCmd := TrimStr(SjAsmCmd);
 
-  RunCommand('which', ['zasm'], ZasmCmd);
+  RunCommand(Which, ['zasm'], ZasmCmd);
   ZasmCmd := TrimStr(ZasmCmd);
 
-  RunCommand('which', ['nano'], NanoCmd);
+  RunCommand(Which, ['nano'], NanoCmd);
   NanoCmd := TrimStr(NanoCmd);
 
-  RunCommand('which', ['code'], CodeCmd);
+  RunCommand(Which, ['code'], CodeCmd);
   CodeCmd := TrimStr(CodeCmd);
 
-  RunCommand('which', ['tnylpo'], TnylpoCmd);
+  RunCommand(Which, ['tnylpo'], TnylpoCmd);
   TnylpoCmd := TrimStr(TnylpoCmd);
 
-  RunCommand('which', ['fuse'], FuseCmd);
+  RunCommand(Which, ['fuse'], FuseCmd);
   FuseCmd := TrimStr(FuseCmd);
 
+  UserHome := NativeToPosix(GetEnv(EnvKey));
+
   {$I-}
-  Assign(T, UserHome + '/.pasta80.cfg');
+  Assign(T, PosixToNative(UserHome + '/.pasta80.cfg'));
   Reset(T);
   if IOResult = 0 then
   begin
@@ -433,7 +495,7 @@ begin
 
   with Tmp^ do
   begin
-    Name := FileName;
+    Name := PosixToNative(FileName);
     {$I-}
     Assign(Input, FileName);
     Reset(Input);
@@ -1448,7 +1510,7 @@ begin
 
       // Might turn out to be compiler directives
       if LowerStr(Copy(S, 2, 3)) = '$i ' then
-        OpenInput(TrimStr(Copy(S, 4, Length(S) - 4)))
+        OpenInput(NativeToPosix(TrimStr(Copy(S, 4, Length(S) - 4))))
       else if LowerStr(Copy(S, 2, 3)) = '$a ' then
         EmitI(TrimStr(Copy(S, 4, Length(S) - 4)))
       else if LowerStr(Copy(S, 2, 2)) = '$u' then
@@ -1460,7 +1522,7 @@ begin
       else if LowerStr(Copy(S, 2, 2)) = '$k' then
         StackMode := S[4] = '+'
       else if LowerStr(Copy(S, 2, 2)) = '$l' then
-        SetLibrary(TrimStr(Copy(S, 4, Length(S) - 4)));
+        SetLibrary(NativeToPosix(TrimStr(Copy(S, 4, Length(S) - 4))));
 
       NextToken;
       Exit;
@@ -1534,7 +1596,7 @@ begin
 
             // TODO Do we really need to support directives for both comment types?
             if LowerStr(Copy(S, 3, 2)) = '$i' then
-              OpenInput(TrimStr(Copy(S, 5, Length(S) - 6)));
+              OpenInput(NativeToPosix(TrimStr(Copy(S, 5, Length(S) - 6))));
 
             NextToken;
             Exit;
@@ -1731,7 +1793,7 @@ end;
  *)
 procedure OpenTarget(Filename: String);
 begin
-  Assign(Target, Filename);
+  Assign(Target, PosixToNative(Filename));
   Rewrite(Target);
 end;
 
@@ -6653,7 +6715,8 @@ begin
     Build := 1;
 
     WriteLn('Compiling...');
-    WriteLn('  ', FRelative(SrcFile, Dir), ' -> ', FRelative(AsmFile, Dir));
+    WriteLn('  ', PosixToNative(FRelative(SrcFile)),
+            ' -> ', PosixToNative(FRelative(AsmFile)));
 
     ErrorLine := 0;
     ErrorColumn := 0;
@@ -6695,7 +6758,7 @@ begin
     CopyFile(HomeDir + '/misc/loader.tap', BinFile);
 
     WriteLn('Assembling...');
-    WriteLn('  ', FRelative(AsmFile, Dir), ' -> ', FRelative(BinFile, Dir));
+    WriteLn('  ', FRelative(AsmFile), ' -> ', FRelative(BinFile));
     WriteLn;
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
@@ -6782,7 +6845,7 @@ begin
   if Length(T) <> 0 then
   begin
     if Pos('.', T) = 0 then T := T + '.pas';
-    GetFile := FExpand(T);
+    GetFile := FExpand(NativeToPosix(T));
   end;
 end;
 
@@ -6938,7 +7001,11 @@ var
 begin
   Write('Mask: ');
   ReadLn(Pattern);
+  {$ifdef windows}
+  if Pattern = '' then Pattern := '*.*';
+  {$else}
   if Pattern = '' then Pattern := '*';
+  {$endif}
 
   I := 0;
   FindFirst(Pattern, Archive + Directory, Dir);
@@ -7029,7 +7096,7 @@ begin
   else
     WriteLn(BinaryStr[Binary] + ', Z80':40);
   WriteLn;
-  WriteLn('Copyright (C) 2020-2025 by Jörg Pleumann');
+  WriteLn('Copyright (C) 2020-25 by  Joerg Pleumann');
   WriteLn('----------------------------------------');
   WriteLn;
 end;
@@ -7048,10 +7115,10 @@ begin
 
     Copyright;
 
-    WriteLn(TermStr('~Directory: '), FExpand('.'));
+    WriteLn(TermStr('~Active directory: '), FExpand('.'));
     WriteLn;
 
-    Write(TermStr('~Work file: '), FRelative(WorkFile, FExpand('.')));
+    Write(TermStr('~Work file: '), PosixToNative(FRelative(WorkFile)));
     if WorkFile <> '' then
     begin
       I := FSize(WorkFile);
@@ -7059,7 +7126,7 @@ begin
     end
     else WriteLn;
 
-    Write(TermStr('~Main file: '), FRelative(MainFile, FExpand('.')));
+    Write(TermStr('~Main file: '), PosixToNative(FRelative(MainFile)));
     if MainFile <> '' then
     begin
       I := FSize(MainFile);
@@ -7076,7 +7143,7 @@ begin
       C := GetKey;
 
       case C of
-        'd': DoDirectory;
+        'a': DoDirectory;
         'm': DoMainFile;
         'w': DoWorkFile;
         'e': DoEdit(0, 0);
@@ -7161,14 +7228,16 @@ begin
   end
   else
   begin
-    if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pas';
+
+    SrcFile := NativeToPosix(FAbsolute(SrcFile));
+    if Pos('.', SrcFile) = 0 then SrcFile := SrcFile + '.pas';
     if FSize(SrcFile) < 0 then Error('Input file does not exist');
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
   if Ide then
   begin
-    if SrcFile <> '' then WorkFile := FExpand(SrcFile);
+    if SrcFile <> '' then WorkFile := SrcFile;
     Interactive;
   end
   else Build;
