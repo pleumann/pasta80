@@ -199,9 +199,11 @@ begin
   if (Length(Native) >= 2) then
     if IsAlpha(Native[1]) and (Native[2] = ':') then
       Native := '/' + LowerCase(Native[1]) + Copy(Native, 3, 255);
-  {$endif}
 
+  NativeToPosix := ReplaceChar(Native, '\', '/');
+  {$else}
   Result := Native;
+  {$endif}
 end;
 
 function PosixToNative(Posix : string): string;
@@ -211,10 +213,10 @@ begin
     if (Posix[1] = '/') and IsAlpha(Posix[2]) and (Posix[3] = '/') then
       Posix := Posix[2] + ':' + Copy(Posix, 3, 255);
 
-  ReplaceChar(Posix, '/', '\');
-  {$endif}
-
+  PosixToNative := ReplaceChar(Posix, '/', '\');
+  {$else}
   Result := Posix;
+  {$endif}
 end;
 
 (**
@@ -369,7 +371,7 @@ var
   UserHome, S, Key, Value: String;
   P: Integer;
 begin
-  HomeDir := ParentDir(NativeToPosix(FExpand(ParamStr(0))));
+  HomeDir := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
 
   RunCommand(Which, ['sjasmplus'], SjAsmCmd);
   SjAsmCmd := TrimStr(SjAsmCmd);
@@ -495,14 +497,14 @@ begin
 
   with Tmp^ do
   begin
-    Name := PosixToNative(FileName);
+    Name := FileName;
     {$I-}
-    Assign(Input, FileName);
+    Assign(Input, PosixToNative(Name));
     Reset(Input);
     if IOResult <> 0 then
     begin
       Dispose(Tmp);
-      Error('File "' + FileName + '" not found');
+      Error('File "' + PosixToNative(Name) + '" not found');
     end;
     {$I+}
     Buffer := '';
@@ -1874,7 +1876,7 @@ begin
     FileName := ParentDir(Source^.Name) + '/' + FileName;
 
   Flush;
-  Emit0('', 'include "' + FileName + '"', '');
+  Emit0('', 'include "' + PosixToNative(FileName) + '"', '');
 end;
 
 function DoOptimize: Boolean;
@@ -2276,6 +2278,8 @@ end;
  * Emits the file footer.
  *)
 procedure EmitFooter(BinFile: String);
+var
+  BinFile2: String;
 begin
   EmitC('');
   Emit('HEAP', '', '');
@@ -2283,14 +2287,16 @@ begin
   EmitC('end');
   EmitC('');
 
+  BinFile2 := PosixToNative(BinFile);
+
   if Binary = btCPM then
-    EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
+    EmitI('savebin "' + BinFile2 + '",$0100,HEAP-$0100')
   else if Format = tfBinary then
-    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
+    EmitI('savebin "' + BinFile2 + '",$8000,HEAP-$8000')
   else if Format = tfPlus3Dos then
-    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
+    EmitI('save3dos "' + BinFile2 + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
-    EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000');
+    EmitI('savetap "' + BinFile2 + '",CODE,"mcode",$8000,HEAP-$8000');
 end;
 
 (**
@@ -6758,14 +6764,14 @@ begin
     CopyFile(HomeDir + '/misc/loader.tap', BinFile);
 
     WriteLn('Assembling...');
-    WriteLn('  ', FRelative(AsmFile), ' -> ', FRelative(BinFile));
+    WriteLn('  ', PosixToNative(FRelative(AsmFile)), ' -> ', PosixToNative(FRelative(BinFile)));
     WriteLn;
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + AsmFile)
+      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile))
     else
-      Exec(SjAsmCmd,  '--syntax=abf --nologo --msg=err ' + AsmFile);
+      Exec(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile));
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
@@ -6845,7 +6851,7 @@ begin
   if Length(T) <> 0 then
   begin
     if Pos('.', T) = 0 then T := T + '.pas';
-    GetFile := FExpand(NativeToPosix(T));
+    GetFile := NativeToPosix(T);
   end;
 end;
 
@@ -7229,9 +7235,10 @@ begin
   else
   begin
 
-    SrcFile := NativeToPosix(FAbsolute(SrcFile));
+    SrcFile := NativeToPosix(SrcFile);
+//    WriteLn(SrcFile);
     if Pos('.', SrcFile) = 0 then SrcFile := SrcFile + '.pas';
-    if FSize(SrcFile) < 0 then Error('Input file does not exist');
+//    if FSize(SrcFile) < 0 then Error('Input file does not exist');
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
