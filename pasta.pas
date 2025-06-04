@@ -7283,6 +7283,8 @@ begin
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
+  if (Binary = btCPM) and (Format <> tfBinary) then Error('CP/M only allows .bin files'); 
+
   if Ide then
   begin
     if SrcFile <> '' then WorkFile := SrcFile;
