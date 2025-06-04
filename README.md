@@ -1,4 +1,4 @@
-![Logo](doc/images/logo.png)
+![Logo](docs/images/logo.png)
 
 # PASTA/80
 
@@ -93,7 +93,7 @@ $ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) col
 
 | "Hello, World" in line mode  | "Hello, World" in full-screen |
 | :-------: | :----: |
-| ![Screenshot](doc/images/hello1.png) | ![Screenshot](doc/images/hello2.png) |
+| ![Screenshot](docs/images/hello1.png) | ![Screenshot](docs/images/hello2.png) |
 
 To generate binaries for the ZX Spectrum 48K and ZX Spectrum Next targets, use the `--zx` and `--zxn` parameters, respectively.
 
@@ -127,7 +127,7 @@ to run it in an interactive mode that has an interface reminiscient of Turbo Pas
 
 | Main menu | Editor |
 | :-------: | :----: |
-| ![Screenshot](doc/images/idemenu.png) | ![Screenshot](doc/images/ideedit.png) |
+| ![Screenshot](docs/images/idemenu.png) | ![Screenshot](docs/images/ideedit.png) |
 
 When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`). You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)).
 
@@ -139,21 +139,21 @@ The following screenshots show some applications compiled for the CP/M target an
 
 | 2048 | Game of Life |
 | :-------: | :----: |
-| ![Screenshot](doc/images/2048.png) | ![Screenshot](doc/images/life.png) |
+| ![Screenshot](docs/images/2048.png) | ![Screenshot](docs/images/life.png) |
 
 | Micro Calc | Galactic Empire |
 | :-------: | :----: |
-| ![Screenshot](doc/images/microcalc.png) | ![Screenshot](doc/images/empire.png) |
+| ![Screenshot](docs/images/microcalc.png) | ![Screenshot](docs/images/empire.png) |
 
 These screenshots show some applications compiled for the ZX Spectrum 48K target and running in the FUSE emulator.
 
 | 2048 | Game of Life |
 | :-------: | :----: |
-| ![Screenshot](doc/images/2048zx.png) | ![Screenshot](doc/images/lifezx.png) |
+| ![Screenshot](docs/images/2048zx.png) | ![Screenshot](docs/images/lifezx.png) |
 
 | Graphics Demo | Equation Solver |
 | :-------: | :----: |
-| ![Screenshot](doc/images/graphics.png) | ![Screenshot](doc/images/pqformula.png) |
+| ![Screenshot](docs/images/graphics.png) | ![Screenshot](docs/images/pqformula.png) |
 
 I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
 
