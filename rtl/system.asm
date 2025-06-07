@@ -2,12 +2,21 @@
 ; PL0 built-in assembler functions
 ;
 
-                macro about name, addr
+                LUA
+                function SegInfo(Name, Start, End, Extra)
+                    Len = End - Start
+                    Str = string.format("%-9s: %5d bytes ($%4X-$%4X) %s", Name, Len, Start, End, Extra)
+                    print(Str)
+                end
+                ENDLUA
+
+                macro about name, addr, addr2
                     LUA
                         s = sj.calc("name")
-                        a = sj.calc("$")
-                        l = a - sj.calc("addr")
-                        str = string.format("Bank %s: %5d bytes ($C000-%4X)",s,l,a)
+                        a = sj.calc("addr")
+                        z = sj.calc("addr2")
+                        l = z - a
+                        str = string.format("%-8s: %5d bytes (%4X-%4X)",s,l,a,z-1)
                         print(str)
                     ENDLUA
                 endm

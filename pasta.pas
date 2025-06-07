@@ -336,7 +336,9 @@ type
   (**
    * The possible output formats.
    *)
-  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot);
+  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot, tfNex);
+
+  TOverlayType = (otNone, otBanks, otPages);
 
 var
   (**
@@ -348,6 +350,8 @@ var
    * The format we are producing.
    *)
   Format: TTargetFormat = tfBinary;
+
+  Overlays: TOverlayType = otNone;
 
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -757,6 +761,11 @@ var
   SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
 
   SmartLink: Boolean; (* TODO Move elsewhere *)
+
+const
+  Banked: Boolean = False;
+  CurrentBank: Byte = 0;
+  ToastrackBanks: array[0..7] of Byte = (0, 0, 1, 1, 3, 3, 4, 4);
 
 (**
  * Opens a scope, which mainly adds a new scope marker at the front of the
@@ -2224,58 +2233,6 @@ begin
   EmitI('include "' +  S + '"');
 end;
 
-const
-  Banked: Boolean = False;
-  CurrentBank: Byte = 0;
-
-procedure BeginOverlay;
-var
-  S: String;
-begin
-  S := IntToStr(CurrentBank);
-
-  Emit('OLD_ORG_' + S, 'equ $', '');
-  EmitI('slot 3');
-  EmitI('page ' + S);
-  EmitI('org $C000');
-
-  Banked := True;
-end;
-
-procedure EndOverlay;
-var
-  S: String;
-begin
-  S := IntToStr(CurrentBank);
-
-  EmitI('about ' + S + ',49152');
-//  EmitI('LUA');
-//  EmitI('print(string.format("Bank %2s: %5d bytes ($C000-%4X)",' + S + ',sj.calc("$-$C000"), sj.calc("$")))');
-//  EmitI('ENDLUA');
-
-//  EmitI('DISPLAY "Bank ' + S + ': $C000-",/H,$," ",/D,$-$C000," bytes"');
-
-
-  EmitI('if $ > 65535');
-  EmitI('DISPLAY "Bank ' + S + ' too large."');
-  EmitI('endif');
-
-  if Format = tfTape then
-    EmitI('savetap "' + BinFile + '",CODE,"bank' + S + '",$C000,$-$C000')
-  else if Format = tfBinary then
-    EmitI('savebin "' + BinFile + '-' + S + '",$C000,$-$C000');
-
-  EmitI('org OLD_ORG_' + S);
-
-  Banked := False;
-  Inc(CurrentBank);
-
-  if (CurrentBank = 2) or (CurrentBank = 5) then
-    Inc(CurrentBank)
-  else if CurrentBank = 8 then
-    Error('Out of banks');
-end;
-
 procedure EmitClear(Bytes: Integer); forward;
 
 procedure EmitCall(Sym: PSymbol);
@@ -2306,7 +2263,7 @@ begin
 
   if (Sym^.Level = 0) and Sym^.Banked and not (Banked and (CurrentBank = Sym^.BankNo)) then
   begin
-    WriteLn('Emitting call to ', Sym^.Name, ' in bank ', Sym^.BankNo);
+    // WriteLn('Emitting call to ', Sym^.Name, ' in bank ', Sym^.BankNo);
     EmitI('ld a,' + IntToStr(Sym^.BankNo));
     EmitI('ld hl,' + Sym^.Tag);
     EmitI('call farcall');
@@ -2390,9 +2347,21 @@ begin
 
   BinFile2 := PosixToNative(BinFile);
 
+  EmitI('LUA');
+  EmitI('SegInfo("Code/Data",32768,sj.calc("HEAP"),"")');
+  EmitI('ENDLUA');
+
   EmitI('if HEAP >= 49152');
   EmitI('display "Main code segment too large"');
   EmitI('endif');
+
+  EmitI('LUA');
+  EmitI('SegInfo("Heap",sj.calc("HEAP"),49152-4096,"")');
+  EmitI('ENDLUA');
+
+  EmitI('LUA');
+  EmitI('SegInfo("Stack",49152-4096,49152,"")');
+  EmitI('ENDLUA');
 
   if Binary = btZX128 then
   begin
@@ -2411,7 +2380,14 @@ begin
   else if Format = tfTape then
     EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000')
   else if Format = tfSnapshot then
-    EmitI('savesna "' + BinFile + '",$8000');
+    EmitI('savesna "' + BinFile + '",$8000')
+  else if Format = tfNex then
+  begin
+    EmitI('savenex open "' + BinFile + '",$8000,$FFFE');
+    EmitI('savenex cfg 0');
+    EmitI('savenex auto');
+    EmitI('savenex close');
+  end;
 end;
 
 (**
@@ -6598,7 +6574,7 @@ begin
     begin
       NewSym^.Banked := Banked;
       NewSym^.BankNo := CurrentBank;
-      if Banked then WriteLn('Proc/Func ', NewSym^.Name, ' is in bank ', CurrentBank);
+      //if Banked then WriteLn('Proc/Func ', NewSym^.Name, ' is in bank ', CurrentBank);
 
       ParseBlock(NewSym);
       Expect(toSemicolon);
@@ -6609,6 +6585,56 @@ begin
   CloseScope(True);
 
   EmitC('');
+end;
+
+procedure ParseOverlay(Sym: PSymbol);
+var
+  S, T: String;
+  Bank, Start: Integer;
+begin
+  if CurrentBank = 8 then Error('Too many overlays');
+
+  Bank := ToastrackBanks[CurrentBank];
+  if Odd(CurrentBank) then Start := $E000 else Start := $C000;
+
+  S := IntToStr(CurrentBank);
+  T := IntToStr(Start);
+  
+  Emit('OLD_ORG_' + S, 'equ $', '');
+  EmitI('slot 3');
+  EmitI('page ' + IntToStr(Bank));
+  EmitI('org ' + T);
+
+  Banked := True;
+
+  while Scanner.Token = toOverlay do
+  begin
+    NextToken;
+
+    if not ((Scanner.Token = toProcedure) or (Scanner.Token = toFunction)) then
+      Error('Procedure or function expected');
+
+    ParseProcFunc(Sym);
+  end;
+
+  EmitI('LUA');
+  EmitI('SegInfo("Overlay ' + S + '",' + T + ',sj.current_address,"in bank ' + IntToStr(Bank) + '")');
+  EmitI('ENDLUA');
+  
+  EmitI('if $-' + T + ' > 8192');
+  EmitI('DISPLAY "Overlay ' + S + ' too large."');
+  EmitI('endif');
+
+  if Format = tfTape then
+    EmitI('savetap "' + BinFile + '",CODE,"bank' + S + '",$C000,$-$C000')
+  else if Format = tfBinary then
+    EmitI('savebin "' + BinFile + '-' + S + '",$C000,$-$C000');
+
+  EmitI('org OLD_ORG_' + S);
+
+  Banked := False;
+
+  Inc(CurrentBank);
 end;
 
 (**
@@ -6699,21 +6725,10 @@ begin
 
     else if Scanner.Token = toOverlay then
     begin
-      BeginOverlay;
+      if Level <> 0 then
+        Error('Overlays only allowed on top level');
 
-      repeat
-        NextToken;
-
-        if not ((Scanner.Token = toProcedure) or (Scanner.Token = toFunction)) then
-          Error('Procedure or function expected');
-
-        if Level <> 0 then
-          Error('Overlays only allowed on top level');
-
-        ParseProcFunc(Sym);
-      until Scanner.Token <> toOverlay;
-
-      EndOverlay;
+      ParseOverlay(Sym);
     end
 
     else if (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
@@ -6862,7 +6877,9 @@ begin
   else if Format = tfTape then
     BinFile := ChangeExt(SrcFile, '.tap')
   else if Format = tfSnapshot then
-    BinFile := ChangeExt(SrcFile, '.sna');
+    BinFile := ChangeExt(SrcFile, '.sna')
+  else if Format = tfNex then
+    BinFile := ChangeExt(SrcFile, '.nex');
 
   if SetJmp(StoredState) = 0 then
   begin
@@ -6928,20 +6945,22 @@ begin
     if DosExitCode <> 0 then
       Error('Failure! :(');
 
+(*
     if (Format <> tfTape) and (Format <> tfSnapshot) then
     begin
-    if Binary = btCPM then Org := 256 else Org := 32768;
-    Len := FSize(BinFile);
+      if Binary = btCPM then Org := 256 else Org := 32768;
+      Len := FSize(BinFile);
 
-    HeapStart := Org + Len;
-    if HeapStart < 24576 then HeapStart := 24576;
-    HeapBytes := 57343 - HeapStart;
-    if HeapBytes < 0 then HeapBytes := 0;
+      HeapStart := Org + Len;
+      if HeapStart < 24576 then HeapStart := 24576;
+      HeapBytes := 57343 - HeapStart;
+      if HeapBytes < 0 then HeapBytes := 0;
 
-    WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
-    WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
-    WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
+      WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
+      WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
+      WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
     end;
+*)
   end;
 
   HasStoredState := False;
@@ -6958,7 +6977,7 @@ const
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
    *)
-  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot');
+  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot', 'Nex');
 
   (**
    * Yes/no strings. Why is this here and not in the IDE sestion?
@@ -7373,6 +7392,8 @@ begin
       Format := tfTape
     else if SrcFile = '--sna' then
       Format := tfSnapshot
+    else if SrcFile = '--nex' then
+      Format := tfNex
     else if SrcFile = '--opt' then
       Optimize := True
     else if SrcFile = '--dep' then

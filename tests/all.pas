@@ -58,6 +58,8 @@ var
 
   GlobalIntArray: TIntArray100;
 
+(* Overlay 0 *)
+
 overlay procedure TestComment;
 var
   I: Integer;
@@ -586,6 +588,10 @@ begin
   Assert(Z = 4711);
 end;
 
+(* Overlay 1 *)
+
+const Dummy1 = 0;
+
 overlay procedure TestArrays;
 const
   Jan = 1;
@@ -730,9 +736,6 @@ begin
   Assert(Low(Boolean) = False);
   Assert(High(Boolean) = True);
 end;
-
-const
-  Dummy0 = 0;
 
 overlay procedure SwapPointProc(var P: TPoint);
 var
@@ -1119,6 +1122,9 @@ begin
   J := MulAddFunc(2, 3, 4);
   Assert(J = 10);
 end;
+
+const
+  Overlay1 = 1;
 
 overlay procedure AddPoints1(P, Q: TPoint; var R: TPoint);
 begin
@@ -2147,7 +2153,7 @@ begin
 
   Assert(SizeOf(GlobalIntArray) = 200);
 end;
-
+  
 overlay procedure TestStrings;
 type
   TStr255 = string[255];
@@ -2337,6 +2343,9 @@ begin
   Assert('S' + 'pectrum' = 'Spectrum');
   WriteLn;
 end;
+
+const
+  Overlay5 = 5;
 
 overlay procedure TestReal;
 var
