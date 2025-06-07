@@ -7283,7 +7283,9 @@ begin
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
-  if (Binary = btCPM) and (Format <> tfBinary) then Error('CP/M only allows .bin files'); 
+  if (Binary = btCPM) and (Format <> tfBinary) or 
+     (Binary = btZXN) and (Format = tfSnapshot) then
+    Error('Invalid machine/format combination'); 
 
   if Ide then
   begin
