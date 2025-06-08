@@ -331,7 +331,7 @@ type
   (**
    * The three platforms we currently support.
    *)
-  TBinaryType = (btCPM, btZX, btZXN);
+  TBinaryType = (btCPM, btZX, btZX128, btZXN);
 
   (**
    * The possible output formats.
@@ -2290,13 +2290,18 @@ begin
   EmitC('');
   if Binary = btCPM then
   begin
-    Emit('CPM', 'equ 1', 'Target is CP/M .com file');
+    Emit('CPM', 'equ 1', 'Target is CP/M');
     EmitI('device NOSLOT64K');
   end
   else if Binary = btZX then
   begin
-    Emit('ZX', 'equ 1', 'Target is ZX 48K .tap file');
+    Emit('ZX', 'equ 1', 'Target is ZX 48K');
     EmitI('device ZXSPECTRUM48');
+  end
+  else if Binary = btZX128 then
+  begin
+    Emit('ZX', 'equ 1', 'Target is ZX 128K');
+    EmitI('device ZXSPECTRUM128');
   end
   else if Binary = btZXN then
   begin
@@ -6685,6 +6690,8 @@ begin
     OpenInput(HomeDir + '/rtl/cpm.pas')
   else if Binary = btZX then
     OpenInput(HomeDir + '/rtl/zx.pas')
+  else if Binary = btZX128 then
+    OpenInput(HomeDir + '/rtl/zx.pas')
   else
     OpenInput(HomeDir + '/rtl/next.pas');
 
@@ -6838,7 +6845,7 @@ const
   (**
    * Printable names of supported platforms. Must be aligned with TBinaryType.
    *)
-  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX Next');
+  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next');
 
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
@@ -7219,11 +7226,12 @@ begin
     WriteLn;
     WriteLn('Options:');
     WriteLn('  --cpm          Sets target to CP/M (default)');
-    WriteLn('  --zx           Sets target to ZX Spectrum 48K');
-    WriteLn('  --zxn          Sets target to ZX Spectrum Next');
+    WriteLn('  --zx48         Sets target to ZX Spectrum 48K');
+    WriteLn('  --zx128        Sets target to ZX Spectrum 128K');
+    WriteLn('  --zxnext       Sets target to ZX Spectrum Next');
     WriteLn;
     WriteLn('  --bin          Generates raw binary file (default)');
-    WriteLn('  --dos          Generates binary with +3DOS header');
+    WriteLn('  --3dos         Generates binary with +3DOS header');
     WriteLn('  --tap          Generates .tap file with loader');
     WriteLn('  --sna          Generates .sna snapshot file');
     WriteLn;
@@ -7244,13 +7252,15 @@ begin
   begin
     if SrcFile = '--cpm' then
       Binary := btCPM
-    else if SrcFile = '--zx' then
+    else if SrcFile = '--zx48' then
       Binary := btZX
-    else if SrcFile = '--zxn' then
+    else if SrcFile = '--zx128' then
+      Binary := btZX128
+    else if SrcFile = '--zxnext' then
       Binary := btZXN
     else if SrcFile = '--bin' then
       Format := tfBinary
-    else if SrcFile = '--dos' then
+    else if SrcFile = '--3dos' then
       Format := tfPlus3Dos
     else if SrcFile = '--tap' then
       Format := tfTape
@@ -7283,9 +7293,9 @@ begin
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
-  if (Binary = btCPM) and (Format <> tfBinary) or 
+  if (Binary = btCPM) and (Format <> tfBinary) or
      (Binary = btZXN) and (Format = tfSnapshot) then
-    Error('Invalid machine/format combination'); 
+    Error('Invalid machine/format combination');
 
   if Ide then
   begin
