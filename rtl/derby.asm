@@ -9,9 +9,12 @@
 ; Out:  -
 ;
 banksel:
+        ld      c,a             ; Save desired bank
+
+        ld      a,7
+        sub     c
         out     ($fe),a
 
-        ld      c,a             ; Save desired bank
         ld      a,(0x5b5c)      ; Retrieve current config
         and     0xf8            ; Zero the RAM bank bits
         or      c               ; Add our desired bank

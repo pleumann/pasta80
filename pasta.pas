@@ -764,8 +764,9 @@ var
 
 const
   Banked: Boolean = False;
+  CurrentOverlay: Byte = 0;
   CurrentBank: Byte = 0;
-  ToastrackBanks: array[0..7] of Byte = (0, 0, 1, 1, 3, 3, 4, 4);
+  ToastrackBanks: array[0..9] of Byte = (0, 0, 1, 1, 3, 3, 4, 4, 6, 6);
 
 (**
  * Opens a scope, which mainly adds a new scope marker at the front of the
@@ -2263,7 +2264,7 @@ begin
 
   if (Sym^.Level = 0) and Sym^.Banked and not (Banked and (CurrentBank = Sym^.BankNo)) then
   begin
-    // WriteLn('Emitting call to ', Sym^.Name, ' in bank ', Sym^.BankNo);
+    //WriteLn('Emitting call to ', Sym^.Name, ' in bank ', Sym^.BankNo);
     EmitI('ld a,' + IntToStr(Sym^.BankNo));
     EmitI('ld hl,' + Sym^.Tag);
     EmitI('call farcall');
@@ -2346,6 +2347,13 @@ begin
   EmitC('');
 
   BinFile2 := PosixToNative(BinFile);
+
+  if CurrentOverlay <> 0 then
+  begin
+    EmitI('LUA');
+    EmitI('print()');
+    EmitI('ENDLUA');
+  end;
 
   EmitI('LUA');
   EmitI('SegInfo("Code/Data",32768,sj.calc("HEAP"),"")');
@@ -6596,19 +6604,19 @@ end;
 procedure ParseOverlay(Sym: PSymbol);
 var
   S, T: String;
-  Bank, Start: Integer;
+  Start: Integer;
 begin
-  if CurrentBank = 8 then Error('Too many overlays');
+  if CurrentOverlay = 10 then Error('Too many overlays');
 
-  Bank := ToastrackBanks[CurrentBank];
-  if Odd(CurrentBank) then Start := $E000 else Start := $C000;
+  CurrentBank := ToastrackBanks[CurrentOverlay];
+  if Odd(CurrentOverlay) then Start := $E000 else Start := $C000;
 
-  S := IntToStr(CurrentBank);
+  S := IntToStr(CurrentOverlay);
   T := IntToStr(Start);
-  
+
   Emit('OLD_ORG_' + S, 'equ $', '');
   EmitI('slot 3');
-  EmitI('page ' + IntToStr(Bank));
+  EmitI('page ' + IntToStr(CurrentBank));
   EmitI('org ' + T);
 
   Banked := True;
@@ -6624,9 +6632,9 @@ begin
   end;
 
   EmitI('LUA');
-  EmitI('SegInfo("Overlay ' + S + '",' + T + ',sj.current_address,"in bank ' + IntToStr(Bank) + '")');
+  EmitI('SegInfo("Overlay ' + S + '",' + T + ',sj.current_address,"in bank ' + IntToStr(CurrentBank) + '")');
   EmitI('ENDLUA');
-  
+
   EmitI('if $-' + T + ' > 8192');
   EmitI('DISPLAY "Overlay ' + S + ' too large."');
   EmitI('endif');
@@ -6636,11 +6644,13 @@ begin
   else if Format = tfBinary then
     EmitI('savebin "' + BinFile + '-' + S + '",$C000,$-$C000');
 
+  EmitI('slot 3');
+  EmitI('page 0');
   EmitI('org OLD_ORG_' + S);
 
   Banked := False;
 
-  Inc(CurrentBank);
+  Inc(CurrentOverlay);
 end;
 
 (**
@@ -6734,7 +6744,10 @@ begin
       if Level <> 0 then
         Error('Overlays only allowed on top level');
 
-      ParseOverlay(Sym);
+      if Binary = btZX128 then
+        ParseOverlay(Sym)
+      else
+        NextToken;
     end
 
     else if (Scanner.Token = toProcedure) or (Scanner.Token = toFunction) then
