@@ -5743,11 +5743,17 @@ begin
         NextToken;
       end
       else Sign := 1;
-      Expect(toNumber);
 
-      Sym^.Value := Sign * Scanner.NumValue;
-      Sym^.DataType := dtInteger;
-    end;
+      if Scanner.Token = toFloat then
+      begin
+        Sym^.DataType := dtReal;
+        Sym^.Tag := EncodeReal('-' + Scanner.StrValue);
+      end
+      else
+      begin
+        Sym^.Value := Sign * Scanner.NumValue;
+        Sym^.DataType := dtInteger;
+      end;    end;
 
     NextToken;
   end;

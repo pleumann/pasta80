@@ -7,6 +7,8 @@ const
 
   MyPi = 3.1415;
 
+  NegPi = -3.1415;
+
   NotTrue = False;
 
   FortyTwo: Integer = 42;
