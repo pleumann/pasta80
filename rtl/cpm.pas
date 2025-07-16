@@ -4,7 +4,7 @@
 
 {$a org 0x0100  }
 {$a             }
-{$a jp __init   }
+{$a static: jp __init   }
 
 {$i system.pas  }
 

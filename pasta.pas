@@ -360,6 +360,8 @@ var
 var
   SrcFile, AsmFile, BinFile: String;
 
+  AddrOrigin, AddrLimit: Integer;
+
 (**
  * Tries to setup the compiler's home directory and the paths to various tools,
  * first by "guessing" via "which", then by loading a config file.
@@ -2339,6 +2341,7 @@ end;
 procedure EmitFooter(BinFile: String);
 var
   BinFile2: String;
+  I: Integer;
 begin
   EmitC('');
   Emit('HEAP', '', '');
@@ -2348,28 +2351,21 @@ begin
 
   BinFile2 := PosixToNative(BinFile);
 
+  EmitI('LUA');
+  EmitI('SegInfo("Static",sj.calc("MAIN"),sj.calc("HEAP"),65536)');
+  EmitI('SegInfo("Dynamic",sj.calc("HEAP"),65536,65536)');
+  EmitI('ENDLUA');
+
   if CurrentOverlay <> 0 then
   begin
     EmitI('LUA');
     EmitI('print()');
+
+    for I := 0 to CurrentOverlay - 1 do
+      EmitI('OvrInfo("' + IntToStr(I) + '")');
+
     EmitI('ENDLUA');
   end;
-
-  EmitI('LUA');
-  EmitI('SegInfo("Code/Data",32768,sj.calc("HEAP"),"")');
-  EmitI('ENDLUA');
-
-  EmitI('if HEAP >= 49152');
-  EmitI('display "Main code segment too large"');
-  EmitI('endif');
-
-  EmitI('LUA');
-  EmitI('SegInfo("Heap",sj.calc("HEAP"),49152-4096,"")');
-  EmitI('ENDLUA');
-
-  EmitI('LUA');
-  EmitI('SegInfo("Stack",49152-4096,49152,"")');
-  EmitI('ENDLUA');
 
   if Binary = btZX128 then
   begin
@@ -6631,18 +6627,9 @@ begin
     ParseProcFunc(Sym);
   end;
 
-  EmitI('LUA');
-  EmitI('SegInfo("Overlay ' + S + '",' + T + ',sj.current_address,"in bank ' + IntToStr(CurrentBank) + '")');
-  EmitI('ENDLUA');
-
-  EmitI('if $-' + T + ' > 8192');
-  EmitI('DISPLAY "Overlay ' + S + ' too large."');
-  EmitI('endif');
-
-  if Format = tfTape then
-    EmitI('savetap "' + BinFile + '",CODE,"bank' + S + '",$C000,$-$C000')
-  else if Format = tfBinary then
-    EmitI('savebin "' + BinFile + '-' + S + '",$C000,$-$C000');
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
+  Emit('OVR_' + S + '_START', 'equ ' + T, '');
+  Emit('OVR_' + S + '_END', 'equ $', '');
 
   EmitI('slot 3');
   EmitI('page 0');
