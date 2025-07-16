@@ -4,7 +4,7 @@
 
 {$a org 0x0100  }
 {$a             }
-{$a jp __init   }
+{$a static: jp __init   }
 
 {$i system.pas  }
 
@@ -304,7 +304,7 @@ type
   (**
    * Represents a CP/M file control block.
    *)
-  FileControlBlock = record             
+  FileControlBlock = record
     DR: Byte;                           (* Drive number                       *)
     FN: array[0..7] of Char;            (* File name, 8 chars, space-padded   *)
     TN: array[0..2] of Char;            (* Extension, 3 chars, space-padded   *)

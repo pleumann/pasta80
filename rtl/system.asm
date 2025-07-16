@@ -3,23 +3,28 @@
 ;
 
                 LUA
-                function SegInfo(Name, Start, End, Extra)
+                function SegInfo(Name, Start, End, Limit)
                     Len = End - Start
-                    Str = string.format("%-9s: %5d bytes ($%4X-$%4X) %s", Name, Len, Start, End, Extra)
+
+                    Str = string.format("%-10s: %5d bytes ($%4X-$%4X)", Name, Len, Start, End - 1)
                     print(Str)
+
+                    if End > Limit then print("Too large!!!") end
+                end
+
+                function OvrInfo(Name)
+                    Page = sj.calc(string.format("OVR_%d_PAGE", Name))
+                    Start = sj.calc(string.format("OVR_%d_START", Name))
+                    End = sj.calc(string.format("OVR_%d_END", Name))
+                    Len = End - Start
+
+                    Str = string.format("Overlay %2s: %5d bytes ($%4X-$%4X) in page %d", Name, Len, Start, End - 1, Page)
+                    print(Str)
+
+                    if Len > 8192 then print("Too large!!!") end
                 end
                 ENDLUA
 
-                macro about name, addr, addr2
-                    LUA
-                        s = sj.calc("name")
-                        a = sj.calc("addr")
-                        z = sj.calc("addr2")
-                        l = z - a
-                        str = string.format("%-8s: %5d bytes (%4X-%4X)",s,l,a,z-1)
-                        print(str)
-                    ENDLUA
-                endm
 __cur_file      dw      0
 __text_buf      dw      0
 
