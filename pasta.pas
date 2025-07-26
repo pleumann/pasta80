@@ -484,7 +484,7 @@ var
   Tmp: PSource;
 begin
   if (Source <> nil) and not StartsWith(FileName, '/') then
-    FileName := ParentDir(Source^.Name) + '/' + FileName;
+    FileName := ParentDir(FAbsolute(Source^.Name)) + '/' + FileName;
 
   Tmp := Source;
   while Tmp <> nil do
