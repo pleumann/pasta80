@@ -2376,7 +2376,7 @@ begin
   for I := 1 to Length(S) do
   begin
     C := S[I];
-    if (C < ' ') or (C > '~') or (C = '"') or (C = '´') then
+    if (C < ' ') or (C > '~') or (C = '"') or (C = '´') or (C = '\') then
     begin
       if Quotes then
       begin
