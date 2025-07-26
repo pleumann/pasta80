@@ -304,7 +304,7 @@ type
   (**
    * Represents a CP/M file control block.
    *)
-  FileControlBlock = record             
+  FileControlBlock = record
     DR: Byte;                           (* Drive number                       *)
     FN: array[0..7] of Char;            (* File name, 8 chars, space-padded   *)
     TN: array[0..2] of Char;            (* Extension, 3 chars, space-padded   *)
@@ -394,7 +394,7 @@ begin
     RL := 0;
     RH := 0;
 
-  BDosCatch(15, Addr(F));
+    BDosCatch(15, Addr(F));
     BDosCatch(35, Addr(F));
 
     SL := RL; SH := RH;
@@ -488,24 +488,25 @@ begin
   end;
 end;
 
-procedure BlockBlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; Actual: Integer);
+procedure BlockBlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
 var
   DMA: Integer;
 begin
   if LastError <> 0 then Exit;
 
   DMA := Addr(Buffer);
-  (*Actual := 0;*)
+  Actual := 0;
 
   while Count > 0 do
   begin
     BDosCatch(26, DMA);
     BDosCatch(34, Addr(F));
+
     if LastError <> 0 then Exit;
 
     Inc(F.RL);
     Inc(DMA, 128);
-(*    Inc(Actual);*)
+    Inc(Actual);
     Dec(Count);
 
     if F.RL > F.SL then F.SL := F.RL;
