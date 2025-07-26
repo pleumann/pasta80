@@ -312,6 +312,7 @@ type
     AL: array[0..15] of Byte;           (* CP/M internal stuff                *)
     CR: Byte;                           (* CP/M internal stuff                *)
     RL: Integer; RH: Byte;              (* 24 bit random record number        *)
+    SL: Integer; SH: Byte;              (* Record count, not part of CP/M FCB *)
   end;
 
 procedure BlockAssign(var F: FileControlBlock; S: String);
@@ -392,9 +393,15 @@ begin
 
     RL := 0;
     RH := 0;
-  end;
 
   BDosCatch(15, Addr(F));
+    BDosCatch(35, Addr(F));
+
+    SL := RL; SH := RH;
+
+    RL := 0;
+    RH := 0;
+ end;
 end;
 
 procedure BlockRewrite(var F: FileControlBlock);
@@ -413,6 +420,9 @@ begin
 
     RL := 0;
     RH := 0;
+
+    SL := 0;
+    SH := 0;
   end;
 
   A := BDos(*Catch*)(19, Addr(F));
@@ -433,21 +443,13 @@ function BlockFileSize(var F: FileControlBlock): Integer;
 var
   I: Integer;
 begin
-  with F do
-  begin
-    I := RL;
-    BDosCatch(35, Addr(F));
-    if LastError <> 0 then Exit;
-    BlockFileSize := RL;
-    RL := I;
-  end;
+  BlockFileSize := F.SL;
 end;
 
 function BlockEof(var F: FileControlBlock): Boolean;
 begin
-  if LastError <> 0 then Exit;
-
-  BlockEof := BlockFilePos(F) = BlockFileSize(F);
+  with F do
+    BlockEof := (RL = SL) and (RH = SH);
 end;
 
 procedure BlockSeek(var F: FileControlBlock; I: Integer);
@@ -505,6 +507,8 @@ begin
     Inc(DMA, 128);
 (*    Inc(Actual);*)
     Dec(Count);
+
+    if F.RL > F.SL then F.SL := F.RL;
   end;
 end;
 
