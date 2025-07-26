@@ -409,7 +409,7 @@ begin
     S := Int(P / 128);
     (* WriteLn('Seeking to index ', I, ' offset ', P, ' sector ', S);*)
     BlockSeek(FCB, Trunc(S));  (* Why does div not work here? *)
-    if I < CompCount then
+    if S < BlockFileSize(FCB) then
       BlockBlockRead(FCB, DMA, 1, E)
     else
       BlockSeek(FCB, FCB.RL + 1);
