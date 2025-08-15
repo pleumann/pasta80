@@ -16,11 +16,11 @@ __init:         di
                 ld      (__saved_hl),hl ; Save alternate HL
                 ld      (__saved_iy),iy ; Save sysvar pointer
                 ld      (__saved_sp),sp ; Save original stack
-        ifdef ZX128
-                ;ld      sp,49152        ; We use our own stack
-        else
-                ld      sp,0            ; We use our own stack
-        endif
+        //ifdef ZX128
+                ld      sp,49152        ; We use our own stack
+        //else
+        //        ld      sp,0            ; We use our own stack
+        //endif
                 ei
 
                 ld      a,2

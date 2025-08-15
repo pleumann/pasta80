@@ -82,7 +82,7 @@ var
 begin
   S := '';
 
-  while (Value <> 0) or (Digits <> 0) do
+  while (Value <> 0) or (Digits > 0) do
   begin
     S := Hex[1 + Value mod 16] + S;
     Value := Value div 16;
@@ -351,7 +351,13 @@ var
    *)
   Format: TTargetFormat = tfBinary;
 
-  Overlays: TOverlayType = otNone;
+  AddrOrigin: Integer = 256;
+  
+  AddrLimit: Integer = 61440;
+
+  StackSize: Integer = 4096;
+
+  Paging: Boolean = False;
 
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -359,9 +365,7 @@ var
 
 var
   SrcFile, AsmFile, BinFile: String;
-
-  AddrOrigin, AddrLimit: Integer;
-
+  
 (**
  * Tries to setup the compiler's home directory and the paths to various tools,
  * first by "guessing" via "which", then by loading a config file.
@@ -2320,19 +2324,24 @@ begin
   end
   else if Binary = btZX then
   begin
-    Emit('ZX', 'equ 1', 'Target is ZX 48K .tap file');
-    EmitI('device ZXSPECTRUM48,32767');
+    Emit('ZX', 'equ 1', 'Target is ZX Spectrum 48K');
+    EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
   end
   else if Binary = btZX128 then
   begin
-    Emit('ZX128', 'equ 1', 'Target is ZX 128K .tap file');
-    EmitI('device ZXSPECTRUM128,32767');
+    Emit('ZX128', 'equ 1', 'Target is ZX Spectrum 128K');
+    EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4))
   end
   else if Binary = btZXN then
   begin
-    Emit('NXT', 'equ 1', 'Target is Next .dot file');
+    Emit('NXT', 'equ 1', 'Target is ZX Spectrum Next');
     EmitI('device ZXSPECTRUMNEXT');
   end;
+
+  EmitI('org $' + IntToHex(AddrOrigin, 4));
+  Emit('TEXT', 'jp __init', '');
+  Emit('PAGE_COUNT', 'db 255', '');
+  Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
 end;
 
 (**
@@ -2340,11 +2349,19 @@ end;
  *)
 procedure EmitFooter(BinFile: String);
 var
-  BinFile2: String;
-  I: Integer;
+  BinFile2, S: String;
+  I, Is128K: Integer;
 begin
-  EmitC('');
-  Emit('HEAP', '', '');
+  Emit('TEXT_END', '= $', '');
+  Emit('STACK', '= $' + IntToHex(AddrLimit - StackSize, 4), '');
+  Emit('HEAP', '= STACK-32767', '');
+  EmitI('if HEAP < $');
+  Emit('HEAP', '= $', '');
+  EmitI('endif');
+  EmitI('if HEAP > STACK');
+  Emit('HEAP', '= STACK', '');
+  EmitI('endif');
+
   EmitC('');
   EmitC('end');
   EmitC('');
@@ -2352,20 +2369,23 @@ begin
   BinFile2 := PosixToNative(BinFile);
 
   EmitI('LUA');
-  EmitI('SegInfo("Static",sj.calc("MAIN"),sj.calc("HEAP"),65536)');
-  EmitI('SegInfo("Dynamic",sj.calc("HEAP"),65536,65536)');
-  EmitI('ENDLUA');
+  EmitI('if sj.calc("__ERRORS__") ~= 0 then print() end');
+
+  EmitI('SegInfo("Program",sj.calc("TEXT"),sj.calc("$"),sj.calc("STACK-TEXT"))');
+  EmitI('SegInfo("Heap",sj.calc("HEAP"),sj.calc("STACK"), 32767)');
+  EmitI('SegInfo("Stack",sj.calc("STACK"),sj.calc("LIMIT"),' + IntToStr(StackSize) + ')');
 
   if CurrentOverlay <> 0 then
   begin
-    EmitI('LUA');
     EmitI('print()');
 
-    for I := 0 to CurrentOverlay - 1 do
-      EmitI('OvrInfo("' + IntToStr(I) + '")');
+    Is128K := Ord(Binary = btZX128);
 
-    EmitI('ENDLUA');
+    for I := 0 to CurrentOverlay - 1 do
+      EmitI('OvrInfo("' + IntToStr(I) + '",' + IntToStr(Is128K) + ')');
   end;
+
+  EmitI('ENDLUA');
 
   if Binary = btZX128 then
   begin
@@ -2373,6 +2393,9 @@ begin
     EmitI('page 0');
     EmitI('org 23388');
     EmitI('db 16');
+
+    EmitI('org PAGE_COUNT');
+    EmitI('db ' + IntToStr(CurrentOverlay));
   end;
 
   if Binary = btCPM then
@@ -2382,7 +2405,27 @@ begin
   else if Format = tfPlus3Dos then
     EmitI('save3dos "' + BinFile2 + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
-    EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000')
+  begin
+    WriteLn(Binary, ' ', CurrentOverlay);
+
+    if Binary = btZX128 then
+      CopyFile(HomeDir + '/misc/loader128.tap', BinFile2)
+    else
+      CopyFile(HomeDir + '/misc/loader48.tap', BinFile2);
+
+    EmitI('savetap "' + BinFile2 + '",CODE,"main",$8000,HEAP-$8000');
+
+    for I := 0 to CurrentOverlay - 1 do
+    begin
+      WriteLn(I);
+      EmitI('slot 3');
+      EmitI('page ' + IntToStr(ToastrackBanks[I]));
+
+      S := IntToStr(I);
+
+      EmitI('savetap "' + BinFile2 + '",CODE,"over ' + S + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START');
+    end;
+  end
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000')
   else if Format = tfNex then
@@ -6731,7 +6774,7 @@ begin
       if Level <> 0 then
         Error('Overlays only allowed on top level');
 
-      if Binary = btZX128 then
+      if (Binary = btZX128) and Paging then
         ParseOverlay(Sym)
       else
         NextToken;
@@ -6934,7 +6977,7 @@ begin
 
     Build := 2;
 
-    CopyFile(HomeDir + '/misc/loader.tap', BinFile);
+    //CopyFile(HomeDir + '/misc/loader.tap', BinFile);
 
     WriteLn('Assembling...');
     WriteLn('  ', PosixToNative(FRelative(AsmFile)), ' -> ', PosixToNative(FRelative(BinFile)));
@@ -6942,9 +6985,9 @@ begin
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile))
+      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err --lst ' + PosixToNative(AsmFile))
     else
-      Exec(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile));
+      Exec(SjAsmCmd, '--syntax=abf --nologo --msg=err --lst ' + PosixToNative(AsmFile));
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
@@ -7368,6 +7411,8 @@ begin
     WriteLn('  --tap          Generates .tap file with loader');
     WriteLn('  --sna          Generates .sna snapshot file');
     WriteLn;
+    WriteLn('  --paging       Enables overlays via RAM paging');
+    WriteLn;
     WriteLn('  --dep          enable dependency analysis');
     WriteLn('  --opt          enable peephole optimizations');
     WriteLn;
@@ -7384,13 +7429,43 @@ begin
   while Copy(SrcFile, 1, 2) = '--' do
   begin
     if SrcFile = '--cpm' then
-      Binary := btCPM
+    begin
+      Binary := btCPM;
+      AddrOrigin := $0100;
+      AddrLimit := $F000;
+      Paging := False;
+    end
     else if SrcFile = '--zx48' then
-      Binary := btZX
+    begin
+      Binary := btZX;
+      AddrOrigin := 32768;
+      AddrLimit := 65536;
+      Paging := False;
+    end
     else if SrcFile = '--zx128' then
-      Binary := btZX128
+    begin
+      Binary := btZX128;
+      AddrOrigin := 32768;
+      AddrLimit := 65536;
+      Paging := False;
+    end
     else if SrcFile = '--zxnext' then
-      Binary := btZXN
+    begin
+      Binary := btZXN;
+      AddrOrigin := 32768;
+      AddrLimit := 65536;
+      Paging := False;
+    end
+    else if SrcFile = '--paging' then
+    begin
+      Paging := True;
+      if Binary = btZX128 then
+        AddrLimit := $C000
+      else if Binary = btZXN then
+        AddrLimit := $E000
+      else
+        Error('Target ' + BinaryStr[Binary] + ' does not support paging.');
+    end
     else if SrcFile = '--bin' then
       Format := tfBinary
     else if SrcFile = '--3dos' then

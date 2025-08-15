@@ -3,25 +3,38 @@
 ;
 
                 LUA
-                function SegInfo(Name, Start, End, Limit)
+                function SegInfo(Name, Start, End, MaxLen)
                     Len = End - Start
+                    Start = Start % 65536;
+                    End = End % 65536;
 
-                    Str = string.format("%-10s: %5d bytes ($%4X-$%4X)", Name, Len, Start, End - 1)
+                    if Len > 0 then
+                      Str = string.format("%-7s: %5d bytes ($%04X-$%04X)", Name, Len, Start, End - 1)
+                    else
+                      Str = string.format("%-7s:     0 bytes ($XXXX-$XXXX)", Name)
+                    end
+--[[
+                    if Page == -1 then
+                        Str = Str .. "            "
+                    else
+                        Str = Str .. string.format(" in page %3d", Page)
+                    end
+]]--
+                    if Len > MaxLen then Str = Str .. " *** Too large ***" end
+
                     print(Str)
-
-                    if End > Limit then print("Too large!!!") end
                 end
 
-                function OvrInfo(Name)
-                    Page = sj.calc(string.format("OVR_%d_PAGE", Name))
-                    Start = sj.calc(string.format("OVR_%d_START", Name))
-                    End = sj.calc(string.format("OVR_%d_END", Name))
-                    Len = End - Start
+                function OvrInfo(Number, Is128K)
+                    Page = sj.calc(string.format("OVR_%d_PAGE", Number))
+                    Start = sj.calc(string.format("OVR_%d_START", Number))
+                    End = sj.calc(string.format("OVR_%d_END", Number))
 
-                    Str = string.format("Overlay %2s: %5d bytes ($%4X-$%4X) in page %d", Name, Len, Start, End - 1, Page)
-                    print(Str)
-
-                    if Len > 8192 then print("Too large!!!") end
+                    if Is128K then
+                        SegInfo(string.format("Bank %2d", Page), Start, End, 8192)
+                    else
+                        SegInfo(string.format("Page %2d", Page), Start, End, 8192)
+                    end
                 end
                 ENDLUA
 
