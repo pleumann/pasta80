@@ -30,7 +30,7 @@
                     Start = sj.calc(string.format("OVR_%d_START", Number))
                     End = sj.calc(string.format("OVR_%d_END", Number))
 
-                    if Is128K then
+                    if Is128K == 1 then
                         SegInfo(string.format("Bank %2d", Page), Start, End, 8192)
                     else
                         SegInfo(string.format("Page %2d", Page), Start, End, 8192)

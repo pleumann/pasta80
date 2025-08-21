@@ -30,4 +30,21 @@ begin
   SetNextReg(7, Value and 3);
 end;
 
-{$l nextregs.asm}
+(**
+ * Returns the 8K memory page currently visible in the given slot. Slots range
+ * from 0..7. Pages range from 0..111 for 1 MB RAM and from 0..223 for 2 MB RAM.
+ *)
+function GetMemPage(Slot: Byte): Byte:
+begin
+end;
+
+(**
+ * Sets the 8K memory page currently visible in the given slot. Slots range
+ * from 0..7. Pages range from 0..111 for 1 MB RAM and from 0..223 for 2 MB RAM.
+ * The caller is responsible for all necessary precautions.
+ *)
+procedure SetMemPage(Slot, Page: Byte):
+begin
+end;
+
+{$l tbblue.asm}

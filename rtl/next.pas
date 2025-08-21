@@ -6,6 +6,6 @@
 {$i zxrom.pas}
 {$i esxdos.pas}
 {$i files.pas}
-{$i nextregs.pas}
+{$i tbblue.pas}
 
 end.

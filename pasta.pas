@@ -352,7 +352,7 @@ var
   Format: TTargetFormat = tfBinary;
 
   AddrOrigin: Integer = 256;
-  
+
   AddrLimit: Integer = 61440;
 
   StackSize: Integer = 4096;
@@ -365,7 +365,7 @@ var
 
 var
   SrcFile, AsmFile, BinFile: String;
-  
+
 (**
  * Tries to setup the compiler's home directory and the paths to various tools,
  * first by "guessing" via "which", then by loading a config file.
@@ -2340,7 +2340,7 @@ begin
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
   Emit('TEXT', 'jp __init', '');
-  Emit('PAGE_COUNT', 'db 255', '');
+  Emit('PAGE_COUNT', 'db 0', '');
   Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
 end;
 
@@ -2393,7 +2393,10 @@ begin
     EmitI('page 0');
     EmitI('org 23388');
     EmitI('db 16');
+  end;
 
+  if (Binary = btZX128) or (Binary = btZXN) then
+  begin
     EmitI('org PAGE_COUNT');
     EmitI('db ' + IntToStr(CurrentOverlay));
   end;
@@ -2406,9 +2409,11 @@ begin
     EmitI('save3dos "' + BinFile2 + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
   begin
-    WriteLn(Binary, ' ', CurrentOverlay);
+    //WriteLn(Binary, ' ', CurrentOverlay);
 
-    if Binary = btZX128 then
+    if Binary = btZXN then
+      CopyFile(HomeDir + '/misc/loadernext.tap', BinFile2)
+    else if Binary = btZX128 then
       CopyFile(HomeDir + '/misc/loader128.tap', BinFile2)
     else
       CopyFile(HomeDir + '/misc/loader48.tap', BinFile2);
@@ -2417,9 +2422,16 @@ begin
 
     for I := 0 to CurrentOverlay - 1 do
     begin
-      WriteLn(I);
-      EmitI('slot 3');
-      EmitI('page ' + IntToStr(ToastrackBanks[I]));
+      if Binary = btZXN then
+      begin
+        EmitI('slot 7');
+        EmitI('page ' + IntToStr(I + 32));
+      end
+      else
+      begin
+        EmitI('slot 3');
+        EmitI('page ' + IntToStr(ToastrackBanks[I]));
+      end;
 
       S := IntToStr(I);
 
@@ -2430,9 +2442,10 @@ begin
     EmitI('savesna "' + BinFile + '",$8000')
   else if Format = tfNex then
   begin
-    EmitI('savenex open "' + BinFile + '",$8000,$FFFE');
+    EmitI('savenex open "' + BinFile + '",$8000,$E000');
     EmitI('savenex cfg 0');
-    EmitI('savenex auto');
+    EmitI('savenex palette default ');
+    EmitI('savenex auto ');
     EmitI('savenex close');
   end;
 end;
@@ -6683,6 +6696,52 @@ begin
   Inc(CurrentOverlay);
 end;
 
+procedure ParseNextOverlay(Sym: PSymbol);
+var
+  S, T: String;
+  Start: Integer;
+begin
+  if CurrentOverlay = 64 then Error('Too many overlays');
+
+  CurrentBank := CurrentOverlay + 32;
+  //WriteLn('CurrentPage: ', CurrentBank);
+  Start := $E000;
+
+  S := IntToStr(CurrentOverlay);
+  T := IntToStr(Start);
+
+  Emit('OLD_ORG_' + S, 'equ $', '');
+  EmitI('slot 7');
+  EmitI('page ' + IntToStr(CurrentBank));
+  EmitI('org ' + T);
+
+  Banked := True;
+
+  while Scanner.Token = toOverlay do
+  begin
+    NextToken;
+
+    if not ((Scanner.Token = toProcedure) or (Scanner.Token = toFunction)) then
+      Error('Procedure or function expected');
+
+    ParseProcFunc(Sym);
+  end;
+
+  //EmitI('display "Page:", $$');
+
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
+  Emit('OVR_' + S + '_START', 'equ ' + T, '');
+  Emit('OVR_' + S + '_END', 'equ $', '');
+
+  //EmitI('slot 7');
+  //EmitI('page 32');
+  EmitI('org OLD_ORG_' + S);
+
+  Banked := False;
+
+  Inc(CurrentOverlay);
+end;
+
 (**
  * Parses a declaration part, which can contain the following elements any
  * number of times and in any order: constants, types, variables, labels,
@@ -6776,6 +6835,8 @@ begin
 
       if (Binary = btZX128) and Paging then
         ParseOverlay(Sym)
+      else if (Binary = btZXN) and Paging then
+        ParseNextOverlay(Sym)
       else
         NextToken;
     end
@@ -7406,15 +7467,36 @@ begin
     WriteLn('  --zx128        Sets target to ZX Spectrum 128K');
     WriteLn('  --zxnext       Sets target to ZX Spectrum Next');
     WriteLn;
+    WriteLn('  --raw          Generates raw binary file (default)');
     WriteLn('  --bin          Generates raw binary file (default)');
     WriteLn('  --3dos         Generates binary with +3DOS header');
-    WriteLn('  --tap          Generates .tap file with loader');
-    WriteLn('  --sna          Generates .sna snapshot file');
+    WriteLn('  --tape         Generates .tap file with loader');
+                              program config screen main over-000
+    WriteLn('  --snap          Generates .sna snapshot file');
+    WriteLn('  --zip          Generates .zip archive file');
+
+    'target=cpm/...'
+    'format=raw|bin|tap|sna|zip'
+    $O 'origin=x,y'
+    'ramtop='
+    'loader='
+    'screen='
+    $O 'paging=on|off'
+    $D 'debug='
+    $A 'assert='
+    $M 'stack='
+
+    'pasta -m zxnext -f sna hello.pas'
+
+    WriteLn('  --loader       ');
+    WriteLn('  --screen       ');
+
     WriteLn;
-    WriteLn('  --paging       Enables overlays via RAM paging');
+    WriteLn('  --overlays       Enables overlays via RAM paging');
     WriteLn;
-    WriteLn('  --dep          enable dependency analysis');
-    WriteLn('  --opt          enable peephole optimizations');
+    WriteLn('  --smart          enable dependency analysis');
+    WriteLn('  --peephole          enable peephole optimizations');
+    '--keep' intermediates
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --version      shows just the version number');
