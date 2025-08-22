@@ -5,24 +5,20 @@
                 LUA
                 function SegInfo(Name, Start, End, MaxLen)
                     Len = End - Start
-                    Start = Start % 65536;
-                    End = End % 65536;
+                    Start = Start % 65536
+                    End = (End - 1) % 65536
 
                     if Len > 0 then
-                      Str = string.format("%-7s: %5d bytes ($%04X-$%04X)", Name, Len, Start, End - 1)
+                      Str = string.format("%-7s: %5d bytes ($%04X-$%04X)", Name, Len, Start, End)
                     else
                       Str = string.format("%-7s:     0 bytes ($XXXX-$XXXX)", Name)
                     end
---[[
-                    if Page == -1 then
-                        Str = Str .. "            "
-                    else
-                        Str = Str .. string.format(" in page %3d", Page)
-                    end
-]]--
-                    if Len > MaxLen then Str = Str .. " *** Too large ***" end
 
-                    print(Str)
+                    if Len > MaxLen then
+                      print(Str, "*** Too large ***")
+                    else
+                      print(Str)
+                    end
                 end
 
                 function OvrInfo(Number, Is128K)
