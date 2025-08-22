@@ -7470,9 +7470,9 @@ begin
     WriteLn('  --raw          Generates raw binary file (default)');
     WriteLn('  --bin          Generates raw binary file (default)');
     WriteLn('  --3dos         Generates binary with +3DOS header');
-    WriteLn('  --tape         Generates .tap file with loader');
-                              program config screen main over-000
-    WriteLn('  --snap          Generates .sna snapshot file');
+    WriteLn('  --tap          Generates .tap file with loader');
+    WriteLn('  --sna          Generates .sna snapshot file');
+(*
     WriteLn('  --zip          Generates .zip archive file');
 
     'target=cpm/...'
@@ -7490,13 +7490,13 @@ begin
 
     WriteLn('  --loader       ');
     WriteLn('  --screen       ');
-
-    WriteLn;
-    WriteLn('  --overlays       Enables overlays via RAM paging');
-    WriteLn;
-    WriteLn('  --smart          enable dependency analysis');
-    WriteLn('  --peephole          enable peephole optimizations');
     '--keep' intermediates
+*)
+    WriteLn;
+    WriteLn('  --paging       Enables overlays via RAM paging');
+    WriteLn;
+    WriteLn('  --dep          enable dependency analysis');
+    WriteLn('  --opt          enable peephole optimizations');
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --version      shows just the version number');
