@@ -2371,9 +2371,9 @@ begin
   EmitI('LUA');
   EmitI('if sj.calc("__ERRORS__") ~= 0 then print() end');
 
-  EmitI('SegInfo("Program",sj.calc("TEXT"),sj.calc("$"),sj.calc("STACK-TEXT"))');
-  EmitI('SegInfo("Heap",sj.calc("HEAP"),sj.calc("STACK"), 32767)');
-  EmitI('SegInfo("Stack",sj.calc("STACK"),sj.calc("LIMIT"),' + IntToStr(StackSize) + ')');
+  EmitI('SegInfo("Program",sj.calc("TEXT"),sj.calc("$"),sj.calc("STACK-TEXT"), "")');
+  EmitI('SegInfo("Heap",sj.calc("HEAP"),sj.calc("STACK"), 32767, "")');
+  EmitI('SegInfo("Stack",sj.calc("STACK"),sj.calc("LIMIT"),' + IntToStr(StackSize) + ', "")');
 
   if CurrentOverlay <> 0 then
   begin
@@ -2573,6 +2573,14 @@ begin
     Emit('main', '', '');
     EmitI('ld (display),sp');
     EmitCall(LookupBuiltInOrFail('InitHeap'));
+    if Paging then
+    begin
+      if Binary = btZX128 then
+        EmitI('ld a,0')
+      else
+        EmitI('ld a,32');
+      EmitI('call banksel');
+    end;
   end
   else
   begin
@@ -7467,39 +7475,17 @@ begin
     WriteLn('  --zx128        Sets target to ZX Spectrum 128K');
     WriteLn('  --zxnext       Sets target to ZX Spectrum Next');
     WriteLn;
-    WriteLn('  --raw          Generates raw binary file (default)');
-    WriteLn('  --bin          Generates raw binary file (default)');
-    WriteLn('  --3dos         Generates binary with +3DOS header');
-    WriteLn('  --tap          Generates .tap file with loader');
-    WriteLn('  --sna          Generates .sna snapshot file');
-(*
-    WriteLn('  --zip          Generates .zip archive file');
-
-    'target=cpm/...'
-    'format=raw|bin|tap|sna|zip'
-    $O 'origin=x,y'
-    'ramtop='
-    'loader='
-    'screen='
-    $O 'paging=on|off'
-    $D 'debug='
-    $A 'assert='
-    $M 'stack='
-
-    'pasta -m zxnext -f sna hello.pas'
-
-    WriteLn('  --loader       ');
-    WriteLn('  --screen       ');
-    '--keep' intermediates
-*)
+    WriteLn('  --bin          Generates binary file (default)');
+    WriteLn('  --tap          Generates ZX .tap tape file with loader');
+    WriteLn('  --sna          Generates ZX .sna snapshot file (48K/128K)');
+    //WriteLn('  --nex          Generates .nex executable file');
     WriteLn;
-    WriteLn('  --paging       Enables overlays via RAM paging');
+    WriteLn('  --ovr          Enables banked-switched overlays');
+    WriteLn('  --dep          Enables dependency analysis');
+    WriteLn('  --opt          Enables peephole optimizations');
     WriteLn;
-    WriteLn('  --dep          enable dependency analysis');
-    WriteLn('  --opt          enable peephole optimizations');
-    WriteLn;
-    WriteLn('  --ide          starts interactive mode');
-    WriteLn('  --version      shows just the version number');
+    WriteLn('  --ide          Starts interactive mode');
+    WriteLn('  --version      Shows just the version number');
     WriteLn;
     Halt(1);
   end;
@@ -7538,7 +7524,7 @@ begin
       AddrLimit := 65536;
       Paging := False;
     end
-    else if SrcFile = '--paging' then
+    else if SrcFile = '--ovr' then
     begin
       Paging := True;
       if Binary = btZX128 then

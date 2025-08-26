@@ -3,19 +3,19 @@
 ;
 
                 LUA
-                function SegInfo(Name, Start, End, MaxLen)
+                function SegInfo(Name, Start, End, MaxLen, Where)
                     Len = End - Start
                     Start = Start % 65536
                     End = (End - 1) % 65536
 
                     if Len > 0 then
-                      Str = string.format("%-7s: %5d bytes ($%04X-$%04X)", Name, Len, Start, End)
+                      Str = string.format("%-10s: %5d bytes ($%04X-$%04X) %-10s", Name, Len, Start, End, Where)
                     else
-                      Str = string.format("%-7s:     0 bytes ($XXXX-$XXXX)", Name)
+                      Str = string.format("%-10s:     0 bytes ($XXXX-$XXXX) %-10s", Name, Where)
                     end
 
                     if Len > MaxLen then
-                      print(Str, "*** Too large ***")
+                      print(Str.."  * Too large *")
                     else
                       print(Str)
                     end
@@ -27,9 +27,9 @@
                     End = sj.calc(string.format("OVR_%d_END", Number))
 
                     if Is128K == 1 then
-                        SegInfo(string.format("Bank %2d", Page), Start, End, 8192)
+                        SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in bank %2d", Page))
                     else
-                        SegInfo(string.format("Page %2d", Page), Start, End, 8192)
+                        SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in page %2d", Page))
                     end
                 end
                 ENDLUA

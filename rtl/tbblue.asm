@@ -32,13 +32,12 @@ nxt_setreg:     ld      bc,$243B
 ; Out:  -
 ;
 banksel:
+        add     32
         ld      c,a             ; Save desired bank
         and     7
         out     ($fe),a
         ld      a,c
         nextreg $57,a
-        ld      (curpage),a
-
         ret
 
 ; Changes the current RAM bank visible at $C000. This variant is for the

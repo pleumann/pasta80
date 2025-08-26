@@ -48,4 +48,3 @@ begin
 end;
 
 {$l tbblue.asm}
-{$l overlays.asm}

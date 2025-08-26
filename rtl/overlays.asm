@@ -12,7 +12,7 @@
 ; configuration afterwards. In order to not have a changed stack layout for far
 ; calls (which is important for parameters and return values) there is a small
 ; local stack that holds the return addresses of the callers and the previously
-; active overlays. Up to 24 levels of nested overlay switches are possible.
+; active overlays. Up to 16 levels of nested overlay switches are possible.
 ;
 ; A platform that supports overlays needs to provide a "banksel" function that
 ; switches to the overlay passed in A. In theory it is also possible to support
@@ -22,15 +22,15 @@
 ; don't get lost when the routine calls into another overlay.
 
 globalsp:       ds      2                       ; Saved global stack pointer
-localsp:        dw      mystack + 96            ; Pointer inside local stack
-curpage:        db      3                       ; Currently active overlay
-mystack:        ds      96                      ; Local stack with 32 entries
+localsp:        dw      mystack + 64            ; Pointer inside local stack
+curpage:        db      0                       ; Currently active overlay
+mystack:        ds      64                      ; Local stack with 16 entries
 
 ; Performs a "far" call into an overlay. Switches overlays as needed and
 ; restores old memory configuration afterwards. There's a fast track: If no
 ; switching is needed we simply jump into the actual callee, making it a near
 ; call. There is no forced correlation between overlay numbers and RAM page
-; numbers except that we consider 255 as an "invalid" initial value.
+; numbers.
 ;
 ; TODO Find a good solution for initial case
 ; TODO Add a check for overflow of the local stack
