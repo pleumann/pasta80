@@ -382,7 +382,7 @@ var
   UserHome, S, Key, Value: String;
   P: Integer;
 begin
-  HomeDir := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
+  HomeDir := NativeToPosix(ParentDir(FAbsolute(ParamStr(0))));
 
   RunCommand(Which, ['sjasmplus'], SjAsmCmd);
   SjAsmCmd := TrimStr(SjAsmCmd);
@@ -2344,7 +2344,7 @@ begin
   begin
     Emit('numpages', 'db 0', 'Number of overlay pages');
     if Overlays then
-      EmitI('include ' + PosixToNative(HomeDir + '/rtl/overlays.asm'));
+      EmitI('include ' + PosixToNative(NativeToPosix(HomeDir) + '/rtl/overlays.asm'));
   end;
 end;
 
