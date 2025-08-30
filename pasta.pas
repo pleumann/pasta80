@@ -2344,7 +2344,7 @@ begin
   begin
     Emit('numpages', 'db 0', 'Number of overlay pages');
     if Overlays then
-      EmitI('include ' + HomeDir + '/rtl/overlays.asm');
+      EmitI('include ' + PosixToNative(HomeDir + '/rtl/overlays.asm'));
   end;
 end;
 
@@ -2418,11 +2418,11 @@ begin
     EmitI('org 0');
 
     if Binary = btZXN then
-      EmitI('incbin "' + HomeDir + '/misc/specnext.run"')
+      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/specnext.bas"'))
     else if Binary = btZX128 then
-      EmitI('incbin "' + HomeDir + '/misc/spec128.run"')
+      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec128.bas"'))
     else
-      EmitI('incbin "' + HomeDir + '/misc/spec48.run"');
+      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec48.bas"'));
 
     EmitI('savetap "' + BinFile2 + '",BASIC,"run",$0080,$-$0080,0');
     EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,HEAP-$8000');
