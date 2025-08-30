@@ -2340,8 +2340,14 @@ begin
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
   Emit('TEXT', 'jp __init', '');
-  Emit('PAGE_COUNT', 'db 0', '');
   Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
+
+  if Binary in [btZX128, btZXN] then
+  begin
+    Emit('numpages', 'db 0', 'Number of overlay pages');
+    if Paging then
+      EmitI('include ' + HomeDir + '/rtl/overlays.asm');
+  end;
 end;
 
 (**
@@ -2397,7 +2403,7 @@ begin
 
   if (Binary = btZX128) or (Binary = btZXN) then
   begin
-    EmitI('org PAGE_COUNT');
+    EmitI('org numpages');
     EmitI('db ' + IntToStr(CurrentOverlay));
   end;
 
