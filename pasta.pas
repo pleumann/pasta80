@@ -2344,7 +2344,7 @@ begin
   begin
     Emit('numpages', 'db 0', 'Number of overlay pages');
     if Overlays then
-      EmitI('include ' + PosixToNative(HomeDir + '/rtl/overlays.asm'));
+      EmitI('include "' + PosixToNative(HomeDir + '/rtl/overlays.asm"'));
   end;
 end;
 
