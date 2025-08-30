@@ -32,7 +32,6 @@ nxt_setreg:     ld      bc,$243B
 ; Out:  -
 ;
 banksel:
-        add     32
         ld      c,a             ; Save desired bank
         and     7
         out     ($fe),a

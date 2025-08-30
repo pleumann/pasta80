@@ -336,9 +336,7 @@ type
   (**
    * The possible output formats.
    *)
-  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot, tfNex);
-
-  TOverlayType = (otNone, otBanks, otPages);
+  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot);
 
 var
   (**
@@ -357,7 +355,7 @@ var
 
   StackSize: Integer = 4096;
 
-  Paging: Boolean = False;
+  Overlays: Boolean = False;
 
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -2345,7 +2343,7 @@ begin
   if Binary in [btZX128, btZXN] then
   begin
     Emit('numpages', 'db 0', 'Number of overlay pages');
-    if Paging then
+    if Overlays then
       EmitI('include ' + HomeDir + '/rtl/overlays.asm');
   end;
 end;
@@ -2445,15 +2443,7 @@ begin
     end;
   end
   else if Format = tfSnapshot then
-    EmitI('savesna "' + BinFile + '",$8000')
-  else if Format = tfNex then
-  begin
-    EmitI('savenex open "' + BinFile + '",$8000,$E000');
-    EmitI('savenex cfg 0');
-    EmitI('savenex palette default ');
-    EmitI('savenex auto ');
-    EmitI('savenex close');
-  end;
+    EmitI('savesna "' + BinFile + '",$8000');
 end;
 
 (**
@@ -2579,7 +2569,7 @@ begin
     Emit('main', '', '');
     EmitI('ld (display),sp');
     EmitCall(LookupBuiltInOrFail('InitHeap'));
-    if Paging then
+    if Overlays then
     begin
       if Binary = btZX128 then
         EmitI('ld a,0')
@@ -6847,9 +6837,9 @@ begin
       if Level <> 0 then
         Error('Overlays only allowed on top level');
 
-      if (Binary = btZX128) and Paging then
+      if (Binary = btZX128) and Overlays then
         ParseOverlay(Sym)
-      else if (Binary = btZXN) and Paging then
+      else if (Binary = btZXN) and Overlays then
         ParseNextOverlay(Sym)
       else
         NextToken;
@@ -7001,9 +6991,7 @@ begin
   else if Format = tfTape then
     BinFile := ChangeExt(SrcFile, '.tap')
   else if Format = tfSnapshot then
-    BinFile := ChangeExt(SrcFile, '.sna')
-  else if Format = tfNex then
-    BinFile := ChangeExt(SrcFile, '.nex');
+    BinFile := ChangeExt(SrcFile, '.sna');
 
   if SetJmp(StoredState) = 0 then
   begin
@@ -7060,31 +7048,14 @@ begin
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err --lst ' + PosixToNative(AsmFile))
+      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile))
     else
-      Exec(SjAsmCmd, '--syntax=abf --nologo --msg=err --lst ' + PosixToNative(AsmFile));
+      Exec(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile));
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
     if DosExitCode <> 0 then
       Error('Failure! :(');
-
-(*
-    if (Format <> tfTape) and (Format <> tfSnapshot) then
-    begin
-      if Binary = btCPM then Org := 256 else Org := 32768;
-      Len := FSize(BinFile);
-
-      HeapStart := Org + Len;
-      if HeapStart < 24576 then HeapStart := 24576;
-      HeapBytes := 57343 - HeapStart;
-      if HeapBytes < 0 then HeapBytes := 0;
-
-      WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
-      WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
-      WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
-    end;
-*)
   end;
 
   HasStoredState := False;
@@ -7101,7 +7072,7 @@ const
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
    *)
-  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot', 'Nex');
+  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot');
 
   (**
    * Yes/no strings. Why is this here and not in the IDE sestion?
@@ -7481,17 +7452,17 @@ begin
     WriteLn('  --zx128        Sets target to ZX Spectrum 128K');
     WriteLn('  --zxnext       Sets target to ZX Spectrum Next');
     WriteLn;
-    WriteLn('  --bin          Generates binary file (default)');
-    WriteLn('  --tap          Generates ZX .tap tape file with loader');
-    WriteLn('  --sna          Generates ZX .sna snapshot file (48K/128K)');
-    //WriteLn('  --nex          Generates .nex executable file');
+    WriteLn('  --bin          Generates raw binary file (default)');
+    WriteLn('  --3dos         Generates binary with +3DOS header');
+    WriteLn('  --tap          Generates .tap file with loader');
+    WriteLn('  --sna          Generates .sna snapshot file');
     WriteLn;
-    WriteLn('  --ovr          Enables banked-switched overlays');
-    WriteLn('  --dep          Enables dependency analysis');
-    WriteLn('  --opt          Enables peephole optimizations');
+    WriteLn('  --dep          enable dependency analysis');
+    WriteLn('  --opt          enable peephole optimizations');
+    WriteLn('  --ovr          enable banked-switched overlays');
     WriteLn;
-    WriteLn('  --ide          Starts interactive mode');
-    WriteLn('  --version      Shows just the version number');
+    WriteLn('  --ide          starts interactive mode');
+    WriteLn('  --version      shows just the version number');
     WriteLn;
     Halt(1);
   end;
@@ -7507,32 +7478,32 @@ begin
       Binary := btCPM;
       AddrOrigin := $0100;
       AddrLimit := $F000;
-      Paging := False;
+      Overlays := False;
     end
     else if SrcFile = '--zx48' then
     begin
       Binary := btZX;
       AddrOrigin := 32768;
       AddrLimit := 65536;
-      Paging := False;
+      Overlays := False;
     end
     else if SrcFile = '--zx128' then
     begin
       Binary := btZX128;
       AddrOrigin := 32768;
       AddrLimit := 65536;
-      Paging := False;
+      Overlays := False;
     end
     else if SrcFile = '--zxnext' then
     begin
       Binary := btZXN;
       AddrOrigin := 32768;
       AddrLimit := 65536;
-      Paging := False;
+      Overlays := False;
     end
     else if SrcFile = '--ovr' then
     begin
-      Paging := True;
+      Overlays := True;
       if Binary = btZX128 then
         AddrLimit := $C000
       else if Binary = btZXN then
@@ -7548,8 +7519,6 @@ begin
       Format := tfTape
     else if SrcFile = '--sna' then
       Format := tfSnapshot
-    else if SrcFile = '--nex' then
-      Format := tfNex
     else if SrcFile = '--opt' then
       Optimize := True
     else if SrcFile = '--dep' then
