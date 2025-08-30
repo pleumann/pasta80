@@ -361,10 +361,10 @@ procedure LoadConfig;
 const
   {$ifdef windows}
   EnvKey = 'USERPROFILE';
-  Which = 'which';
+  Which = 'where';
   {$else}
   EnvKey = 'HOME';
-  Which = 'where';
+  Which = 'which';
   {$endif}
 var
   T: Text;
