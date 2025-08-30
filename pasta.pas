@@ -2353,7 +2353,7 @@ end;
  *)
 procedure EmitFooter(BinFile: String);
 var
-  BinFile2, S: String;
+  BinFile2, S, T: String;
   I, Is128K: Integer;
 begin
   Emit('TEXT_END', '= $', '');
@@ -2413,16 +2413,19 @@ begin
     EmitI('save3dos "' + BinFile2 + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
   begin
-    //WriteLn(Binary, ' ', CurrentOverlay);
+    EmitI('emptytap "' + BinFile2 + '"');
+
+    EmitI('org 0');
 
     if Binary = btZXN then
-      CopyFile(HomeDir + '/misc/loadernext.tap', BinFile2)
+      EmitI('incbin "' + HomeDir + '/misc/specnext.run"')
     else if Binary = btZX128 then
-      CopyFile(HomeDir + '/misc/loader128.tap', BinFile2)
+      EmitI('incbin "' + HomeDir + '/misc/spec128.run"')
     else
-      CopyFile(HomeDir + '/misc/loader48.tap', BinFile2);
+      EmitI('incbin "' + HomeDir + '/misc/spec48.run"');
 
-    EmitI('savetap "' + BinFile2 + '",CODE,"main",$8000,HEAP-$8000');
+    EmitI('savetap "' + BinFile2 + '",BASIC,"run",$0080,$-$0080,0');
+    EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,HEAP-$8000');
 
     for I := 0 to CurrentOverlay - 1 do
     begin
@@ -2438,8 +2441,9 @@ begin
       end;
 
       S := IntToStr(I);
+      T := Copy('00', Length(S), 2) + S;
 
-      EmitI('savetap "' + BinFile2 + '",CODE,"over ' + S + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START');
+      EmitI('savetap "' + BinFile2 + '",CODE,"' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START');
     end;
   end
   else if Format = tfSnapshot then
