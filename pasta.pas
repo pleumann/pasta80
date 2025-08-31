@@ -319,13 +319,15 @@ end;
 function GetHomeDir: String;
 begin
   Result := ParentDir(NativeToPosix(ParamStr(0)));
-  {$ifdef darwin}
   if Result = '' then
   begin
+    {$ifdef darwin}
     RunCommand('which', [ParamStr(0)], Result);
     Result := TrimStr(Result);
+    {$else}
+    Result := '.';
+    {$endif}
   end;
-  {$endif}
 end;
 
 (**
