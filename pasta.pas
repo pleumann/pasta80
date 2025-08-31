@@ -503,8 +503,12 @@ procedure OpenInput(FileName: String);
 var
   Tmp: PSource;
 begin
-  if (Source <> nil) and not StartsWith(FileName, '/') then
+  WriteLn('OpenInput before: ', FileName);
+
+  if (Source <> nil) and not StartsWith(FileName, '/') and not (FileName[2] = ':') then
     FileName := ParentDir(FAbsolute(Source^.Name)) + '/' + FileName;
+
+  WriteLn('OpenInput after:  ', FileName);
 
   Tmp := Source;
   while Tmp <> nil do
