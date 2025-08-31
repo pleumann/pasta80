@@ -664,7 +664,8 @@ end;
 type
   TSymbolClass = (scConst, scType, scArrayType, scRecordType, scEnumType,
                   scStringType, scSetType, scSubrangeType, scPointerType,
-                  scFileType, scVar, scLabel, scProc, scFunc, scScope);
+                  scFileType, scAliasType, scVar, scLabel, scProc, scFunc,
+                  scScope);
 
   // Flags: Forward, External, Register, Magic, Reference, Writable, Relative, Sizable, Addressable
 
@@ -6143,6 +6144,8 @@ begin
     end
     else
     begin
+      while Sym^.Kind = scAliasType do Sym := Sym^.DataType;
+
       if not (Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scPointerType, scSubrangeType, scFileType]) then
         Error('Not a type: ' + Scanner.StrValue);
 
@@ -6543,7 +6546,7 @@ end;
  *)
 procedure ParseDeclarations(Sym: PSymbol);
 var
-  OldSyms, P: PSymbol;
+  OldSyms, P, T: PSymbol;
   Name: String;
 begin
   while Scanner.Token in [toConst, toType, toVar, toLabel, toOverlay, toProcedure, toFunction] do
@@ -6579,7 +6582,13 @@ begin
         Expect(toEq);
         NextToken;
 
-        ParseTypeDef^.Name := Name;
+        T := ParseTypeDef;
+        if T^.Name <> '' then
+        begin
+          P := CreateSymbol(scAliasType, Name);
+          P^.DataType := T;
+        end
+        else T^.Name := Name;
 
         Expect(toSemicolon);
         NextToken;
