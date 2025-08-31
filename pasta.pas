@@ -407,6 +407,7 @@ begin
 
   WriteLn('Home dir is: ', HomeDir);
   WriteLn('User dir is: ', UserDir);
+  WriteLn;
 
   SjAsmCmd  := 'sjasmplus';
   ZasmCmd   := 'zasm';
@@ -524,8 +525,14 @@ begin
   with Tmp^ do
   begin
     Name := FileName;
+
+    WriteLn('Name before: ', Name);
+
     {$I-}
     Assign(Input, Name);
+
+    WriteLn('Name after:  ', Name);
+
     Reset(Input);
     if IOResult <> 0 then
     begin
