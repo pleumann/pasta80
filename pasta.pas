@@ -263,6 +263,27 @@ begin
     FRelative := Name;
 end;
 
+function IsRelative(Path: String): Boolean;
+begin
+  IsRelative := False;
+
+  if Length(Path) >= 1 then
+  begin
+    if Path[1] = '/' then Exit;
+
+    if Length(Path) >= 2 then
+    begin
+      if IsAlpha(Path[1]) and (Path[2] = ':') then
+      begin
+        if (Length(Path) >= 3) and (Path[3] = '/') then Exit;
+        WriteLn('Warning: "', Path, '" can lead to trouble.');
+      end;
+    end;
+  end;
+
+  IsRelative := True;
+end;
+
 (**
  * Returns the size of the given file, or -1 if the file does not exist.
  *)
@@ -389,14 +410,6 @@ var
  * first by "guessing" via "which", then by loading a config file.
  *)
 procedure LoadConfig;
-const
-  {$ifdef windows}
-  EnvKey = 'USERPROFILE';
-  Which = 'where';
-  {$else}
-  EnvKey = 'HOME';
-  Which = 'which';
-  {$endif}
 var
   T: Text;
   UserDir, S, Key, Value: String;
@@ -506,12 +519,8 @@ procedure OpenInput(FileName: String);
 var
   Tmp: PSource;
 begin
-  WriteLn('OpenInput before: ', FileName);
-
-  if (Source <> nil) and not StartsWith(FileName, '/') and not (FileName[2] = ':') then
+  if (Source <> nil) and IsRelative(FileName) then
     FileName := ParentDir(FAbsolute(Source^.Name)) + '/' + FileName;
-
-  WriteLn('OpenInput after:  ', FileName);
 
   Tmp := Source;
   while Tmp <> nil do
@@ -525,14 +534,8 @@ begin
   with Tmp^ do
   begin
     Name := FileName;
-
-//    WriteLn('Name before: ', Name);
-
     {$I-}
-    Assign(Input, Name);
-
-//    WriteLn('Name after:  ', Name);
-
+    Assign(Input, FileName);
     Reset(Input);
     if IOResult <> 0 then
     begin
@@ -1937,8 +1940,8 @@ end;
 
 procedure SetLibrary;
 begin
-  if not StartsWith(FileName, '/') then
-    FileName := ParentDir(Source^.Name) + '/' + FileName;
+  if (Source <> nil) and IsRelative(FileName) then
+    FileName := ParentDir(FAbsolute(Source^.Name)) + '/' + FileName;
 
   Flush;
   Emit0('', 'include "' + FileName + '"', '');
@@ -7069,19 +7072,14 @@ begin
       else
         Exec(TnylpoCmd, BinFile)
     end
-    else if Binary = btZX then
+    else if (Binary = btZX) or (Binary = btZX128) then
     begin
-      {$ifdef darwin}
-      if Alt then
-        Exec('/usr/bin/open', '-a Fuse --args --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
+      if Format = tfTape then
+        Execute(FuseCmd, '--args --tape ' + FAbsolute(BinFile))
+      else if Format = tfSnapshot then
+        Execute(FuseCmd, '--args --snapshot ' + FAbsolute(BinFile))
       else
-        Exec('/usr/bin/open', '-a Fuse --args --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
-      {$else}
-      if Alt then
-        Exec(FuseCmd, ' --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
-      else
-        Exec(FuseCmd, ' --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
-      {$endif}
+        WriteLn('Cannot execute this format in Fuse.');
     end
     else
     begin
