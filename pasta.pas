@@ -7179,10 +7179,14 @@ end;
 (**
  * Shows the copyright header.
  *)
-procedure Copyright;
+procedure Copyright(Ide: Boolean);
 begin
   WriteLn('----------------------------------------');
-  WriteLn(#27'[1m', 'PASTA/80 Pascal System', #27'[m', 'Version ' + Version:18);
+  if Ide then
+    WriteLn(#27'[1m', 'PASTA/80 Pascal System', #27'[m', 'Version ' + Version:18)
+  else
+    WriteLn('PASTA/80 Pascal System', 'Version ' + Version:18);
+
   if Binary = btZXN then
     WriteLn(BinaryStr[Binary] + ', Z80N':40)
   else
@@ -7205,7 +7209,7 @@ begin
   begin
     Write(#27'[2J'#27'[H');
 
-    Copyright;
+    Copyright(True);
 
     WriteLn(TermStr('~Active directory: '), FExpand('.'));
     WriteLn;
@@ -7359,7 +7363,7 @@ begin
     Halt;
   end;
 
-  Copyright;
+  Copyright(False);
   LoadConfig;
   Parameters;
 end.
