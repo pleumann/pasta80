@@ -194,7 +194,7 @@ end;
 function NativeToPosix(Native: String): String;
 begin
   {$ifdef windows}
-  NativeToPosix := ReplaceChar(Posix, '\', '/');
+  NativeToPosix := ReplaceChar(Native, '\', '/');
   {$else}
   NativeToPosix := Native;
   {$endif}
