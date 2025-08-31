@@ -7072,17 +7072,27 @@ begin
       else
         Exec(TnylpoCmd, BinFile)
     end
-    else if (Binary = btZX) or (Binary = btZX128) then
+    else if Binary = btZX then
     begin
       if Format = tfTape then
-        Execute(FuseCmd, '--args --tape ' + FAbsolute(BinFile))
+        Execute(FuseCmd, '--args --machine 48 --tape ' + FAbsolute(BinFile))
       else if Format = tfSnapshot then
-        Execute(FuseCmd, '--args --snapshot ' + FAbsolute(BinFile))
+        Execute(FuseCmd, '--args --machine 48 --snapshot ' + FAbsolute(BinFile))
       else
-        WriteLn('Cannot execute this format in Fuse.');
+        WriteLn('Cannot execute ' + LowerStr(FormatStr[Format]) + ' in Fuse.');
+    end
+    else if Binary = btZX128 then
+    begin
+      if Format = tfTape then
+        Execute(FuseCmd, '--args --machine 128 --tape ' + FAbsolute(BinFile))
+      else if Format = tfSnapshot then
+        Execute(FuseCmd, '--args --machine 128 --snapshot ' + FAbsolute(BinFile))
+      else
+        WriteLn('Cannot execute ' + LowerStr(FormatStr[Format]) + ' in Fuse.');
     end
     else
     begin
+      WriteLn('Not yet implemented.');
 // FIXME CSpect / Zesarux
 //      Exec('/Users/joerg/Library/bin/hdfmonkey', 'put /Users/joerg/Downloads/tbblue.mmc ' + BinFile + ' /autoexec.dot');
 //      if Alt then
