@@ -318,7 +318,7 @@ end;
  *)
 function GetHomeDir: String;
 begin
-  Result := NativeToPosix(ParentDir(ParamStr(0)));
+  Result := ParentDir(NativeToPosix(ParamStr(0)));
   {$ifdef darwin}
   if Result = '' then
   begin
