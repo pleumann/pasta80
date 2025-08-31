@@ -7,7 +7,7 @@ program Pasta80;
 {$mode delphi}
 
 uses
-  Keyboard, Dos, Math, Process;
+  {$ifdef darwin} BaseUnix, {$endif} Keyboard, Dos, Math, Process;
 
 const
   Version = '0.95';
@@ -143,6 +143,20 @@ begin
 end;
 
 (**
+ * Checks if the given string starts with the given substring.
+ *)
+function EndsWith(Str, SubStr: String): Boolean;
+begin
+  if Length(Str) < Length(SubStr) then
+  begin
+    EndsWith := False;
+    Exit;
+  end;
+
+  EndsWith := Copy(Str, Length(Str) - Length(SubStr) + 1, 255) = SubStr;
+end;
+
+(**
  * Encodes the given floating-point number (enclosed in a string) the way
  * the Real type needs it.
  *)
@@ -194,28 +208,18 @@ end;
 function NativeToPosix(Native: String): String;
 begin
   {$ifdef windows}
-  ReplaceChar(Native, '\', '/');
-
-  if (Length(Native) >= 2) then
-    if IsAlpha(Native[1]) and (Native[2] = ':') then
-      Native := '/' + LowerCase(Native[1]) + Copy(Native, 3, 255);
-
   NativeToPosix := ReplaceChar(Native, '\', '/');
   {$else}
-  Result := Native;
+  NativeToPosix := Native;
   {$endif}
 end;
 
 function PosixToNative(Posix : string): string;
 begin
   {$ifdef windows}
-  if (Length(Posix) >= 3) then
-    if (Posix[1] = '/') and IsAlpha(Posix[2]) and (Posix[3] = '/') then
-      Posix := Posix[2] + ':' + Copy(Posix, 3, 255);
-
   PosixToNative := ReplaceChar(Posix, '/', '\');
   {$else}
-  Result := Posix;
+  PosixToNative := Posix;
   {$endif}
 end;
 
@@ -254,7 +258,7 @@ end;
  *)
 function FAbsolute(Name: String): String;
 begin
-  FAbsolute := NativeToPosix(FExpand(PosixToNative(Name)));
+  FAbsolute := NativeToPosix(FExpand(Name));
 end;
 
 (**
@@ -273,6 +277,27 @@ begin
     FRelative := Name;
 end;
 
+function IsRelative(Path: String): Boolean;
+begin
+  IsRelative := False;
+
+  if Length(Path) >= 1 then
+  begin
+    if Path[1] = '/' then Exit;
+
+    if Length(Path) >= 2 then
+    begin
+      if IsAlpha(Path[1]) and (Path[2] = ':') then
+      begin
+        if (Length(Path) >= 3) and (Path[3] = '/') then Exit;
+        WriteLn('Warning: "', Path, '" can lead to trouble.');
+      end;
+    end;
+  end;
+
+  IsRelative := True;
+end;
+
 (**
  * Returns the size of the given file, or -1 if the file does not exist.
  *)
@@ -281,7 +306,7 @@ var
   F: File;
 begin
   {$I-}
-  Assign(F, PosixToNative(Name));
+  Assign(F, Name);
   Reset(F, 1);
   if IOResult = 0 then
   begin
@@ -302,10 +327,10 @@ var
   Count: Integer;
 begin
   {$I-}
-  Assign(Dst, PosixToNative(DstName));
+  Assign(Dst, DstName);
   Rewrite(Dst, 1);
 
-  Assign(Src, PosixToNative(SrcName));
+  Assign(Src, SrcName);
   Reset(Src, 1);
 
   BlockRead(Src, Buffer, 512, Count);
@@ -321,6 +346,80 @@ begin
   {$I+}
 
   CopyFile := IOResult = 0;
+end;
+
+{$ifdef darwin}
+function ResolveLink(const APath: string): string;
+var
+  Buf: array[0..255] of char;
+  Len: Integer;
+begin
+  Len := fpReadLink(PChar(APath), Buf, SizeOf(Buf));
+  if Len = -1 then
+    Result := APath
+  else
+    SetString(Result, Buf, Len);
+end;
+{$endif}
+
+(**
+ * Returns the compiler's home directory (where it is installed).
+ *)
+function GetHomeDir: String;
+begin
+  {$ifdef darwin}
+  Result := ParentDir(ParamStr(0));
+  if Result = '' then
+  begin
+    RunCommand('which', [ParamStr(0)], Result);
+    Result := ParentDir(ResolveLink(TrimStr(Result)));
+  end
+  else Result := FAbsolute(Result);
+  {$else}
+  Result := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
+  if Result = '' then Result := FAbsolute('.');
+  {$endif}
+end;
+
+(**
+ * Returns the user's home directory (where we expect the config).
+ *)
+function GetUserDir: String;
+begin
+  {$ifdef windows}
+  Result := NativeToPosix(GetEnv('USERPROFILE'));
+  {$else}
+  Result := NativeToPosix(GetEnv('HOME'));
+  {$endif}
+end;
+
+(**
+ * Executes the given program with the given arguments.
+ *)
+procedure Execute(const Path, Args: String);
+begin
+  {$ifndef windows}
+  if EndsWith(Path, '.exe') then
+    Exec('/bin/sh', '-c "mono ' + Path + ' ' + Args + '"')
+  {$ifdef darwin}
+  else if EndsWith(Path, '.app') then
+    Exec('/bin/sh', '-c "open -a ' + Path + ' --args ' + Args + '"')
+  {$endif}
+  else
+    Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
+  {$else}
+  Exec(Path, Args);
+  {$endif}
+
+  if DosError <> 0 then
+  begin
+    {$ifdef windows}
+    ...
+    {$endif}
+    WriteLn('Error: Cannot execute "' + Path + '".');
+    WriteLn;
+    WriteLn('Is it installed? Is it in your PATH or your .pasta80.cfg file?');
+  end;
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -351,6 +450,7 @@ var
 
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
+  MonkeyCmd, CSpectCmd, ImagePath: String;
   AltEditor: Boolean;
 
 (**
@@ -358,43 +458,25 @@ var
  * first by "guessing" via "which", then by loading a config file.
  *)
 procedure LoadConfig;
-const
-  {$ifdef windows}
-  EnvKey = 'USERPROFILE';
-  Which = 'where';
-  {$else}
-  EnvKey = 'HOME';
-  Which = 'which';
-  {$endif}
 var
   T: Text;
-  UserHome, S, Key, Value: String;
+  UserDir, S, Key, Value: String;
   P: Integer;
 begin
-  HomeDir := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
+  HomeDir := GetHomeDir;
+  UserDir := GetUserDir;
 
-  RunCommand(Which, ['sjasmplus'], SjAsmCmd);
-  SjAsmCmd := TrimStr(SjAsmCmd);
-
-  RunCommand(Which, ['zasm'], ZasmCmd);
-  ZasmCmd := TrimStr(ZasmCmd);
-
-  RunCommand(Which, ['nano'], NanoCmd);
-  NanoCmd := TrimStr(NanoCmd);
-
-  RunCommand(Which, ['code'], CodeCmd);
-  CodeCmd := TrimStr(CodeCmd);
-
-  RunCommand(Which, ['tnylpo'], TnylpoCmd);
-  TnylpoCmd := TrimStr(TnylpoCmd);
-
-  RunCommand(Which, ['fuse'], FuseCmd);
-  FuseCmd := TrimStr(FuseCmd);
-
-  UserHome := NativeToPosix(GetEnv(EnvKey));
+  SjAsmCmd  := 'sjasmplus';
+  NanoCmd   := 'nano';
+  CodeCmd   := 'code';
+  TnylpoCmd := 'tnylpo';
+  FuseCmd   := {$ifdef darwin} 'Fuse.app' {$else} 'fuse' {$endif};
+  MonkeyCmd := 'hdfmonkey';
+  CSpectCmd := {$ifndef windows} 'CSpect.exe' {$else} 'CSpect' {$endif};
+  ImagePath := 'tbblue.img';
 
   {$I-}
-  Assign(T, PosixToNative(UserHome + '/.pasta80.cfg'));
+  Assign(T, UserDir + '/.pasta80.cfg');
   Reset(T);
   if IOResult = 0 then
   begin
@@ -407,16 +489,16 @@ begin
         if P <> 0 then
         begin
           Key := LowerStr(TrimStr(Copy(S, 1, P - 1)));
-          Value := TrimStr(Copy(S, P + 1, 255));
+          Value := NativeToPosix(TrimStr(Copy(S, P + 1, 255)));
 
           if StartsWith(Value, '~') then
-            Value := UserHome + Copy(Value, 2, 255);
+            Value := UserDir + Copy(Value, 2, 255);
 
           if Key = 'home' then
             HomeDir := Value
-          else if Key = 'sjasmplus' then
+          else if Key = 'assembler' then
             SjAsmCmd := Value
-          else if Key = 'nano' then
+          else if Key = 'editor' then
             NanoCmd := Value
           else if Key = 'vscode' then
             CodeCmd := Value
@@ -424,6 +506,12 @@ begin
             TnylpoCmd := Value
           else if Key = 'fuse' then
             FuseCmd := Value
+          else if Key = 'hdfmonkey' then
+            MonkeyCmd := Value
+          else if Key = 'cspect' then
+            CSpectCmd := Value
+          else if Key = 'image' then
+            ImagePath := Value
           else
           begin
             WriteLn('Invalid config key: ' + Key);
@@ -483,7 +571,7 @@ procedure OpenInput(FileName: String);
 var
   Tmp: PSource;
 begin
-  if (Source <> nil) and not StartsWith(FileName, '/') then
+  if (Source <> nil) and IsRelative(FileName) then
     FileName := ParentDir(FAbsolute(Source^.Name)) + '/' + FileName;
 
   Tmp := Source;
@@ -499,12 +587,12 @@ begin
   begin
     Name := FileName;
     {$I-}
-    Assign(Input, PosixToNative(Name));
+    Assign(Input, FileName);
     Reset(Input);
     if IOResult <> 0 then
     begin
       Dispose(Tmp);
-      Error('File "' + PosixToNative(Name) + '" not found');
+      Error('File "' + PosixToNative(FileName) + '" not found');
     end;
     {$I+}
     Buffer := '';
@@ -1827,7 +1915,7 @@ end;
  *)
 procedure OpenTarget(Filename: String);
 begin
-  Assign(Target, PosixToNative(Filename));
+  Assign(Target, Filename);
   Rewrite(Target);
 end;
 
@@ -1904,11 +1992,11 @@ end;
 
 procedure SetLibrary;
 begin
-  if not StartsWith(FileName, '/') then
-    FileName := ParentDir(Source^.Name) + '/' + FileName;
+  if (Source <> nil) and IsRelative(FileName) then
+    FileName := ParentDir(FAbsolute(Source^.Name)) + '/' + FileName;
 
   Flush;
-  Emit0('', 'include "' + PosixToNative(FileName) + '"', '');
+  Emit0('', 'include "' + FileName + '"', '');
 end;
 
 function DoOptimize: Boolean;
@@ -2315,8 +2403,6 @@ end;
  * Emits the file footer.
  *)
 procedure EmitFooter(BinFile: String);
-var
-  BinFile2: String;
 begin
   EmitC('');
   Emit('HEAP', '', '');
@@ -2324,14 +2410,12 @@ begin
   EmitC('end');
   EmitC('');
 
-  BinFile2 := PosixToNative(BinFile);
-
   if Binary = btCPM then
-    EmitI('savebin "' + BinFile2 + '",$0100,HEAP-$0100')
+    EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
   else if Format = tfBinary then
-    EmitI('savebin "' + BinFile2 + '",$8000,HEAP-$8000')
+    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
   else if Format = tfPlus3Dos then
-    EmitI('save3dos "' + BinFile2 + '",$8000,HEAP-$8000,3,$8000')
+    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
     EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000')
   else if Format = tfSnapshot then
@@ -6852,9 +6936,9 @@ begin
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile))
+      Execute(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + AsmFile)
     else
-      Exec(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile));
+      Execute(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + AsmFile);
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
@@ -6863,17 +6947,17 @@ begin
 
     if (Format <> tfTape) and (Format <> tfSnapshot) then
     begin
-    if Binary = btCPM then Org := 256 else Org := 32768;
-    Len := FSize(BinFile);
+      if Binary = btCPM then Org := 256 else Org := 32768;
+      Len := FSize(BinFile);
 
-    HeapStart := Org + Len;
-    if HeapStart < 24576 then HeapStart := 24576;
-    HeapBytes := 57343 - HeapStart;
-    if HeapBytes < 0 then HeapBytes := 0;
+      HeapStart := Org + Len;
+      if HeapStart < 24576 then HeapStart := 24576;
+      HeapBytes := 57343 - HeapStart;
+      if HeapBytes < 0 then HeapBytes := 0;
 
-    WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
-    WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
-    WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
+      WriteLn('Code : $', IntToHex(Org, 4), '-$', IntToHex(Org + Len - 1, 4), ' (', Len:5, ' bytes)');
+      WriteLn('Heap : $', IntToHex(HeapStart, 4), '-$', IntToHex(57343, 4), ' (', HeapBytes:5, ' bytes)');
+      WriteLn('Stack: $', IntToHex(57344, 4), '-$FFFF ( 8192 bytes)');
     end;
   end;
 
@@ -6937,7 +7021,7 @@ begin
   if Length(T) <> 0 then
   begin
     if Pos('.', T) = 0 then T := T + '.pas';
-    GetFile := NativeToPosix(T);
+    GetFile := FAbsolute(NativeToPosix(T));
   end;
 end;
 
@@ -6989,16 +7073,16 @@ begin
   if AltEditor then
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(CodeCmd, '-g ' + S + ':' + IntToStr(Line) + ':' + IntToStr(Column))
+      Execute(CodeCmd, '-g ' + S + ':' + IntToStr(Line) + ':' + IntToStr(Column))
     else
-      Exec(CodeCmd, S)
+      Execute(CodeCmd, S)
   end
   else
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
+      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
     else
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
+      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
   end;
 end;
 
@@ -7036,32 +7120,37 @@ begin
     if Binary = btCPM then
     begin
       if Alt then
-        Exec(TnylpoCmd, '-soy -t @ ' + BinFile)
+        Execute(TnylpoCmd, '-soy -t @ ' + BinFile)
       else
-        Exec(TnylpoCmd, BinFile)
+        Execute(TnylpoCmd, BinFile)
     end
     else if Binary = btZX then
     begin
-      {$ifdef darwin}
-      if Alt then
-        Exec('/usr/bin/open', '-a Fuse --args --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
+      if Format = tfTape then
+        Execute(FuseCmd, '--machine 48 --tape ' + BinFile)
+      else if Format = tfSnapshot then
+        Execute(FuseCmd, '--machine 48 --snapshot ' + BinFile)
       else
-        Exec('/usr/bin/open', '-a Fuse --args --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
-      {$else}
-      if Alt then
-        Exec(FuseCmd, ' --debugger-command "br 32768" --tape ' + ChangeExt(BinFile, '.tap'))
+        WriteLn('Tape or snapshot needed for Fuse.');
+    end
+    else if Binary = btZX128 then
+    begin
+      if Format = tfTape then
+        Execute(FuseCmd, '--machine 128 --tape ' + BinFile)
+      else if Format = tfSnapshot then
+        Execute(FuseCmd, '--machine 128 --snapshot ' + BinFile)
       else
-        Exec(FuseCmd, ' --debugger-command "del" --tape ' + ChangeExt(BinFile, '.tap'))
-      {$endif}
+        WriteLn('Tape or snapshot needed for Fuse.');
     end
     else
     begin
-// FIXME CSpect / Zesarux
-//      Exec('/Users/joerg/Library/bin/hdfmonkey', 'put /Users/joerg/Downloads/tbblue.mmc ' + BinFile + ' /autoexec.dot');
-//      if Alt then
-//        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
-//      else
-//        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+      if Format = tfTape then
+      begin
+        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /');
+        Execute(CSpectCmd, '-zxnext -w3 -r -nextrom -mouse -mmc=' + ImagePath);
+      end
+      else
+        WriteLn('Tape needed for CSpect.');
     end;
   end;
 end;
@@ -7069,17 +7158,24 @@ end;
 (**
  * Runs a shell command without leaving interactive mode.
  *)
-procedure DoShell(Alt: Boolean);
+procedure DoShell;
 var
   Cmd: String;
 begin
-  if Alt then Exec('/bin/bash', '')
+  Write('Command: ');
+  ReadLn(Cmd);
+
+  {$ifdef windows}
+  if Cmd = '' then
+    Exec('cmd.exe', '')
   else
-  begin
-    Write('Command: ');
-    ReadLn(Cmd);
+    Exec('cmd.exe', '-c "' + Cmd + '"');
+  {$else}
+  if Cmd = '' then
+    Exec('/bin/bash', '')
+  else
     Exec('/bin/bash', '-c "' + Cmd + '"');
-  end;
+  {$endif}
 end;
 
 (**
@@ -7093,6 +7189,7 @@ var
 begin
   Write('Mask: ');
   ReadLn(Pattern);
+
   {$ifdef windows}
   if Pattern = '' then Pattern := '*.*';
   {$else}
@@ -7245,7 +7342,7 @@ begin
         'e': DoEdit(0, 0);
         'c': DoCompile;
         'r', 'R': DoRun(C = 'R');
-        's', 'S': DoShell(C = 'S');
+        's': DoShell;
         'f': DoFiles;
         'o', 'O': DoOptions;
         'q': begin WriteLn('Bye!'); WriteLn; Halt(0); end;
@@ -7330,11 +7427,8 @@ begin
   end
   else
   begin
-
-    SrcFile := NativeToPosix(SrcFile);
-//    WriteLn(SrcFile);
+    SrcFile := FAbsolute(NativeToPosix(SrcFile));
     if Pos('.', SrcFile) = 0 then SrcFile := SrcFile + '.pas';
-//    if FSize(SrcFile) < 0 then Error('Input file does not exist');
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
