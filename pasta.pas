@@ -526,18 +526,18 @@ begin
   begin
     Name := FileName;
 
-    WriteLn('Name before: ', Name);
+//    WriteLn('Name before: ', Name);
 
     {$I-}
     Assign(Input, Name);
 
-    WriteLn('Name after:  ', Name);
+//    WriteLn('Name after:  ', Name);
 
     Reset(Input);
     if IOResult <> 0 then
     begin
       Dispose(Tmp);
-      Error('File "' + PosixToNative(Name) + '" not found');
+      Error('File "' + PosixToNative(FileName) + '" not found');
     end;
     {$I+}
     Buffer := '';
