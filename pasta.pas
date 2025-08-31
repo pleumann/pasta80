@@ -194,28 +194,18 @@ end;
 function NativeToPosix(Native: String): String;
 begin
   {$ifdef windows}
-  ReplaceChar(Native, '\', '/');
-
-  if (Length(Native) >= 2) then
-    if IsAlpha(Native[1]) and (Native[2] = ':') then
-      Native := '/' + LowerCase(Native[1]) + Copy(Native, 3, 255);
-
-  NativeToPosix := ReplaceChar(Native, '\', '/');
+  NativeToPosix := ReplaceChar(Posix, '\', '/');
   {$else}
-  Result := Native;
+  NativeToPosix := Native;
   {$endif}
 end;
 
 function PosixToNative(Posix : string): string;
 begin
   {$ifdef windows}
-  if (Length(Posix) >= 3) then
-    if (Posix[1] = '/') and IsAlpha(Posix[2]) and (Posix[3] = '/') then
-      Posix := Posix[2] + ':' + Copy(Posix, 3, 255);
-
   PosixToNative := ReplaceChar(Posix, '/', '\');
   {$else}
-  Result := Posix;
+  PosixToNative := Posix;
   {$endif}
 end;
 
@@ -254,7 +244,7 @@ end;
  *)
 function FAbsolute(Name: String): String;
 begin
-  FAbsolute := NativeToPosix(FExpand(PosixToNative(Name)));
+  FAbsolute := NativeToPosix(FExpand(Name));
 end;
 
 (**
@@ -281,7 +271,7 @@ var
   F: File;
 begin
   {$I-}
-  Assign(F, PosixToNative(Name));
+  Assign(F, Name);
   Reset(F, 1);
   if IOResult = 0 then
   begin
@@ -302,10 +292,10 @@ var
   Count: Integer;
 begin
   {$I-}
-  Assign(Dst, PosixToNative(DstName));
+  Assign(Dst, DstName);
   Rewrite(Dst, 1);
 
-  Assign(Src, PosixToNative(SrcName));
+  Assign(Src, SrcName);
   Reset(Src, 1);
 
   BlockRead(Src, Buffer, 512, Count);
@@ -321,6 +311,45 @@ begin
   {$I+}
 
   CopyFile := IOResult = 0;
+end;
+
+(**
+ * Returns the compiler's home directory (where it is installed).
+ *)
+function GetHomeDir: String;
+begin
+  Result := NativeToPosix(ParentDir(ParamStr(0)));
+  {$ifdef darwin}
+  if Result = '' then
+  begin
+    RunCommand('which', [ParamStr(0)], Result);
+    Result := TrimStr(Result);
+  end;
+  {$endif}
+end;
+
+(**
+ * Returns the user's home directory (where we expect the config).
+ *)
+function GetUserDir: String;
+begin
+  {$ifdef windows}
+  Result := NativeToPosix(GetEnv('USERPROFILE'));
+  {$else}
+  Result := NativeToPosix(GetEnv('HOME'));
+  {$endif}
+end;
+
+(**
+ * Executes the given program with the given arguments.
+ *)
+procedure Execute(const Path, Args: String);
+begin
+  {$ifdef darwin}
+  Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
+  {$else}
+  Exec(Path, Args);
+  {$endif}
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -368,33 +397,24 @@ const
   {$endif}
 var
   T: Text;
-  UserHome, S, Key, Value: String;
+  UserDir, S, Key, Value: String;
   P: Integer;
 begin
-  HomeDir := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
+  HomeDir := GetHomeDir;
+  UserDir := GetUserDir;
 
-  RunCommand(Which, ['sjasmplus'], SjAsmCmd);
-  SjAsmCmd := TrimStr(SjAsmCmd);
+  WriteLn('Home dir is: ', HomeDir);
+  WriteLn('User dir is: ', UserDir);
 
-  RunCommand(Which, ['zasm'], ZasmCmd);
-  ZasmCmd := TrimStr(ZasmCmd);
-
-  RunCommand(Which, ['nano'], NanoCmd);
-  NanoCmd := TrimStr(NanoCmd);
-
-  RunCommand(Which, ['code'], CodeCmd);
-  CodeCmd := TrimStr(CodeCmd);
-
-  RunCommand(Which, ['tnylpo'], TnylpoCmd);
-  TnylpoCmd := TrimStr(TnylpoCmd);
-
-  RunCommand(Which, ['fuse'], FuseCmd);
-  FuseCmd := TrimStr(FuseCmd);
-
-  UserHome := NativeToPosix(GetEnv(EnvKey));
+  SjAsmCmd  := 'sjasmplus';
+  ZasmCmd   := 'zasm';
+  NanoCmd   := 'nano';
+  CodeCmd   := 'code';
+  TnylpoCmd := 'tnylpo';
+  FuseCmd   := {$ifdef darwin} 'open -a Fuse' {$else} 'fuse' {$endif};
 
   {$I-}
-  Assign(T, PosixToNative(UserHome + '/.pasta80.cfg'));
+  Assign(T, UserDir + '/.pasta80.cfg');
   Reset(T);
   if IOResult = 0 then
   begin
@@ -410,7 +430,7 @@ begin
           Value := TrimStr(Copy(S, P + 1, 255));
 
           if StartsWith(Value, '~') then
-            Value := UserHome + Copy(Value, 2, 255);
+            Value := UserDir + Copy(Value, 2, 255);
 
           if Key = 'home' then
             HomeDir := Value
@@ -499,7 +519,7 @@ begin
   begin
     Name := FileName;
     {$I-}
-    Assign(Input, PosixToNative(Name));
+    Assign(Input, Name);
     Reset(Input);
     if IOResult <> 0 then
     begin
@@ -1827,7 +1847,7 @@ end;
  *)
 procedure OpenTarget(Filename: String);
 begin
-  Assign(Target, PosixToNative(Filename));
+  Assign(Target, Filename);
   Rewrite(Target);
 end;
 
@@ -1908,7 +1928,7 @@ begin
     FileName := ParentDir(Source^.Name) + '/' + FileName;
 
   Flush;
-  Emit0('', 'include "' + PosixToNative(FileName) + '"', '');
+  Emit0('', 'include "' + FileName + '"', '');
 end;
 
 function DoOptimize: Boolean;
@@ -2315,8 +2335,6 @@ end;
  * Emits the file footer.
  *)
 procedure EmitFooter(BinFile: String);
-var
-  BinFile2: String;
 begin
   EmitC('');
   Emit('HEAP', '', '');
@@ -2324,14 +2342,12 @@ begin
   EmitC('end');
   EmitC('');
 
-  BinFile2 := PosixToNative(BinFile);
-
   if Binary = btCPM then
-    EmitI('savebin "' + BinFile2 + '",$0100,HEAP-$0100')
+    EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
   else if Format = tfBinary then
-    EmitI('savebin "' + BinFile2 + '",$8000,HEAP-$8000')
+    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
   else if Format = tfPlus3Dos then
-    EmitI('save3dos "' + BinFile2 + '",$8000,HEAP-$8000,3,$8000')
+    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
   else if Format = tfTape then
     EmitI('savetap "' + BinFile + '",CODE,"mcode",$8000,HEAP-$8000')
   else if Format = tfSnapshot then
@@ -6852,9 +6868,9 @@ begin
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Exec(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile))
+      Execute(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + AsmFile)
     else
-      Exec(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + PosixToNative(AsmFile));
+      Execute(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + AsmFile);
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
@@ -6937,7 +6953,7 @@ begin
   if Length(T) <> 0 then
   begin
     if Pos('.', T) = 0 then T := T + '.pas';
-    GetFile := NativeToPosix(T);
+    GetFile := FAbsolute(NativeToPosix(T));
   end;
 end;
 
