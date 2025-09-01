@@ -427,7 +427,7 @@ begin
   NanoCmd   := 'nano';
   CodeCmd   := 'code';
   TnylpoCmd := 'tnylpo';
-  FuseCmd   := {$ifdef darwin} 'open -a Fuse' {$else} 'fuse' {$endif};
+  FuseCmd   := {$ifdef darwin} 'open -a Fuse --args' {$else} 'fuse' {$endif};
 
   {$I-}
   Assign(T, UserDir + '/.pasta80.cfg');
@@ -7075,18 +7075,18 @@ begin
     else if Binary = btZX then
     begin
       if Format = tfTape then
-        Execute(FuseCmd, '--args --machine 48 --tape ' + FAbsolute(BinFile))
+        Execute(FuseCmd, '--machine 48 --tape ' + BinFile)
       else if Format = tfSnapshot then
-        Execute(FuseCmd, '--args --machine 48 --snapshot ' + FAbsolute(BinFile))
+        Execute(FuseCmd, '--machine 48 --snapshot ' + BinFile)
       else
         WriteLn('Cannot execute ' + LowerStr(FormatStr[Format]) + ' in Fuse.');
     end
     else if Binary = btZX128 then
     begin
       if Format = tfTape then
-        Execute(FuseCmd, '--args --machine 128 --tape ' + FAbsolute(BinFile))
+        Execute(FuseCmd, '--machine 128 --tape ' + BinFile)
       else if Format = tfSnapshot then
-        Execute(FuseCmd, '--args --machine 128 --snapshot ' + FAbsolute(BinFile))
+        Execute(FuseCmd, '--machine 128 --snapshot ' + BinFile)
       else
         WriteLn('Cannot execute ' + LowerStr(FormatStr[Format]) + ' in Fuse.');
     end
@@ -7367,11 +7367,8 @@ begin
   end
   else
   begin
-
-    SrcFile := NativeToPosix(SrcFile);
-//    WriteLn(SrcFile);
+    SrcFile := FAbsolute(NativeToPosix(SrcFile));
     if Pos('.', SrcFile) = 0 then SrcFile := SrcFile + '.pas';
-//    if FSize(SrcFile) < 0 then Error('Input file does not exist');
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
