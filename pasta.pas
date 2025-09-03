@@ -418,10 +418,6 @@ begin
   HomeDir := GetHomeDir;
   UserDir := GetUserDir;
 
-  WriteLn('Home dir is: ', HomeDir);
-  WriteLn('User dir is: ', UserDir);
-  WriteLn;
-
   SjAsmCmd  := 'sjasmplus';
   ZasmCmd   := 'zasm';
   NanoCmd   := 'nano';
