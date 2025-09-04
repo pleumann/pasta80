@@ -403,6 +403,7 @@ var
 
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
+  MonkeyCmd, CSpectCmd, ImagePath: String;
   AltEditor: Boolean;
 
 (**
@@ -424,6 +425,9 @@ begin
   CodeCmd   := 'code';
   TnylpoCmd := 'tnylpo';
   FuseCmd   := {$ifdef darwin} 'open -a Fuse --args' {$else} 'fuse' {$endif};
+  MonkeyCmd := 'hdfmonkey';
+  CSpectCmd := {$ifndef windows} 'mono CSpect.exe' {$else} 'CSpect' {$endif};
+  ImagePath := HomeDir + '/tbblue.img';
 
   {$I-}
   Assign(T, UserDir + '/.pasta80.cfg');
@@ -456,6 +460,12 @@ begin
             TnylpoCmd := Value
           else if Key = 'fuse' then
             FuseCmd := Value
+          else if Key = 'hdfmonkey' then
+            MonkeyCmd := Value
+          else if Key = 'cspect' then
+            CSpectCmd := Value
+          else if Key = 'image' then
+            ImagePath := Value
           else
           begin
             WriteLn('Invalid config key: ' + Key);
@@ -7088,9 +7098,8 @@ begin
     end
     else
     begin
-      WriteLn('Not yet implemented.');
-// FIXME CSpect / Zesarux
-//      Exec('/Users/joerg/Library/bin/hdfmonkey', 'put /Users/joerg/Downloads/tbblue.mmc ' + BinFile + ' /autoexec.dot');
+      Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /');
+      Execute('mono', CSpectCmd + ' -zxnext -w4 -r -nextrom -mouse -sound -mmc=' + ImagePath);
 //      if Alt then
 //        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
 //      else
