@@ -7,7 +7,7 @@ program Pasta80;
 {$mode delphi}
 
 uses
-  Keyboard, Dos, Math, Process;
+  {$ifdef darwin} BaseUnix, {$endif} Keyboard, Dos, Math, Process;
 
 const
   Version = '0.95';
@@ -482,7 +482,7 @@ begin
         if P <> 0 then
         begin
           Key := LowerStr(TrimStr(Copy(S, 1, P - 1)));
-          Value := TrimStr(Copy(S, P + 1, 255));
+          Value := NativeToPosix(TrimStr(Copy(S, P + 1, 255)));
 
           if StartsWith(Value, '~') then
             Value := UserDir + Copy(Value, 2, 255);
