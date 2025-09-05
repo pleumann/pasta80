@@ -143,6 +143,20 @@ begin
 end;
 
 (**
+ * Checks if the given string starts with the given substring.
+ *)
+function EndsWith(Str, SubStr: String): Boolean;
+begin
+  if Length(Str) < Length(SubStr) then
+  begin
+    EndsWith := False;
+    Exit;
+  end;
+
+  EndsWith := Copy(Str, Length(Str) - Length(SubStr) + 1, 255) = SubStr;
+end;
+
+(**
  * Encodes the given floating-point number (enclosed in a string) the way
  * the Real type needs it.
  *)
@@ -339,16 +353,18 @@ end;
  *)
 function GetHomeDir: String;
 begin
-  Result := ParentDir(NativeToPosix(ParamStr(0)));
+  {$ifdef darwin}
+  Result := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
   if Result = '' then
   begin
-    {$ifdef darwin}
     RunCommand('which', [ParamStr(0)], Result);
-    Result := TrimStr(Result);
-    {$else}
-    Result := '.';
-    {$endif}
+    Result := ParentDir(FAbsolute(TrimStr(Result)));
   end;
+  {$else}
+  Result := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
+  if Result = '' then
+    Result := FAbsolute('.');
+  {$endif}
 end;
 
 (**
@@ -368,11 +384,21 @@ end;
  *)
 procedure Execute(const Path, Args: String);
 begin
+  {$ifndef windows}
+  if EndsWith(Path, '.exe') then
+    Exec('/bin/sh', '-c "mono ' + Path + ' ' + Args + '"')
   {$ifdef darwin}
-  Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
+  else if EndsWith(Path, '.app') then
+    Exec('/bin/sh', '-c "open -a ' + Path + ' --args ' + Args + '"')
+  {$endif}
+  else
+    Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
   {$else}
   Exec(Path, Args);
   {$endif}
+
+  if DosError <> 0 then
+    WriteLn('Error: Cannot execute "' + Path + '". Is your .pasta80.cfg ok?');
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -420,14 +446,13 @@ begin
   UserDir := GetUserDir;
 
   SjAsmCmd  := 'sjasmplus';
-  ZasmCmd   := 'zasm';
   NanoCmd   := 'nano';
   CodeCmd   := 'code';
   TnylpoCmd := 'tnylpo';
-  FuseCmd   := {$ifdef darwin} 'open -a Fuse --args' {$else} 'fuse' {$endif};
+  FuseCmd   := {$ifdef darwin} 'Fuse.app' {$else} 'fuse' {$endif};
   MonkeyCmd := 'hdfmonkey';
-  CSpectCmd := {$ifndef windows} 'mono CSpect.exe' {$else} 'CSpect' {$endif};
-  ImagePath := HomeDir + '/tbblue.img';
+  CSpectCmd := {$ifndef windows} 'CSpect.exe' {$else} 'CSpect' {$endif};
+  ImagePath := 'tbblue.img';
 
   {$I-}
   Assign(T, UserDir + '/.pasta80.cfg');
@@ -450,9 +475,9 @@ begin
 
           if Key = 'home' then
             HomeDir := Value
-          else if Key = 'sjasmplus' then
+          else if Key = 'assembler' then
             SjAsmCmd := Value
-          else if Key = 'nano' then
+          else if Key = 'editor' then
             NanoCmd := Value
           else if Key = 'vscode' then
             CodeCmd := Value
@@ -7027,16 +7052,16 @@ begin
   if AltEditor then
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(CodeCmd, '-g ' + S + ':' + IntToStr(Line) + ':' + IntToStr(Column))
+      Execute(CodeCmd, '-g ' + S + ':' + IntToStr(Line) + ':' + IntToStr(Column))
     else
-      Exec(CodeCmd, S)
+      Execute(CodeCmd, S)
   end
   else
   begin
     if (Line <> 0) and (Column <> 0) then
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
+      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
     else
-      Exec(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
+      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
   end;
 end;
 
@@ -7074,9 +7099,9 @@ begin
     if Binary = btCPM then
     begin
       if Alt then
-        Exec(TnylpoCmd, '-soy -t @ ' + BinFile)
+        Execute(TnylpoCmd, '-soy -t @ ' + BinFile)
       else
-        Exec(TnylpoCmd, BinFile)
+        Execute(TnylpoCmd, BinFile)
     end
     else if Binary = btZX then
     begin
@@ -7085,7 +7110,7 @@ begin
       else if Format = tfSnapshot then
         Execute(FuseCmd, '--machine 48 --snapshot ' + BinFile)
       else
-        WriteLn('Cannot execute ' + LowerStr(FormatStr[Format]) + ' in Fuse.');
+        WriteLn('Tape or snapshot needed for Fuse.');
     end
     else if Binary = btZX128 then
     begin
@@ -7094,16 +7119,17 @@ begin
       else if Format = tfSnapshot then
         Execute(FuseCmd, '--machine 128 --snapshot ' + BinFile)
       else
-        WriteLn('Cannot execute ' + LowerStr(FormatStr[Format]) + ' in Fuse.');
+        WriteLn('Tape or snapshot needed for Fuse.');
     end
     else
     begin
-      Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /');
-      Execute('mono', CSpectCmd + ' -zxnext -w4 -r -nextrom -mouse -sound -mmc=' + ImagePath);
-//      if Alt then
-//        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -brk -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
-//      else
-//        Exec('/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono', '/Users/joerg/Downloads/CSpect2_16_5/CSpect.exe -zxnext -w4 -r -nextrom -mouse -sound -mmc=/Users/joerg/Downloads/tbblue.mmc')
+      if Format = tfTape then
+      begin
+        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /');
+        Execute(CSpectCmd, '-zxnext -w3 -r -nextrom -mouse -mmc=' + ImagePath);
+      end
+      else
+        WriteLn('Tape needed for CSpect.');
     end;
   end;
 end;
@@ -7111,17 +7137,24 @@ end;
 (**
  * Runs a shell command without leaving interactive mode.
  *)
-procedure DoShell(Alt: Boolean);
+procedure DoShell;
 var
   Cmd: String;
 begin
-  if Alt then Exec('/bin/bash', '')
+  Write('Command: ');
+  ReadLn(Cmd);
+
+  {$ifdef windows}
+  if Cmd = '' then
+    Exec('cmd.exe', '');
   else
-  begin
-    Write('Command: ');
-    ReadLn(Cmd);
+    Exec('cmd.exe', '-c "' + Cmd + '"');
+  {$else}
+  if Cmd = '' then
+    Exec('/bin/bash', '')
+  else
     Exec('/bin/bash', '-c "' + Cmd + '"');
-  end;
+  {$endif}
 end;
 
 (**
@@ -7135,6 +7168,7 @@ var
 begin
   Write('Mask: ');
   ReadLn(Pattern);
+
   {$ifdef windows}
   if Pattern = '' then Pattern := '*.*';
   {$else}
@@ -7287,7 +7321,7 @@ begin
         'e': DoEdit(0, 0);
         'c': DoCompile;
         'r', 'R': DoRun(C = 'R');
-        's', 'S': DoShell(C = 'S');
+        's': DoShell;
         'f': DoFiles;
         'o', 'O': DoOptions;
         'q': begin WriteLn('Bye!'); WriteLn; Halt(0); end;
