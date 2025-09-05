@@ -348,22 +348,36 @@ begin
   CopyFile := IOResult = 0;
 end;
 
+{$ifdef darwin}
+function ResolveLink(const APath: string): string;
+var
+  Buf: array[0..255] of char;
+  Len: Integer;
+begin
+  Len := fpReadLink(PChar(APath), Buf, SizeOf(Buf));
+  if Len = -1 then
+    Result := APath
+  else
+    SetString(Result, Buf, Len);
+end;
+{$endif}
+
 (**
  * Returns the compiler's home directory (where it is installed).
  *)
 function GetHomeDir: String;
 begin
   {$ifdef darwin}
-  Result := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
+  Result := ParentDir(ParamStr(0));
   if Result = '' then
   begin
     RunCommand('which', [ParamStr(0)], Result);
-    Result := ParentDir(FAbsolute(TrimStr(Result)));
-  end;
+    Result := ParentDir(ResolveLink(TrimStr(Result)));
+  end
+  else Result := FAbsolute(Result);
   {$else}
   Result := ParentDir(FAbsolute(NativeToPosix(ParamStr(0))));
-  if Result = '' then
-    Result := FAbsolute('.');
+  if Result = '' then Result := FAbsolute('.');
   {$endif}
 end;
 
@@ -7146,7 +7160,7 @@ begin
 
   {$ifdef windows}
   if Cmd = '' then
-    Exec('cmd.exe', '');
+    Exec('cmd.exe', '')
   else
     Exec('cmd.exe', '-c "' + Cmd + '"');
   {$else}
