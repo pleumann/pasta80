@@ -9,7 +9,7 @@ PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_
 * [ZX Spectrum 128K](https://en.wikipedia.org/wiki/ZX_Spectrum#ZX_Spectrum_128)
 * [ZX Spectrum Next](https://www.specnext.com)
 
-The compiler follows the single-pass recursive-descent approach advocated by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth) and [Per Brinch Hansen](https://de.wikipedia.org/wiki/Per_Brinch_Hansen) in their books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, it might not always generate the most efficient code possible, but it's very fast.
+The compiler follows the single-pass recursive-descent approach advocated by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth), inventor of Pascal, in his books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, the compiler might not always generate the most efficient code possible (it definitely cannot compete with LLVM and doesn't try to), but it's very fast.
 
 ## Supported language elements
 
