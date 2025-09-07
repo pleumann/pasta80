@@ -362,6 +362,20 @@ begin
 end;
 {$endif}
 
+function IsRetinaDisplay: Boolean;
+{$ifdef darwin}
+var
+  S: String;
+begin
+  RunCommand('/bin/sh', ['-c', 'system_profiler SPDisplaysDataType | grep Retina'], S);
+  IsRetinaDisplay := Length(TrimStr(S)) <> 0;
+end;
+{$else}
+begin
+  IsRetinaDisplay := False;
+end;
+{$endif}
+
 (**
  * Returns the compiler's home directory (where it is installed).
  *)
@@ -7362,7 +7376,10 @@ begin
       if Format = tfTape then
       begin
         Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /');
-        Execute(CSpectCmd, '-zxnext -w3 -r -nextrom -mouse -mmc=' + ImagePath);
+        if IsRetinaDisplay then
+          Execute(CSpectCmd, '-zxnext -w4 -r -nextrom -mouse -mmc=' + ImagePath)
+        else
+          Execute(CSpectCmd, '-zxnext -w3 -r -nextrom -mouse -mmc=' + ImagePath);
       end
       else
         WriteLn('Tape needed for CSpect.');
