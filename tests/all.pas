@@ -2155,7 +2155,7 @@ begin
 
   Assert(SizeOf(GlobalIntArray) = 200);
 end;
-  
+
 overlay procedure TestStrings;
 type
   TStr255 = string[255];
@@ -2724,8 +2724,6 @@ begin
 end;
 
 begin
-  repeat until KeyPressed;
-
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
 
