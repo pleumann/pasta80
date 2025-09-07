@@ -9,11 +9,11 @@ PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_
 * [ZX Spectrum 128K](https://en.wikipedia.org/wiki/ZX_Spectrum#ZX_Spectrum_128)
 * [ZX Spectrum Next](https://www.specnext.com)
 
-The compiler follows the single-pass recursive-descent approach advocated by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth), inventor of Pascal, in his books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, the compiler might not always generate the most efficient code possible (it definitely cannot compete with LLVM and doesn't try to), but it's very fast.
+The compiler follows the single-pass recursive-descent approach championed by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth), inventor of Pascal, in his books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, the compiler might not always generate the most efficient code possible (it definitely cannot compete with LLVM and doesn't try to), but it's very fast.
 
 ## Supported language elements
 
-The supported Pascal dialect is an almost exact clone of the original [Turbo Pascal 3.0](https://en.wikipedia.org/wiki/Turbo_Pascal) for CP/M (see [this manual](https://bitsavers.trailing-edge.com/pdf/borland/turbo_pascal/Turbo_Pascal_Version_3.0_Reference_Manual_1986.pdf) for details). So you have at your disposal these language elements:
+The supported Pascal dialect is an almost exact clone of the original [Turbo Pascal 3.0](https://en.wikipedia.org/wiki/Turbo_Pascal) for CP/M (see [this manual](https://bitsavers.trailing-edge.com/pdf/borland/turbo_pascal/Turbo_Pascal_Version_3.0_Reference_Manual_1986.pdf) for details). So you have at your disposal the following language elements:
 
 * All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Pointer`, `Real` and `String`).
 * `array of`, `record`, `set of`, enumerations, subranges and pointers as a way of building new data types.
@@ -26,7 +26,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`.
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
 * Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
-* Overlays (in memory, Spectrum 128K and Next only).
+* Overlays (in memory, Spectrum 128K and Next only, see below).
 * Some compiler directives:
   * `$i <file>` for including Pascal source files (including nesting and cycle detection)
   * `$l <file>` for including an assembly file (aka "linking" a library)
@@ -52,7 +52,7 @@ Since that covers most of the functionality of Turbo Pascal 3 you might ask what
 * `Mark`/`Release` are not currently supported.
 * The standard files `Input`, `Output`, `Kbd`, `Con` and `Lst` are not supported.
 * `Chain` and `Execute` are not supported.
-* Add-on libraries from the PC version of Turbo Pascal 3.0 (graphics etc.) are not yet supported (althogh there are a few graphics primitives for the ZX targets).
+* Add-on libraries from the PC version of Turbo Pascal 3.0 are not yet supported (although there are a few graphics primitives for the ZX targets).
 * The [new instructions of the Z80N CPU](https://wiki.specnext.dev/Extended_Z80_instruction_set) inside the ZX Spectrum Next are not yet being leveraged.
 * No separate compilation. Everything is compiled from source, always.
 * Binary size is quite large compared to the original.
@@ -67,18 +67,14 @@ The compiler is itself written in Pascal. You can compile it with [Free Pascal](
 $ fpc pasta
 ```
 
-The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of `nano`, Visual Studio Code (via the `code` command) and `tnylpo`.
-
-The compiler tries to detect external tools automatically, but it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `misc` that you can adapt):
+The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of various other external tools. The compiler tries to detect these external tools automatically (from your system's `PATH`), but sometimes it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `misc` that you can adapt).
 
 ```
 # PASTA/80 config
 
-HOME      = ~/Projects/pasta80
-SJASMPLUS = ~/Library/bin/sjasmplus
-TNYLPO    = ~/Library/bin/tnylpo
-NANO      = /opt/local/bin/nano
-VSCODE    = /usr/local/bin/code
+HOME      = ~/Spectrum/pasta80
+ASSEMBLER = ~/Spectrum/sjasmplus/sjasmplus
+...
 ```
 
 ## Using the compiler
@@ -96,21 +92,21 @@ $ pasta --opt hello.pas       # Enables peephole optimizations
 $ pasta --opt --dep hello.pas # The same plus dependency analysis
 ```
 
-You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend [tnylpo](https://gitlab.com/gbrein/tnylpo). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
+You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend the excellent [tnylpo](https://gitlab.com/gbrein/tnylpo). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
 
 ```bash
 $ tnylpo hello                # Run in line-mode
-$ tnylpo -s -t @ hello        # Run in b/w full-screen mode, wait for key when finished
-$ tnylpo -soy,4,0 -t @ hello  # Run in full-screen mode with (Spectrum Next) colors
+$ tnylpo -s -t @ hello        # Monochrome full-screen, wait when finished
+$ tnylpo -soy,4,0 -t @ hello  # Color full-screen, wait when finished
 ```
 
 | "Hello, World" in line mode  | "Hello, World" in full-screen |
 | :-------: | :----: |
 | ![Screenshot](docs/images/hello1.png) | ![Screenshot](docs/images/hello2.png) |
 
-### Spectrum targets
+### ZX Spectrum targets
 
-To generate binaries for the Spectrum 48K, Spectrum 128K and Spectrum Next targets, use the `--zx48`, `--zx128` and `--zxnext` parameters, respectively.
+To generate binaries for the ZX Spectrum 48K, 128K and Next targets, use the `--zx48`, `--zx128` and `--zxnext` parameters, respectively.
 
 ```bash
 $ pasta --zx48 hello.pas      # Compiles for ZX Spectrum 48K
@@ -122,7 +118,7 @@ The main difference between the three (currently) is that the ZX Spectrum Next t
 
 ### Snapshots and tapes
 
-The default output format is a simple binary file that contains exactly the bytes of the compiled program (plus a +3DOS header when compiling for the Spectrum Next). In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
+The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program (plus a +3DOS header when compiling for the Spectrum Next). In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
 
 ```bash
 $ pasta --zx48 --sna examples/hello.pas   # .sna file
@@ -140,13 +136,15 @@ $ open -a Fuse examples/jacques.tap       # Launch .tap file in FUSE (on Mac)
 | :-------: | :----: |
 | ![Screenshot](docs/images/hello3.png) | ![Screenshot](docs/images/jacques.png) |
 
-### Overlays
+## Overlays
 
 The Spectrum 128K and Next targets support overlays. This means you can have larger programs than would normally fit into the 64K address space of a Z80 machine. The rules are the same as for Turbo Pascal 3.0:
 
 - Overlays can be applied to global procedures and functions only, not to nested ones (though nested ones will be overlayed if the containing ones are, too).
 - Overlays cannot be applied to global variables, that is, you cannot use them for data (at least not without tricks).
-- All consecutive procedures and functions that are marked as `overlay` go into the same overlay. Use any declaration in between to separate overlays.
+- All consecutive procedures and functions that are marked as `overlay` go into the same overlay. Use any declaration inbetween to separate overlays.
+
+In the following example, there are three overlays: Overlay 0 contains A and B, overlay 1 contains D, and overlay 2 contains E.
 
 ```pascal
 overlay procedure A; (* Overlay 0 *)
@@ -166,18 +164,16 @@ begin
 end;
 
 type
-  Dummy = Integer;
+  Dummy = Integer;   (* Separator *)
 
 overlay procedure E; (* Overlay 2 *)
 begin
 end;
 ```
 
-In this example, there are three overlays: Overlay 0 contains A and B, overlay 1 contains D, and overlay 2 contains E.
+In contrast to Turbo Pascal 3.0, overlays are not implemented via disk files. Instead, they use the additional RAM of the Spectrum 128K and Next machines. The uppermost 16K bank (Spectrum 128K) or 8K page (Spectrum Next) will be reserved for overlays. Each overlay can have a maximum size of 8K. The compiler manages everything and generates special "far calls" whenever necessary.
 
-In contrast to Turbo Pascal 3.0, overlays are not implemented via disk files. Instead, they use the additional memory of the Spectrum 128K and Next machines. The uppermost RAM bank (128K) or page (Next) will be reserved for overlays. Each overlay can have a maximum size of 8K. The compiler manages everything and generates special "far calls" whenever necessary.
-
-To enable overlays, use the `--ovr` command line parameter, ideally in conjuncton with the `--tap` parameter, as the tape loaders for 128K and Next are overlay-aware.
+To enable overlays, use the `--ovr` command line parameter, ideally in conjuncton with the `--tap` parameter, as the tape loaders for 128K and Next are fully overlay-aware.
 
 ```bash
 $ pasta --zx128 --tap --opt --dep --ovr tests/all.pas # Test suite as 128K tape
@@ -186,7 +182,7 @@ The compiler prints a report of which overlays go into which RAM banks or pages.
 ```
 ----------------------------------------
 PASTA/80 Pascal System      Version 0.96
-                          Spec 128K, Z80
+                            ZX 128K, Z80
 
 Copyright (C) 2020-25 by  Joerg Pleumann
 ----------------------------------------
@@ -210,7 +206,7 @@ Overlay  5:  6527 bytes ($E000-$F97E) in bank  3
 
 Without the `--ovr` parameter, overlay markers are simply ignored. This means you can use the same source code for platforms that do support overlays and for those that don't.
 
-**Caution**: Overlays somehow break the safety of the Pascal language. Be careful when using pointers or `var` parameters for passing data between overlays. The memory you refer to might just have been paged out!
+**Caution**: Overlays somewhat break the safety of the Pascal language. Be careful when using pointers or `var` parameters for passing data between overlays. The memory you refer to may have just been paged out! It might make sense to compile your overlays with `{$a-}`, so that all local variables are stored on the stack (which is always visible).
 
 ## Examples and tests
 
@@ -232,7 +228,7 @@ to run it in an interactive mode that has an interface reminiscient of Turbo Pas
 
 When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`). You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)).
 
-In both cases `tnylpo` is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode.
+In both cases [tnylpo](https://gitlab.com/gbrein/tnylpo) is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode. When compiling for the ZX Spectrum 48K and 128K targets, you will need the [Fuse](https://fuse-emulator.sourceforge.net) emulator to run these. [CSpect](https://mdf200.itch.io/cspect) is being used for ZX Spectrum Next programs. As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it.
 
 ## Application Gallery
 
