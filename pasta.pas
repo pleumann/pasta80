@@ -7379,7 +7379,7 @@ begin
         if IsRetinaDisplay then
           Execute(CSpectCmd, '-zxnext -w4 -r -nextrom -mouse -mmc=' + ImagePath)
         else
-          Execute(CSpectCmd, '-zxnext -w3 -r -nextrom -mouse -mmc=' + ImagePath);
+          Execute(CSpectCmd, '-zxnext -w2 -r -nextrom -mouse -mmc=' + ImagePath);
       end
       else
         WriteLn('Tape needed for CSpect.');
