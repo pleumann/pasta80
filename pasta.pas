@@ -1993,7 +1993,7 @@ begin
 
     P := Pos(' ', Instruction);
     if P <> 0 then
-      Instruction := PadStr(Copy(Instruction, 1, P-1), 8) + Copy(Instruction, P+1, 255);
+      Instruction := PadStr(Copy(Instruction, 1, P-1), 7) + ' ' + Copy(Instruction, P+1, 255);
 
     S := PadStr(S, 16) + Instruction;
   end;
