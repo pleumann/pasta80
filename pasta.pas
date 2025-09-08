@@ -238,6 +238,20 @@ begin
 end;
 
 (**
+ * Returns the name part of a path only.
+ *)
+function NameOnly(Path: String): String;
+var
+  I: Integer;
+begin
+  I := Length(Path);
+  while (I > 0) and (Path[I] <> '/') do
+    I := I - 1;
+
+  NameOnly := Copy(Path, I + 1, 255);
+end;
+
+(**
  * Changes the extension of the given filename to a new one (or appends it, if
  * there is no file extension at all. The new extension is supposed to start
  * with a dot.
@@ -434,6 +448,23 @@ begin
   end;
 end;
 
+procedure CleanDir(const Dir: String);
+var
+  S: String;
+  R: SearchRec;
+  F: File;
+begin
+  FindFirst(Dir + '/*', Archive, R);
+  while DosError = 0 do
+  begin
+    Assign(F, Dir + '/' + R.Name);
+    Erase(F);
+    FindNext(R);
+  end;
+
+  FindClose(R);
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Config handling ------------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
@@ -447,7 +478,7 @@ type
   (**
    * The possible output formats.
    *)
-  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot);
+  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot, tfRunDir);
 
 var
   (**
@@ -2525,7 +2556,7 @@ begin
     else
       EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec48.bas"'));
 
-    EmitI('savetap "' + BinFile2 + '",BASIC,"run",$0080,$-$0080,0');
+    EmitI('savetap "' + BinFile2 + '",BASIC,"run.bas",$0080,$-$0080,0');
     EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,HEAP-$8000');
 
     for I := 0 to CurrentOverlay - 1 do
@@ -2545,6 +2576,29 @@ begin
       T := Copy('00', Length(S), 2) + S;
 
       EmitI('savetap "' + BinFile2 + '",CODE,"' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START');
+    end;
+  end
+  else if Format = tfRunDir then
+  begin
+    {$i-}
+    MkDir(BinFile);
+    IOResult;
+    CleanDir(BinFile);
+    {$i+}
+
+    CopyFile(HomeDir + '/misc/specnext.bas', BinFile + '/run.bas');
+
+    EmitI('save3dos "' + BinFile + '/bin",$8000,HEAP-$8000,3,8000');
+
+    for I := 0 to CurrentOverlay - 1 do
+    begin
+      EmitI('slot 7');
+      EmitI('page ' + IntToStr(I + 32));
+
+      S := IntToStr(I);
+      T := Copy('00', Length(S), 2) + S;
+
+      EmitI('save3dos "' + BinFile + '/' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START,3,57344');
     end;
   end
   else if Format = tfSnapshot then
@@ -7101,6 +7155,8 @@ begin
     BinFile := ChangeExt(SrcFile, '.com')
   else if (Format = tfBinary) or (Format = tfPlus3Dos) then
     BinFile := ChangeExt(SrcFile, '.bin')
+  else if Format = tfRunDir then
+    BinFile := ChangeExt(SrcFile, '.run')
   else if Format = tfTape then
     BinFile := ChangeExt(SrcFile, '.tap')
   else if Format = tfSnapshot then
@@ -7202,7 +7258,7 @@ const
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
    *)
-  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot');
+  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot', 'Runnable dir');
 
   (**
    * Yes/no strings. Why is this here and not in the IDE sestion?
@@ -7341,6 +7397,10 @@ end;
  * target platform.
  *)
 procedure DoRun(Alt: Boolean);
+const
+  NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
+var
+ RunFile: String;
 begin
   if Length(BinFile) <> 0 then
   begin
@@ -7371,16 +7431,20 @@ begin
     end
     else
     begin
-      if Format = tfTape then
+      if (Format = tfTape) or (Format = tfRunDir) then
       begin
-        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /');
+        RunFile := '/pasta80/' + NameOnly(BinFile);
+
+        Execute(MonkeyCmd, 'mkdir ' + ImagePath + ' /pasta80 > ' + NullDev);
+        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' ' + RunFile);
+
         if IsRetinaDisplay then
           Execute(CSpectCmd, '-zxnext -w4 -r -nextrom -mouse -mmc=' + ImagePath)
         else
           Execute(CSpectCmd, '-zxnext -w2 -r -nextrom -mouse -mmc=' + ImagePath);
       end
       else
-        WriteLn('Tape needed for CSpect.');
+        WriteLn('Tape or runnable dir needed for CSpect.');
     end;
   end;
 end;
@@ -7631,6 +7695,7 @@ begin
     WriteLn('  --3dos         Generates binary with +3DOS header');
     WriteLn('  --tap          Generates .tap file with loader');
     WriteLn('  --sna          Generates .sna snapshot file');
+    WriteLn('  --run          Generates .run runnable directory');
     WriteLn;
     WriteLn('  --dep          enable dependency analysis');
     WriteLn('  --opt          enable peephole optimizations');
@@ -7690,6 +7755,8 @@ begin
       Format := tfBinary
     else if SrcFile = '--3dos' then
       Format := tfPlus3Dos
+    else if SrcFile = '--run' then
+      Format := tfRunDir
     else if SrcFile = '--tap' then
       Format := tfTape
     else if SrcFile = '--sna' then
