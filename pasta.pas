@@ -428,11 +428,9 @@ begin
   if DosError <> 0 then
   begin
     {$ifdef windows}
-    ...
+    WriteLn('"', Path, '" cannot be executed.');
     {$endif}
-    WriteLn('Error: Cannot execute "' + Path + '".');
-    WriteLn;
-    WriteLn('Is it installed? Is it in your PATH or your .pasta80.cfg file?');
+    WriteLn('Is it installed? Is it in your PATH and/or ~/.pasta80.cfg file?');
   end;
 end;
 
