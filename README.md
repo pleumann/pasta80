@@ -116,7 +116,7 @@ $ pasta --zxnext hello.pas    # Compiles for ZX Spectrum Next
 
 The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000.
 
-### Snapshots and tapes
+### Tapes, snapshots and runnable directories
 
 The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program (plus a +3DOS header when compiling for the Spectrum Next). In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
 
@@ -136,7 +136,15 @@ $ open -a Fuse examples/jacques.tap       # Launch .tap file in FUSE (on Mac)
 | :-------: | :----: |
 | ![Screenshot](docs/images/hello3.png) | ![Screenshot](docs/images/jacques.png) |
 
-## Overlays
+When compiling for the Next, another useful format is a runnable directory. It contains exactly the same files that would also be in the .tap file, including a BASIC loader named `run.bas`.
+
+```bash
+$ pasta --zxnext --run examples/pq.pas    # Results in directory named pq.run
+```
+
+The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
+
+### Overlays
 
 The Spectrum 128K and Next targets support overlays. This means you can have larger programs than would normally fit into the 64K address space of a Z80 machine. The rules are the same as for Turbo Pascal 3.0:
 
@@ -212,6 +220,8 @@ Without the `--ovr` parameter, overlay markers are simply ignored. This means yo
 
 There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt --dep` because of its size. Otherwise it won't fit into 64K. The Spectrum 128K and Next targets can (only) handle it using overlays, the Spectrum 48K target can't. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
 
+I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
+
 ## Minimalistic IDE
 
 As a fun little gimmick the compiler can be started like this
@@ -226,9 +236,19 @@ to run it in an interactive mode that has an interface reminiscient of Turbo Pas
 | :-------: | :----: |
 | ![Screenshot](docs/images/idemenu.png) | ![Screenshot](docs/images/ideedit.png) |
 
-When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`). You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)).
+When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`).
 
-In both cases [tnylpo](https://gitlab.com/gbrein/tnylpo) is expected to be available for running CP/M programs. Press \<R\> to run a program in line mode and \<Shift-R\> to run it in full-screen mode. When compiling for the ZX Spectrum 48K and 128K targets, you will need the [Fuse](https://fuse-emulator.sourceforge.net) emulator to run these. [CSpect](https://mdf200.itch.io/cspect) is being used for ZX Spectrum Next programs. As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it.
+You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)) and act a bit like a plugin.
+
+The following external tools are supported for running compiled programs on the host machine:
+
+* [tnylpo](https://gitlab.com/gbrein/tnylpo) for CP/M programs (press \<R\> for line mode, \<Shift-R\> for full-screen mode).
+* [Fuse](https://fuse-emulator.sourceforge.net) for programs targeting the ZX Spectrum 48K and 128K machines.
+* [CSpect](https://mdf200.itch.io/cspect) for ZX Spectrum Next programs.
+  * Please have [hdfmonkey](https://github.com/gasman/hdfmonkey) ready for manipulating the SD card image.
+  * If you're on MacOS or Linux, you also need `mono` because CSpect is a .NET application.
+
+As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it.
 
 ## Application Gallery
 
@@ -251,8 +271,6 @@ These screenshots show some applications compiled for the ZX Spectrum 48K target
 | Graphics Demo | Equation Solver |
 | :-------: | :----: |
 | ![Screenshot](docs/images/graphics.png) | ![Screenshot](docs/images/pqformula.png) |
-
-I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
 
 # License
 
