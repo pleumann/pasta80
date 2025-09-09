@@ -465,6 +465,16 @@ begin
   FindClose(R);
 end;
 
+procedure StrToFile(const S, FileName: string);
+var
+  T: Text;
+begin
+  Assign(T, FileName);
+  Rewrite(T);
+  Write(T, S);
+  Close(T);
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Config handling ------------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
@@ -7438,6 +7448,14 @@ begin
         Execute(MonkeyCmd, 'mkdir ' + ImagePath + ' /pasta80 > ' + NullDev);
         Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' ' + RunFile);
 
+        if Format = tfRunDir then
+          StrToFile('#autostart'#13'10 cd "' + RunFile + '"'#13'20 load "run.bas"'#13, 'lastrun.txt')
+        else
+          StrToFile('#autostart'#13'10.tapein "' + RunFile + '"'#13'20 load "t:"'#13'30 load ""'#13, 'lastrun.txt');
+
+        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + HomeDir + '/misc/autoexec.bas /nextzxos/autoexec.bas');
+        Execute(MonkeyCmd, 'put ' + ImagePath + ' lastrun.txt /pasta80/lastrun.txt');
+
         if IsRetinaDisplay then
           Execute(CSpectCmd, '-zxnext -w4 -r -nextrom -mouse -mmc=' + ImagePath)
         else
@@ -7605,7 +7623,7 @@ begin
             if (Binary = btCPM) or (Binary = btZX) then Overlays := False;
           end;
 
-      'f': if Format = tfSnapshot then Format := tfBinary else Format := Succ(Format);
+      'f': if Format = tfRunDir then Format := tfBinary else Format := Succ(Format);
       'p': Optimize := not Optimize;
       'd': SmartLink := not SmartLink;
       'o': Overlays := not Overlays;
