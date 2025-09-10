@@ -240,6 +240,8 @@ When started in an ordinary terminal, this mode relies on the editor `nano` bein
 
 You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)) and act a bit like a plugin.
 
+![Screenshot](docs/images/vsc.png)
+
 The following external tools are supported for running compiled programs on the host machine:
 
 * [tnylpo](https://gitlab.com/gbrein/tnylpo) for CP/M programs (press \<R\> for line mode, \<Shift-R\> for full-screen mode).
