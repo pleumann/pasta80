@@ -2612,7 +2612,18 @@ begin
     end;
   end
   else if Format = tfSnapshot then
-    EmitI('savesna "' + BinFile + '",$8000');
+  begin
+    if Binary = btZXN then
+    begin
+      EmitI('savenex open "' + BinFile + '", 32768, 65536');
+      EmitI('SAVENEX CORE 2, 0, 0');
+      EmitI('SAVENEX CFG 4, 1, 0, 1');
+      EmitI('SAVENEX BAR 1, $E0, 500, 250');
+      EmitI('savenex auto');
+      EmitI('savenex close');
+    end
+    else EmitI('savesna "' + BinFile + '",$8000');
+  end;
 end;
 
 (**
@@ -7169,7 +7180,9 @@ begin
     BinFile := ChangeExt(SrcFile, '.run')
   else if Format = tfTape then
     BinFile := ChangeExt(SrcFile, '.tap')
-  else if Format = tfSnapshot then
+  else if (Format = tfSnapshot) and (Binary = btZXN) then
+    BinFile := ChangeExt(SrcFile, '.nex')
+  else if (Format = tfSnapshot) then
     BinFile := ChangeExt(SrcFile, '.sna');
 
   if SetJmp(StoredState) = 0 then
@@ -7441,7 +7454,7 @@ begin
     end
     else
     begin
-      if (Format = tfTape) or (Format = tfRunDir) then
+      if (Format = tfTape) or (Format = tfRunDir) or (Format = tfSnapshot) then
       begin
         RunFile := '/pasta80/' + NameOnly(BinFile);
 
@@ -7450,8 +7463,10 @@ begin
 
         if Format = tfRunDir then
           StrToFile('#autostart'#13'10 cd "' + RunFile + '"'#13'20 load "run.bas"'#13, 'lastrun.txt')
+        else if Format = tfTape then
+          StrToFile('#autostart'#13'10.tapein "' + RunFile + '"'#13'20 load "t:"'#13'30 load ""'#13, 'lastrun.txt')
         else
-          StrToFile('#autostart'#13'10.tapein "' + RunFile + '"'#13'20 load "t:"'#13'30 load ""'#13, 'lastrun.txt');
+          StrToFile('#autostart'#13'10.nexload ' + RunFile, 'lastrun.txt');
 
         Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + HomeDir + '/misc/autoexec.bas /nextzxos/autoexec.bas');
         Execute(MonkeyCmd, 'put ' + ImagePath + ' lastrun.txt /pasta80/lastrun.txt');
@@ -7803,8 +7818,7 @@ begin
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
-  if (Binary = btCPM) and (Format <> tfBinary) or
-     (Binary = btZXN) and (Format = tfSnapshot) then
+  if (Binary = btCPM) and (Format <> tfBinary) then
     Error('Invalid machine/format combination');
 
   if Ide then
