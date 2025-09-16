@@ -7383,7 +7383,11 @@ function Build: Integer;
 var
   Dir: String;
   Org, Len, HeapStart, HeapBytes: Integer;
+  StartTime: Int64;
+  Duration: Real;
 begin
+  StartTime := GetMSCount;
+
   Dir := FExpand('.');
 
   AsmFile := ChangeExt(SrcFile, '.z80');
@@ -7481,9 +7485,11 @@ begin
     if DosExitCode <> 0 then
       Error('Assembly failed (see output for details).');
 
+    Duration := (GetMSCount - StartTime) / 1000.0;
+
     WriteLn;
     if Release then Write('Release') else Write('Debug');
-    WriteLn(' build finished.');
+    WriteLn(' build finished (', Duration:0:3, 's).');
 
     Build := 0;
   end;
