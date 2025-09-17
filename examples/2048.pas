@@ -229,7 +229,7 @@ begin
   for I := 0 to 4 do
     PrintLogo(Logo[I]);
 
-  WriteLn(Margin, '  for classic Z-80 machines');
+  WriteLn(Margin, '  for classic Z80 machines');
   WriteLn;
   WriteLn(Margin, 'Use WASD to move & X to exit.');
   WriteLn;
@@ -265,7 +265,7 @@ begin
     DrawBoard;
   end;
 
-  GotoXY(18, 21);
+  GotoXY(17 + Length(Margin), 21);
 
   if C = 'x' then
     Write('     Goodbye!')
