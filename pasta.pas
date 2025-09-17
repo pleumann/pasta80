@@ -7549,8 +7549,8 @@ begin
       begin
         RunFile := '/pasta80/' + NameOnly(BinFile);
 
-        Execute(MonkeyCmd, 'mkdir ' + ImagePath + ' /pasta80 > ' + NullDev);
-        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' ' + RunFile);
+        Execute(MonkeyCmd, 'mkdir ' + ImagePath + ' /pasta80');
+        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /pasta80');
 
         if Format = tfRunDir then
           StrToFile('#autostart'#13'10 cd "' + RunFile + '"'#13'20 load "run.bas"'#13, 'lastrun.txt')
