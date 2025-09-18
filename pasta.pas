@@ -442,6 +442,7 @@ begin
   else
     Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
   {$else}
+  Args := ReplaceChar('''', '"');
   Exec(Path, Args);
   {$endif}
 
