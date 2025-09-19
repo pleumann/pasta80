@@ -7519,7 +7519,11 @@ begin
     if Binary = btCPM then
     begin
       if Shift then
-        Execute(TnylpoCmd, '-soy -t @ ' + BinFile)
+      begin
+        if AltEditor then Write(#27'[40m');
+        Execute(TnylpoCmd, '-soy -t @ ' + BinFile);
+        if AltEditor then Write(#27'[0m');
+      end
       else
         Execute(TnylpoCmd, BinFile)
     end
