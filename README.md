@@ -45,6 +45,7 @@ The compiler also has some features that were borrowed from or inspired by later
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
   * `Include` and `Exclude` for more efficient handling of sets.
   * A simple `Assert` facility that counts passes/fails and shows the failed line number.
+  * Breakpoints by means of `Debug` statements in the source code (which can optionally have a condition for the trigger).
 
 Since that covers most of the functionality of Turbo Pascal 3 you might ask what is missing. These are the current limitations:
 
@@ -215,6 +216,47 @@ Overlay  5:  6527 bytes ($E000-$F97E) in bank  3
 Without the `--ovr` parameter, overlay markers are simply ignored. This means you can use the same source code for platforms that do support overlays and for those that don't.
 
 **Caution**: Overlays somewhat break the safety of the Pascal language. Be careful when using pointers or `var` parameters for passing data between overlays. The memory you refer to may have just been paged out! It might make sense to compile your overlays with `{$a-}`, so that all local variables are stored on the stack (which is always visible).
+
+## Debugging and assertions
+
+The compiler is able to generate breakpoints for Fuse (ZX Spectrum 48K/128K) and CSpect (ZX Spectrum Next). To place a breakpoint, simply put a `Debug` statement into your source code. The statement accepts an optional `Boolean` parameter for making the breakpoint conditional.
+
+```pascal
+var
+  I: Integer;
+
+begin
+  Debug;                (* Triggers always when hit. *)
+
+  for I := 1 to 20 do
+  begin
+    WriteLn(I);
+    Debug(Odd(I));      (* Triggers for odd I only.  *)
+  end;
+end.
+```
+
+For Spectrum 48K/128K, the compiler generates a file that you can use with the `--debugger-commmand` parameter when calling Fuse. The file content is multiline, so it's a bit tricky, but not impossible, to insert this on the command line (the IDE - see below - handles all this for you conveniently). For the Spectrum Next, the compiler inserts the special Z80 opcode `$fd $00` that will trigger the debugger in CSpect.
+
+Assertions check a given condition and display an error message when the condition is violated (i.e. does not evaluate to `True`). In contrast to other languages, your program does not stop in this case. Instead, passed and failed assertions are counted in the `AssertPassed` and `AssertFailed` variables.
+
+```pascal
+var
+  I: Integer;
+
+begin
+  for I := 1 to 20 do
+  begin
+    WriteLn(I);
+    Assert(Odd(I));
+  end;
+
+  WriteLn('Passed: ', AssertPassed);
+  WriteLn('Failed: ', AssertFailed);
+end.
+```
+
+When your program is sufficiently tested, compile it with `--release` to get a binary that does not contain any generated code for `Debug` and `Assert`.
 
 ## Examples and tests
 
