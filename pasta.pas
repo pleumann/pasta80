@@ -318,9 +318,13 @@ end;
 function FSize(Name: String): Integer;
 var
   F: File;
+  SaveMode: Integer;
 begin
+  SaveMode := FileMode;
+  FileMode := 0;
+
   {$I-}
-  Assign(F, Name);
+  Assign(F, PosixToNative(Name));
   Reset(F, 1);
   if IOResult = 0 then
   begin
@@ -329,6 +333,8 @@ begin
   end
   else FSize := -1;
   {$I+}
+
+  FileMode := SaveMode;
 end;
 
 (**
@@ -594,6 +600,108 @@ begin
   {$I+}
 
   AltEditor := GetEnv('TERM_PROGRAM') = 'vscode'; // Are we running inside VSC?
+end;
+
+procedure WriteCheck(B: Boolean);
+begin
+  if B then Write('[X] ') else Write('[ ] ');
+end;
+
+function CheckPath(const Src: String; var Dst: String): Boolean;
+const
+  Cmd = {$ifdef windows} 'where' {$else} 'which' {$endif};
+  {$ifdef darwin}
+  Fuse = '/Applications/Fuse.app/Contents/MacOS/Fuse';
+  {$endif}
+begin
+  if Pos('/', Src) <> 0 then
+  begin
+    Dst := FAbsolute(Src);
+    {$ifdef windows}
+    if not EndsWith(Dst, '.exe') then Dst := Dst + '.exe';
+    {$endif}
+    CheckPath := FSize(Dst) <> -1;
+  end
+  {$ifdef darwin}
+  else if Src = 'Fuse.app' then
+  begin
+    if FSize(Fuse) <> -1 then
+    begin
+      Dst := Fuse; // Src + ' -> ' + Fuse;
+      CheckPath := True;
+    end
+    else if FSize(GetHomeDir + Fuse) <> -1 then
+    begin
+      Dst := GetHomeDir + Fuse; //Src + ' -> ' + Fuse;
+      CheckPath := True;
+    end
+    else
+    begin
+      Dst := Src; // + ' -> ?';
+      CheckPath := False;
+    end
+  end
+  {$endif}
+  else
+  begin
+    if RunCommand(Cmd, Src, Dst) then
+    begin
+      Dst := TrimStr(Dst); //Dst := Src + ' -> ' + TrimStr(Dst);
+      CheckPath := True;
+    end
+    else
+    begin
+      //Dst := Src + ' -> ?';
+      CheckPath := False;
+    end;
+  end;
+end;
+
+procedure Doctor;
+var
+  S: String;
+begin
+  WriteLn('--- Compiler ---');
+  WriteLn;
+  WriteCheck(FSize(HomeDir + '/rtl/system.pas') <> -1);
+  Writeln('Directory: ', HomeDir);
+  WriteCheck(CheckPath(SjAsmCmd, S));
+  Writeln('Assembler: ', S);
+  WriteLn;
+  WriteLn('--- Mini IDE ---');
+  WriteLn;
+  if AltEditor then
+    WriteCheck(CheckPath(CodeCmd, S))
+  else
+    WriteCheck(CheckPath(NanoCmd, S));
+  Writeln('Editor   : ', S);
+  WriteLn;
+  WriteCheck(CheckPath(TnylpoCmd, S));
+  Writeln('Tnylpo   : ', S);
+  WriteCheck(CheckPath(FuseCmd, S));
+  Writeln('Fuse     : ', S);
+  WriteCheck(CheckPath(CSpectCmd, S));
+  Writeln('CSpect   : ', S);
+  WriteLn;
+  WriteCheck(FSize(ImagePath) <> -1);
+  Writeln('SD card  : ', ImagePath);
+  WriteCheck(CheckPath(MonkeyCmd, S));
+  Writeln('HdfMonkey: ', S);
+  {$ifndef windows}
+  WriteCheck(CheckPath('mono', S));
+  Writeln('Mono     : ', S);
+  {$endif}
+  WriteLn;
+(*
+  SjAsmCmd  := 'sjasmplus';
+  NanoCmd   := 'nano';
+  CodeCmd   := 'code';
+  TnylpoCmd := 'tnylpo';
+  FuseCmd   := {$ifdef darwin} 'Fuse.app' {$else} 'fuse' {$endif};
+  MonkeyCmd := 'hdfmonkey';
+  CSpectCmd := {$ifndef windows} 'CSpect.exe' {$else} 'CSpect' {$endif};
+  ImagePath := 'tbblue.img';
+*)
 end;
 
 procedure Emit(Tag, Instruction, Comment: String); forward;
@@ -7720,6 +7828,7 @@ begin
     WriteLn('  --ovr          enable banked-switched overlays');
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
+    WriteLn('  --config       shows (and checks) the configuration');
     WriteLn('  --version      shows just the version number');
     WriteLn;
     Halt(1);
@@ -7830,6 +7939,13 @@ begin
 
   Copyright(False);
   LoadConfig;
+
+  if ParamStr(1) = '--config' then
+  begin
+    Doctor;
+    Halt;
+  end;
+
   Parameters;
 end.
 
