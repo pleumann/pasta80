@@ -77,6 +77,8 @@ ASSEMBLER = ~/Spectrum/sjasmplus/sjasmplus
 ...
 ```
 
+You can check your whole setup by calling the compiler with `--config`. It will show the full paths of all internal and external requirements and whether they are fulfilled.
+
 ## Using the compiler
 
 To run the compiler just invoke the executable with the name of a Pascal source file to translate.
@@ -250,7 +252,7 @@ The following external tools are supported for running compiled programs on the 
   * Please have [hdfmonkey](https://github.com/gasman/hdfmonkey) ready for manipulating the SD card image.
   * If you're on MacOS or Linux, you also need `mono` because CSpect is a .NET application.
 
-As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it.
+As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it. Use the `--config` parameter to let PASTA/80 check your setup and get feedback on what is in place and what is missing.
 
 ## Application Gallery
 
