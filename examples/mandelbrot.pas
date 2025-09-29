@@ -4,8 +4,8 @@
 program Mandelbrot;
 
 var
-  X, Y, OldX, OldY, ReC, ImC, DC : Real;
-  K, L, N : Integer;
+  X, Y, OldX, OldY, ReC, ImC, DC: Real;
+  K, L, N: Integer;
 
 begin
   SetCpuSpeed(3);
