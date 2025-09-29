@@ -10,7 +10,7 @@ var
 begin
   SetCpuSpeed(3);
   ClrScr;
-  DC := 3.0 / 256.0;
+  DC := 3 / 256;
   for K := 0 TO 255 do
   begin
     ReC := -2.25 + K * DC;
