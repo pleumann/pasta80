@@ -627,17 +627,17 @@ begin
   begin
     if FSize(Fuse) <> -1 then
     begin
-      Dst := Fuse; // Src + ' -> ' + Fuse;
+      Dst := Fuse;
       CheckPath := True;
     end
     else if FSize(GetHomeDir + Fuse) <> -1 then
     begin
-      Dst := GetHomeDir + Fuse; //Src + ' -> ' + Fuse;
+      Dst := GetHomeDir + Fuse;
       CheckPath := True;
     end
     else
     begin
-      Dst := Src; // + ' -> ?';
+      Dst := Src;
       CheckPath := False;
     end
   end
@@ -646,14 +646,10 @@ begin
   begin
     if RunCommand(Cmd, Src, Dst) then
     begin
-      Dst := TrimStr(Dst); //Dst := Src + ' -> ' + TrimStr(Dst);
+      Dst := TrimStr(Dst);
       CheckPath := True;
     end
-    else
-    begin
-      //Dst := Src + ' -> ?';
-      CheckPath := False;
-    end;
+    else CheckPath := False;
   end;
 end;
 
