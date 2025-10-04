@@ -100,7 +100,7 @@ begin
   begin
     WriteLn('Oh, a new animal. Exciting!');
     WriteLn('What is it?');
-    
+
     Write('> It is ');
     ReadLn(A.Text);
 
@@ -140,6 +140,27 @@ begin
   end;
 end;
 
+procedure Dump;
+var
+  R: AnimalRec;
+begin
+  WriteLn;
+  WriteLn(' ID Yes  No Text');
+  WriteLn('----------------------------------------');
+
+  Seek(F, 0);
+  while not Eof(F) do
+  begin
+    Write(FilePos(F):3, ' ');
+    Read(F, R);
+    with R do
+      if Yes = -1 then
+        WriteLn('        ', Text)
+      else
+        WriteLn(Yes:3, ' ', No:3, ' ', Text);
+  end;
+end;
+
 begin
   OpenFile;
 
@@ -151,13 +172,19 @@ begin
   WriteLn('I will try to guess it.');
   WriteLn;
   WriteLn('Shall we start (y/n)?');
-  
-  while YesOrNo do
-  begin
-    PlayGame;
 
+  if YesOrNo then
+    repeat
+      PlayGame;
+
+      WriteLn;
+      WriteLn('Do you want to play again (y/n)?');
+    until not YesOrNo
+  else
+  begin
     WriteLn;
-    WriteLn('Do you want to play again (y/n)?');
+    WriteLn('Do you want to list the knowledge base (y/n)?');
+    if YesOrNo then Dump;
   end;
 
   WriteLn;
