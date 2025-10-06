@@ -3683,7 +3683,7 @@ begin
     Exit;
   end;
 
-  if ((Left = dtInteger) or (Left = dtByte)) and (Right = dtReal) then
+  if ((Left = dtInteger) or (Left = dtByte)) and (Right = dtReal) and (Check <> tcAssign) then
   begin
     EmitI('popfp');
     EmitI('exx');
