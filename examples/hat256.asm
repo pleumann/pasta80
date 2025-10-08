@@ -37,17 +37,17 @@ l2_set_pixel:    di
                 srl     a
                 add     a,18
 
-                db      $ed,$92,$56
+                db      $ed,$92,$57
 
                 ld      a,e
                 and     31
                 ld      h,a
 
-                ld      de,$c000
+                ld      de,$e000
                 add     hl,de
                 ld      (hl),c
 
-                db      $ed,$91,$56,$00
+                db      $ed,$91,$57,$01
 
                 ei
                 ret
@@ -67,19 +67,19 @@ l2_get_pixel:    di
                 srl     a
                 add     a,18
 
-                db      $ed,$92,$56
+                db      $ed,$92,$57
 
                 ld      a,e
                 and     31
                 ld      h,a
 
-                ld      de,$c000
+                ld      de,$e000
                 add     hl,de
                 ld      a,(hl)
                 ld      h,0
                 ld      l,a
 
-                db      $ed,$91,$56,$00
+                db      $ed,$91,$57,$01
 
                 ei
                 ret
