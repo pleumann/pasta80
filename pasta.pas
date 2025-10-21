@@ -822,7 +822,7 @@ begin
 end;
 
 (**
- * Pushes back a single character. This - admittedly slighly ugly - procedure
+ * Pushes back a single character. This - admittedly slightly ugly - procedure
  * is called by the scanner. It must not be called at the beginning of a line
  * or source code file, but this never happens.
  *)
@@ -929,7 +929,7 @@ type
    * Represents an entry in our symbol table. The symbol table is a linked list
    * that operates a bit like a stack: New identifiers are put at the front and
    * may shadow existing ones. Identifiers are removed in reverse order once
-   * they fall out of scope. Not all fields are used by all kinds of sybols,
+   * they fall out of scope. Not all fields are used by all kinds of symbols,
    * some have a different meaning depending on the symbol they are used for.
    * "Value", for instance, can be the integer value of a constant, but also the
    * size of a type. This, although working, is slightly ugly and maybe worth a
@@ -940,7 +940,7 @@ type
     Name: String;                       // Name of the symbol
     Kind: TSymbolClass;                 // Kind of the symbol
     DataType: PSymbol;                  // Data type, array type or return type
-    ArgTypes: array[0..15] of PSymbol;  // Procecure/function parameter types
+    ArgTypes: array[0..15] of PSymbol;  // Procedure/function parameter types
     ArgIsRef: array[0..15] of Boolean;  // Procedure/function "var" parameters
     Level: Integer;                     // Level of procedure/function, 0=global
     Value, Value2: Integer;             // Value(s) or size(s) of symbol
@@ -997,7 +997,7 @@ var
   MemArray, PortArray: PSymbol;
 
   (**
-   * Pointers to a whole lot of built-in procedures and fucntions that are
+   * Pointers to a whole lot of built-in procedures and functions that are
    * considered "magic" and cannot be defined in Pascal. This is mostly because
    * their number or type of parameters is not fixed.
    *)
@@ -2934,7 +2934,7 @@ end;
 
 (**
  * Emits code that pops an address off the stack and pushes data located at
- * that address on the stack. Takes into accout the given datatype (mostly
+ * that address on the stack. Takes into account the given datatype (mostly
  * for the size)
  *)
 procedure EmitLoad(DataType: PSymbol);
@@ -2977,7 +2977,7 @@ end;
 
 (**
  * Emits code that pops an address off the stack and pushes data located at
- * that address on the stack. Takes into accout the given datatype (mostly
+ * that address on the stack. Takes into account the given datatype (mostly
  * for the size)
  *)procedure EmitStore(DataType: PSymbol);
 begin
@@ -3783,7 +3783,7 @@ function ParseExpression: PSymbol; forward;
 (**
  * Parses access to a variable, result in the final address being on the stack.
  * This includes potentially multiple stages of array indexing, record field
- * seletion or following pointers. We try to delay the emitting of the address
+ * selection or following pointers. We try to delay the emitting of the address
  * as long as possible in order to avoid additions at runtime when could let
  * the assembler do them at compile-time.
  *)
@@ -7132,7 +7132,7 @@ begin
 end;
 
 (**
- * Parses a statement list, which is a (possibly emtpy) list of statements
+ * Parses a statement list, which is a (possibly empty) list of statements
  * separated by semicolons.
  *)
 procedure ParseStatementList(ContTarget, BreakTarget: String);

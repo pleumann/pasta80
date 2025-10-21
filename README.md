@@ -150,9 +150,9 @@ The directory has the suffix `.run`. When attempting to enter such a directory i
 
 The Spectrum 128K and Next targets support overlays. This means you can have larger programs than would normally fit into the 64K address space of a Z80 machine. The rules are the same as for Turbo Pascal 3.0:
 
-- Overlays can be applied to global procedures and functions only, not to nested ones (though nested ones will be overlayed if the containing ones are, too).
+- Overlays can be applied to global procedures and functions only, not to nested ones (though nested ones will be overlaid if the containing ones are, too).
 - Overlays cannot be applied to global variables, that is, you cannot use them for data (at least not without tricks).
-- All consecutive procedures and functions that are marked as `overlay` go into the same overlay. Use any declaration inbetween to separate overlays.
+- All consecutive procedures and functions that are marked as `overlay` go into the same overlay. Use any declaration in between to separate overlays.
 
 In the following example, there are three overlays: Overlay 0 contains A and B, overlay 1 contains D, and overlay 2 contains E.
 
@@ -303,7 +303,7 @@ What does this mean for you?
 
 # Acknowledgements
 
-The math48 library is coypright (c) 1980 by Anders Hejlsberg, used by [permission](https://github.com/pleumann/pasta80/issues/7).
+The math48 library is copyright (c) 1980 by Anders Hejlsberg, used by [permission](https://github.com/pleumann/pasta80/issues/7).
 
 Some assembly routines adapted from Leventhal/Saville, "Z80 Assembly Subroutines", Osborne/McGraw-Hill 1983.
 

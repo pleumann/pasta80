@@ -1,4 +1,4 @@
-program Jaques;
+program Jacques;
 
 procedure Note(Duration: Real; Pitch: Integer);
 begin

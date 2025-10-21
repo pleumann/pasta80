@@ -184,7 +184,7 @@ __mul16b:       add     hl,hl
 ;
 ; Signed 16 bit division (taken from Leventhal/Saville)
 ;
-; Entry:  HL (dividend), DE (divisior)
+; Entry:  HL (dividend), DE (divisor)
 ; Exit:   HL (quotient), DE (remainder), CF (div-by-zero)
 ; Uses:   AF, BC
 ;

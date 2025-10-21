@@ -68,7 +68,7 @@ function ReadKey: Char; register;                   external 'zx_readkey';
  * Waits for the given interval in milliseconds. Note that, since the
  * maskable 50 Hz interrupt is being used as a basis, the actual interval
  * is a multiple of 20 ms plus/minus "a bit", depending on at which point
- * in the interrupt cycle the procedure is invoked. If interupts are
+ * in the interrupt cycle the procedure is invoked. If interrupts are
  * disabled, calling this procedure will hang the machine.
  *)
 procedure Delay(Duration: Integer); register;       external 'zx_delay';
