@@ -112,7 +112,7 @@ To generate binaries for the ZX Spectrum 48K, 128K and Next targets, use the `--
 
 ```bash
 $ pasta --zx48 hello.pas      # Compiles for ZX Spectrum 48K
-$ pasta --zx128 hello.pas     # Compiles for ZX Spectrum 48K
+$ pasta --zx128 hello.pas     # Compiles for ZX Spectrum 128K
 $ pasta --zxnext hello.pas    # Compiles for ZX Spectrum Next
 ```
 
