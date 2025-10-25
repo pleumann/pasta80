@@ -1842,6 +1842,14 @@ begin
       K := K + I * J;
 
   Assert(K = 1320);
+
+  // Ticket #32
+  J := 11;
+  K := 0;
+  for I := 2 to J - 1 do
+    K := K + I;
+
+  Assert(K = 54);
 end;
 
 overlay procedure TestForBoolean;

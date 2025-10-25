@@ -121,7 +121,7 @@ begin
     for x := -xl to xl do
     begin
       xt := xf * Sqrt(x * x + zz);            // Dist along hat's sinusoid
-      y  := (Sin(xt) + 
+      y  := (Sin(xt) +
             0.4 * Sin(xt * 3.0)) * hatHgt;    // Point on surface of hat
 
       { Stagger layer for fake 3d }
@@ -134,14 +134,8 @@ begin
         L2SetPixel(x1, y1, 0);
         { Fill every slice }
         if Stripes and (Watermarks[x1] < 176) then
-        begin
-          I := y1 + 1;
-          while I <= Watermarks[x1] - 1 do
-          begin
+          for I := y1 + 1 to Watermarks[x1] - 1 do
             L2SetPixel(x1, I, Colors[Count and 3]);
-            Inc(I);
-          end;
-        end;
 
         Watermarks[x1] := y1;
       end;

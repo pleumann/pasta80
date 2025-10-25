@@ -2374,13 +2374,6 @@ begin
       end;
     end;
 
-    if (Code^.Instruction = 'push de') and (Prev^.Instruction = 'ex de,hl') then
-    begin
-      RemoveCode;
-      Code^.Instruction := 'push hl';
-      Exit;
-    end;
-
     if (Code^.Instruction = 'pop de') and StartsWith(Prev^.Instruction, 'ld hl,') and (Prev^.Prev^.Instruction = 'push de') then
     begin
       Prev^.Prev^.Instruction := Prev^.Instruction;
