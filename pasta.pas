@@ -186,7 +186,7 @@ begin
 
   FRExp(Number, Mantissa, Exponent);
 
-  Bytes[0] := Exponent - 1023 + 127;
+  Bytes[0] := Exponent + 128;
 
   for I := 5 downto 1 do
   begin
