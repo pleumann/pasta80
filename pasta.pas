@@ -5545,6 +5545,8 @@ procedure ParseCaseValue(T: PSymbol; var V: Integer);
 var
   C: PSymbol;
 begin
+  if T = dtByte then T := dtInteger;
+
   if Scanner.Token = toIdent then
   begin
     C := LookupGlobalOrFail(Scanner.StrValue);
