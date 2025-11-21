@@ -91,10 +91,11 @@ end;
 procedure TextReadStr(var T: TextRec; var S: String);
 var
   C: Char;
+  I: Byte;
 begin
-  S := '';
+  I := 0;
 
-  while Length(S) < 255 do
+  while I < 255 do
   begin
     TextReadChar(T, C);
     if LastError <> 0 then Exit;
@@ -107,8 +108,11 @@ begin
     end;
     if C = #26 then Break;
 
-    if C >= ' ' then S := S + C;
+    Inc(I);
+    (* if C >= ' ' then *) S[I] := C;
   end;
+
+  S[0] := Char(I);
 end;
 
 procedure TextReadWord(var T: TextRec; var S: String);
