@@ -8,6 +8,7 @@ PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_
 * [ZX Spectrum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum)
 * [ZX Spectrum 128K](https://en.wikipedia.org/wiki/ZX_Spectrum#ZX_Spectrum_128)
 * [ZX Spectrum Next](https://www.specnext.com)
+* Early access Beta (expect a lot of issues): [Agon Light/Console 8](https://agonplatform.github.io/agon-docs/)
 
 The compiler follows the single-pass recursive-descent approach championed by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth), inventor of Pascal, in his books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, the compiler might not always generate the most efficient code possible (it definitely cannot compete with LLVM and doesn't try to), but it's very fast.
 
@@ -117,6 +118,16 @@ $ pasta --zxnext hello.pas    # Compiles for ZX Spectrum Next
 ```
 
 The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000.
+
+### Agon Light/Console 8 targets
+
+To generate a MOS binary for Agon targets, use the `--agon` parameter.
+
+The binary will always be built at &040000, so should be put in the `/bin` directory. There are also some functions which assume MOS version 3+.
+
+Note that this is an early release, and in particular larger programs can behave erratically.
+
+At this stage, only 64k is used; at a mimimum I plan to push the heap to a second 64k block. There are still many functions to be added, but this will compile most of the examples here with little to no modification, to run on directly on the Agon.
 
 ### Tapes, snapshots and runnable directories
 

@@ -489,7 +489,7 @@ type
   (**
    * The three platforms we currently support.
    *)
-  TBinaryType = (btCPM, btZX, btZX128, btZXN);
+  TBinaryType = (btCPM, btZX, btZX128, btZXN, btAgon);
 
   (**
    * The possible output formats.
@@ -1467,6 +1467,11 @@ begin
   if Binary = btCPM then
   begin
     BDosFunc := RegisterMagic(scFunc, 'Bdos');
+    BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
+  end
+  else if Binary = btAgon then
+  begin
+    BDosFunc := RegisterMagic(scFunc, 'Bdos');    (* temporary until we remove the BDOS references*)
     BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
   end;
 end;
@@ -2573,6 +2578,11 @@ begin
   begin
     Emit('NXT', 'equ 1', 'Target is ZX Spectrum Next');
     EmitI('device ZXSPECTRUMNEXT');
+  end
+  else if Binary = btAgon then
+  begin
+    Emit('AGON', 'equ 1', 'Target is Agon Light/Console8');
+    EmitI('device NOSLOT64K');
   end;
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
@@ -2646,6 +2656,8 @@ begin
 
   if Binary = btCPM then
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
+  else if Binary = btAgon then
+    EmitI('savebin "' + BinFile + '",$0000,HEAP')
   else if Format = tfBinary then
     EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
   else if Format = tfPlus3Dos then
@@ -7208,6 +7220,8 @@ begin
     OpenInput(HomeDir + '/rtl/zx.pas')
   else if Binary = btZX128 then
     OpenInput(HomeDir + '/rtl/zx128.pas')
+  else if Binary = btAgon then
+    OpenInput(HomeDir + '/rtl/agon.pas')
   else
     OpenInput(HomeDir + '/rtl/next.pas');
 
@@ -7311,6 +7325,8 @@ begin
 
     if Binary = btCPM then
       AddrOrigin := $0100
+    else if Binary = btAgon then
+      AddrOrigin := $0000
     else
       AddrOrigin := $8000;
 
@@ -7362,7 +7378,7 @@ const
   (**
    * Printable names of supported platforms. Must be aligned with TBinaryType.
    *)
-  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next');
+  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next', 'Agon');
 
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
@@ -7514,6 +7530,13 @@ begin
   if Length(BinFile) <> 0 then
   begin
     if Binary = btCPM then
+    begin
+      if Alt then
+        Execute(TnylpoCmd, '-soy -t @ ' + BinFile)
+      else
+        Execute(TnylpoCmd, BinFile)
+    end
+    else if Binary = btAgon then
     begin
       if Alt then
         Execute(TnylpoCmd, '-soy -t @ ' + BinFile)
@@ -7807,6 +7830,7 @@ begin
     WriteLn('  --zx48         Sets target to ZX Spectrum 48K');
     WriteLn('  --zx128        Sets target to ZX Spectrum 128K');
     WriteLn('  --zxnext       Sets target to ZX Spectrum Next');
+    WriteLn('  --agon         Sets target to Agon Light/Console8');
     WriteLn;
     WriteLn('  --bin          Generates raw binary file (default)');
     WriteLn('  --3dos         Generates binary with +3DOS header');
@@ -7857,6 +7881,13 @@ begin
       Binary := btZXN;
       AddrOrigin := 32768;
       AddrLimit := 65536;
+      Overlays := False;
+    end
+    else if SrcFile = '--agon' then
+    begin
+      Binary := btAgon;
+      AddrOrigin := $0000;
+      AddrLimit := $10000;
       Overlays := False;
     end
     else if SrcFile = '--ovr' then
