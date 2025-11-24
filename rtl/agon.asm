@@ -569,34 +569,3 @@ al_setcoords:
 __scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
 
-;
-; Shutdown -> graceful successful exit. HL=0 for success.
-;
-; Entry: -
-; Exit: -
-; Uses: HL
-;
-__done:
-            ld      hl,0 
-            ret
-
-; test cruft
-    push    bc
-    push    hl
-    push    af
-    push    de
-    or      64
-    rst     10h
-    ld      bc,0
-    xor     a
-    rst     18h
-;    ld      b,5
-;mos_call_testlp:
-;    ld      a,(hl)
-;    inc     hl
-;    rst     10h
-;    djnz    mos_call_testlp
-    pop     de
-    pop     af
-    pop     hl
-    pop     bc

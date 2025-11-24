@@ -116,12 +116,25 @@ __init:
 			LD		B, 0			;  Now BC: argc
 			dec		BC				;Pascal does NOT count the filename as a parameter.
 			ld		(__parmcount),BC
-			call	al_setcoords	;uses AF and BC
+			call	al_setcoords	;uses AF and BC. Sets absolute coordinate system.
 
 ;			mklil
 ;			POP		IX			; IX: argv - don't need to preserve it now.
 
 			CALL		main			; Start user code
+
+;
+; Shutdown -> graceful successful exit. HL=0 for success.
+; Can re-enter here either via a ret if the stack is balanced (seems unlikely
+; with the architecture), or jump back in as we are only using SP, and the
+; state is restored using SPL. SP is restored to it's original location.
+;
+;
+__done:
+            ld      hl,0 
+
+
+
 
 			mklil
 			POP		IX			; Restore the registers
@@ -159,7 +172,6 @@ _parse_params:
 			INC		IX
 			mklil
 			INC		IX
-;test:		jp		test
 			CALL		_skip_spaces		; Skip HL past any leading spaces
 ;
 			LD		BC, 1			; C: ARGC = 1 - also clears out top 16 bits of BCU
