@@ -2263,6 +2263,27 @@ begin
       end;
     end;
 
+    (*Detect above wrapped around a comment + similar simplification on indirect *)
+
+    if (Code^.Instruction = 'bit 0,l') then
+    begin
+      if (Prev^.Prev^.Instruction = 'ld l,a') and (Prev^.Prev^.Prev <> nil) and (Prev^.Prev^.Prev^.Instruction = 'ld h,0') and (Prev^.Comment <> '') then
+      begin
+        Prev^.Prev^.Prev^.Instruction := '';
+        Prev^.Prev^.Instruction := '';
+        Code^.Instruction := 'or a';
+        Exit;
+      end
+      else if (Prev^.Instruction = 'ex de,hl') and (Prev^.Prev^.Instruction = 'ld e,(hl)') and (Prev^.Prev^.Prev^.Instruction = 'ld d,0') then
+      begin
+        RemoveCode;
+        RemoveCode;
+        RemoveCode;
+        Code^.Instruction := 'bit 0,(hl)';
+        Exit;
+      end;
+    end;
+
     if (Code^.Instruction = '') and (Code^.Comment <> '') and StartsWith(Prev^.Instruction, 'push') then
     begin
       Code^.Instruction := Prev^.Instruction;
