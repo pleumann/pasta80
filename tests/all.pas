@@ -2731,6 +2731,55 @@ begin
   Assert(S = 'ZZZ');
 end;
 
+overlay procedure TestVal;
+
+  procedure ValInt(S: String; ExpectVal, ExpectErr: Integer);
+  var
+    V, E: Integer;
+  begin
+    V := -1234;
+    E := -5678;
+
+    Val(S, V, E);
+
+    WriteLn('''', S, ''' -> ', V, ', ', E, ' [Expected ', ExpectVal, ', ', ExpectErr, ']');
+
+    Assert(V = ExpectVal);
+    Assert(E = ExpectErr)
+  end;
+
+  procedure ValReal(S: String; ExpectVal: Real; ExpectErr: Integer);
+  var
+    V: Real;
+    E: Integer;
+  begin
+    V := -1234.0;
+    E := -5678;
+
+    Val(S, V, E);
+
+    WriteLn('''', S, ''' -> ', V, ', ', E, ' [Expected ', ExpectVal, ', ', ExpectErr, ']');
+
+    Assert(V = ExpectVal);
+    Assert(E = ExpectErr)
+  end;
+
+begin
+  WriteLn('--- TestVal ---');
+
+  ValInt('100', 100, 0);
+  ValInt('-100', -100, 0);
+  ValInt('42X', -1234, 3);
+  ValInt('X42', -1234, 1);
+  ValInt('', -1234, 0);
+
+  ValReal('100.0', 100.0, 0);
+  ValReal('-100.0', -100.0, 0);
+  ValReal('42.0X', -1234.0, 5);
+  ValReal('X42.0', -1234.0, 1);
+  ValReal('', -1234.0, 0);
+end;
+
 begin
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
@@ -2820,6 +2869,8 @@ begin
   TestWriteFormat;
 
   TestIncDec;
+
+  TestVal;
 
   TestBuiltIns;
 

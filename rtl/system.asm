@@ -909,23 +909,60 @@ __str_int:
         ld      (hl),a
         ret
 
-__val_int:
-        ld      hl,6
+;
+; Pascal "Val" magic procedure applied to integers. All arguments on the stack.
+;
+__val_astr:     dw      0
+__val_aval:     dw      0
+__val_aerr:     dw      0
+
+__val_init:
+        pop     bc
+        pop     de
+        pop     hl
+        ld      (__val_aerr),hl
+        xor     a
+        ld      (hl),a
+        inc     hl
+        ld      (hl),a
+        pop     hl
+        ld      (__val_aval),hl
+        ld      hl,0
         add     hl,sp
+        ld      (__val_astr),hl
+        push    de
         ld      a,(hl)
         inc     hl
-        call    __atoi
-        ld      hl,4
-        add     hl,sp
-        ld      bc,(hl)
-        ld      hl,bc
-        ld      (hl),de
+        and     a
+        jr      z,__val_exit
+        push    bc
+        ret
+
+__val_exit:
         pop     de
-        ld      hl,260
+        ld      hl,256
         add     hl,sp
         ld      sp,hl
         push    de
-        ret                     ; FIXME: Error reporting
+        ret
+
+__val_int:
+        call    __val_init
+        call    __atoi          ; Do the actual conversion
+        ld      a,b
+        and     a
+        jr      z,__val_int_ok
+        ld      hl,(__val_astr)
+        ld      a,(hl)
+        sub     b
+        inc     a
+        ld      hl,(__val_aerr)
+        ld      (hl),a
+        jr      __val_exit
+__val_int_ok:
+        ld      hl,(__val_aval)
+        ld      (hl),de
+        jr      __val_exit
 
 __val_float:
         ld      hl,6
@@ -2060,7 +2097,7 @@ __itoa_loop2:   pop     af              ; pop and store
 ; String to signed 16 bits integer
 ;
 ; Entry:    HL (buffer), A (length)
-; Exit:     DE (value)
+; Exit:     DE (value), HL (offset of char after number)
 ; Uses:     *
 ;
 ; TODO Report errors via carry or a register?
@@ -2092,7 +2129,6 @@ __atoi_skip:    inc     hl
 __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 cp      '-'
                 ret     nz
-                and     a
                 push    hl
                 ld      hl,0
                 sbc     hl,de
