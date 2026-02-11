@@ -965,22 +965,22 @@ __val_int_ok:
         jr      __val_exit
 
 __val_float:
-        ld      hl,6
-        add     hl,sp
-;        ld      a,(hl)
-;        inc     hl
-        call    __atof
-        exx
-        pop     de
-        pop     bc
-        pop     hl
+        call    __val_init
+        call    __atof          ; Do the actual conversion
+        ld      a,b
+        and     a
+        jr      z,__val_float_ok
+        ld      hl,(__val_astr)
+        ld      a,(hl)
+        sub     b
+        inc     a
+        ld      hl,(__val_aerr)
+        ld      (hl),a
+        jr      __val_exit
+__val_float_ok:
+        ld      hl,(__val_aval)
         call    __storefp
-        exx
-        ld      hl,256
-        add     hl,sp
-        ld      sp,hl
-        push    de
-        ret                     ; FIXME: Error reporting
+        jr      __val_exit
 
 ; string on stack, de table, b size, a contains code if found, 255 if not
 __val_enum:     ld      hl,6
@@ -1294,10 +1294,21 @@ __fltrnd_neg:
 
 __atof:
         push    ix
-        ld      de,hl
-        ld      ix,de
-        inc     ix
+        push    af
+        push    hl
+        push    hl
+        pop     ix
+;        inc     ix
         call    CNVN
+        exx
+        push    ix
+        pop     hl
+        pop     de
+        and     a
+        sbc     hl,de
+        pop     af
+        sub     l
+        ld      b,a        
         pop     ix
         ret
 
