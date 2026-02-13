@@ -1810,6 +1810,8 @@ CNV1:   INC  IX         ;Hent naeste karakter
 
 CNV2:   CP   'E'        ;Exponentnotation?
         JR   Z,CNV4     ;Ja => CNV4
+        CP   'e'        ;Exponentnotation?
+        JR   Z,CNV4     ;Ja => CNV4
 
         CALL DIGTST     ;Er det et ciffer?
         JR   NC,CNV5    ;Nej => CNV5

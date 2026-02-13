@@ -933,6 +933,14 @@ __val_init:
         push    de
         ld      a,(hl)
         inc     hl
+
+        ld      d,0
+        ld      e,a
+        add     hl,de
+        ld      (hl),0
+        and     a
+        sbc     hl,de
+
         and     a
         jr      z,__val_exit
         push    bc
