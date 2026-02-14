@@ -931,10 +931,17 @@ __val_init:
         add     hl,sp
         ld      (__val_astr),hl
         push    de
-        ld      a,(hl)
+        ld      a,(hl)          ; A = string length
         inc     hl
         and     a
         jr      z,__val_exit
+        ; Null-terminate the string for CNVN
+        push    hl              ; Save first char address
+        ld      e,a
+        ld      d,0
+        add     hl,de           ; HL = past last char
+        ld      (hl),0          ; Write null terminator
+        pop     hl              ; HL = first char again
         push    bc
         ret
 
