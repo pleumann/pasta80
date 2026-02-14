@@ -4332,8 +4332,23 @@ begin
   end
   else if Proc = ExitProc then
   begin
-    Emit('', 'jp ' + ExitTarget, 'Exit');
     NextToken;
+    if Scanner.Token = toLParen then
+    begin
+      (* Find the result variable (tagged 'RESULT') in the symbol table *)
+      Sym := SymbolTable;
+      while (Sym <> nil) and ((Sym^.Kind <> scVar) or (Sym^.Tag <> 'RESULT')) do
+        Sym := Sym^.Prev;
+      if Sym = nil then Error('Exit with value only allowed in functions');
+
+      NextToken;
+      EmitAddress(Sym);
+      T := TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
+      EmitStore(T);
+      Expect(toRParen);
+      NextToken;
+    end;
+    Emit('', 'jp ' + ExitTarget, 'Exit');
   end
   else if Proc = HaltProc then
     begin

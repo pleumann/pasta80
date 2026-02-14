@@ -1103,6 +1103,27 @@ var
     MulAddFunc := P * Q + R;
   end;
 
+  procedure TestProcExit(var I: Integer);
+  begin
+    I := 1111;
+    Exit;
+    I := -1;
+  end;
+
+  function TestFuncExit: Integer;
+  begin
+    TestFuncExit := 2222;
+    Exit;
+    TestFuncExit := -1;
+  end;
+
+  function TestFuncExitWithResult: Integer;
+  begin
+    TestFuncExitWithResult := -1;
+    Exit(3333);
+    TestFuncExitWithResult := -2;
+  end;
+
 begin
   WriteLn('--- TestProcFunc ---');
 
@@ -1123,6 +1144,11 @@ begin
 
   J := MulAddFunc(2, 3, 4);
   Assert(J = 10);
+
+  TestProcExit(J);
+  Assert(J = 1111);
+  Assert(TestFuncExit = 2222);
+  Assert(TestFUncExitWithResult = 3333);
 end;
 
 const
