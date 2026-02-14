@@ -280,7 +280,7 @@ These screenshots show some applications compiled for the ZX Spectrum 48K target
 
 **PASTA/80 Pascal Compiler**
 
-Copyright (c) 2020-2025 by Jörg Pleumann
+Copyright (c) 2020-2026 by Jörg Pleumann
 
 The PASTA/80 compiler is free software: you can redistribute it and/or modify
 it under the terms of the **GNU General Public License (GPL)** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.

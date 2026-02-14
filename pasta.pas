@@ -7672,7 +7672,7 @@ begin
   else
     WriteLn(BinaryStr[Binary] + ', Z80':40);
   WriteLn;
-  WriteLn('Copyright (C) 2020-25 by  Joerg Pleumann');
+  WriteLn('Copyright (C) 2020-26 by  Joerg Pleumann');
   WriteLn('----------------------------------------');
   WriteLn;
 end;
