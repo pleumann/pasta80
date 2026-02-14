@@ -3212,6 +3212,39 @@ begin
 end;
 
 (**
+ * Emits a relational comparison followed by a conditional jump, without
+ * routing the boolean result through the stack. This is more efficient than
+ * calling EmitRelOp followed by EmitJumpIf separately and is used in for
+ * loops. Operands are expected on the stack.
+ *)
+procedure EmitRelJumpIf(Op: TToken; When: Boolean; Target: String);
+begin
+  if (Op = toGt) or (Op = toLeq) then
+  begin
+    Emit('','pop hl', 'RelJump ' + IntToStr(Ord(Op)));
+    EmitI('pop de');
+  end
+  else
+  begin
+    Emit('','pop de', 'RelJump ' + IntToStr(Ord(Op)));
+    EmitI('pop hl');
+  end;
+
+  case Op of
+    toEq:         EmitI('call __int16_eq');
+    toNeq:        EmitI('call __int16_neq');
+    toLt, toGt:   EmitI('call __int16_lt');
+    toLeq, toGeq: EmitI('call __int16_geq');
+  end;
+
+  EmitI('and a');
+  if When then
+    EmitI('jp nz,' + Target)
+  else
+    EmitI('jp z,' + Target);
+end;
+
+(**
  * Emits code that performs an unconditional jump to the given target.
  *)
 procedure EmitJump(Target: String);
@@ -5855,9 +5888,8 @@ begin
     EmitAddress(Sym);
     EmitLoad(Sym^.DataType);
 
-    if Delta = 1 then EmitRelOp(toGeq) else EmitRelOp(toLeq); (* Operands swapped! *)
-
-    EmitJumpIf(False, Tag3);
+    if Delta = 1 then EmitRelJumpIf(toGeq, False, Tag3)
+                 else EmitRelJumpIf(toLeq, False, Tag3); (* Operands swapped! *)
 
     Emit(Tag, '', '');
 
@@ -5873,9 +5905,8 @@ begin
     EmitAddress(Sym);
     EmitLoad(Sym^.DataType);
 
-    if Delta = 1 then EmitRelOp(toGt) else EmitRelOp(toLt); (* Operands swapped! *)
-
-    EmitJumpIf(False, Tag3);
+    if Delta = 1 then EmitRelJumpIf(toGt, False, Tag3)
+                 else EmitRelJumpIf(toLt, False, Tag3); (* Operands swapped! *)
 
     EmitAddress(Sym);
     if Delta = 1 then EmitInc(Sym^.DataType) else EmitDec(Sym^.DataType);
