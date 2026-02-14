@@ -1205,16 +1205,21 @@ __dec16by:      ld      e,(hl)
 
 ; Load FP at address HL into BCDEHL
 __loadfp:
-        push    ix
-        push    hl
-        pop     ix
-        ld      l,(ix+0)
-        ld      h,(ix+1)
-        ld      e,(ix+2)
-        ld      d,(ix+3)
-        ld      c,(ix+4)
-        ld      b,(ix+5)
-        pop     ix
+        push    hl              ; Save base address
+        inc     hl
+        inc     hl
+        ld      e,(hl)          ; Byte 2
+        inc     hl
+        ld      d,(hl)          ; Byte 3
+        inc     hl
+        ld      c,(hl)          ; Byte 4
+        inc     hl
+        ld      b,(hl)          ; Byte 5
+        pop     hl              ; Restore base address
+        ld      a,(hl)          ; Byte 0
+        inc     hl
+        ld      h,(hl)          ; Byte 1
+        ld      l,a             ; L = Byte 0
         ret
 
 ; Store FP into BCDEHL into address HL
