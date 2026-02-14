@@ -1224,17 +1224,24 @@ __loadfp:
 
 ; Store FP into BCDEHL into address HL
 __storefp:
-        push    ix
-        push    hl
-        pop     ix
-        exx
-        ld      (ix+0),l
-        ld      (ix+1),h
-        ld      (ix+2),e
-        ld      (ix+3),d
-        ld      (ix+4),c
-        ld      (ix+5),b
-        pop     ix
+        push    hl              ; Save address
+        exx                     ; Switch to normal side (BCDEHL = value)
+        ex      (sp),hl         ; HL = address, (SP) = Bytes 0+1
+        push    hl              ; Save address again
+        inc     hl
+        inc     hl
+        ld      (hl),e          ; Byte 2
+        inc     hl
+        ld      (hl),d          ; Byte 3
+        inc     hl
+        ld      (hl),c          ; Byte 4
+        inc     hl
+        ld      (hl),b          ; Byte 5
+        pop     hl              ; Restore address
+        pop     de              ; DE = Bytes 0+1
+        ld      (hl),e          ; Byte 0
+        inc     hl
+        ld      (hl),d          ; Byte 1
         ret
 
 __flteq:
