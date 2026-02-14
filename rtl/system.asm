@@ -965,22 +965,45 @@ __val_int_ok:
         jr      __val_exit
 
 __val_float:
-        ld      hl,6
-        add     hl,sp
-;        ld      a,(hl)
-;        inc     hl
-        call    __atof
-        exx
-        pop     de
-        pop     bc
-        pop     hl
-        call    __storefp
-        exx
-        ld      hl,256
-        add     hl,sp
-        ld      sp,hl
-        push    de
-        ret                     ; FIXME: Error reporting
+        call    __val_init      ; Sets up __val_aerr, __val_aval, __val_astr
+        ; HL points into string (after length byte)
+        push    ix
+        push    hl
+        pop     ix              ; IX = first character
+        call    CNVN            ; Convert, result in BCDEHL (normal side)
+        ; Save FP result to shadow registers before error calc
+        exx                     ; FP value now in shadow regs
+        ; Calculate error from IX position (normal side now free)
+        push    ix
+        pop     de              ; DE = stop position
+        ld      hl,(__val_astr) ; HL = string address (length byte)
+        ld      c,(hl)          ; C = string length
+        inc     hl              ; HL = first character
+        ; Chars consumed = DE - HL (16-bit)
+        ld      a,e
+        sub     l
+        ld      e,a
+        ld      a,d
+        sbc     a,h             ; DE = chars consumed (16-bit)
+        ; Only low byte matters (string max 255 chars)
+        ld      a,e
+        cp      c               ; All consumed?
+        jr      z,__val_float_ok
+        ; Error: error index = chars consumed + 1
+        inc     a
+        ld      hl,(__val_aerr)
+        ld      (hl),a
+        inc     hl
+        ld      (hl),0
+        exx                     ; Back to normal side
+        jr      __val_float_xt
+__val_float_ok:
+        ; Store FP value into real variable (no error)
+        ld      hl,(__val_aval) ; HL = real variable address (shadow side)
+        call    __storefp       ; Returns on normal side
+__val_float_xt:
+        pop     ix
+        jr      __val_exit
 
 ; string on stack, de table, b size, a contains code if found, 255 if not
 __val_enum:     ld      hl,6
