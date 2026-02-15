@@ -6430,8 +6430,6 @@ begin
       NextToken;
     until Scanner.Token <> toComma;
 
-    Emit('', 'dw 0', '');
-
     DataType^.Low := 0;
     DataType^.High := I - 1;
 

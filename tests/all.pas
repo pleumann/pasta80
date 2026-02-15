@@ -2733,6 +2733,9 @@ end;
 
 overlay procedure TestVal;
 
+  type
+    TColor = (Red, Yellow, Green, None);
+
   procedure ValInt(S: String; ExpectVal, ExpectErr: Integer);
   var
     V, E: Integer;
@@ -2755,6 +2758,22 @@ overlay procedure TestVal;
   begin
     V := -1234.0;
     E := -5678;
+
+    Val(S, V, E);
+
+    WriteLn('''', S, ''' -> ', V, ', ', E, ' [Expected ', ExpectVal, ', ', ExpectErr, ']');
+
+    Assert(V = ExpectVal);
+    Assert(E = ExpectErr)
+  end;
+
+  procedure ValEnum(S: String; ExpectVal: TColor; ExpectErr: Integer);
+  var
+    V: TColor;
+    E: Integer;
+  begin
+    V := None;
+    E := -1;
 
     Val(S, V, E);
 
@@ -2793,6 +2812,15 @@ begin
   ValReal('1.234E02A', -1234.0, 9);
   ValReal('X42.0', -1234.0, 1);
   ValReal('', -1234.0, 0);
+
+  ValEnum('Red', Red, 0);
+  ValEnum('Yellow', Yellow, 0);
+  ValEnum('Green', Green, 0);
+
+  ValEnum('RED', None, 1);      // We might want to support this
+  ValEnum('yellow', None, 1);   // We might want to support this
+
+  ValEnum('Greenish', None, 1); // Error is at index 1, not at 6.
 end;
 
 begin

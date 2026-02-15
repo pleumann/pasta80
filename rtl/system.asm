@@ -991,50 +991,29 @@ __val_float_ok:
         jr      __val_exit
 
 ; string on stack, de table, b size, a contains code if found, 255 if not
-__val_enum:     ld      hl,6
-                add     hl,sp
+
+__val_enum_tbl: dw      0
+
+__val_enum_cnt: db      0
+
+__val_enum:     ld      (__val_enum_tbl),de
+                ld      a,b
+                ld      (__val_enum_cnt),a
+                call    __val_init
+                dec     hl      ; We need the length byte
+                ld      de,(__val_enum_tbl)
+                ld      a,(__val_enum_cnt)
+                ld      b,a
                 call    __atoe
-                ld      a,d
-                and     a
-                jr      nz,__val_enum1
+                jr      nc,__val_enum_ok
+                ld      hl,(__val_aerr)
+                inc     (hl)
+                jr      __val_exit
 
-                ld      hl,4            ; Result
-                add     hl,sp
-                ld      bc,(hl)
-                ld      hl,bc
-                ld      (hl),e
-                inc     hl
-                ld      (hl),a
-                ld      e,0
-
-__val_enum1:    ld      hl,2            ; Error
-                add     hl,sp
-                ld      bc,(hl)
-                ld      hl,bc
-                ld      (hl),e
-                xor     a
-                inc     hl
-                ld      (hl),a
-
-                pop     de
-                ld      hl,260
-                add     hl,sp
-                ld      sp,hl
-                push    de
-                ret                     ; FIXME: Error reporting
-
-__val_enum2:    ld      a,c
-                ld      hl,4
-                add     hl,sp
-                ld      bc,(hl)
-                ld      hl,bc
-                ld      (hl),a
-                pop     de
-                ld      hl,260
-                add     hl,sp
-                ld      sp,hl
-                push    de
-                ret                     ; FIXME: Error reporting
+__val_enum_ok:
+        ld      hl,(__val_aval)
+        ld      (hl),e
+        jr      __val_exit
 
 ;
 ; String length. Arguments and result on stack.
@@ -1316,7 +1295,7 @@ __atof:
         sbc     hl,de
         pop     af
         sub     l
-        ld      b,a        
+        ld      b,a
         pop     ix
         ret
 
@@ -2155,7 +2134,7 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 pop     hl
                 ret
 
-; hl string, de table, b size, out d=0 if found, e contains code, otherwise d=1
+; hl string, de table, b size, out de=code, cf set for error
 __atoe:         ld      c,0
                 ex      de,hl
 __atoe1:        push    hl
@@ -2176,7 +2155,7 @@ __atoe1:        push    hl
                 inc     hl
                 inc     c
                 djnz    __atoe1
-                ld      de,257
+                scf
                 ret
 __atoe2:        ld      d,0
                 ld      e,c
