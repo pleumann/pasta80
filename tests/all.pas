@@ -2811,6 +2811,12 @@ begin
 
   ValReal('1.234E02A', -1234.0, 9);
   ValReal('X42.0', -1234.0, 1);
+
+  ValReal('-', -1234.0, 1);
+  ValReal('42.', -1234.0, 1);
+  ValReal('42.0E', -1234.0, 1);
+  ValReal('42.0E-', -1234.0, 1);
+
   ValReal('', -1234.0, 0);
 
   ValEnum('Red', Red, 0);
