@@ -1055,11 +1055,9 @@ begin
       Write(I, ' ');
   WriteLn;
 
-  (* FIXME
   Assert(11 in Primes);
   Assert(not (12 in Primes));
   Assert(13 in Primes);
-  *)
 
   Include(Primes, 42);
   Assert(42 in Primes);
