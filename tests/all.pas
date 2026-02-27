@@ -979,7 +979,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestRecords ---');
+  WriteLn('--- TestSets ---');
   WriteLn;
 
   AllDays := [Mon..Sun];
