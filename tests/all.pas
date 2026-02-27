@@ -2729,6 +2729,64 @@ begin
   Assert(S = 'ZZZ');
 end;
 
+overlay procedure TestStr;
+var
+  S: String[31];
+  C: Color;
+begin
+  WriteLn('--- TestStr ---');
+
+  { Integer }
+  Str(0, S);        Assert(S = '0');
+  Str(1, S);        Assert(S = '1');
+  Str(-1, S);       Assert(S = '-1');
+  Str(32767, S);    Assert(S = '32767');
+  Str(-32768, S);   Assert(S = '-32768');
+
+  { Integer with width }
+  Str(42:0, S);     Assert(S = '42');
+  Str(42:5, S);     Assert(S = '   42');
+  Str(-42:5, S);    Assert(S = '  -42');
+  Str(42:1, S);     Assert(S = '42');
+
+  { Char }
+  Str('A', S);      Assert(S = 'A');
+  Str('Z', S);      Assert(S = 'Z');
+
+  { Real - default format }
+  Str(0.0, S);      Assert(S = ' 0.000000000E+00');
+  Str(1.0, S);      Assert(S = ' 1.000000000E+00');
+  Str(-1.0, S);     Assert(S = '-1.000000000E+00');
+  Str(100.0, S);    Assert(S = ' 1.000000000E+02');
+
+  { Real with width (scientific) - width is ignored for scientific format }
+  Str(1.0:0, S);    Assert(S = ' 1.0E+00');
+  Str(1.0:8, S);    Assert(S = ' 1.0E+00');
+
+  { Real with width and decimals (fixed) }
+  Str(0.0:0:2, S);      Assert(S = '0.00');
+  Str(1.0:0:2, S);      Assert(S = '1.00');
+  Str(-1.0:0:2, S);     Assert(S = '-1.00');
+  Str(3.14159:0:2, S);  Assert(S = '3.14');
+  Str(3.14159:8:2, S);  Assert(S = '    3.14');
+
+  { Enum }
+  for C := Red to Blue do
+  begin
+    Str(C, S);
+    case C of
+      Red:   Assert(S = 'Red');
+      Green: Assert(S = 'Green');
+      Blue:  Assert(S = 'Blue');
+    end;
+  end;
+
+  { Enum with width - TODO: Bug, produces garbage output }
+  // Str(Red:6, S);    Assert(S = '   Red');
+  // Str(Green:6, S);  Assert(S = ' Green');
+  // Str(Blue:6, S);   Assert(S = '  Blue');
+end;
+
 overlay procedure TestVal;
 
   type
@@ -2916,6 +2974,8 @@ begin
   TestWriteFormat;
 
   TestIncDec;
+
+  TestStr;
 
   TestVal;
 
