@@ -2729,6 +2729,63 @@ begin
   Assert(S = 'ZZZ');
 end;
 
+overlay procedure TestSubrange;
+var
+  V1: SubRange1;
+  V2: SubRange2;
+  V3: SubRange3;
+  V4: SubRange4;
+  A:  array[SubRange1] of Integer;
+  I:  Integer;
+begin
+  WriteLn('--- TestSubrange ---');
+
+  (* Low() and High() *)
+  Assert(Low(SubRange1)  = 10);
+  Assert(High(SubRange1) = 20);
+  Assert(Low(SubRange2)  = 10);
+  Assert(High(SubRange2) = 20);
+  Assert(Low(SubRange3)  = 10);
+  Assert(High(SubRange3) = 20);
+  Assert(Low(SubRange4)  = 10);
+  Assert(High(SubRange4) = 20);
+
+  (* SizeOf() -- subrange over Integer values, so 2 bytes each *)
+  Assert(SizeOf(V1) = SizeOf(Integer));
+  Assert(SizeOf(V2) = SizeOf(Integer));
+  Assert(SizeOf(V3) = SizeOf(Integer));
+  Assert(SizeOf(V4) = SizeOf(Integer));
+
+  (* Variable assignment and arithmetic *)
+  V1 := 10;
+  Assert(V1 = 10);
+  V1 := 20;
+  Assert(V1 = 20);
+  V2 := 15;
+  Assert(V2 = 15);
+  V3 := V2;
+  Assert(V3 = 15);
+  V4 := 15;
+  Assert(V4 = V3);
+
+  (* Ord, Pred, Succ *)
+  V1 := 12;
+  Assert(Ord(V1)  = 12);
+  Assert(Pred(V1) = 11);
+  Assert(Succ(V1) = 13);
+
+  (* Array indexed by subrange type *)
+  for I := Low(SubRange1) to High(SubRange1) do
+    A[I] := I * 2;
+  Assert(A[10] = 20);
+  Assert(A[15] = 30);
+  Assert(A[20] = 40);
+
+  (* Succ/Pred on enum values *)
+  Assert(Succ(Red) = Green);
+  Assert(Pred(Green) = Red);
+end;
+
 overlay procedure TestStr;
 var
   S: String[31];
@@ -2974,6 +3031,8 @@ begin
   TestWriteFormat;
 
   TestIncDec;
+
+  TestSubrange;
 
   TestStr;
 

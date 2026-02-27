@@ -4109,6 +4109,8 @@ begin
       while Code <> Old do RemoveCode;
     end;
 
+    if Sym^.Kind = scSubrangeType then Sym := Sym^.DataType;
+
     if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scFileType] then
       EmitLiteral(Sym^.Value)
     else
