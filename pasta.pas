@@ -3467,10 +3467,13 @@ begin
   end
   else if DataType^.Kind = scEnumType then
   begin
-    EmitI('pop de');
-    EmitI('pop bc');
+    EmitI('pop de');              (* DE = destination *)
+    EmitI('pop bc');              (* C = width *)
+    EmitI('pop hl');              (* L = enum value *)
+    EmitI('ld b,c');              (* B = width *)
+    EmitI('ld c,l');              (* C = enum value, B = width *)
     EmitI('ld hl,' + DataType^.Tag);
-    EmitI('call __stre');
+    EmitI('call __stre_fmt');
   end
   else Error('Unprintable type: ' + DataType^.Name);
 end;

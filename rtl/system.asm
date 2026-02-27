@@ -1890,6 +1890,28 @@ __stre:
                 ret
 
 ;
+; Convert enum to string with right-alignment (width specifier).
+;
+; Entry: HL = enum literal table, BC = enum value (in C, B = width),
+;        DE = destination, A = max length
+; Exit:  string written to DE, right-aligned to desired width
+; Uses:  AF, BC, DE, HL
+;
+__stre_fmt:
+                push    de              ; save destination for __ralign
+                push    af              ; save max length
+                push    bc              ; save B = width
+                ld      b,0             ; BC = enum value (C already set)
+                call    __stre          ; HL=table, BC=value, DE=dest, A=max
+                pop     bc              ; B = width
+                pop     af              ; A = max length
+                pop     hl              ; HL = destination
+                ld      d,a             ; D = max length
+                ld      e,b             ; E = desired width
+                call    __ralign
+                ret
+
+;
 ; Right-align Pascal string, inserting spaces at the start.
 ;
 ; Pre:

@@ -2781,10 +2781,10 @@ begin
     end;
   end;
 
-  { Enum with width - TODO: Bug, produces garbage output }
-  // Str(Red:6, S);    Assert(S = '   Red');
-  // Str(Green:6, S);  Assert(S = ' Green');
-  // Str(Blue:6, S);   Assert(S = '  Blue');
+  { Enum with width }
+  Str(Red:6, S);    Assert(S = '   Red');
+  Str(Green:6, S);  Assert(S = ' Green');
+  Str(Blue:6, S);   Assert(S = '  Blue');
 end;
 
 overlay procedure TestVal;
