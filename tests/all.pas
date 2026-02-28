@@ -43,6 +43,8 @@ type
   SubRange3 = 10 .. Stop;
   SubRange4 = Start .. Stop;
 
+  ColorRange = Red .. Green;
+
   Str255 = string[255];
 
 var
@@ -2805,6 +2807,10 @@ begin
   Assert(I = 112);
   I := V2 + 5;
   Assert(I = 20);
+
+  (* Enum subrange type *)
+  Assert(Low(ColorRange)  = Red);
+  Assert(High(ColorRange) = Green);
 end;
 
 overlay procedure TestStr;

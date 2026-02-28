@@ -6460,7 +6460,7 @@ begin
       Sym := LookupGlobalOrFail(Scanner.StrValue);
 
       if Sym^.Kind <> scConst then Error('Not a constant');
-      if Sym^.DataType <> dtInteger then Error('Not an integer');
+      if (Sym^.DataType <> dtInteger) and (Sym^.DataType^.Kind <> scEnumType) then Error('Not an integer or enum');
 
       DataType^.High := Sym^.Value;
 
@@ -6517,7 +6517,7 @@ begin
         Sym := LookupGlobalOrFail(Scanner.StrValue);
 
         if Sym^.Kind <> scConst then Error('Not a constant');
-        if Sym^.DataType <> dtInteger then Error('Not an integer');
+        if (Sym^.DataType <> dtInteger) and (Sym^.DataType^.Kind <> scEnumType) then Error('Not an integer or enum');
 
         DataType^.High := Sym^.Value;
 
