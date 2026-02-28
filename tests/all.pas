@@ -2784,6 +2784,27 @@ begin
   (* Succ/Pred on enum values *)
   Assert(Succ(Red) = Green);
   Assert(Pred(Green) = Red);
+
+  (* Arithmetic with subrange variables *)
+  V1 := 12;
+  V2 := 15;
+  I := V1 + V2;
+  Assert(I = 27);
+  I := V2 - V1;
+  Assert(I = 3);
+  I := V1 * 2;
+  Assert(I = 24);
+  I := V2 div V1;
+  Assert(I = 1);
+  I := V2 mod V1;
+  Assert(I = 3);
+
+  (* Mixed subrange and integer arithmetic *)
+  I := 100;
+  I := I + V1;
+  Assert(I = 112);
+  I := V2 + 5;
+  Assert(I = 20);
 end;
 
 overlay procedure TestStr;

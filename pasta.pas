@@ -5159,6 +5159,8 @@ var
 begin
   T := ParseFactor;
 
+  if T^.Kind = scSubrangeType then T := T^.DataType;
+
   if (T = dtInteger) or (T = dtByte) then
     while Scanner.Token in [toMul, toDiv, toDivKW, toMod, toAnd, toShl, toShr] do
     begin
@@ -5206,6 +5208,8 @@ var
   T: PSymbol;
 begin
   T := ParseTerm;
+
+  if T^.Kind = scSubrangeType then T := T^.DataType;
 
   if (T = dtInteger) or (T = dtByte) then
     while Scanner.Token in [toAdd, toSub, toOr, toXor] do
