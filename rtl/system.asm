@@ -910,48 +910,69 @@ __str_int:
         ret
 
 ;
-; Pascal "Val" magic procedure applied to integers. All arguments on the stack.
+; Pascal "Val" magic procedure. All arguments on the stack.
+;
+; Shared variables, set by __val_init:
+;   __val_astr: address of the string's length byte on the stack
+;   __val_aval: address of the result variable
+;   __val_aerr: address of the error variable
 ;
 __val_astr:     dw      0
 __val_aval:     dw      0
 __val_aerr:     dw      0
 
+;
+; __val_init: pop and save arguments, null-terminate string, return to caller.
+; Pops: ret-addr, err-addr, val-addr (both from Pascal call).
+; Jumps to __val_exit (skipping actual conversion) if string is empty.
+;
 __val_init:
         pop     bc
         pop     de
         pop     hl
         ld      (__val_aerr),hl
         xor     a
-        ld      (hl),a
+        ld      (hl),a          ; Clear error variable (lo)
         inc     hl
-        ld      (hl),a
+        ld      (hl),a          ; Clear error variable (hi)
         pop     hl
         ld      (__val_aval),hl
         ld      hl,0
         add     hl,sp
         ld      (__val_astr),hl
         push    de
-        ld      a,(hl)
-        inc     hl
+        ld      a,(hl)          ; A = string length
+        inc     hl              ; HL = first character
 
         ld      d,0
         ld      e,a
         add     hl,de
-        ld      (hl),0
+        ld      (hl),0          ; Place null terminator after last character
         and     a
-        sbc     hl,de
+        sbc     hl,de           ; Restore HL = first character
 
         and     a
         jr      nz,__val_not_empty      ; Non-empty string -> normal processing
-        ld      hl,(__val_aerr)         ; Empty string -> set Error = 1
-        ld      (hl),1
-        inc     hl
-        ld      (hl),0
+        ld      a,1
+        call    __val_set_err           ; Empty string -> Error = 1
         jr      __val_exit
 __val_not_empty:
         push    bc
         ret
 
+;
+; __val_set_err: store A as the error position in __val_aerr, then fall through
+;               to __val_exit. Clobbers HL.
+;
+__val_set_err:
+        ld      hl,(__val_aerr)
+        ld      (hl),a
+        inc     hl
+        ld      (hl),0
+
+;
+; __val_exit: discard the 256-byte string from the stack and return.
+;
 __val_exit:
         pop     de
         ld      hl,256
@@ -960,67 +981,80 @@ __val_exit:
         push    de
         ret
 
-__val_int:
-        call    __val_init
-        call    __atoi          ; Do the actual conversion
-        ld      a,b
-        and     a
-        jr      z,__val_int_ok
+;
+; __val_err_pos: called when __atoi/__atof returned B > 0 (unprocessed chars).
+; Computes error position as (string_length - B + 1) and stores it.
+;
+__val_err_pos:
         ld      hl,(__val_astr)
         ld      a,(hl)
         sub     b
         inc     a
-        ld      hl,(__val_aerr)
-        ld      (hl),a
-        jr      __val_exit
-__val_int_ok:
-        dec     hl                      ; HL-1 = last processed character
-        ld      a,(hl)
-        sub     '0'
-        cp      10
-        jr      c,__val_int_store       ; Last char was a digit -> truly OK
-        ld      hl,(__val_astr)         ; Last char was not a digit -> Error = n+1
+        jr    __val_set_err
+
+;
+; __val_err_nplus1: called when B = 0 but the last char was not a valid
+; terminator. Computes error position as (string_length + 1) and stores it.
+;
+__val_err_nplus1:
+        ld      hl,(__val_astr)
         ld      a,(hl)
         inc     a
-        ld      hl,(__val_aerr)
-        ld      (hl),a
-        jr      __val_exit
-__val_int_store:
+        jr      __val_set_err
+
+;
+; __val_check_last: validate the last character of the string after a
+; successful conversion (B = 0). Valid terminators are digits '0'..'9'
+; and '.', which is a legal trailing character for floating-point numbers
+; and harmless for integers (__atoi always stops before '.', so B > 0
+; would have been set in that case and this routine would never be reached).
+; Returns with ZF=1 on success, ZF=0 on failure. Clobbers AF, HL.
+;
+__val_check_last:
+        ld      hl,(__val_astr)         ; HL = address of length byte
+        push    de
+        ld      d,0
+        ld      e,(hl)                  ; E = string length n
+        add     hl,de                   ; HL = address of last character
+        pop     de
+        ld      a,(hl)
+        cp      '.'                     ; Trailing dot is valid (e.g. "100.")
+        ret     z                       ; ZF=1: OK
+        sub     '0'
+        cp      10                      ; ZF=0,CF=1 if digit; ZF=0,CF=0 if not
+        jr      c,__val_check_ok        ; CF=1: digit -> OK
+        or      1                       ; ZF=0: failure
+        ret
+__val_check_ok:
+        xor     a                       ; ZF=1: OK
+        ret
+
+;
+; __val_int: Val() for Integer. Calls __atoi, then validates result.
+;
+__val_int:
+        call    __val_init
+        call    __atoi          ; DE = result, B = remaining chars (0 if all consumed)
+        ld      a,b
+        and     a
+        jr      nz,__val_err_pos        ; B > 0: error at position len-B+1
+        call    __val_check_last
+        jr      nz,__val_err_nplus1     ; ZF=0: last char not valid -> error at len+1
         ld      hl,(__val_aval)
         ld      (hl),de
         jr      __val_exit
 
+;
+; __val_float: Val() for Real. Calls __atof, then validates result.
+;
 __val_float:
         call    __val_init
-        call    __atof          ; Do the actual conversion
+        call    __atof          ; B = remaining chars (0 if all consumed)
         ld      a,b
         and     a
-        jr      z,__val_float_ok
-        ld      hl,(__val_astr)
-        ld      a,(hl)
-        sub     b
-        inc     a
-        ld      hl,(__val_aerr)
-        ld      (hl),a
-        jr      __val_exit
-__val_float_ok:
-        ld      hl,(__val_astr)         ; HL = address of length byte
-        ld      d,0
-        ld      e,(hl)                  ; E = string length n
-        add     hl,de                   ; HL = address of last character
-        ld      a,(hl)
-        cp      '.'                     ; Trailing dot is valid (e.g. "100.")
-        jr      z,__val_float_store
-        sub     '0'
-        cp      10
-        jr      c,__val_float_store     ; Last char was a digit -> truly OK
-        ld      hl,(__val_astr)         ; Last char was not a digit -> Error = n+1
-        ld      a,(hl)
-        inc     a
-        ld      hl,(__val_aerr)
-        ld      (hl),a
-        jr      __val_exit
-__val_float_store:
+        jr      nz,__val_err_pos        ; B > 0: error at position len-B+1
+        call    __val_check_last
+        jr      nz,__val_err_nplus1     ; ZF=0: last char not valid -> error at len+1
         ld      hl,(__val_aval)
         call    __storefp
         jr      __val_exit
