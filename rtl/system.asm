@@ -942,7 +942,13 @@ __val_init:
         sbc     hl,de
 
         and     a
-        jr      z,__val_exit
+        jr      nz,__val_not_empty      ; Non-empty string -> normal processing
+        ld      hl,(__val_aerr)         ; Empty string -> set Error = 1
+        ld      (hl),1
+        inc     hl
+        ld      (hl),0
+        jr      __val_exit
+__val_not_empty:
         push    bc
         ret
 
@@ -968,6 +974,18 @@ __val_int:
         ld      (hl),a
         jr      __val_exit
 __val_int_ok:
+        dec     hl                      ; HL-1 = last processed character
+        ld      a,(hl)
+        sub     '0'
+        cp      10
+        jr      c,__val_int_store       ; Last char was a digit -> truly OK
+        ld      hl,(__val_astr)         ; Last char was not a digit -> Error = n+1
+        ld      a,(hl)
+        inc     a
+        ld      hl,(__val_aerr)
+        ld      (hl),a
+        jr      __val_exit
+__val_int_store:
         ld      hl,(__val_aval)
         ld      (hl),de
         jr      __val_exit
@@ -986,6 +1004,23 @@ __val_float:
         ld      (hl),a
         jr      __val_exit
 __val_float_ok:
+        ld      hl,(__val_astr)         ; HL = address of length byte
+        ld      d,0
+        ld      e,(hl)                  ; E = string length n
+        add     hl,de                   ; HL = address of last character
+        ld      a,(hl)
+        cp      '.'                     ; Trailing dot is valid (e.g. "100.")
+        jr      z,__val_float_store
+        sub     '0'
+        cp      10
+        jr      c,__val_float_store     ; Last char was a digit -> truly OK
+        ld      hl,(__val_astr)         ; Last char was not a digit -> Error = n+1
+        ld      a,(hl)
+        inc     a
+        ld      hl,(__val_aerr)
+        ld      (hl),a
+        jr      __val_exit
+__val_float_store:
         ld      hl,(__val_aval)
         call    __storefp
         jr      __val_exit

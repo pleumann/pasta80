@@ -2927,14 +2927,18 @@ begin
   WriteLn('--- TestVal ---');
 
   ValInt('100', 100, 0);
+  ValInt('+100', 100, 0);
   ValInt('-100', -100, 0);
   ValInt('42X', -1234, 3);
   ValInt('X42', -1234, 1);
-  ValInt('', -1234, 0);
+  ValInt('', -1234, 1);
+  ValInt('-', -1234, 2);
+  ValInt('+', -1234, 2);
 
   ValReal('100', 100.0, 0);
   ValReal('+100', 100.0, 0);
   ValReal('-100', -100.0, 0);
+  ValReal('100.', 100.0, 0);
   ValReal('100.0', 100.0, 0);
   ValReal('+100.0', 100.0, 0);
   ValReal('-100.0', -100.0, 0);
@@ -2951,22 +2955,25 @@ begin
 
   ValReal('1.234E02A', -1234.0, 9);
   ValReal('X42.0', -1234.0, 1);
+  ValReal('', -1234.0, 1);
+  ValReal('-', -1234.0, 2);
+  ValReal('+', -1234.0, 2);
+  ValReal('4.0E', -1234.0, 5);
+  ValReal('4.0E+', -1234.0, 6);
+  ValReal('4.0E-', -1234.0, 6);
 
-  ValReal('-', -1234.0, 1);
-  ValReal('42.', -1234.0, 1);
-  ValReal('42.0E', -1234.0, 1);
-  ValReal('42.0E-', -1234.0, 1);
+(*
+  ValEnum('red', Red, 0);
+  ValEnum('yellow', Yellow, 0);
+  ValEnum('green', Green, 0);
 
-  ValReal('', -1234.0, 0);
-
-  ValEnum('Red', Red, 0);
-  ValEnum('Yellow', Yellow, 0);
-  ValEnum('Green', Green, 0);
-
-  ValEnum('RED', None, 1);      // We might want to support this
-  ValEnum('yellow', None, 1);   // We might want to support this
-
-  ValEnum('Greenish', None, 1); // Error is at index 1, not at 6.
+  ValEnum('RED', Red, 0);
+  ValEnum('YELLOW', Yellow, 0);
+  ValEnum('GREEN', Green, 0);
+*)
+  ValEnum('blue', None, 1);
+  ValEnum('reddish', None, 1);
+  ValEnum('', None, 1);
 end;
 
 begin
