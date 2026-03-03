@@ -2962,11 +2962,13 @@ begin
   ValReal('4.0E+', -1234.0, 6);
   ValReal('4.0E-', -1234.0, 6);
 
+  ValEnum('Red', Red, 0);
+  ValEnum('Yellow', Yellow, 0);
+  ValEnum('Green', Green, 0);
 (*
   ValEnum('red', Red, 0);
   ValEnum('yellow', Yellow, 0);
   ValEnum('green', Green, 0);
-
   ValEnum('RED', Red, 0);
   ValEnum('YELLOW', Yellow, 0);
   ValEnum('GREEN', Green, 0);

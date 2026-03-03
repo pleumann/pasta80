@@ -4281,7 +4281,6 @@ begin
   else if T^.Kind = scEnumType then
   begin
     EmitI('ld de,' + T^.Tag);
-    EmitI('ld b,' + IntToStr(T^.High + 1));
     EmitI('call __gete');
   end
   else if T^.Kind = scStringType then
@@ -4680,7 +4679,6 @@ begin
     else if T^.Kind = scEnumType then
     begin
       EmitI('ld de,' + T^.Tag);
-      EmitI('ld b,' + IntToStr(T^.High + 1));
       EmitI('call __val_enum');
     end
     else
@@ -6423,6 +6421,7 @@ begin
     I := 0;
 
     Emit(DataType^.Tag, '', '');
+    Emit('', 'db ' + DataType^.Tag + '_cnt', '');
 
     repeat
       NextToken;
@@ -6438,6 +6437,8 @@ begin
       I := I + 1;
       NextToken;
     until Scanner.Token <> toComma;
+
+    Emit(DataType^.Tag + '_cnt', 'equ ' + IntToStr(I), '');
 
     DataType^.Low := 0;
     DataType^.High := I - 1;

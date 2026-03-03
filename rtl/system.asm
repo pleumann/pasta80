@@ -50,7 +50,8 @@ __linebuf:      ds      128
 ;
 __boolean1:     db      4,"True"
 __boolean0:     db      5,"False"
-__boolean_enum: dw __boolean0, __boolean1
+__boolean_enum: db      2
+                dw      __boolean0, __boolean1
 
 ;
 ; Signed 16 bit '=' check (with help from Ped7g)
@@ -920,6 +921,7 @@ __str_int:
 __val_astr:     dw      0
 __val_aval:     dw      0
 __val_aerr:     dw      0
+__val_atab:     dw      0
 
 ;
 ; __val_init: pop and save arguments, null-terminate string, return to caller.
@@ -953,9 +955,8 @@ __val_init:
 
         and     a
         jr      nz,__val_not_empty      ; Non-empty string -> normal processing
-        ld      a,1
-        call    __val_set_err           ; Empty string -> Error = 1
-        jr      __val_exit
+        ld      a,1                     ; Empty string -> Error position = 1
+        jr      __val_set_err           ; Store error and exit (no call, stack must be clean)
 __val_not_empty:
         push    bc
         ret
@@ -1059,30 +1060,22 @@ __val_float:
         call    __storefp
         jr      __val_exit
 
-; string on stack, de table, b size, a contains code if found, 255 if not
+; string on stack, de=table (first byte = count), a contains code if found, 255 if not
+__val_enum:     ld      (__val_atab),de ; Save table address before __val_init clobbers DE
+                call    __val_init      ; Pop err/val/str, null-terminate string
+                ld      hl,(__val_astr) ; HL = Pascal string (length byte on stack)
+                ld      de,(__val_atab) ; DE = enum table
+                call    __atoe          ; Search: D=0,E=code (found) or DE=257 (not found)
+                ld      a,d
+                and     a
+                jp      nz,__val_enum1  ; Not found -> set error
 
-__val_enum_tbl: dw      0
+                ld      hl,(__val_aval)
+                ld      (hl),e          ; Store enum code (lo)
+                jp      __val_exit
 
-__val_enum_cnt: db      0
-
-__val_enum:     ld      (__val_enum_tbl),de
-                ld      a,b
-                ld      (__val_enum_cnt),a
-                call    __val_init
-                dec     hl      ; We need the length byte
-                ld      de,(__val_enum_tbl)
-                ld      a,(__val_enum_cnt)
-                ld      b,a
-                call    __atoe
-                jr      nc,__val_enum_ok
-                ld      hl,(__val_aerr)
-                inc     (hl)
-                jr      __val_exit
-
-__val_enum_ok:
-        ld      hl,(__val_aval)
-        ld      (hl),e
-        jr      __val_exit
+__val_enum1:    ld      a,1             ; Error always at position 1 (no partial match possible)
+                jp      __val_set_err   ; Store error and exit (jp, not call - stack must be clean)
 
 ;
 ; String length. Arguments and result on stack.
@@ -1772,14 +1765,12 @@ __getr:         push    hl
                 call    __storefp
                 ret
 
-; hl address, de table, b=count
+; hl address, de table (first byte = count)
 __gete:         push    hl
                 push    de
-                push    bc
                 call    __blanks
                 call    __word
                 ld      hl,__buffer
-                pop     bc
                 pop     de
                 call    __atoe
                 pop     hl
@@ -1951,6 +1942,7 @@ __strf_fix_1:
 __stre:
                 add     hl,bc
                 add     hl,bc
+                inc     hl              ; skip count byte
                 ld      b,(hl)
                 inc     hl
                 ld      h,(hl)
@@ -2057,6 +2049,7 @@ __putn:         ex      hl,de
 ;
 __pute:
                 add     hl,hl
+                inc     de              ; skip count byte
                 add     hl,de
                 ld      de,(hl)
                 ex      de,hl
@@ -2101,6 +2094,7 @@ __putn_fmt:     push    bc
 
 __pute_fmt:
                 add     hl,hl
+                inc     de              ; skip count byte
                 add     hl,de
                 ld      de,(hl)
                 ex      de,hl
@@ -2225,9 +2219,11 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 pop     hl
                 ret
 
-; hl string, de table, b size, out de=code, cf set for error
+; hl string, de table (first byte = count), out d=0 if found, e contains code, otherwise d=1
 __atoe:         ld      c,0
                 ex      de,hl
+                ld      b,(hl)          ; read count from first byte of table
+                inc     hl              ; skip count byte, HL now points to first dw
 __atoe1:        push    hl
                 push    de
                 push    bc
