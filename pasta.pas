@@ -7349,6 +7349,8 @@ begin
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
     if DosExitCode <> 0 then
       Error('Failure! :(');
+
+    Build := 0;
   end;
 
   HasStoredState := False;
@@ -7910,7 +7912,7 @@ begin
     if SrcFile <> '' then WorkFile := SrcFile;
     Interactive;
   end
-  else Build;
+  else Halt(Build);
 
   WriteLn;
 end;
