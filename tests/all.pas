@@ -2974,7 +2974,7 @@ begin
   ValEnum('GREEN', Green, 0);
 *)
   ValEnum('blue', None, 1);
-  ValEnum('reddish', None, 1);
+  ValEnum('Reddish', None, 1);
   ValEnum('', None, 1);
 end;
 
