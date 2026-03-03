@@ -7912,9 +7912,12 @@ begin
     if SrcFile <> '' then WorkFile := SrcFile;
     Interactive;
   end
-  else Halt(Build);
-
-  WriteLn;
+  else
+  begin
+    I := Build;
+    WriteLn;
+    Halt(I);
+  end;
 end;
 
 (* -------------------------------------------------------------------------- *)
