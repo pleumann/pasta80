@@ -1312,7 +1312,9 @@ end;
  * the offset of the symbol on the stack will be assigned (although, for
  * parameters, it will be adjusted later once all parameters are known).
  *)
-procedure SetDataType(Sym: PSymbol; DataType: PSymbol);
+procedure SetDataType(Sym: PSymbol; DataType: PSymbol; IsParam: Boolean);
+var
+  Size: Integer;
 begin
   Sym^.DataType := DataType;
 
@@ -1324,12 +1326,15 @@ begin
   else
   begin
     if Sym^.IsRef then
-      Offset := Offset - 2                // A var parameter requires two bytes
+      Size := 2                            // A var parameter requires two bytes
+    else if IsParam and (DataType^.Kind = scStringType) then
+      Size := 256                          // __loadstr always reserves 256 bytes
     else if DataType^.Value = 1 then
-      Offset := Offset - 2                // Two bytes is also the minimum on the stack
+      Size := 2                            // Two bytes is also the minimum on the stack
     else
-      Offset := Offset - DataType^.Value; // Everything else just uses its real size
+      Size := DataType^.Value;             // Everything else just uses its real size
 
+    Offset := Offset - Size;
     Sym^.Value := Offset;
   end;
 end;
@@ -2749,8 +2754,14 @@ begin
     begin
       if Sym^.ArgIsRef[I] then J := 2 else
       begin
-        J := Sym^.ArgTypes[I]^.Value;
-        if J < 2 then J := 2;
+        (* __loadstr always reserves 256 bytes on the stack regardless of the
+           declared string length, so cleanup must always free 256 bytes for
+           string value parameters — not just DataType^.Value (= N+1). *)
+        if Sym^.ArgTypes[I]^.Kind = scStringType then J := 256 else
+        begin
+          J := Sym^.ArgTypes[I]^.Value;
+          if J < 2 then J := 2;
+        end;
       end;
       K:= K + J;
     end;
@@ -3997,6 +4008,14 @@ begin
   begin
     if (Left^.Kind = scStringType) and (Right^.Kind = scStringType) then
     begin
+      (* Clamp the length byte of the string on the stack to the target type's
+         maximum length, so that value parameters and assignments to shorter
+         string types never carry oversized data into the callee's frame. *)
+      if Left^.Value < Right^.Value then
+      begin
+        EmitI('ld a,' + IntToStr(Left^.Value - 1));
+        EmitI('call __strclamp');
+      end;
       TypeCheck := Left;
       Exit;
     end;
@@ -5404,7 +5423,12 @@ begin
       T := Sym^.DataType; (* Type = Type(func) *)
       if Sym^.IsStdCall then
       begin
-        if T.Value = 1 then EmitLiteral(0) else EmitSpace(T.Value); (* Result *)
+        (* For string return types, __loadstr/string ops expect 256 bytes on the
+           stack (same convention as for string value parameters).  Reserve the
+           full 256 bytes so that the result slot has the right size. *)
+        if T^.Kind = scStringType then EmitSpace(256)
+        else if T.Value = 1 then EmitLiteral(0)
+        else EmitSpace(T.Value); (* Result *)
       end;
       NextToken;
       ParseArguments(Sym);
@@ -7033,9 +7057,7 @@ begin
     begin
       if AbsCode and (DataType^.Value <= 32) then Old^.Level := 0;
 
-      SetDataType(Old, DataType);
-
-      // TODO Should this be part of SetDataType?
+      SetDataType(Old, DataType, False);
       if IsAbs then Old^.Tag := Tag
       else if Old^.Level = 0 then
       begin
@@ -7088,7 +7110,7 @@ begin
   begin
     Old := Old^.Next;
     if Old^.Kind = scVar then
-      SetDataType(Old, DataType);
+      SetDataType(Old, DataType, True);
   end;
 end;
 
