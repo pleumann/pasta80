@@ -2204,7 +2204,7 @@ var
   MyStr15: TStr15;
   MyStr0: TStr0;
   S, T: String;
-  I: Integer;
+  I, N: Integer;
   A: TStringArray;
 
   function ReverseFunc(S: TStr255): TStr255;
@@ -2259,6 +2259,73 @@ var
       end;
       if not Changed then Exit;
     end;
+  end;
+
+  // Various regression tests for String[n] with n < 255 used as parameters
+  // and return values. Basically, whenever we get "narrower" and the String
+  // is longer than the target String would allow, it needs to be shortened.
+
+  function StrLength(S: TStr15): Byte;
+  begin
+    StrLength := Length(S);
+  end;
+
+  function StrClamp1(S: TStr15): String;
+  var
+    I: Byte;
+  begin
+    for I := 1 to Length(S) do
+      S[I] := UpCase(S[I]);
+
+    StrClamp1 := S;
+  end;
+
+  function StrClamp2(S: String): TStr15;
+  var
+    I: Byte;
+  begin
+    for I := 1 to Length(S) do
+      S[I] := UpCase(S[I]);
+
+    StrClamp2 := S;
+  end;
+
+  function StrClamp3(S: TStr15): TStr15;
+  var
+    I: Byte;
+  begin
+    for I := 1 to Length(S) do
+      S[I] := UpCase(S[I]);
+
+    StrClamp3 := S;
+  end;
+
+  function StrClamp4(S: TStr15): TStr15;
+  var
+    I: Byte;
+  begin
+    for I := 1 to Length(S) do
+      S[I] := UpCase(S[I]);
+
+    StrClamp4 := S;
+  end;
+
+  // Stack-balance tests: after calls with TStr15 value params, an Integer
+  // sentinel on the stack must be unaffected (catches the 256 vs N+1 bug).
+
+  function StrPassThru(S: TStr15): TStr15;
+  begin
+    StrPassThru := S;
+  end;
+
+  procedure StrVarAndVal(S: TStr15; var R: TStr15);
+  begin
+    R := S;
+  end;
+
+  function StrTwoParams(A, B: TStr15): String;
+  begin
+    StrTwoParams := A + B;
   end;
 
 begin
@@ -2377,6 +2444,47 @@ begin
 
   Assert('Spectru' + 'm' = 'Spectrum');
   Assert('S' + 'pectrum' = 'Spectrum');
+
+  // Regression tests for broken short strings as parameters and return values
+
+  S := 'The quick brown fox jumped over the lazy dog.';
+
+  Assert(StrLength('XYZ') = 3);
+  Assert(StrLength(S) = 15);
+
+  Assert(StrClamp1('XYZ') = 'XYZ');
+  Assert(StrClamp1(S) = 'THE QUICK BROWN');
+
+  Assert(StrClamp2('XYZ') = 'XYZ');
+  Assert(StrClamp2(S) = 'THE QUICK BROWN');
+
+  Assert(StrClamp3('XYZ') = 'XYZ');
+  Assert(StrClamp3(S) = 'THE QUICK BROWN');
+
+  Assert(StrClamp4('XYZ') = 'XYZ');
+  Assert(StrClamp4(S) = 'THE QUICK BROWN');
+
+  // Stack-balance checks: N must survive each call unchanged.
+  // Use MyStr15 (TStr15) as argument to avoid triggering __strclamp,
+  // which is tested separately above via StrClamp1..4.
+
+  MyStr15 := 'Hello';
+  N := 42;
+  Assert(StrPassThru(MyStr15) = 'Hello');
+  Assert(N = 42);                          // Stack still balanced after value param
+
+  N := 99;
+  StrVarAndVal(MyStr15, MyStr15);
+  Assert(MyStr15 = 'Hello');
+  Assert(N = 99);                          // Stack still balanced after val+var param
+
+  N := 7;
+  Assert(StrTwoParams('Foo', 'Bar') = 'FooBar');
+  Assert(N = 7);                           // Stack still balanced after two value params
+
+  Assert(StrPassThru(StrPassThru('Nest')) = 'Nest');  // Nested call
+  Assert(N = 7);                           // Stack still sane after nested call
+
   WriteLn;
 end;
 

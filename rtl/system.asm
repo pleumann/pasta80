@@ -1094,6 +1094,20 @@ __length:
         ret
 
 ;
+; Clamp the length byte of the string on top of the stack to max length A.
+; Used when assigning or passing a wider string type to a narrower one.
+; A = MaxLen (= declared string length, i.e. string[N] -> A = N).
+; The string sits at SP+2 (SP+0 and SP+1 are the return address).
+;
+__strclamp:
+        ld      hl,2
+        add     hl,sp
+        cp      (hl)
+        ret     nc
+        ld      (hl),a
+        ret
+
+;
 ; Load string from HL to stack, return properly.
 ;
 __loadstr:
