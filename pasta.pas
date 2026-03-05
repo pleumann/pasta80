@@ -1004,7 +1004,7 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, HaltProc, StrProc, ReadProc,
   ReadLnProc, WriteProc, WriteLnProc, EraseProc, RenameProc, AssignProc,
   ResetProc, RewriteProc, AppendProc, FlushProc, CloseProc, SeekProc,
-  SeekEofProc, SeekEolnProc, BlockReadProc, BlockWriteProc, FilePosFunc,
+  SeekEofFunc, SeekEolnFunc, BlockReadProc, BlockWriteProc, FilePosFunc,
   FileSizeFunc, EolFunc, EofFunc, AbsFunc, AddrFunc, DisposeProc, EvenFunc,
   HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc, FillProc, IncProc,
   DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc,
@@ -1430,8 +1430,8 @@ begin
   CloseProc := RegisterMagic(scProc, 'Close');
   FlushProc := RegisterMagic(scProc, 'Flush');
   SeekProc := RegisterMagic(scProc, 'Seek');
-  SeekEofProc := RegisterMagic(scProc, 'SeekEof');
-  SeekEolnProc := RegisterMagic(scProc, 'SeekEoln');
+  SeekEofFunc := RegisterMagic(scFunc, 'SeekEof');
+  SeekEolnFunc := RegisterMagic(scFunc, 'SeekEoln');
 
   BlockReadProc := RegisterMagic(scProc, 'BlockRead');
   BlockWriteProc := RegisterMagic(scProc, 'BlockWrite');
@@ -4223,7 +4223,7 @@ begin
 
     ParseBuiltInFunction := dtString;
   end
-  else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) then
+  else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) or (Func = SeekEofFunc) or (Func = SeekEolnFunc) then
   begin
     EmitI('push de');
 
@@ -4422,6 +4422,12 @@ begin
             EmitCall(LookupBuiltInOrFail('TextReadInt'))
           else if T = dtReal then
             EmitCall(LookupBuiltInOrFail('TextReadFloat'))
+          else if T^.Kind = scEnumType then
+          begin
+            EmitI('ld hl,' + T^.Tag);
+            EmitI('push hl');
+            EmitCall(LookupBuiltInOrFail('TextReadEnum'));
+          end
           else
             Error('Unreadable type');
         end;
@@ -4430,7 +4436,7 @@ begin
         begin
           EmitI('ld hl,(__cur_file)');
           EmitI('push hl');
-          EmitCall(LookupBuiltInOrFail('TextSeekEoln'));
+          EmitCall(LookupBuiltInOrFail('TextSkipToEoln'));
         end;
       end
       else if T^.Kind = scFileType then
@@ -4797,7 +4803,7 @@ begin
       EmitCall(LookupBuiltInOrFail('FileAssign'));
     end;
   end
-  else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = AppendProc) or (Proc = CloseProc) or (Proc = FlushProc) or (Proc = SeekEofProc) or (Proc = SeekEolnProc) then
+  else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = AppendProc) or (Proc = CloseProc) or (Proc = FlushProc) then
   begin
     NextToken;
     Expect(toLParen);

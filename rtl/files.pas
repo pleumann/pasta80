@@ -248,17 +248,64 @@ begin
   end;
 end;
 
-procedure TextSeekEoln(var T: TextRec);
+(* Consumes the rest of the current line including the CR/LF line ending.
+   Used internally by ReadLn after reading a value. *)
+procedure TextSkipToEoln(var T: TextRec);
 var
   C: Char;
 begin
   with T do
   begin
-    while DMA[Offset] <> #13 do
+    { Consume rest of line up to (but not including) CR or EOF }
+    while (DMA[Offset] <> #13) and (DMA[Offset] <> #26) and not EndOfFile do
     begin
       TextReadChar(T, C);
       if LastError <> 0 then Exit;
     end;
+    { Consume CR+LF so next read starts at the beginning of the next line }
+    if DMA[Offset] = #13 then
+    begin
+      TextReadChar(T, C);          { consume CR }
+      if LastError <> 0 then Exit;
+      if DMA[Offset] = #10 then   { consume LF if present }
+        TextReadChar(T, C);
+    end;
+  end;
+end;
+
+{ --- Public Boolean query functions (TP5.5 semantics) --- }
+
+(* Skips spaces and tabs on the current line (no newlines), then returns
+   True if the next character is the end-of-line marker (CR) or EOF. *)
+function TextSeekEoln(var T: TextRec): Boolean;
+var
+  C: Char;
+begin
+  with T do
+  begin
+    while (DMA[Offset] = ' ') or (DMA[Offset] = #9) do
+    begin
+      TextReadChar(T, C);
+      if LastError <> 0 then Exit;
+    end;
+    TextSeekEoln := (DMA[Offset] = #13) or (DMA[Offset] = #26) or EndOfFile;
+  end;
+end;
+
+(* Skips all whitespace including newlines, then returns True if the next
+   character is the EOF marker or the file's EndOfFile flag is set. *)
+function TextSeekEof(var T: TextRec): Boolean;
+var
+  C: Char;
+begin
+  with T do
+  begin
+    while (DMA[Offset] <= ' ') and (DMA[Offset] <> #26) and not EndOfFile do
+    begin
+      TextReadChar(T, C);
+      if LastError <> 0 then Exit;
+    end;
+    TextSeekEof := (DMA[Offset] = #26) or EndOfFile;
   end;
 end;
 
@@ -267,7 +314,7 @@ begin
   with T do
   begin
     TextReset(T);
-    TextSeekEof(T);
+    TextGotoEof(T);
 
     if LastError <> 0 then Exit;
 
