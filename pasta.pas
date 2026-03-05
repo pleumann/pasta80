@@ -4804,6 +4804,15 @@ begin
     NextToken;
     T := ParseVariableRef;
     if T^.Kind <> scFileType then Error('File type expected');
+
+    { Rename takes a second parameter (new filename) }
+    if Proc = RenameProc then
+    begin
+      Expect(toComma);
+      NextToken;
+      ParseExpression;  { New filename }
+    end;
+
     Expect(toRParen);
     NextToken;
 
