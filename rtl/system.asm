@@ -1060,6 +1060,19 @@ __val_float:
         call    __storefp
         jr      __val_exit
 
+; Pascal-callable wrapper around __val_enum for use by TextReadEnum in files.pas.
+; Normal __val_enum is called by the compiler with DE=table already set.
+; Here the table address arrives as the top-most stack parameter (Tab: Pointer),
+; pushed by the caller after the standard string/val-addr/err-addr triple.
+;
+; Stack on entry (top → deep):  ret_addr | Tab | addr_of_Err | addr_of_V | string(256)
+; After the three instructions:  ret_addr | addr_of_Err | addr_of_V | string(256), DE=Tab
+; That is exactly the layout __val_enum expects with DE = table.
+;
+__tryval_enum:  pop     bc              ; BC = return address
+                pop     de              ; DE = Tab (enum literal table)
+                push    bc              ; restore return address
+
 ; string on stack, de=table (first byte = count), a contains code if found, 255 if not
 __val_enum:     ld      (__val_atab),de ; Save table address before __val_init clobbers DE
                 call    __val_init      ; Pop err/val/str, null-terminate string

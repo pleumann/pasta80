@@ -121,12 +121,19 @@ var
 begin
   S := '';
 
-  while Length(S) < 255 do
+  { Skip leading whitespace (spaces, CR, LF), but stop at EOF marker }
+  while (T.DMA[T.Offset] <= ' ') and (T.DMA[T.Offset] <> #26) do
   begin
     TextReadChar(T, C);
     if LastError <> 0 then Exit;
+  end;
 
-    if C > ' ' then S := S + C else Break;
+  { Read word characters; peek at current byte without consuming the delimiter }
+  while (Length(S) < 255) and (T.DMA[T.Offset] > ' ') do
+  begin
+    TextReadChar(T, C);
+    if LastError <> 0 then Exit;
+    S := S + C;
   end;
 end;
 
@@ -148,6 +155,22 @@ begin
   TextReadWord(T, S);
   if LastError <> 0 then Exit;
   Val(S, R, E);
+end;
+
+(* Pascal-callable entry point for __val_enum (see rtl/system.asm: __tryval_enum).
+   Pops Tab from the stack into DE, then falls through to __val_enum.
+   Parameters: S (string), V (target byte, var), Err (error code, var), Tab (enum table). *)
+procedure TryValEnum(S: String; var V: Byte; var Err: Integer; Tab: Pointer);
+  external '__tryval_enum';
+
+procedure TextReadEnum(var T: TextRec; var E: Byte; Tab: Pointer);
+var
+  S: String;
+  Err: Integer;
+begin
+  TextReadWord(T, S);
+  if LastError <> 0 then Exit;
+  TryValEnum(S, E, Err, Tab);
 end;
 
 procedure TextWriteChar(var T: TextRec; C: Char);
@@ -231,7 +254,11 @@ begin
     TextEof := EndOfFile or (DMA[Offset] = #26);
 end;
 
-procedure TextSeekEof(var T: TextRec);
+{ --- Internal helpers (not part of the public API) --- }
+
+(* Seeks to the physical end of file by reading sector-by-sector.
+   Used internally by TextAppend. *)
+procedure TextGotoEof(var T: TextRec);
 var
   E: Integer;
   C: Char;
