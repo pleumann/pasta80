@@ -40,10 +40,12 @@ The compiler also has some features that were borrowed from or inspired by later
   * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
   * Binary literals (using a `%` prefix).
   * `Break` and `Continue` for loop control.
+  * `Exit` in functions accepts an optional parameter for the result (like `Exit(42)`).
   * Querying the keyboard via `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
   * `Include` and `Exclude` for more efficient handling of sets.
+  * Enumeration types can be used in `Read[Ln]`, `Write[Ln]`, `Val` and `Str`.
   * A simple `Assert` facility that counts passes/fails and shows the failed line number.
 
 Since that covers most of the functionality of Turbo Pascal 3 you might ask what is missing. These are the current limitations:
