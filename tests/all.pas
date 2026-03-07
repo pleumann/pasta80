@@ -2757,6 +2757,8 @@ begin
   Assert(S = 'ZZZ');
 end;
 
+const Dummy2 = 0;
+
 overlay procedure TestSubrange;
 var
   V1: SubRange1;
