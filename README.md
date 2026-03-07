@@ -72,6 +72,8 @@ $ fpc pasta
 
 The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of various other external tools. The compiler tries to detect these external tools automatically (from your system's `PATH`), but sometimes it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `misc` that you can adapt).
 
+Note: In order to use all features sjasmplus version 1.22.0 or newer is required.
+
 ```
 # PASTA/80 config
 
@@ -319,6 +321,12 @@ These screenshots show some applications compiled for the ZX Spectrum 48K target
 | Graphics Demo | Equation Solver |
 | :-------: | :----: |
 | ![Screenshot](docs/images/graphics.png) | ![Screenshot](docs/images/pqformula.png) |
+
+These final screenshots show two applications compiled for the ZX Spectrum Next target and running in the CSpect emulator.
+
+| Mandelbrot | 3D Hat |
+| :--------: | :--------: |
+| ![Screenshot](docs/images/mandelbrot.png) | ![Screenshot](docs/images/hat256.png) |
 
 # License
 
