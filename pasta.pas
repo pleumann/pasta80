@@ -7408,7 +7408,7 @@ begin
   begin
     HasStoredState := True;
 
-    Build := 1;
+    Build := 2;
 
     WriteLn('Compiling...');
     WriteLn('  ', PosixToNative(FRelative(SrcFile)),
@@ -7467,7 +7467,7 @@ begin
     CloseTarget();
     CloseInput();
 
-    Build := 2;
+    Build := 3;
 
     //CopyFile(HomeDir + '/misc/loader.tap', BinFile);
 
