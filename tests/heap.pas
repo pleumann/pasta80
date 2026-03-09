@@ -2,6 +2,7 @@ program Heap;
 
 var
   P: Pointer;
+  Org: Integer;
 
 procedure DumpHeap;
 var
@@ -63,17 +64,24 @@ end;
 procedure HeapStress;
 var
   P: array[0..128] of Pointer;
-  Size, I: Integer;
+  Size, I, Org: Integer;
 begin
+  Org := MemAvail;
+
   Size := 128;
   while Size >= 4 do
   begin
     Writeln('Block size=', Size);
     for I := 0 to 127 do
       GetMem(P[I], Size);
+
+    Assert(MemAvail < Org);
+
     for I := 0 to 127 do
       FreeMem(P[I], Size);
     Size := Size - 4;
+
+    Assert(MemAvail = Org);
   end;
 
   WriteLn;
@@ -115,10 +123,10 @@ var
   TheFullMonty: PNode;
 
 begin
+  WriteLn;
+  WriteLn('*** PASTA/80 Test Suite ***');
+  WriteLn;
 
-{  SimpleTest;
-  Exit;
- } 
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
   WriteLn;
 
@@ -126,6 +134,8 @@ begin
 
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
   WriteLn;
+
+  Org := MemAvail;
 
   TheFullMonty := Setup(Setup(Setup(Setup(Setup(Setup(nil,
     'Press a key and try again!'),
@@ -138,9 +148,20 @@ begin
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
   WriteLn;  
 
+  Assert(MemAvail < Org);
+
   Print(TheFullMonty);
   Clear(TheFullMonty);
 
   WriteLn;  
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
+
+  Assert(MemAvail = Org);
+
+  WriteLn;
+  WriteLn('************************');
+  WriteLn('Passed assertions: ', AssertPassed);
+  WriteLn('Failed assertions: ', AssertFailed);
+  WriteLn('************************');
+  WriteLn;
 end.
