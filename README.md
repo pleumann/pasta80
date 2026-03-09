@@ -72,8 +72,6 @@ $ fpc pasta
 
 The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of various other external tools. The compiler tries to detect these external tools automatically (from your system's `PATH`), but sometimes it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `misc` that you can adapt).
 
-Note: In order to use all features sjasmplus version 1.22.0 or newer is required.
-
 ```
 # PASTA/80 config
 
