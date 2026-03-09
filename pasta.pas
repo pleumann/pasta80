@@ -516,7 +516,7 @@ type
   (**
    * The three platforms we currently support.
    *)
-  TBinaryType = (btCPM, btZX, btZX128, btZXN);
+  TBinaryType = (btCPM, btZX, btZX128, btZXN, btAgon);
 
   (**
    * The possible output formats.
@@ -1494,6 +1494,11 @@ begin
   if Binary = btCPM then
   begin
     BDosFunc := RegisterMagic(scFunc, 'Bdos');
+    BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
+  end
+  else if Binary = btAgon then
+  begin
+    BDosFunc := RegisterMagic(scFunc, 'Bdos');    (* temporary until we remove the BDOS references*)
     BDosHLFunc := RegisterMagic(scFunc, 'BdosHL');
   end;
 end;
@@ -2614,6 +2619,11 @@ begin
   begin
     Emit('NXT', 'equ 1', 'Target is ZX Spectrum Next');
     EmitI('device ZXSPECTRUMNEXT');
+  end
+  else if Binary = btAgon then
+  begin
+    Emit('AGON', 'equ 1', 'Target is Agon Light/Console8');
+    EmitI('device NOSLOT64K');
   end;
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
@@ -2687,6 +2697,8 @@ begin
 
   if Binary = btCPM then
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
+  else if Binary = btAgon then
+    EmitI('savebin "' + BinFile + '",$0000,HEAP')
   else if Format = tfBinary then
     EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
   else if Format = tfPlus3Dos then
@@ -2752,7 +2764,7 @@ begin
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
 
-  if (Binary in [btZX, btZX128]) then
+  if (Binary in [btZX, btZX128, btAgon]) then
     EmitI('.BPLIST "' + ChangeExt(BinFile, '.brk') + '" fuse');
 end;
 
@@ -4388,7 +4400,14 @@ begin
         EmitI('jr nc,$+4');
         EmitI('db $fd, $00');
       end
-      else
+      else if Binary = btAgon then
+      begin
+        EmitI('pop af');
+        EmitI('jr nc,$+3');
+        EmitI('.setbp');
+        EmitI('nop');
+      end
+      else if Binary in [btZX, btZX128] then
       begin
         EmitI('pop hl');
         EmitI('.setbp "z80:hl!=0"');
@@ -4400,7 +4419,9 @@ begin
     begin
       if Binary = btZXN then
         EmitI('db $fd, $00')
-      else
+      else if Binary = btAgon then
+        EmitI('.setbp')
+      else if Binary in [btZX, btZX128] then
         EmitI('.setbp');
     end;
 
@@ -7334,6 +7355,8 @@ begin
     OpenInput(HomeDir + '/rtl/zx.pas')
   else if Binary = btZX128 then
     OpenInput(HomeDir + '/rtl/zx128.pas')
+  else if Binary = btAgon then
+    OpenInput(HomeDir + '/rtl/agon.pas')
   else
     OpenInput(HomeDir + '/rtl/next.pas');
 
@@ -7438,6 +7461,8 @@ begin
 
     if Binary = btCPM then
       AddrOrigin := $0100
+    else if Binary = btAgon then
+      AddrOrigin := $0000
     else
       AddrOrigin := $8000;
 
@@ -7497,7 +7522,7 @@ const
   (**
    * Printable names of supported platforms. Must be aligned with TBinaryType.
    *)
-  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next');
+  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next', 'Agon');
 
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
@@ -7644,7 +7669,8 @@ procedure DoRun(Debug, Shift: Boolean);
 const
   NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
 var
-  Args, RunFile: String;
+  Args, RunFile, S, T: String;
+  BP: Text;
 begin
   if Length(BinFile) <> 0 then
   begin
@@ -7658,6 +7684,33 @@ begin
       end
       else
         Execute(TnylpoCmd, BinFile)
+    end
+    else if Binary = btAgon then
+    begin
+      GetDir(0, S);
+      ChDir('/Users/joerg/Downloads/fab-agon-emulator-v1.0.0-macos');
+      CopyFile(BinFile, 'sdcard/' + NameOnly(BinFile));
+      WriteLn('--> ', NameOnly(BinFile));
+      StrToFile(NameOnly(BinFile), 'sdcard/autoexec.txt');
+
+      Args := '';
+
+      if Debug then
+      begin
+        Args := Args + ' -d';
+        Assign(BP, ChangeExt(BinFile, '.brk'));
+        Reset(BP);
+        while not Eof(BP) do
+        begin
+          ReadLn(BP, T);
+          if StartsWith(T, 'br ') then Args := Args + ' -b 0x4' + Copy(T, 6, 255);
+        end;
+        Close(BP);
+      end;
+
+      WriteLn(Args);
+      Execute('./fab-agon-emulator', Args);
+      ChDir(S);
     end
     else if Binary in [btZX, btZX128] then
     begin
@@ -7965,6 +8018,7 @@ begin
     WriteLn('  --zx48         Sets target to ZX Spectrum 48K');
     WriteLn('  --zx128        Sets target to ZX Spectrum 128K');
     WriteLn('  --zxnext       Sets target to ZX Spectrum Next');
+    WriteLn('  --agon         Sets target to Agon Light/Console8');
     WriteLn;
     WriteLn('  --bin          Generates raw binary file (default)');
     WriteLn('  --3dos         Generates binary with +3DOS header');
@@ -8017,6 +8071,13 @@ begin
       Binary := btZXN;
       AddrOrigin := 32768;
       AddrLimit := 65536;
+      Overlays := False;
+    end
+    else if SrcFile = '--agon' then
+    begin
+      Binary := btAgon;
+      AddrOrigin := $0000;
+      AddrLimit := $10000;
       Overlays := False;
     end
     else if SrcFile = '--ovr' then
