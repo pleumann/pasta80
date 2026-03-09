@@ -10,7 +10,7 @@ uses
   {$ifdef darwin} BaseUnix, {$endif} Keyboard, Dos, Math, Process;
 
 const
-  Version = '0.96';
+  Version = '0.97';
 
 (* -------------------------------------------------------------------------- *)
 (* --- Utility functions ---------------------------------------------------- *)
@@ -430,7 +430,7 @@ end;
 (**
  * Executes the given program with the given arguments.
  *)
-procedure Execute(const Path, Args: String);
+procedure Execute(Path, Args: String);
 begin
   {$ifndef windows}
   if EndsWith(Path, '.exe') then
@@ -442,7 +442,7 @@ begin
   else
     Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
   {$else}
-  Args := ReplaceChar('''', '"');
+  Args := ReplaceChar(Args, '''', '"');
   Exec(Path, Args);
   {$endif}
 

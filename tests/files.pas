@@ -336,8 +336,11 @@ begin
 end;
 
 overlay procedure TestTypedFileIO;
+const
+  CoolStr: array[Boolean] of String = ('Uncool', 'Cool');
 var
   RecCount, RecIdx, FS, LastYear: Integer;
+  LastCool: Boolean;
 begin
   WriteLn('--- TestTypedFileIO ---');
 
@@ -410,15 +413,18 @@ begin
   { Verify reverse read using Seek }
   RecCount := 0;
   LastYear := 9999;
+  LastCool := False;
   for RecIdx := FS - 1 downto 0 do
   begin
     Seek(BinFile, RecIdx);
     Read(BinFile, ComputerRecVar);
     with ComputerRecVar do
-      WriteLn('#', RecCount, ': ', Name, ' (', Year, ')');
+      WriteLn('#', RecCount, ': ', Name, ' (', Year, ', ', CoolStr[Cool], ')');
     Inc(RecCount);
     Assert(ComputerRecVar.Year <= LastYear);
+    Assert(ComputerRecVar.Cool = not LastCool);
     LastYear := ComputerRecVar.Year;
+    LastCool := ComputerRecVar.Cool;
   end;
   Assert(RecCount = FS);
 
@@ -497,7 +503,10 @@ begin
 end;
 
 begin
-  {$i-}
+  WriteLn;
+  WriteLn('*** PASTA/80 Test Suite ***');
+  WriteLn;
+
   TestFileReadInt;
   TestFileReadFloat;
   TestFileReadEnum;
@@ -508,11 +517,11 @@ begin
   TestTypedFileIO;
   TestFileErase;
   TestFileRename;
-  {$i+}
-
-  { Close any open files to avoid cleanup errors }
 
   WriteLn;
-  WriteLn('All tests completed successfully!');
+  WriteLn('************************');
+  WriteLn('Passed assertions: ', AssertPassed);
+  WriteLn('Failed assertions: ', AssertFailed);
+  WriteLn('************************');
   WriteLn;
 end.
