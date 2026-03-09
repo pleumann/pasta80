@@ -50,7 +50,8 @@ __linebuf:      ds      128
 ;
 __boolean1:     db      4,"True"
 __boolean0:     db      5,"False"
-__boolean_enum: dw __boolean0, __boolean1
+__boolean_enum: db      2
+                dw      __boolean0, __boolean1
 
 ;
 ; Signed 16 bit '=' check (with help from Ped7g)
@@ -909,87 +910,185 @@ __str_int:
         ld      (hl),a
         ret
 
-__val_int:
-        ld      hl,6
-        add     hl,sp
-        ld      a,(hl)
-        inc     hl
-        call    __atoi
-        ld      hl,4
-        add     hl,sp
-        ld      bc,(hl)
-        ld      hl,bc
-        ld      (hl),de
-        pop     de
-        ld      hl,260
-        add     hl,sp
-        ld      sp,hl
-        push    de
-        ret                     ; FIXME: Error reporting
+;
+; Pascal "Val" magic procedure. All arguments on the stack.
+;
+; Shared variables, set by __val_init:
+;   __val_astr: address of the string's length byte on the stack
+;   __val_aval: address of the result variable
+;   __val_aerr: address of the error variable
+;
+__val_astr:     dw      0
+__val_aval:     dw      0
+__val_aerr:     dw      0
+__val_atab:     dw      0
 
-__val_float:
-        ld      hl,6
-        add     hl,sp
-;        ld      a,(hl)
-;        inc     hl
-        call    __atof
-        exx
-        pop     de
+;
+; __val_init: pop and save arguments, null-terminate string, return to caller.
+; Pops: ret-addr, err-addr, val-addr (both from Pascal call).
+; Jumps to __val_exit (skipping actual conversion) if string is empty.
+;
+__val_init:
         pop     bc
+        pop     de
         pop     hl
-        call    __storefp
-        exx
+        ld      (__val_aerr),hl
+        xor     a
+        ld      (hl),a          ; Clear error variable (lo)
+        inc     hl
+        ld      (hl),a          ; Clear error variable (hi)
+        pop     hl
+        ld      (__val_aval),hl
+        ld      hl,0
+        add     hl,sp
+        ld      (__val_astr),hl
+        push    de
+        ld      a,(hl)          ; A = string length
+        inc     hl              ; HL = first character
+
+        ld      d,0
+        ld      e,a
+        add     hl,de
+        ld      (hl),0          ; Place null terminator after last character
+        and     a
+        sbc     hl,de           ; Restore HL = first character
+
+        and     a
+        jr      nz,__val_not_empty      ; Non-empty string -> normal processing
+        ld      a,1                     ; Empty string -> Error position = 1
+        jr      __val_set_err           ; Store error and exit (no call, stack must be clean)
+__val_not_empty:
+        push    bc
+        ret
+
+;
+; __val_set_err: store A as the error position in __val_aerr, then fall through
+;               to __val_exit. Clobbers HL.
+;
+__val_set_err:
+        ld      hl,(__val_aerr)
+        ld      (hl),a
+        inc     hl
+        ld      (hl),0
+
+;
+; __val_exit: discard the 256-byte string from the stack and return.
+;
+__val_exit:
+        pop     de
         ld      hl,256
         add     hl,sp
         ld      sp,hl
         push    de
-        ret                     ; FIXME: Error reporting
+        ret
 
-; string on stack, de table, b size, a contains code if found, 255 if not
-__val_enum:     ld      hl,6
-                add     hl,sp
-                call    __atoe
+;
+; __val_err_pos: called when __atoi/__atof returned B > 0 (unprocessed chars).
+; Computes error position as (string_length - B + 1) and stores it.
+;
+__val_err_pos:
+        ld      hl,(__val_astr)
+        ld      a,(hl)
+        sub     b
+        inc     a
+        jr    __val_set_err
+
+;
+; __val_err_nplus1: called when B = 0 but the last char was not a valid
+; terminator. Computes error position as (string_length + 1) and stores it.
+;
+__val_err_nplus1:
+        ld      hl,(__val_astr)
+        ld      a,(hl)
+        inc     a
+        jr      __val_set_err
+
+;
+; __val_check_last: validate the last character of the string after a
+; successful conversion (B = 0). Valid terminators are digits '0'..'9'
+; and '.', which is a legal trailing character for floating-point numbers
+; and harmless for integers (__atoi always stops before '.', so B > 0
+; would have been set in that case and this routine would never be reached).
+; Returns with ZF=1 on success, ZF=0 on failure. Clobbers AF, HL.
+;
+__val_check_last:
+        ld      hl,(__val_astr)         ; HL = address of length byte
+        push    de
+        ld      d,0
+        ld      e,(hl)                  ; E = string length n
+        add     hl,de                   ; HL = address of last character
+        pop     de
+        ld      a,(hl)
+        cp      '.'                     ; Trailing dot is valid (e.g. "100.")
+        ret     z                       ; ZF=1: OK
+        sub     '0'
+        cp      10                      ; ZF=0,CF=1 if digit; ZF=0,CF=0 if not
+        jr      c,__val_check_ok        ; CF=1: digit -> OK
+        or      1                       ; ZF=0: failure
+        ret
+__val_check_ok:
+        xor     a                       ; ZF=1: OK
+        ret
+
+;
+; __val_int: Val() for Integer. Calls __atoi, then validates result.
+;
+__val_int:
+        call    __val_init
+        call    __atoi          ; DE = result, B = remaining chars (0 if all consumed)
+        ld      a,b
+        and     a
+        jr      nz,__val_err_pos        ; B > 0: error at position len-B+1
+        call    __val_check_last
+        jr      nz,__val_err_nplus1     ; ZF=0: last char not valid -> error at len+1
+        ld      hl,(__val_aval)
+        ld      (hl),de
+        jr      __val_exit
+
+;
+; __val_float: Val() for Real. Calls __atof, then validates result.
+;
+__val_float:
+        call    __val_init
+        call    __atof          ; B = remaining chars (0 if all consumed)
+        ld      a,b
+        and     a
+        jr      nz,__val_err_pos        ; B > 0: error at position len-B+1
+        call    __val_check_last
+        jr      nz,__val_err_nplus1     ; ZF=0: last char not valid -> error at len+1
+        ld      hl,(__val_aval)
+        call    __storefp
+        jr      __val_exit
+
+; Pascal-callable wrapper around __val_enum for use by TextReadEnum in files.pas.
+; Normal __val_enum is called by the compiler with DE=table already set.
+; Here the table address arrives as the top-most stack parameter (Tab: Pointer),
+; pushed by the caller after the standard string/val-addr/err-addr triple.
+;
+; Stack on entry (top → deep):  ret_addr | Tab | addr_of_Err | addr_of_V | string(256)
+; After the three instructions:  ret_addr | addr_of_Err | addr_of_V | string(256), DE=Tab
+; That is exactly the layout __val_enum expects with DE = table.
+;
+__tryval_enum:  pop     bc              ; BC = return address
+                pop     de              ; DE = Tab (enum literal table)
+                push    bc              ; restore return address
+
+; string on stack, de=table (first byte = count), a contains code if found, 255 if not
+__val_enum:     ld      (__val_atab),de ; Save table address before __val_init clobbers DE
+                call    __val_init      ; Pop err/val/str, null-terminate string
+                ld      hl,(__val_astr) ; HL = Pascal string (length byte on stack)
+                ld      de,(__val_atab) ; DE = enum table
+                call    __atoe          ; Search: D=0,E=code (found) or DE=257 (not found)
                 ld      a,d
                 and     a
-                jr      nz,__val_enum1
+                jp      nz,__val_enum1  ; Not found -> set error
 
-                ld      hl,4            ; Result
-                add     hl,sp
-                ld      bc,(hl)
-                ld      hl,bc
-                ld      (hl),e
-                inc     hl
-                ld      (hl),a
-                ld      e,0
+                ld      hl,(__val_aval)
+                ld      (hl),e          ; Store enum code (lo)
+                jp      __val_exit
 
-__val_enum1:    ld      hl,2            ; Error
-                add     hl,sp
-                ld      bc,(hl)
-                ld      hl,bc
-                ld      (hl),e
-                xor     a
-                inc     hl
-                ld      (hl),a
-
-                pop     de
-                ld      hl,260
-                add     hl,sp
-                ld      sp,hl
-                push    de
-                ret                     ; FIXME: Error reporting
-
-__val_enum2:    ld      a,c
-                ld      hl,4
-                add     hl,sp
-                ld      bc,(hl)
-                ld      hl,bc
-                ld      (hl),a
-                pop     de
-                ld      hl,260
-                add     hl,sp
-                ld      sp,hl
-                push    de
-                ret                     ; FIXME: Error reporting
+__val_enum1:    ld      a,1             ; Error always at position 1 (no partial match possible)
+                jp      __val_set_err   ; Store error and exit (jp, not call - stack must be clean)
 
 ;
 ; String length. Arguments and result on stack.
@@ -1257,10 +1356,21 @@ __fltrnd_neg:
 
 __atof:
         push    ix
-        ld      de,hl
-        ld      ix,de
-        inc     ix
+        push    af
+        push    hl
+        push    hl
+        pop     ix
+;        inc     ix
         call    CNVN
+        exx
+        push    ix
+        pop     hl
+        pop     de
+        and     a
+        sbc     hl,de
+        pop     af
+        sub     l
+        ld      b,a
         pop     ix
         ret
 
@@ -1668,14 +1778,12 @@ __getr:         push    hl
                 call    __storefp
                 ret
 
-; hl address, de table, b=count
+; hl address, de table (first byte = count)
 __gete:         push    hl
                 push    de
-                push    bc
                 call    __blanks
                 call    __word
                 ld      hl,__buffer
-                pop     bc
                 pop     de
                 call    __atoe
                 pop     hl
@@ -1847,11 +1955,34 @@ __strf_fix_1:
 __stre:
                 add     hl,bc
                 add     hl,bc
+                inc     hl              ; skip count byte
                 ld      b,(hl)
                 inc     hl
                 ld      h,(hl)
                 ld      l,b
                 call    __movestr
+                ret
+
+;
+; Convert enum to string with right-alignment (width specifier).
+;
+; Entry: HL = enum literal table, BC = enum value (in C, B = width),
+;        DE = destination, A = max length
+; Exit:  string written to DE, right-aligned to desired width
+; Uses:  AF, BC, DE, HL
+;
+__stre_fmt:
+                push    de              ; save destination for __ralign
+                push    af              ; save max length
+                push    bc              ; save B = width
+                ld      b,0             ; BC = enum value (C already set)
+                call    __stre          ; HL=table, BC=value, DE=dest, A=max
+                pop     bc              ; B = width
+                pop     af              ; A = max length
+                pop     hl              ; HL = destination
+                ld      d,a             ; D = max length
+                ld      e,b             ; E = desired width
+                call    __ralign
                 ret
 
 ;
@@ -1931,6 +2062,7 @@ __putn:         ex      hl,de
 ;
 __pute:
                 add     hl,hl
+                inc     de              ; skip count byte
                 add     hl,de
                 ld      de,(hl)
                 ex      de,hl
@@ -1975,6 +2107,7 @@ __putn_fmt:     push    bc
 
 __pute_fmt:
                 add     hl,hl
+                inc     de              ; skip count byte
                 add     hl,de
                 ld      de,(hl)
                 ex      de,hl
@@ -2060,7 +2193,7 @@ __itoa_loop2:   pop     af              ; pop and store
 ; String to signed 16 bits integer
 ;
 ; Entry:    HL (buffer), A (length)
-; Exit:     DE (value)
+; Exit:     DE (value), HL (offset of char after number)
 ; Uses:     *
 ;
 ; TODO Report errors via carry or a register?
@@ -2092,7 +2225,6 @@ __atoi_skip:    inc     hl
 __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 cp      '-'
                 ret     nz
-                and     a
                 push    hl
                 ld      hl,0
                 sbc     hl,de
@@ -2100,9 +2232,11 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
                 pop     hl
                 ret
 
-; hl string, de table, b size, out d=0 if found, e contains code, otherwise d=1
+; hl string, de table (first byte = count), out d=0 if found, e contains code, otherwise d=1
 __atoe:         ld      c,0
                 ex      de,hl
+                ld      b,(hl)          ; read count from first byte of table
+                inc     hl              ; skip count byte, HL now points to first dw
 __atoe1:        push    hl
                 push    de
                 push    bc
@@ -2121,7 +2255,7 @@ __atoe1:        push    hl
                 inc     hl
                 inc     c
                 djnz    __atoe1
-                ld      de,257
+                scf
                 ret
 __atoe2:        ld      d,0
                 ld      e,c

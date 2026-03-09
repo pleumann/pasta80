@@ -121,12 +121,19 @@ var
 begin
   S := '';
 
-  while Length(S) < 255 do
+  { Skip leading whitespace (spaces, CR, LF), but stop at EOF marker }
+  while (T.DMA[T.Offset] <= ' ') and (T.DMA[T.Offset] <> #26) do
   begin
     TextReadChar(T, C);
     if LastError <> 0 then Exit;
+  end;
 
-    if C > ' ' then S := S + C else Break;
+  { Read word characters; peek at current byte without consuming the delimiter }
+  while (Length(S) < 255) and (T.DMA[T.Offset] > ' ') do
+  begin
+    TextReadChar(T, C);
+    if LastError <> 0 then Exit;
+    S := S + C;
   end;
 end;
 
@@ -148,6 +155,22 @@ begin
   TextReadWord(T, S);
   if LastError <> 0 then Exit;
   Val(S, R, E);
+end;
+
+(* Pascal-callable entry point for __val_enum (see rtl/system.asm: __tryval_enum).
+   Pops Tab from the stack into DE, then falls through to __val_enum.
+   Parameters: S (string), V (target byte, var), Err (error code, var), Tab (enum table). *)
+procedure TryValEnum(S: String; var V: Byte; var Err: Integer; Tab: Pointer);
+  external '__tryval_enum';
+
+procedure TextReadEnum(var T: TextRec; var E: Byte; Tab: Pointer);
+var
+  S: String;
+  Err: Integer;
+begin
+  TextReadWord(T, S);
+  if LastError <> 0 then Exit;
+  TryValEnum(S, E, Err, Tab);
 end;
 
 procedure TextWriteChar(var T: TextRec; C: Char);
@@ -231,7 +254,11 @@ begin
     TextEof := EndOfFile or (DMA[Offset] = #26);
 end;
 
-procedure TextSeekEof(var T: TextRec);
+{ --- Internal helpers (not part of the public API) --- }
+
+(* Seeks to the physical end of file by reading sector-by-sector.
+   Used internally by TextAppend. *)
+procedure TextGotoEof(var T: TextRec);
 var
   E: Integer;
   C: Char;
@@ -248,17 +275,64 @@ begin
   end;
 end;
 
-procedure TextSeekEoln(var T: TextRec);
+(* Consumes the rest of the current line including the CR/LF line ending.
+   Used internally by ReadLn after reading a value. *)
+procedure TextSkipToEoln(var T: TextRec);
 var
   C: Char;
 begin
   with T do
   begin
-    while DMA[Offset] <> #13 do
+    { Consume rest of line up to (but not including) CR or EOF }
+    while (DMA[Offset] <> #13) and (DMA[Offset] <> #26) and not EndOfFile do
     begin
       TextReadChar(T, C);
       if LastError <> 0 then Exit;
     end;
+    { Consume CR+LF so next read starts at the beginning of the next line }
+    if DMA[Offset] = #13 then
+    begin
+      TextReadChar(T, C);          { consume CR }
+      if LastError <> 0 then Exit;
+      if DMA[Offset] = #10 then   { consume LF if present }
+        TextReadChar(T, C);
+    end;
+  end;
+end;
+
+{ --- Public Boolean query functions (TP5.5 semantics) --- }
+
+(* Skips spaces and tabs on the current line (no newlines), then returns
+   True if the next character is the end-of-line marker (CR) or EOF. *)
+function TextSeekEoln(var T: TextRec): Boolean;
+var
+  C: Char;
+begin
+  with T do
+  begin
+    while (DMA[Offset] = ' ') or (DMA[Offset] = #9) do
+    begin
+      TextReadChar(T, C);
+      if LastError <> 0 then Exit;
+    end;
+    TextSeekEoln := (DMA[Offset] = #13) or (DMA[Offset] = #26) or EndOfFile;
+  end;
+end;
+
+(* Skips all whitespace including newlines, then returns True if the next
+   character is the EOF marker or the file's EndOfFile flag is set. *)
+function TextSeekEof(var T: TextRec): Boolean;
+var
+  C: Char;
+begin
+  with T do
+  begin
+    while (DMA[Offset] <= ' ') and (DMA[Offset] <> #26) and not EndOfFile do
+    begin
+      TextReadChar(T, C);
+      if LastError <> 0 then Exit;
+    end;
+    TextSeekEof := (DMA[Offset] = #26) or EndOfFile;
   end;
 end;
 
@@ -267,7 +341,7 @@ begin
   with T do
   begin
     TextReset(T);
-    TextSeekEof(T);
+    TextGotoEof(T);
 
     if LastError <> 0 then Exit;
 

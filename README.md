@@ -41,11 +41,14 @@ The compiler also has some features that were borrowed from or inspired by later
   * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
   * Binary literals (using a `%` prefix).
   * `Break` and `Continue` for loop control.
+  * `Exit` in functions accepts an optional parameter for the result (like `Exit(42)`).
   * Querying the keyboard via `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
   * `Include` and `Exclude` for more efficient handling of sets.
+  * Enumeration types can be used in `Read[Ln]`, `Write[Ln]`, `Val` and `Str`.
   * A simple `Assert` facility that counts passes/fails and shows the failed line number.
+  * Breakpoints by means of `Debug` statements in the source code (which can optionally have a condition for the trigger).
 
 Since that covers most of the functionality of Turbo Pascal 3 you might ask what is missing. These are the current limitations:
 
@@ -69,6 +72,8 @@ $ fpc pasta
 ```
 
 The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of various other external tools. The compiler tries to detect these external tools automatically (from your system's `PATH`), but sometimes it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `misc` that you can adapt).
+
+Note: In order to use all features sjasmplus version 1.22.0 or newer is required.
 
 ```
 # PASTA/80 config
@@ -229,6 +234,47 @@ Without the `--ovr` parameter, overlay markers are simply ignored. This means yo
 
 **Caution**: Overlays somewhat break the safety of the Pascal language. Be careful when using pointers or `var` parameters for passing data between overlays. The memory you refer to may have just been paged out! It might make sense to compile your overlays with `{$a-}`, so that all local variables are stored on the stack (which is always visible).
 
+## Debugging and assertions
+
+The compiler is able to generate breakpoints for Fuse (ZX Spectrum 48K/128K) and CSpect (ZX Spectrum Next). To place a breakpoint, simply put a `Debug` statement into your source code. The statement accepts an optional `Boolean` parameter for making the breakpoint conditional.
+
+```pascal
+var
+  I: Integer;
+
+begin
+  Debug;                (* Triggers always when hit. *)
+
+  for I := 1 to 20 do
+  begin
+    WriteLn(I);
+    Debug(Odd(I));      (* Triggers for odd I only.  *)
+  end;
+end.
+```
+
+For Spectrum 48K/128K, the compiler generates a file that you can use with the `--debugger-commmand` parameter when calling Fuse. The file content is multiline, so it's a bit tricky, but not impossible, to insert this on the command line (the IDE - see below - handles all this for you conveniently). For the Spectrum Next, the compiler inserts the special Z80 opcode `$fd $00` that will trigger the debugger in CSpect.
+
+Assertions check a given condition and display an error message when the condition is violated (i.e. does not evaluate to `True`). In contrast to other languages, your program does not stop in this case. Instead, passed and failed assertions are counted in the `AssertPassed` and `AssertFailed` variables.
+
+```pascal
+var
+  I: Integer;
+
+begin
+  for I := 1 to 20 do
+  begin
+    WriteLn(I);
+    Assert(Odd(I));
+  end;
+
+  WriteLn('Passed: ', AssertPassed);
+  WriteLn('Failed: ', AssertFailed);
+end.
+```
+
+When your program is sufficiently tested, compile it with `--release` to get a binary that does not contain any generated code for `Debug` and `Assert`.
+
 ## Examples and tests
 
 There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt --dep` because of its size. Otherwise it won't fit into 64K. The Spectrum 128K and Next targets can (only) handle it using overlays, the Spectrum 48K target can't. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
@@ -287,11 +333,17 @@ These screenshots show some applications compiled for the ZX Spectrum 48K target
 | :-------: | :----: |
 | ![Screenshot](docs/images/graphics.png) | ![Screenshot](docs/images/pqformula.png) |
 
+These final screenshots show two applications compiled for the ZX Spectrum Next target and running in the CSpect emulator.
+
+| Mandelbrot | 3D Hat |
+| :--------: | :--------: |
+| ![Screenshot](docs/images/mandelbrot.png) | ![Screenshot](docs/images/hat256.png) |
+
 # License
 
 **PASTA/80 Pascal Compiler**
 
-Copyright (c) 2020-2025 by Jörg Pleumann
+Copyright (c) 2020-2026 by Jörg Pleumann
 
 The PASTA/80 compiler is free software: you can redistribute it and/or modify
 it under the terms of the **GNU General Public License (GPL)** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.

@@ -43,6 +43,8 @@ type
   SubRange3 = 10 .. Stop;
   SubRange4 = Start .. Stop;
 
+  ColorRange = Red .. Green;
+
   Str255 = string[255];
 
 var
@@ -979,7 +981,7 @@ var
   end;
 
 begin
-  WriteLn('--- TestRecords ---');
+  WriteLn('--- TestSets ---');
   WriteLn;
 
   AllDays := [Mon..Sun];
@@ -1055,11 +1057,9 @@ begin
       Write(I, ' ');
   WriteLn;
 
-  (* FIXME
   Assert(11 in Primes);
   Assert(not (12 in Primes));
   Assert(13 in Primes);
-  *)
 
   Include(Primes, 42);
   Assert(42 in Primes);
@@ -1103,6 +1103,27 @@ var
     MulAddFunc := P * Q + R;
   end;
 
+  procedure TestProcExit(var I: Integer);
+  begin
+    I := 1111;
+    Exit;
+    I := -1;
+  end;
+
+  function TestFuncExit: Integer;
+  begin
+    TestFuncExit := 2222;
+    Exit;
+    TestFuncExit := -1;
+  end;
+
+  function TestFuncExitWithResult: Integer;
+  begin
+    TestFuncExitWithResult := -1;
+    Exit(3333);
+    TestFuncExitWithResult := -2;
+  end;
+
 begin
   WriteLn('--- TestProcFunc ---');
 
@@ -1123,6 +1144,11 @@ begin
 
   J := MulAddFunc(2, 3, 4);
   Assert(J = 10);
+
+  TestProcExit(J);
+  Assert(J = 1111);
+  Assert(TestFuncExit = 2222);
+  Assert(TestFUncExitWithResult = 3333);
 end;
 
 const
@@ -2731,6 +2757,255 @@ begin
   Assert(S = 'ZZZ');
 end;
 
+const Dummy2 = 0;
+
+overlay procedure TestSubrange;
+var
+  V1: SubRange1;
+  V2: SubRange2;
+  V3: SubRange3;
+  V4: SubRange4;
+  A:  array[SubRange1] of Integer;
+  I:  Integer;
+begin
+  WriteLn('--- TestSubrange ---');
+
+  (* Low() and High() *)
+  Assert(Low(SubRange1)  = 10);
+  Assert(High(SubRange1) = 20);
+  Assert(Low(SubRange2)  = 10);
+  Assert(High(SubRange2) = 20);
+  Assert(Low(SubRange3)  = 10);
+  Assert(High(SubRange3) = 20);
+  Assert(Low(SubRange4)  = 10);
+  Assert(High(SubRange4) = 20);
+
+  (* SizeOf() -- subrange over Integer values, so 2 bytes each *)
+  Assert(SizeOf(V1) = SizeOf(Integer));
+  Assert(SizeOf(V2) = SizeOf(Integer));
+  Assert(SizeOf(V3) = SizeOf(Integer));
+  Assert(SizeOf(V4) = SizeOf(Integer));
+
+  (* Variable assignment and arithmetic *)
+  V1 := 10;
+  Assert(V1 = 10);
+  V1 := 20;
+  Assert(V1 = 20);
+  V2 := 15;
+  Assert(V2 = 15);
+  V3 := V2;
+  Assert(V3 = 15);
+  V4 := 15;
+  Assert(V4 = V3);
+
+  (* Ord, Pred, Succ *)
+  V1 := 12;
+  Assert(Ord(V1)  = 12);
+  Assert(Pred(V1) = 11);
+  Assert(Succ(V1) = 13);
+
+  (* Array indexed by subrange type *)
+  for I := Low(SubRange1) to High(SubRange1) do
+    A[I] := I * 2;
+  Assert(A[10] = 20);
+  Assert(A[15] = 30);
+  Assert(A[20] = 40);
+
+  (* Succ/Pred on enum values *)
+  Assert(Succ(Red) = Green);
+  Assert(Pred(Green) = Red);
+
+  (* Arithmetic with subrange variables *)
+  V1 := 12;
+  V2 := 15;
+  I := V1 + V2;
+  Assert(I = 27);
+  I := V2 - V1;
+  Assert(I = 3);
+  I := V1 * 2;
+  Assert(I = 24);
+  I := V2 div V1;
+  Assert(I = 1);
+  I := V2 mod V1;
+  Assert(I = 3);
+
+  (* Mixed subrange and integer arithmetic *)
+  I := 100;
+  I := I + V1;
+  Assert(I = 112);
+  I := V2 + 5;
+  Assert(I = 20);
+
+  (* Enum subrange type *)
+  Assert(Low(ColorRange)  = Red);
+  Assert(High(ColorRange) = Green);
+end;
+
+overlay procedure TestStr;
+var
+  S: String[31];
+  C: Color;
+begin
+  WriteLn('--- TestStr ---');
+
+  { Integer }
+  Str(0, S);        Assert(S = '0');
+  Str(1, S);        Assert(S = '1');
+  Str(-1, S);       Assert(S = '-1');
+  Str(32767, S);    Assert(S = '32767');
+  Str(-32768, S);   Assert(S = '-32768');
+
+  { Integer with width }
+  Str(42:0, S);     Assert(S = '42');
+  Str(42:5, S);     Assert(S = '   42');
+  Str(-42:5, S);    Assert(S = '  -42');
+  Str(42:1, S);     Assert(S = '42');
+
+  { Char }
+  Str('A', S);      Assert(S = 'A');
+  Str('Z', S);      Assert(S = 'Z');
+
+  { Real - default format }
+  Str(0.0, S);      Assert(S = ' 0.000000000E+00');
+  Str(1.0, S);      Assert(S = ' 1.000000000E+00');
+  Str(-1.0, S);     Assert(S = '-1.000000000E+00');
+  Str(100.0, S);    Assert(S = ' 1.000000000E+02');
+
+  { Real with width (scientific) - width is ignored for scientific format }
+  Str(1.0:0, S);    Assert(S = ' 1.0E+00');
+  Str(1.0:8, S);    Assert(S = ' 1.0E+00');
+
+  { Real with width and decimals (fixed) }
+  Str(0.0:0:2, S);      Assert(S = '0.00');
+  Str(1.0:0:2, S);      Assert(S = '1.00');
+  Str(-1.0:0:2, S);     Assert(S = '-1.00');
+  Str(3.14159:0:2, S);  Assert(S = '3.14');
+  Str(3.14159:8:2, S);  Assert(S = '    3.14');
+
+  { Enum }
+  for C := Red to Blue do
+  begin
+    Str(C, S);
+    case C of
+      Red:   Assert(S = 'Red');
+      Green: Assert(S = 'Green');
+      Blue:  Assert(S = 'Blue');
+    end;
+  end;
+
+  { Enum with width }
+  Str(Red:6, S);    Assert(S = '   Red');
+  Str(Green:6, S);  Assert(S = ' Green');
+  Str(Blue:6, S);   Assert(S = '  Blue');
+end;
+
+overlay procedure TestVal;
+
+  type
+    TColor = (Red, Yellow, Green, None);
+
+  procedure ValInt(S: String; ExpectVal, ExpectErr: Integer);
+  var
+    V, E: Integer;
+  begin
+    V := -1234;
+    E := -5678;
+
+    Val(S, V, E);
+
+    WriteLn('''', S, ''' -> ', V, ', ', E, ' [Expected ', ExpectVal, ', ', ExpectErr, ']');
+
+    Assert(V = ExpectVal);
+    Assert(E = ExpectErr)
+  end;
+
+  procedure ValReal(S: String; ExpectVal: Real; ExpectErr: Integer);
+  var
+    V: Real;
+    E: Integer;
+  begin
+    V := -1234.0;
+    E := -5678;
+
+    Val(S, V, E);
+
+    WriteLn('''', S, ''' -> ', V, ', ', E, ' [Expected ', ExpectVal, ', ', ExpectErr, ']');
+
+    Assert(V = ExpectVal);
+    Assert(E = ExpectErr)
+  end;
+
+  procedure ValEnum(S: String; ExpectVal: TColor; ExpectErr: Integer);
+  var
+    V: TColor;
+    E: Integer;
+  begin
+    V := None;
+    E := -1;
+
+    Val(S, V, E);
+
+    WriteLn('''', S, ''' -> ', V, ', ', E, ' [Expected ', ExpectVal, ', ', ExpectErr, ']');
+
+    Assert(V = ExpectVal);
+    Assert(E = ExpectErr)
+  end;
+
+begin
+  WriteLn('--- TestVal ---');
+
+  ValInt('100', 100, 0);
+  ValInt('+100', 100, 0);
+  ValInt('-100', -100, 0);
+  ValInt('42X', -1234, 3);
+  ValInt('X42', -1234, 1);
+  ValInt('', -1234, 1);
+  ValInt('-', -1234, 2);
+  ValInt('+', -1234, 2);
+
+  ValReal('100', 100.0, 0);
+  ValReal('+100', 100.0, 0);
+  ValReal('-100', -100.0, 0);
+  ValReal('100.', 100.0, 0);
+  ValReal('100.0', 100.0, 0);
+  ValReal('+100.0', 100.0, 0);
+  ValReal('-100.0', -100.0, 0);
+
+  ValReal('2.0E02', 200.0, 0);
+  ValReal('+2.0E02', 200.0, 0);
+  ValReal('-2.0E02', -200.0, 0);
+
+  ValReal('2.0E+02', 200.0, 0);
+  ValReal('2.0E-02', 0.02, 0);
+
+  ValReal('3.0e03', 3000, 0);
+  ValReal('3.0E3', 3000, 0);
+
+  ValReal('1.234E02A', -1234.0, 9);
+  ValReal('X42.0', -1234.0, 1);
+  ValReal('', -1234.0, 1);
+  ValReal('-', -1234.0, 2);
+  ValReal('+', -1234.0, 2);
+  ValReal('4.0E', -1234.0, 5);
+  ValReal('4.0E+', -1234.0, 6);
+  ValReal('4.0E-', -1234.0, 6);
+
+  ValEnum('Red', Red, 0);
+  ValEnum('Yellow', Yellow, 0);
+  ValEnum('Green', Green, 0);
+(*
+  ValEnum('red', Red, 0);
+  ValEnum('yellow', Yellow, 0);
+  ValEnum('green', Green, 0);
+  ValEnum('RED', Red, 0);
+  ValEnum('YELLOW', Yellow, 0);
+  ValEnum('GREEN', Green, 0);
+*)
+  ValEnum('blue', None, 1);
+  ValEnum('Reddish', None, 1);
+  ValEnum('', None, 1);
+end;
+
 begin
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
@@ -2820,6 +3095,12 @@ begin
   TestWriteFormat;
 
   TestIncDec;
+
+  TestSubrange;
+
+  TestStr;
+
+  TestVal;
 
   TestBuiltIns;
 

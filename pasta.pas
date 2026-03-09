@@ -442,6 +442,7 @@ begin
   else
     Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
   {$else}
+  Args := ReplaceChar('''', '"');
   Exec(Path, Args);
   {$endif}
 
@@ -471,14 +472,41 @@ begin
   FindClose(R);
 end;
 
+function StrFromFile(const FileName: string): String;
+var
+  T: Text;
+  A, S: String;
+begin
+  A := '';
+  Assign(T, FileName);
+  {$i-}
+  Reset(T);
+  while not Eof(T) do
+  begin
+    ReadLn(T, S);
+    if Length(A) <> 0 then A := A + #10;
+    A := A + S;
+  end;
+  Close(T);
+  if IOResult <> 0 then
+    WriteLn('Warning: Cannot read ''', FileName, '. Assuming empty.');
+  {$i+}
+  StrFromFile := A;
+end;
+
 procedure StrToFile(const S, FileName: string);
 var
   T: Text;
 begin
   Assign(T, FileName);
+  {$i-}
   Rewrite(T);
   Write(T, S);
   Close(T);
+  {$i+}
+
+  if IOResult <> 0 then
+    WriteLn('Warning: Cannot write ''', FileName, '. Assuming empty.');
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -514,6 +542,7 @@ var
   StackSize: Integer = 4096;
 
   Overlays: Boolean = False;
+  Release: Boolean = False;
 
 var
   HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -1004,11 +1033,11 @@ var
   AssertProc, BreakProc, ContProc, ExitProc, HaltProc, StrProc, ReadProc,
   ReadLnProc, WriteProc, WriteLnProc, EraseProc, RenameProc, AssignProc,
   ResetProc, RewriteProc, AppendProc, FlushProc, CloseProc, SeekProc,
-  SeekEofProc, SeekEolnProc, BlockReadProc, BlockWriteProc, FilePosFunc,
+  SeekEofFunc, SeekEolnFunc, BlockReadProc, BlockWriteProc, FilePosFunc,
   FileSizeFunc, EolFunc, EofFunc, AbsFunc, AddrFunc, DisposeProc, EvenFunc,
   HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc, FillProc, IncProc,
   DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc,
-  SuccFunc, BDosFunc, BDosHLFunc: PSymbol;
+  SuccFunc, BDosFunc, BDosHLFunc, DebugProc: PSymbol;
 
   SmartLink: Boolean; (* TODO Move elsewhere *)
 
@@ -1408,6 +1437,7 @@ begin
   PortArray^.IsMagic := True;
 
   AssertProc := RegisterMagic(scProc, 'Assert');
+  DebugProc := RegisterMagic(scProc, 'Debug');
   BreakProc := RegisterMagic(scProc, 'Break');
   ContProc := RegisterMagic(scProc, 'Continue');
   DisposeProc := RegisterMagic(scProc, 'Dispose');
@@ -1430,8 +1460,8 @@ begin
   CloseProc := RegisterMagic(scProc, 'Close');
   FlushProc := RegisterMagic(scProc, 'Flush');
   SeekProc := RegisterMagic(scProc, 'Seek');
-  SeekEofProc := RegisterMagic(scProc, 'SeekEof');
-  SeekEolnProc := RegisterMagic(scProc, 'SeekEoln');
+  SeekEofFunc := RegisterMagic(scFunc, 'SeekEof');
+  SeekEolnFunc := RegisterMagic(scFunc, 'SeekEoln');
 
   BlockReadProc := RegisterMagic(scProc, 'BlockRead');
   BlockWriteProc := RegisterMagic(scProc, 'BlockWrite');
@@ -2058,6 +2088,18 @@ var
    *)
   Code: PCode = nil;
 
+  Muted: Integer = 0;
+
+procedure MuteEmitter;
+begin
+  Inc(Muted);
+end;
+
+procedure UnmuteEmitter;
+begin
+  Dec(Muted);
+end;
+
 (**
  * Appends a line of assembly code consisting of the three given elements, any
  * of which may be the empty string.
@@ -2449,6 +2491,8 @@ end;
 
 procedure Emit(Tag, Instruction, Comment: String);
 begin
+  if Muted > 0 then Exit;
+
   if not Optimize then
   begin
     Emit0(Tag, Instruction, Comment);
@@ -2722,6 +2766,9 @@ begin
   end
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
+
+  if (Binary in [btZX, btZX128]) then
+    EmitI('.BPLIST "' + ChangeExt(BinFile, '.brk') + '" fuse');
 end;
 
 (**
@@ -3479,10 +3526,13 @@ begin
   end
   else if DataType^.Kind = scEnumType then
   begin
-    EmitI('pop de');
-    EmitI('pop bc');
+    EmitI('pop de');              (* DE = destination *)
+    EmitI('pop bc');              (* C = width *)
+    EmitI('pop hl');              (* L = enum value *)
+    EmitI('ld b,c');              (* B = width *)
+    EmitI('ld c,l');              (* C = enum value, B = width *)
     EmitI('ld hl,' + DataType^.Tag);
-    EmitI('call __stre');
+    EmitI('call __stre_fmt');
   end
   else Error('Unprintable type: ' + DataType^.Name);
 end;
@@ -4107,6 +4157,8 @@ begin
   end
   else if Func = SizeFunc then
   begin
+    if Release then MuteEmitter;
+
     Expect(toIdent);
     Sym := LookupGlobalOrFail(Scanner.StrValue);
     NextToken;
@@ -4117,6 +4169,10 @@ begin
       Sym := ParseVariableAccess(Sym);
       while Code <> Old do RemoveCode;
     end;
+
+    if Release then UnmuteEmitter;
+
+    if Sym^.Kind = scSubrangeType then Sym := Sym^.DataType;
 
     if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scFileType] then
       EmitLiteral(Sym^.Value)
@@ -4230,7 +4286,7 @@ begin
 
     ParseBuiltInFunction := dtString;
   end
-  else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) then
+  else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) or (Func = SeekEofFunc) or (Func = SeekEolnFunc) then
   begin
     EmitI('push de');
 
@@ -4288,7 +4344,6 @@ begin
   else if T^.Kind = scEnumType then
   begin
     EmitI('ld de,' + T^.Tag);
-    EmitI('ld b,' + IntToStr(T^.High + 1));
     EmitI('call __gete');
   end
   else if T^.Kind = scStringType then
@@ -4315,6 +4370,8 @@ begin
 
   if Proc = AssertProc then
   begin
+    if Release then MuteEmitter;
+
     NextToken; Expect(toLParen); NextToken;
 
     TypeCheck(dtBoolean, ParseExpression, tcExact);
@@ -4325,6 +4382,44 @@ begin
     Emit('', 'call __assert', '');
 
     Expect(toRParen); NextToken;
+
+    if Release then UnmuteEmitter;
+  end
+  else if Proc = DebugProc then
+  begin
+    if Release then MuteEmitter;
+
+    NextToken;
+
+    if Scanner.Token = toLParen then
+    begin
+      NextToken;
+
+      TypeCheck(dtBoolean, ParseExpression, tcExact);
+
+      if Binary = btZXN then
+      begin
+        EmitI('pop af');
+        EmitI('jr nc,$+4');
+        EmitI('db $fd, $00');
+      end
+      else
+      begin
+        EmitI('pop hl');
+        EmitI('.setbp "z80:hl!=0"');
+      end;
+
+      Expect(toRParen); NextToken;
+    end
+    else
+    begin
+      if Binary = btZXN then
+        EmitI('db $fd, $00')
+      else
+        EmitI('.setbp');
+    end;
+
+    if Release then UnmuteEmitter;
   end
   else if Proc = BreakProc then
   begin
@@ -4340,8 +4435,23 @@ begin
   end
   else if Proc = ExitProc then
   begin
-    Emit('', 'jp ' + ExitTarget, 'Exit');
     NextToken;
+    if Scanner.Token = toLParen then
+    begin
+      (* Find the result variable (tagged 'RESULT') in the symbol table *)
+      Sym := SymbolTable;
+      while (Sym <> nil) and ((Sym^.Kind <> scVar) or (Sym^.Tag <> 'RESULT')) do
+        Sym := Sym^.Prev;
+      if Sym = nil then Error('Exit with value only allowed in functions');
+
+      NextToken;
+      EmitAddress(Sym);
+      T := TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
+      EmitStore(T);
+      Expect(toRParen);
+      NextToken;
+    end;
+    Emit('', 'jp ' + ExitTarget, 'Exit');
   end
   else if Proc = HaltProc then
     begin
@@ -4415,6 +4525,12 @@ begin
             EmitCall(LookupBuiltInOrFail('TextReadInt'))
           else if T = dtReal then
             EmitCall(LookupBuiltInOrFail('TextReadFloat'))
+          else if T^.Kind = scEnumType then
+          begin
+            EmitI('ld hl,' + T^.Tag);
+            EmitI('push hl');
+            EmitCall(LookupBuiltInOrFail('TextReadEnum'));
+          end
           else
             Error('Unreadable type');
         end;
@@ -4423,7 +4539,7 @@ begin
         begin
           EmitI('ld hl,(__cur_file)');
           EmitI('push hl');
-          EmitCall(LookupBuiltInOrFail('TextSeekEoln'));
+          EmitCall(LookupBuiltInOrFail('TextSkipToEoln'));
         end;
       end
       else if T^.Kind = scFileType then
@@ -4687,7 +4803,6 @@ begin
     else if T^.Kind = scEnumType then
     begin
       EmitI('ld de,' + T^.Tag);
-      EmitI('ld b,' + IntToStr(T^.High + 1));
       EmitI('call __val_enum');
     end
     else
@@ -4791,13 +4906,22 @@ begin
       EmitCall(LookupBuiltInOrFail('FileAssign'));
     end;
   end
-  else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = AppendProc) or (Proc = CloseProc) or (Proc = FlushProc) or (Proc = SeekEofProc) or (Proc = SeekEolnProc) then
+  else if  (Proc = EraseProc) or  (Proc = RenameProc) or (Proc = ResetProc) or (Proc = RewriteProc) or (Proc = AppendProc) or (Proc = CloseProc) or (Proc = FlushProc) then
   begin
     NextToken;
     Expect(toLParen);
     NextToken;
     T := ParseVariableRef;
     if T^.Kind <> scFileType then Error('File type expected');
+
+    { Rename takes a second parameter (new filename) }
+    if Proc = RenameProc then
+    begin
+      Expect(toComma);
+      NextToken;
+      ParseExpression;  { New filename }
+    end;
+
     Expect(toRParen);
     NextToken;
 
@@ -5166,6 +5290,8 @@ var
 begin
   T := ParseFactor;
 
+  if T^.Kind = scSubrangeType then T := T^.DataType;
+
   if (T = dtInteger) or (T = dtByte) then
     while Scanner.Token in [toMul, toDiv, toDivKW, toMod, toAnd, toShl, toShr] do
     begin
@@ -5213,6 +5339,8 @@ var
   T: PSymbol;
 begin
   T := ParseTerm;
+
+  if T^.Kind = scSubrangeType then T := T^.DataType;
 
   if (T = dtInteger) or (T = dtByte) then
     while Scanner.Token in [toAdd, toSub, toOr, toXor] do
@@ -6426,6 +6554,7 @@ begin
     I := 0;
 
     Emit(DataType^.Tag, '', '');
+    Emit('', 'db ' + DataType^.Tag + '_cnt', '');
 
     repeat
       NextToken;
@@ -6442,7 +6571,7 @@ begin
       NextToken;
     until Scanner.Token <> toComma;
 
-    Emit('', 'dw 0', '');
+    Emit(DataType^.Tag + '_cnt', 'equ ' + IntToStr(I), '');
 
     DataType^.Low := 0;
     DataType^.High := I - 1;
@@ -6465,7 +6594,7 @@ begin
       Sym := LookupGlobalOrFail(Scanner.StrValue);
 
       if Sym^.Kind <> scConst then Error('Not a constant');
-      if Sym^.DataType <> dtInteger then Error('Not an integer');
+      if (Sym^.DataType <> dtInteger) and (Sym^.DataType^.Kind <> scEnumType) then Error('Not an integer or enum');
 
       DataType^.High := Sym^.Value;
 
@@ -6522,7 +6651,7 @@ begin
         Sym := LookupGlobalOrFail(Scanner.StrValue);
 
         if Sym^.Kind <> scConst then Error('Not a constant');
-        if Sym^.DataType <> dtInteger then Error('Not an integer');
+        if (Sym^.DataType <> dtInteger) and (Sym^.DataType^.Kind <> scEnumType) then Error('Not an integer or enum');
 
         DataType^.High := Sym^.Value;
 
@@ -7269,7 +7398,11 @@ function Build: Integer;
 var
   Dir: String;
   Org, Len, HeapStart, HeapBytes: Integer;
+  StartTime: Int64;
+  Duration: Real;
 begin
+  StartTime := GetMSCount;
+
   Dir := FExpand('.');
 
   AsmFile := ChangeExt(SrcFile, '.z80');
@@ -7289,7 +7422,7 @@ begin
   begin
     HasStoredState := True;
 
-    Build := 1;
+    Build := 2;
 
     WriteLn('Compiling...');
     WriteLn('  ', PosixToNative(FRelative(SrcFile)),
@@ -7322,6 +7455,7 @@ begin
 
     CurrentOverlay := 0;
     Banked := False;
+    Muted := 0;
 
     if Binary = btCPM then
       AddrOrigin := $0100
@@ -7349,7 +7483,7 @@ begin
     CloseTarget();
     CloseInput();
 
-    Build := 2;
+    Build := 3;
 
     //CopyFile(HomeDir + '/misc/loader.tap', BinFile);
 
@@ -7366,7 +7500,15 @@ begin
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
     if DosExitCode <> 0 then
-      Error('Failure! :(');
+      Error('Assembly failed (see output for details).');
+
+    Duration := (GetMSCount - StartTime) / 1000.0;
+
+    WriteLn;
+    if Release then Write('Release') else Write('Debug');
+    WriteLn(' build finished (', Duration:0:3, 's).');
+
+    Build := 0;
   end;
 
   HasStoredState := False;
@@ -7499,7 +7641,7 @@ end;
  * during the Pascal to Assembly translation opens the editor with the Pascal
  * file and jumps to the error position.
  *)
-procedure DoCompile;
+procedure DoCompile(Shift: Boolean);
 begin
   if (WorkFile = '') and (MainFile = '') then DoWorkFile;
 
@@ -7521,18 +7663,22 @@ end;
  * Runs a compiles program by invoking a suitable emulator for the current
  * target platform.
  *)
-procedure DoRun(Alt: Boolean);
+procedure DoRun(Debug, Shift: Boolean);
 const
   NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
 var
- RunFile: String;
+  Args, RunFile: String;
 begin
   if Length(BinFile) <> 0 then
   begin
     if Binary = btCPM then
     begin
-      if Alt then
-        Execute(TnylpoCmd, '-soy -t @ ' + BinFile)
+      if Shift then
+      begin
+        if AltEditor then Write(#27'[40m');
+        Execute(TnylpoCmd, '-soy -t @ ' + BinFile);
+        if AltEditor then Write(#27'[0m');
+      end
       else
         Execute(TnylpoCmd, BinFile)
     end
@@ -7543,23 +7689,31 @@ begin
       else
         Execute(TnylpoCmd, BinFile)
     end
-    else if Binary = btZX then
+    else if Binary in [btZX, btZX128] then
     begin
-      if Format = tfTape then
-        Execute(FuseCmd, '--machine 48 --tape ' + BinFile)
-      else if Format = tfSnapshot then
-        Execute(FuseCmd, '--machine 48 --snapshot ' + BinFile)
+      Args := '';
+
+      if Binary = btZX then
+        Args := Args + '--machine 48'
       else
-        WriteLn('Tape or snapshot needed for Fuse.');
-    end
-    else if Binary = btZX128 then
-    begin
-      if Format = tfTape then
-        Execute(FuseCmd, '--machine 128 --tape ' + BinFile)
-      else if Format = tfSnapshot then
-        Execute(FuseCmd, '--machine 128 --snapshot ' + BinFile)
+        Args := Args + '--machine 128';
+
+      if Debug then
+        Args := Args + ' --debugger-command ''' + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
       else
+        Args := Args + ' --debugger-command ''del''';
+
+      if Format = tfTape then
+        Args := Args + ' --tape ' + BinFile
+      else if Format = tfSnapshot then
+        Args := Args + ' --snapshot ' + BinFile
+      else
+      begin
         WriteLn('Tape or snapshot needed for Fuse.');
+        Exit;
+      end;
+
+      Execute(FuseCmd, Args);
     end
     else
     begin
@@ -7578,10 +7732,18 @@ begin
         Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + HomeDir + '/misc/autoexec.bas /nextzxos/autoexec.bas');
         Execute(MonkeyCmd, 'put ' + ImagePath + ' lastrun.txt /pasta80/lastrun.txt');
 
+        Args := '-zxnext -r -nextrom -mouse';
+
         if IsRetinaDisplay then
-          Execute(CSpectCmd, '-zxnext -w4 -r -nextrom -mouse -mmc=' + ImagePath)
+          Args := Args + ' -w4'
         else
-          Execute(CSpectCmd, '-zxnext -w2 -r -nextrom -mouse -mmc=' + ImagePath);
+          Args := Args + ' -w2';
+
+        if Debug then Args := Args + ' -brk';
+
+        Args := Args + ' -mmc=' + ImagePath;
+
+        Execute(CSpectCmd, Args);
       end
       else
         WriteLn('Tape or runnable dir needed for CSpect.');
@@ -7695,7 +7857,7 @@ begin
   else
     WriteLn(BinaryStr[Binary] + ', Z80':40);
   WriteLn;
-  WriteLn('Copyright (C) 2020-25 by  Joerg Pleumann');
+  WriteLn('Copyright (C) 2020-26 by  Joerg Pleumann');
   WriteLn('----------------------------------------');
   WriteLn;
 end;
@@ -7718,6 +7880,7 @@ begin
     WriteLn(TermStr('~Peephole optimizer : '), YesNoStr[Optimize]);
     WriteLn(TermStr('~Dependency analysis: '), YesNoStr[SmartLink]);
     WriteLn(TermStr('Enable ~overlays    : '), YesNoStr[Overlays]);
+    WriteLn(TermStr('~Release build      : '), YesNoStr[Release]);
     WriteLn;
     WriteLn(TermStr('~Back'));
 
@@ -7749,6 +7912,7 @@ begin
       'p': Optimize := not Optimize;
       'd': SmartLink := not SmartLink;
       'o': Overlays := not Overlays;
+      'r': Release := not Release;
     end;
   until C = 'b';
 end;
@@ -7787,7 +7951,7 @@ begin
     else WriteLn;
 
     WriteLn;
-    WriteLn(TermStr('~Edit      ~Compile   ~Run       '));
+    WriteLn(TermStr('~Edit      ~Compile   ~Run       ~Debug'));
     WriteLn(TermStr('~Shell     ~Files     ~Options   ~Quit'));
 
     while True do
@@ -7799,8 +7963,9 @@ begin
         'm': DoMainFile;
         'w': DoWorkFile;
         'e': DoEdit(0, 0);
-        'c': DoCompile;
-        'r', 'R': DoRun(C = 'R');
+        'c', 'C': DoCompile(C = 'C');
+        'r', 'R': DoRun(False, C = 'R');
+        'd', 'D': DoRun(True, C = 'D');
         's': DoShell;
         'f': DoFiles;
         'o', 'O': begin DoOptions; Break; end;
@@ -7841,6 +8006,8 @@ begin
     WriteLn('  --dep          enable dependency analysis');
     WriteLn('  --opt          enable peephole optimizations');
     WriteLn('  --ovr          enable banked-switched overlays');
+    WriteLn;
+    WriteLn('  --release      disable assertions and breakpoints');
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --config       shows (and checks) the configuration');
@@ -7914,6 +8081,8 @@ begin
       Optimize := True
     else if SrcFile = '--dep' then
       SmartLink := True
+    else if SrcFile = '--release' then
+      Release := True
     else if SrcFile = '--ide' then
       Ide := True
     else
@@ -7943,9 +8112,12 @@ begin
     if SrcFile <> '' then WorkFile := SrcFile;
     Interactive;
   end
-  else Build;
-
-  WriteLn;
+  else
+  begin
+    I := Build;
+    WriteLn;
+    Halt(I);
+  end;
 end;
 
 (* -------------------------------------------------------------------------- *)
