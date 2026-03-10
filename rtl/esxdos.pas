@@ -117,7 +117,7 @@ begin
   R.HL := Addr(F.FileName);
   R.DE := Addr(G.FileName);
 
-  LastError := EsxDos($e0, R);
+  LastError := EsxDos($b0, R);
   if LastError = 0 then BlockAssign(F, S); (* TODO Can we rename open files? *)
 end;
 
