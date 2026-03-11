@@ -7436,7 +7436,7 @@ begin
 
     AbsCode := True;
     CheckBreak := False;
-    IOMode := False;
+    IOMode := True;
     StackMode := False;
 
     CurrentOverlay := 0;
