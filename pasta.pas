@@ -457,7 +457,6 @@ end;
 
 procedure CleanDir(const Dir: String);
 var
-  S: String;
   R: SearchRec;
   F: File;
 begin
@@ -545,7 +544,7 @@ var
   Release: Boolean = False;
 
 var
-  HomeDir, SjAsmCmd, ZasmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
+  HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
   MonkeyCmd, CSpectCmd, ImagePath: String;
   AltEditor: Boolean;
 
@@ -1087,7 +1086,6 @@ procedure CloseScope(AdjustLevel: Boolean);
 var
   Sym: PSymbol;
   Kind: TSymbolClass;
-  I: Integer;
 begin
   while SymbolTable <> CurrentScope do
   begin
@@ -1184,7 +1182,6 @@ begin
 function Lookup(Name: string; Start, Stop: PSymbol): PSymbol;
 var
   Sym: PSymbol;
-  I: Integer;
 begin
   Name := UpperStr(Name);
   Sym := Start;
@@ -7382,14 +7379,10 @@ end;
  *)
 function Build: Integer;
 var
-  Dir: String;
-  Org, Len, HeapStart, HeapBytes: Integer;
   StartTime: Int64;
   Duration: Real;
 begin
   StartTime := GetMSCount;
-
-  Dir := FExpand('.');
 
   AsmFile := ChangeExt(SrcFile, '.z80');
 
