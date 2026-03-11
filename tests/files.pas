@@ -174,6 +174,10 @@ begin
     Assert(Actual = 1);
   end;
 
+  { Give the OS a chance to update the file size }
+  Close(RawFile);
+  Reset(RawFile);
+
   FS := FileSize(RawFile);
   Assert(FS = 10);
 
@@ -202,6 +206,10 @@ begin
   BlockWrite(RawFile, Buffer, 2, Actual);
   Assert(Actual = 2);
   Assert(FilePos(RawFile) = 12);
+
+  { Give the OS a chance to update the file size }
+  Close(RawFile);
+  Reset(RawFile);
 
   FS := FileSize(RawFile);
   Assert(FS = 12);
@@ -267,7 +275,10 @@ begin
     Assert(S = Monty[LineCount]);
   end;
   Close(F);
+  WriteLn(LineCount, ' lines');
   Assert(LineCount = 6);
+
+  WriteLn;
 
   { Verify character count }
   Reset(F);
@@ -280,7 +291,7 @@ begin
   end;
   Close(F);
 
-  WriteLn(CharCount);
+  WriteLn(CharCount, ' characters');
   Assert(CharCount = 177 + 6 * Length(LineBreak));
 
   Erase(F);
@@ -462,7 +473,7 @@ begin
     Write(C, ' ');
   end;
 
-  if Eoln(T) then WriteLn('Eoln') else WriteLn;
+  if Eoln(T) then WriteLn('<EOL>') else WriteLn;
   Assert(Eoln(T));
 
   Close(T);
