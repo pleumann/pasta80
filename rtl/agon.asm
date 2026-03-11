@@ -68,7 +68,7 @@ mos_call_seek_x7:
     add     hl,hl
     djnz    mos_call_seek_x7
 
-    ld      hl,0
+    ;ld      hl,0   ; Is this right?
 
     rst     08h ;MOS API call
 
@@ -192,7 +192,7 @@ __readkey_1:
             mklil
             ld  a,(ix+5)    ;valid key?
             or  a
-            jr  z,__readkey_1            
+            jr  z,__readkey_1
             ld  l,a
             mklil
             ld  (ix+18h),h  ;zero

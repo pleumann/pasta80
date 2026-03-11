@@ -4,7 +4,7 @@
 
 {$l agonhead.asm}
 
-{$i system.pas  } 
+{$i system.pas  }
 
 {$l agon.asm    }
 
@@ -209,7 +209,7 @@ end;
 
 (**
  * Performs a MOS call. The R parameter is used for passing arguments
- * to the API call as well as getting results back. 
+ * to the API call as well as getting results back.
  *)
 function MOSAPI(I: Integer; var R: Registers): Byte; register; external 'mos_call';
 function MOSAPISeek(var R: Registers): Byte; register; external 'mos_call_seek';
@@ -348,7 +348,7 @@ procedure BlockReset(var F: FileControlBlock);  //opens file (unless already ope
 var
   R: Registers;
 begin
-//  if LastError <> 0 then Exit;
+  if LastError <> 0 then Exit;
 
 //  LastError := EsxDos($9a, R);
   if  F.Handle = 0 then
@@ -360,7 +360,8 @@ begin
     // 0x10 FA_OPEN_ALWAYS  Open file if it exists, create it if it doesn't
     R.BC := $01+$02+$10;  // Open Always seems to be broken on the emulator
     F.Handle := MOSAPI($0A, R); //mos_fopen:   EQU 0Ah
-    LastError := 0; //no errors ever ;-) - need to make it non-zero if F.Handle is 0
+    F.RL := 0;
+    if F.Handle = 0 then LastError := 1; //no errors ever ;-) - need to make it non-zero if F.Handle is 0
     //WriteLn(F.Filename[0],F.Filename[1],Ord(F.Filename[8]));
 //    WriteLn('Mode: ',R.BC);
 //useful    WriteLn('Reset HandleF: ',F.Handle);
@@ -381,7 +382,7 @@ procedure BlockRewrite(var F: FileControlBlock); //erases content of file and op
 var
   R: Registers;
 begin
-//  if LastError <> 0 then Exit;
+  if LastError <> 0 then Exit;
 
 //  LastError := EsxDos($9a, R);
   if  F.Handle = 0 then
@@ -389,7 +390,8 @@ begin
     R.HL := Addr(F.FileName);
     R.C := 8+2+1; //0x08  FA_CREATE_ALWAYS  Create a new file. If the file already exists it will be truncated and overwritten, +2+1 for R/W
     F.Handle := MOSAPI($0A, R); //mos_fopen:   EQU 0Ah
-    LastError := 0; //no errors ever ;-)
+    F.RL := 0;
+    if F.Handle = 0 then LastError := 1; //no errors ever ;-) - need to make it non-zero if F.Handle is 0
 //useful        WriteLn('Rewrite HandleF: ',F.Handle);
   end
   else
@@ -418,18 +420,19 @@ end;
 procedure BlockClose(var F: FileControlBlock);
 var
   R: Registers;
+  Ignored: Integer;
 begin
-//  if LastError <> 0 then Exit;
+  if LastError <> 0 then Exit;
 
   R.C := F.Handle;
 //  WriteLn('Closing handle #',R.C);
 
   if R.C <> 0 then //don't accidentally close all files
   begin
-    LastError := MOSAPI($0b, R); //0x0B: mos_fclose
+    Ignored := MOSAPI($0b, R); //0x0B: mos_fclose
     F.Handle := 0;
 //    WriteLn(Lasterror);
-    LastError := 0;
+    //LastError := 0;
   end
 
 end;
@@ -451,7 +454,7 @@ begin
 
 //  LastError := EsxDos($a1, R);
 //  BlockFileSize := 1; //(B[7] or (B[8] shl 8)) div 128;
-  BlockFileSize := MOSAPILength(R); //no errors captured
+  BlockFileSize := MOSAPILength(R) shr 8; //no errors captured
 end;
 
 function BlockEof(var F: FileControlBlock): Boolean;
@@ -461,10 +464,10 @@ var
 begin
   if LastError <> 0 then Exit;
 
-//  BlockEof := BlockFilePos(F) = BlockFileSize(F);
+  BlockEof := BlockFilePos(F) = BlockFileSize(F);
 
-  R.C := F.Handle;
-  BlockEof := MOSAPI($0e, R) = 1; //0x0E: mos_feof
+//  R.C := F.Handle;
+//  BlockEof := MOSAPI($0e, R) = 1; //0x0E: mos_feof
 end;
 
 
@@ -492,6 +495,7 @@ A: Status code
 procedure BlockSeek(var F: FileControlBlock; I: Integer);
 var
   R: Registers;
+  Ignored: Integer;
 begin
   if LastError <> 0 then Exit;
 
@@ -504,8 +508,7 @@ begin
   R.HL := I;
 //  WriteLn('Seeking file handle ',R.C,' to byte ',R.HL);
 //  LastError := MOSAPI($1c, R);
-  LastError := MOSAPISeek(R); //specific routine to take advantage of 24 bit on HL when multiplying by 128.
-
+  Ignored := MOSAPISeek(R); //specific routine to take advantage of 24 bit on HL when multiplying by 128.
 end;
 
 (*
@@ -545,6 +548,7 @@ begin
     Inc(F.RL);
     Inc(Actual);
     Dec(Count);
+    Inc(R.HL, 128);
 
 // do we have to fill after EOF? Not sure this will work for us.
 //    if R.DE < 128 then
@@ -571,7 +575,7 @@ procedure BlockBlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; v
 var
   R: Registers;
 begin
-//  if LastError <> 0 then Exit;
+  if LastError <> 0 then Exit;
 
   R.HL := Addr(Buffer); // where to get the data for write
   Actual := 0;
@@ -584,9 +588,10 @@ begin
     R.DE := 128;
 
     LastError := MOSAPI($1b, R);
-//    if (LastError <> 0) or (R.DE = 0) then Exit; //not sure these exit conditions help
+    if (LastError <> 0) or (R.DE = 0) then Exit; //not sure these exit conditions help
 //    WriteLn('Last Error = ',LastError);
     Inc(F.RL);
+    Inc(R.HL, 128);
     Inc(Actual);
     Dec(Count);
   end;
