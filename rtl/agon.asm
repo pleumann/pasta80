@@ -111,9 +111,10 @@ mos_file_length:
     ldhl_hl_
     ld      b,7
 mos_file_len_divlp:
-    rrca
-    rrc     h
-    rrc     l
+    and     a
+    rra
+    rr     h
+    rr     l
     djnz    mos_file_len_divlp
     ret
 

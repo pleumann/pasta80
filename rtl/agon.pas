@@ -454,7 +454,7 @@ begin
 
 //  LastError := EsxDos($a1, R);
 //  BlockFileSize := 1; //(B[7] or (B[8] shl 8)) div 128;
-  BlockFileSize := MOSAPILength(R) shr 8; //no errors captured
+  BlockFileSize := MOSAPILength(R); // shr 8; //no errors captured
 end;
 
 function BlockEof(var F: FileControlBlock): Boolean;
