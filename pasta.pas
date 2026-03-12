@@ -545,7 +545,7 @@ var
 
 var
   HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
-  MonkeyCmd, CSpectCmd, ImagePath: String;
+  MonkeyCmd, CSpectCmd, ImagePath, FabAgonDir: String;
   AltEditor: Boolean;
 
 var
@@ -610,6 +610,8 @@ begin
             CSpectCmd := Value
           else if Key = 'image' then
             ImagePath := Value
+          else if Key = 'agon' then
+            FabAgonDir := Value
           else
           begin
             WriteLn('Invalid config key: ' + Key);
@@ -706,6 +708,8 @@ begin
   Writeln('Fuse     : ', S);
   WriteCheck(CheckPath(CSpectCmd, S));
   Writeln('CSpect   : ', S);
+  WriteCheck(CheckPath(FabAgonDir, S));
+  Writeln('Agon emu : ', S);
   WriteLn;
   WriteCheck(FSize(ImagePath) <> -1);
   Writeln('SD card  : ', ImagePath);
@@ -7688,9 +7692,8 @@ begin
     else if Binary = btAgon then
     begin
       GetDir(0, S);
-      ChDir('/Users/joerg/Downloads/fab-agon-emulator-v1.0.0-macos');
+      ChDir(FabAgonDir);
       CopyFile(BinFile, 'sdcard/' + NameOnly(BinFile));
-      WriteLn('--> ', NameOnly(BinFile));
       StrToFile(NameOnly(BinFile), 'sdcard/autoexec.txt');
 
       Args := '';
