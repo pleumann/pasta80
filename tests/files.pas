@@ -4,11 +4,22 @@ program Files;
 
 type
   Color = (Red, Green, Blue, Yellow);
+
   ComputerRec = record
     Name: String[12];
     Year: Integer;
     Cool: Boolean;
   end;
+
+const
+  Monty: array[1..6] of String = (
+    'Why did Monty die so fast?',
+    'Aren''t three lives enough to last',
+    'The hazards that confront a mole',
+    'In his search for precious coal?',
+    'Don''t let Monty die in vain,',
+    'Press a key and try again!'
+  );
 
 var
   F: Text;
@@ -25,34 +36,272 @@ var
   S: String;
   Exists: Boolean;
 
+{ --- Helpers --- }
+
 function FileExists(Filename: String): Boolean;
 var
   TestFile: File;
-  Result: Integer;
+  Result: Boolean;
   Dummy: Integer;
 begin
   {$i-}
   Assign(TestFile, Filename);
   Reset(TestFile);
+  Result := IOResult = 0;
   {$i+}
-  Result := IOResult;
-  if Result = 0 then
+  if Result then
   begin
     {$i-}
     Close(TestFile);
-    {$i+}
     Dummy := IOResult; { Discard close error }
+    {$i+}
   end;
-  FileExists := Result = 0;
+  FileExists := Result;
 end;
 
-(* Overlay 0 *)
+{ --- General tests --- }
 
-overlay procedure TestFileReadInt;
+procedure TestFileErase;
+var
+  TestFile: Text;
+begin
+  WriteLn('--- TestFileErase ---');
+
+  Assign(TestFile, 'ERS.TMP');
+
+  { Create file by writing }
+  Rewrite(TestFile);
+  WriteLn(TestFile, 'This file will be erased');
+  Close(TestFile);
+
+  { Verify it exists }
+  Assert(FileExists('ERS.TMP'));
+
+  { Erase it }
+  Erase(TestFile);
+
+  { Verify it no longer exists }
+  Assert(not FileExists('ERS.TMP'));
+
+  { Non-existing file }
+  {$i-}
+  Erase(TestFile);
+  Assert(IOResult <> 0);
+  {$i+}
+end;
+
+procedure TestFileRename;
+var
+  DummyFile: File;
+begin
+  WriteLn('--- TestFileRename ---');
+
+  Assign(DummyFile, 'NEW.TMP');
+  {$i-}
+  Erase(DummyFile);
+  I := IOREsult;
+  {$i+}
+
+  Assign(DummyFile, 'OLD.TMP');
+
+  { Create file }
+  Rewrite(DummyFile);
+  BlockWrite(DummyFile, Buffer, 1, Actual);
+  Close(DummyFile);
+
+  { Verify original file exists }
+  Assert(FileExists('OLD.TMP'));
+
+  { Rename file }
+  Rename(DummyFile, 'NEW.TMP');
+
+  { Verify old name no longer exists }
+  Assert(not FileExists('OLD.TMP'));
+
+  { Verify new name exists }
+  Assert(FileExists('NEW.TMP'));
+
+  { Clean up }
+  Assign(DummyFile, 'NEW.TMP');
+  Erase(DummyFile);
+
+  { Old file does not exist }
+
+  Assign(DummyFile, 'OLD.TMP');
+  {$i-}
+  Rename(DummyFile, 'NEW.TMP');
+  Assert(IOResult <> 0);
+
+  { New file already exists }
+
+  Assign(DummyFile, 'OLD.TMP');
+  Rewrite(DummyFile);
+  BlockWrite(DummyFile, Buffer, 1, Actual);
+  Close(DummyFile);
+
+  Assign(DummyFile, 'NEW.TMP');
+  Rewrite(DummyFile);
+  BlockWrite(DummyFile, Buffer, 1, Actual);
+  Close(DummyFile);
+
+  {$i-}
+  Rename(DummyFile, 'NEW.TMP');
+  Assert(IOResult <> 0);
+  {$i-}
+end;
+
+{ --- Raw files --- }
+
+overlay procedure TestUntypedFiles;
+const
+  Expected: string = '0123AB6789ZZ';
+var
+  Idx: Integer;
+  Ch: Char;
+  FS: Integer;
+begin
+  WriteLn('--- TestUntypedFiles ---');
+
+  Assign(RawFile, 'RAW.TMP');
+  Rewrite(RawFile);
+
+  { Write 10 blocks with characters '0'..'9' }
+  for Ch := '0' to '9' do
+  begin
+    WriteLn(Ch);
+    FillChar(Buffer, 128, Ch);
+    BlockWrite(RawFile, Buffer, 1, Actual);
+    Assert(Actual = 1);
+  end;
+
+  { Give the OS a chance to update the file size }
+  Close(RawFile);
+  Reset(RawFile);
+
+  FS := FileSize(RawFile);
+  Assert(FS = 10);
+
+  Close(RawFile);
+
+  { Reopen in update mode, seek to position 4 }
+  Reset(RawFile);
+  Seek(RawFile, 4);
+  Assert(FilePos(RawFile) = 4);
+
+  { Overwrite with 'A' }
+  FillChar(Buffer, 128, 'A');
+  BlockWrite(RawFile, Buffer, 1, Actual);
+  Assert(Actual = 1);
+  Assert(FilePos(RawFile) = 5);
+
+  { Overwrite with 'B' }
+  FillChar(Buffer, 128, 'B');
+  BlockWrite(RawFile, Buffer, 1, Actual);
+  Assert(Actual = 1);
+  Assert(FilePos(RawFile) = 6);
+
+  { Seek to end and write 2 blocks of 'Z' }
+  Seek(RawFile, FileSize(RawFile));
+  FillChar(Buffer, 256, 'Z');
+  BlockWrite(RawFile, Buffer, 2, Actual);
+  Assert(Actual = 2);
+  Assert(FilePos(RawFile) = 12);
+
+  { Give the OS a chance to update the file size }
+  Close(RawFile);
+  Reset(RawFile);
+
+  FS := FileSize(RawFile);
+  Assert(FS = 12);
+
+  Close(RawFile);
+
+  { Verify by reading back }
+  Reset(RawFile);
+
+  Idx := 0;
+  while not Eof(RawFile) do
+  begin
+    BlockRead(RawFile, Buffer, 1, Actual);
+    WriteLn('Record #', Idx, ': ', Buffer[0], '...', Buffer[127]);
+    Assert(Actual = 1);
+    Assert(Buffer[0] = Expected[Idx + 1]);
+    Inc(Idx);
+  end;
+  Assert(Idx = 12);
+
+  Close(RawFile);
+
+  Erase(RawFile);
+  Assert(not FileExists('RAW.TMP'));
+end;
+
+{ --- Text --- }
+
+overlay procedure TestTextWithStrings;
+var
+  LineCount: Integer;
+  CharCount: Integer;
+  TempCh: Char;
+begin
+  WriteLn('--- TestTextWithStrings ---');
+
+  Assign(F, 'TXT.TMP');
+
+  { Initial Rewrite }
+  Rewrite(F);
+  WriteLn(F, Monty[1]);
+  Close(F);
+
+  { First Append }
+  Append(F);
+  WriteLn(F, Monty[2]);
+  Close(F);
+
+  { Second Append }
+  Append(F);
+  for I := 3 to 6 do
+    WriteLn(F, Monty[I]);
+  Close(F);
+
+  { Verify line count }
+  Reset(F);
+  LineCount := 0;
+  while not Eof(F) do
+  begin
+    ReadLn(F, S);
+    WriteLn(S);
+    Inc(LineCount);
+    Assert(S = Monty[LineCount]);
+  end;
+  Close(F);
+  WriteLn(LineCount, ' lines');
+  Assert(LineCount = 6);
+
+  WriteLn;
+
+  { Verify character count }
+  Reset(F);
+  CharCount := 0;
+  while not Eof(F) do
+  begin
+    Read(F, TempCh);
+    Write(TempCh);
+    Inc(CharCount);
+  end;
+  Close(F);
+
+  WriteLn(CharCount, ' characters');
+  Assert(CharCount = 177 + 6 * Length(LineBreak));
+
+  Erase(F);
+end;
+
+procedure TestTextWithIntegers;
 var
   I1, I2, I3: Integer;
 begin
-  WriteLn('--- TestFileReadInt ---');
+  WriteLn('--- TestTextWithIntegers ---');
 
   Assign(F, 'INT.TMP');
   Rewrite(F);
@@ -74,12 +323,12 @@ begin
   Erase(F);
 end;
 
-overlay procedure TestFileReadFloat;
+procedure TestTextWithReals;
 var
   R1, R2, R3: Real;
   B1, B2: Boolean;
 begin
-  WriteLn('--- TestFileReadFloat ---');
+  WriteLn('--- TestTextWithReals ---');
 
   Assign(F, 'FLT.TMP');
   Rewrite(F);
@@ -103,11 +352,11 @@ begin
   Erase(F);
 end;
 
-overlay procedure TestFileReadEnum;
+procedure TestTextWithEnums;
 var
   C1, C2, C3, C4: Color;
 begin
-  WriteLn('--- TestFileReadEnum ---');
+  WriteLn('--- TestTextWithEnums ---');
 
   Assign(F, 'ENM.TMP');
   Rewrite(F);
@@ -129,12 +378,12 @@ begin
   Erase(F);
 end;
 
-overlay procedure TestFileSeekEoln;
+procedure TestTextSeekEoln;
 var
   I1: Integer;
   B1, B2, B3: Boolean;
 begin
-  WriteLn('--- TestFileSeekEoln ---');
+  WriteLn('--- TestTextSeekEoln ---');
 
   Assign(F, 'EOL.TMP');
   Rewrite(F);
@@ -165,12 +414,12 @@ begin
   Erase(F);
 end;
 
-overlay procedure TestFileSeekEof;
+procedure TestTextSeekEof;
 var
   I1, I2: Integer;
   B1, B2, B3: Boolean;
 begin
-  WriteLn('--- TestFileSeekEof ---');
+  WriteLn('--- TestTextSeekEof ---');
 
   Assign(F, 'EOF.TMP');
   Rewrite(F);
@@ -205,137 +454,56 @@ begin
   Erase(F);
 end;
 
-overlay procedure TestRawFileBlockIO;
-const
-  Expected = '01234AB6789ZZ';
+procedure TestTextEoln;
 var
-  Idx: Integer;
-  Ch: Char;
-  FS: Integer;
+  T: Text;
+  C: Char;
 begin
-  WriteLn('--- TestRawFileBlockIO ---');
+  WriteLn('--- TestTextEoln ---');
 
-  Assign(RawFile, 'RAW.TMP');
-  {$i-}
-  Erase(RawFile);
-  {$i+}
-  Rewrite(RawFile);
+  Assign(T, 'TXT.TMP');
+  Rewrite(T);
+  WriteLn(T, 'Hello, World!');
+  Close(T);
 
-  { Write 10 blocks with characters '0'..'9' }
-  for Ch := '0' to '9' do
+  Reset(T);
+  for I := 1 to 13 do
   begin
-    FillChar(Buffer, 128, Ch);
-    BlockWrite(RawFile, Buffer, 1, Actual);
-    Assert(Actual = 1);
+    Read(T, C);
+    Write(C, ' ');
   end;
 
-  FS := FileSize(RawFile);
-  Assert(FS = 10);
+  if Eoln(T) then WriteLn('<EOL>') else WriteLn;
+  Assert(Eoln(T));
 
-  Close(RawFile);
-
-  { Reopen in update mode, seek to position 4 }
-  Reset(RawFile);
-  Seek(RawFile, 4);
-
-  { Overwrite with 'A' }
-  FillChar(Buffer, 128, 'A');
-  BlockWrite(RawFile, Buffer, 1, Actual);
-  Assert(Actual = 1);
-
-  { Overwrite with 'B' }
-  FillChar(Buffer, 128, 'B');
-  BlockWrite(RawFile, Buffer, 1, Actual);
-  Assert(Actual = 1);
-
-  { Seek to end and write 2 blocks of 'Z' }
-  Seek(RawFile, FileSize(RawFile));
-  FillChar(Buffer, 256, 'Z');
-  BlockWrite(RawFile, Buffer, 2, Actual);
-  Assert(Actual = 2);
-
-  FS := FileSize(RawFile);
-  Assert(FS = 12);
-
-  Close(RawFile);
-
-  { Verify by reading back }
-  Reset(RawFile);
-
-  Idx := 0;
-  while not Eof(RawFile) do
-  begin
-    BlockRead(RawFile, Buffer, 1, Actual);
-    WriteLn('Record #', Idx, ': ', Buffer[0], '...', Buffer[127]);
-    Assert(Actual = 1);
-    // FIXME Assert(Buffer[0] = Expected[Idx]);
-    Inc(Idx);
-  end;
-  Assert(Idx = 12);
-
-  Close(RawFile);
-  Erase(RawFile);
+  Close(T);
 end;
 
-overlay procedure TestTextFileAppend;
+procedure TestTextEof;
 var
-  LineCount: Integer;
-  CharCount: Integer;
-  TempCh: Char;
+  T: Text;
+  S: String;
 begin
-  WriteLn('--- TestTextFileAppend ---');
+  WriteLn('--- TestTextEof ---');
 
-  Assign(F, 'TXT.TMP');
-  {$i-}
-  Erase(F);
-  {$i+}
+  Assign(T, 'TXT.TMP');
+  Rewrite(T);
+  for I := 1 to 6 do
+    WriteLn(T, Monty[I]);
+  Close(T);
 
-  { Initial Rewrite }
-  Rewrite(F);
-  WriteLn(F, 'Why did Monty die so fast?');
-  Close(F);
+  Reset(T);
+  for I := 1 to 6 do
+    ReadLn(T, S);
 
-  { First Append }
-  Append(F);
-  WriteLn(F, 'Aren''t three lives enough to last');
-  Close(F);
+  Assert(Eof(T));
 
-  { Second Append }
-  Append(F);
-  WriteLn(F, 'The hazards that confront a mole');
-  WriteLn(F, 'In his search for precious coal?');
-  WriteLn(F, 'Don''t let Monty die in vain,');
-  WriteLn(F, 'Press a key and try again!');
-  Close(F);
-
-  { Verify line count }
-  Reset(F);
-  LineCount := 0;
-  while not Eof(F) do
-  begin
-    ReadLn(F, S);
-    WriteLn(S);
-    Inc(LineCount);
-  end;
-  Close(F);
-  Assert(LineCount = 6);
-
-  { Verify character count }
-  Reset(F);
-  CharCount := 0;
-  while not Eof(F) do
-  begin
-    Read(F, TempCh);
-    Write(TempCh);
-    Inc(CharCount);
-  end;
-  Close(F);
-  Assert(CharCount = 189);
-
-  Erase(F);
+  Close(T);
 end;
 
-overlay procedure TestTypedFileIO;
+{ --- Typed 'file of' --- }
+
+overlay procedure TestTypedFiles;
 const
   CoolStr: array[Boolean] of String = ('Uncool', 'Cool');
 var
@@ -345,10 +513,6 @@ begin
   WriteLn('--- TestTypedFileIO ---');
 
   Assign(BinFile, 'BIN.TMP');
-  {$i-}
-  Erase(BinFile);
-  {$i+}
-
   Rewrite(BinFile);
 
   { Write 5 computer records }
@@ -432,74 +596,30 @@ begin
   Erase(BinFile);
 end;
 
-overlay procedure TestFileErase;
+{ --- $i directive and IOResult --- }
+
+procedure TestIOResult;
 var
-  TestFile: Text;
+  T: Text;
+  I: Integer;
 begin
-  WriteLn('--- TestFileErase ---');
+  WriteLn('--- TestIOResult ---');
 
-  Assign(TestFile, 'ERS.TMP');
+  Assign(T, 'TXT.TMP');
   {$i-}
-  Erase(TestFile);
-  {$i+}
+  Erase(T);
+  I := IOResult;
 
-  { Create file by writing }
-  Rewrite(TestFile);
-  WriteLn(TestFile, 'This file will be erased');
-  Close(TestFile);
+  Reset(T);
+  Reset(T);
+  Rewrite(T);
+  WriteLn(T, 'You should not see this.');
+  Close(T);
 
-  { Verify it exists }
-  Assert(FileExists('ERS.TMP'));
-
-  { Erase it }
-  Erase(TestFile);
-
-  { Verify it no longer exists }
-  Assert(not FileExists('ERS.TMP'));
-
-  { Verify no error when erasing already-erased file }
+  Assert(IOResult <> 0);
   {$i-}
-  Erase(TestFile);
-  {$i+}
 
-  Assert(True);
-end;
-
-overlay procedure TestFileRename;
-var
-  DummyFile: File;
-begin
-  WriteLn('--- TestFileRename ---');
-
-  { Clean up old files if they exist }
-  Assign(DummyFile, 'OLD.TMP');
-  {$i-}
-  Erase(DummyFile);
-  {$i+}
-
-  { Create file }
-  Rewrite(DummyFile);
-  BlockWrite(DummyFile, Buffer, 1, Actual);
-  Close(DummyFile);
-
-  { Verify original file exists }
-  Assert(FileExists('OLD.TMP'));
-
-  { Rename file }
-  Rename(DummyFile, 'NEW.TMP');
-
-  { Verify old name no longer exists }
-  Assert(not FileExists('OLD.TMP'));
-
-  { Verify new name exists }
-  Assert(FileExists('NEW.TMP'));
-
-  { Clean up }
-  Assign(DummyFile, 'NEW.TMP');
-  Erase(DummyFile);
-
-  { Verify cleanup successful }
-  Assert(not FileExists('NEW.TMP'));
+  Assert(not FileExists('TXT.TMP'));
 end;
 
 begin
@@ -507,16 +627,23 @@ begin
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
 
-  TestFileReadInt;
-  TestFileReadFloat;
-  TestFileReadEnum;
-  TestFileSeekEoln;
-  TestFileSeekEof;
-  TestRawFileBlockIO;
-  TestTextFileAppend;
-  TestTypedFileIO;
   TestFileErase;
   TestFileRename;
+
+  TestUntypedFiles;
+
+  TestTextWithStrings;
+  TestTextWithIntegers;
+  TestTextWithReals;
+  TestTextWithEnums;
+  TestTextSeekEoln;
+  TestTextSeekEof;
+  TestTextEoln;
+  TestTextEof;
+
+  TestTypedFiles;
+
+  TestIOResult;
 
   WriteLn;
   WriteLn('************************');

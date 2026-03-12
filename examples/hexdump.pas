@@ -24,7 +24,7 @@ var
   T: Text;
   I: Integer;
   C: Char;
-
+  S: String;
 begin
   Assign(T, ParamStr(1));
   Reset(T);
@@ -32,21 +32,32 @@ begin
   I := 0;
 
   Write('00000000');
+  S := '';
 
   repeat
     Read(T, C);
-    Write('   ', HexStr(Ord(C), 2));
-    if (C >= ' ') and (C <= '~') then Write(' '#27'p', C, #27'q') else Write('  ');
+    Write('  $', HexStr(Ord(C), 2));
+    if (C >= ' ') and (C <= '~') then
+      S := S + C + ' '
+    else
+      S := S + '. ';
     I := I + 1;
 
     if I mod 8 = 0 then
     begin
-      WriteLn;
+      WriteLn('  ', S);
+      S := '';
       Write(HexStr(I, 8));
     end;
   until C = #26;
 
-  WriteLn;
+  while I mod 8 <> 0 do
+  begin
+    Write('     ');
+    Inc(I);
+  end;
+  
+  WriteLn('  ', S);
 
   Close(T);
 end.

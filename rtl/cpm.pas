@@ -354,11 +354,9 @@ begin
 end;
 
 procedure BlockErase(var F: FileControlBlock);
-var
-  A: Byte;
 begin
   if LastError <> 0 then Exit;
-  A := BDos(*Catch*)(19, Addr(F));
+  BDosCatch(19, Addr(F));
 end;
 
 procedure BlockRename(var F: FileControlBlock; S: String);
