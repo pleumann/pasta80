@@ -7880,6 +7880,8 @@ begin
 
   if Binary = btZXN then
     WriteLn(BinaryStr[Binary] + ', Z80N':40)
+  else if Binary = btAgon then
+    WriteLn(BinaryStr[Binary] + ', eZ80':40)
   else
     WriteLn(BinaryStr[Binary] + ', Z80':40);
   WriteLn;
@@ -7913,8 +7915,8 @@ begin
     C := GetKey;
     case C of
       'm': begin
-             if Binary = btZXN then
-               Binary := btCPM
+             if Binary = High(TBinaryType) then
+               Binary := Low(TBinaryType)
              else
                Binary := Succ(Binary);
 
