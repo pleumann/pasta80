@@ -8166,17 +8166,3 @@ begin
 
   Parameters;
 end.
-
-(*
-TODO
-- Record typed constants
-- Too many arguments
-- var X absolute $1234
-- var X absolute Y;
-- Complex types on the stack (parameters, locals), what does Turbo 3 allow?
-- Enums as array indices
-- Alternative array syntax
-- Subrange types
-- Pointers & heap management
-- Allow assignment from Byte to Integer (TypeCheck probably needs to return type)
-*)
