@@ -166,6 +166,13 @@ begin
 
   ClrScr;
 
+  WriteLn(' **  *   * * *   *  **  *     ****');
+  WriteLn('*  * **  * * ** ** *  * *    *    ');
+  WriteLn('**** * * * * * * * **** *     *** ');
+  WriteLn('*  * *  ** * *   * *  * *        *');
+  WriteLn('*  * *   * * *   * *  * **** **** ');
+  WriteLn;
+
   WriteLn('Let''s play a game!');
   WriteLn;
   WriteLn('You think of an animal.');
@@ -173,19 +180,16 @@ begin
   WriteLn;
   WriteLn('Shall we start (y/n)?');
 
-  if YesOrNo then
-    repeat
-      PlayGame;
-
-      WriteLn;
-      WriteLn('Do you want to play again (y/n)?');
-    until not YesOrNo
-  else
+  while YesOrNo do
   begin
+    PlayGame;
+
     WriteLn;
-    WriteLn('Do you want to list the knowledge base (y/n)?');
-    if YesOrNo then Dump;
+    WriteLn('Do you want to play again (y/n)?');
   end;
+
+  WriteLn('Do you want to list the knowledge base (y/n)?');
+  if YesOrNo then Dump;
 
   WriteLn;
   Write('Bye!');
