@@ -2683,6 +2683,11 @@ begin
       EmitI('OvrInfo("' + IntToStr(I) + '",' + IntToStr(Is128K) + ')');
   end;
 
+  if (Binary in [btZX, btZX128]) then
+    EmitI('WriteFuseBreakpoints("' + ChangeExt(BinFile, '.brk') + '")')
+  else if (Binary = btAgon) then
+    EmitI('WriteAgonBreakpoints("' + ChangeExt(BinFile, '.brk') + '")');
+
   EmitI('ENDLUA');
 
   if Binary = btZX128 then
@@ -2767,9 +2772,6 @@ begin
   end
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
-
-  if (Binary in [btZX, btZX128, btAgon]) then
-    EmitI('.BPLIST "' + ChangeExt(BinFile, '.brk') + '" fuse');
 end;
 
 (**
@@ -4408,13 +4410,17 @@ begin
       begin
         EmitI('pop af');
         EmitI('jr nc,$+3');
-        EmitI('.setbp');
+        EmitI('LUA');
+        EmitI('AddBreakpoint()');
+        EmitI('ENDLUA');
         EmitI('nop');
       end
-      else
+      else if Binary in [btZX, btZX128] then
       begin
         EmitI('pop hl');
-        EmitI('.setbp "z80:hl!=0"');
+        EmitI('LUA');
+        EmitI('AddBreakpoint("z80:hl!=0")');
+        EmitI('ENDLUA');
       end;
 
       Expect(toRParen); NextToken;
@@ -4423,8 +4429,12 @@ begin
     begin
       if Binary = btZXN then
         EmitI('db $fd, $00')
-      else
-        EmitI('.setbp');
+      else if Binary in [btZX, btZX128, btAgon] then
+      begin
+        EmitI('LUA');
+        EmitI('AddBreakpoint()');
+        EmitI('ENDLUA');
+      end;
     end;
 
     if Release then UnmuteEmitter;
@@ -7351,6 +7361,8 @@ begin
   OpenScope(False);
   RegisterAllBuiltIns;
 
+  SetLibrary(HomeDir + '/rtl/helpers.lua');
+
   if Binary = btCPM then
     OpenInput(HomeDir + '/rtl/cpm.pas')
   else if Binary = btZX then
@@ -7695,17 +7707,7 @@ begin
       Args := '';
 
       if Debug then
-      begin
-        Args := Args + ' -d';
-        Assign(BP, ChangeExt(BinFile, '.brk'));
-        Reset(BP);
-        while not Eof(BP) do
-        begin
-          ReadLn(BP, T);
-          if StartsWith(T, 'br ') then Args := Args + ' -b 0x4' + Copy(T, 6, 255);
-        end;
-        Close(BP);
-      end;
+        Args := Args + StrFromFile(ChangeExt(BinFile, '.brk'));
 
       WriteLn(Args);
       Execute('./fab-agon-emulator', Args);
@@ -7721,7 +7723,7 @@ begin
         Args := Args + '--machine 128';
 
       if Debug then
-        Args := Args + ' --debugger-command ''' + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
+        Args := Args + ' ' + StrFromFile(ChangeExt(BinFile, '.brk'))
       else
         Args := Args + ' --debugger-command ''del''';
 
