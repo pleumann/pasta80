@@ -41,7 +41,7 @@ The compiler also has some features that were borrowed from or inspired by later
   * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
   * Binary literals (using a `%` prefix).
   * `Break` and `Continue` for loop control.
-  * `Exit` in functions accepts an optional parameter for the result (like `Exit(42)`).
+  * An optional parameter for `Exit` in functions that assigns the result (like `Exit(42)`).
   * Querying the keyboard via `KeyPressed` and `ReadKey`.
   * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
@@ -204,18 +204,6 @@ $ pasta --zx128 --tap --opt --dep --ovr tests/all.pas # Test suite as 128K tape
 ```
 The compiler prints a report of which overlays go into which RAM banks or pages.
 ```
-----------------------------------------
-PASTA/80 Pascal System      Version 0.96
-                            ZX 128K, Z80
-
-Copyright (C) 2020-25 by  Joerg Pleumann
-----------------------------------------
-
-Compiling...
-  tests/all.pas -> tests/all.z80
-Assembling...
-  tests/all.z80 -> tests/all.tap
-
 Program   : 10781 bytes ($8000-$AA1C)
 Heap      :  1507 bytes ($AA1D-$AFFF)
 Stack     :  4096 bytes ($B000-$BFFF)
