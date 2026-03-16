@@ -247,6 +247,7 @@ type
     RL: Integer;                    (* Current record number low 16 bits  *)
                                     (* used in file.pas, record number??  *)
 //    RH: Byte;                       (* Current record number high 8 bits  *) //not used in FILE.PAS yet!
+    SL: Integer;                    (* Size of file aka number of records *)
   end;
 
 procedure BlockAssign(var F: FileControlBlock; S: String);
@@ -361,7 +362,13 @@ begin
     R.BC := $01+$02+$10;  // Open Always seems to be broken on the emulator
     F.Handle := MOSAPI($0A, R); //mos_fopen:   EQU 0Ah
     F.RL := 0;
-      if F.Handle = 0 then LastError := 1; //no specific errors returned, make LastError non-zero if F.Handle is 0
+    if F.Handle = 0 then
+      LastError := 1
+    else
+    begin
+      R.C := F.Handle;
+      F.SL := MOSAPILength(R);
+    end;
     //WriteLn(F.Filename[0],F.Filename[1],Ord(F.Filename[8]));
 //    WriteLn('Mode: ',R.BC);
 //useful    WriteLn('Reset HandleF: ',F.Handle);
@@ -392,6 +399,7 @@ begin
     F.Handle := MOSAPI($0A, R); //mos_fopen:   EQU 0Ah
     F.RL := 0;
       if F.Handle = 0 then LastError := 1; //no specific errors returned, make LastError non-zero if F.Handle is 0
+    F.SL := 0;
 //useful        WriteLn('Rewrite HandleF: ',F.Handle);
   end
   else
@@ -438,37 +446,21 @@ end;
 
 function BlockFilePos(var F: FileControlBlock): Integer;
 begin
+  if LastError <> 0 then Exit;
   BlockFilePos := F.RL;
 end;
 
 function BlockFileSize(var F: FileControlBlock): Integer;
-var
-  R: Registers;
-//  B: array[0..10] of Byte;
 begin
   if LastError <> 0 then Exit;
-
-  R.C := F.Handle;
-//  R.HL := Addr(B);
-
-//  LastError := EsxDos($a1, R);
-//  BlockFileSize := 1; //(B[7] or (B[8] shl 8)) div 128;
-  BlockFileSize := MOSAPILength(R); //no errors captured
+  BlockFileSize := F.SL;
 end;
 
 function BlockEof(var F: FileControlBlock): Boolean;
-var
-  R: Registers;
-//  B: array[0..10] of Byte;
 begin
   if LastError <> 0 then Exit;
-
-  BlockEof := BlockFilePos(F) = BlockFileSize(F); // use internal trackers for internal consistency
-
-//  R.C := F.Handle;
-//  BlockEof := MOSAPI($0e, R) = 1; //0x0E: mos_feof
+  BlockEof := F.RL = F.SL;
 end;
-
 
 (*
 0x1C: mos_flseek
@@ -592,6 +584,8 @@ begin
     Inc(R.HL, 128);
     Inc(Actual);
     Dec(Count);
+
+    if F.RL > F.SL then F.SL := F.RL;
   end;
 end;
 {$i files.pas}
