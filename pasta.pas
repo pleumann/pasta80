@@ -2768,7 +2768,7 @@ begin
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
 
-  if (Binary in [btZX, btZX128]) then
+  if (Binary in [btZX, btZX128, btAgon]) then
     EmitI('.BPLIST "' + ChangeExt(BinFile, '.brk') + '" fuse');
 end;
 
@@ -4403,6 +4403,13 @@ begin
         EmitI('pop af');
         EmitI('jr nc,$+4');
         EmitI('db $fd, $00');
+      end
+      else if Binary = btAgon then
+      begin
+        EmitI('pop af');
+        EmitI('jr nc,$+3');
+        EmitI('.setbp');
+        EmitI('nop');
       end
       else
       begin
