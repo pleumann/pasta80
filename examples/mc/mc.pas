@@ -66,12 +66,12 @@ var
 { must let the include directives start in column one and then use   }
 { the TLIST program to generate a listing.                           }
 
- {$I MC-MOD00.INC} {     Miscelaneous procedures                     }
- {$I MC-MOD01.INC} {     Initialization procedures                   }
- {$I MC-MOD02.INC} {     Commands to move between fields             }
- {$I MC-MOD03.INC} {     Commands to Load,Save,Print                 }
- {$I MC-MOD04.INC} {     Evaluating an expression in a cell          }
- {$I MC-MOD05.INC} {     Reading a cell definition and Format command}
+ {$I mc-mod00.inc} {     Miscelaneous procedures                     }
+ {$I mc-mod01.inc} {     Initialization procedures                   }
+ {$I mc-mod02.inc} {     Commands to move between fields             }
+ {$I mc-mod03.inc} {     Commands to Load,Save,Print                 }
+ {$I mc-mod04.inc} {     Evaluating an expression in a cell          }
+ {$I mc-mod05.inc} {     Reading a cell definition and Format command}
 
 
 {.PA}
