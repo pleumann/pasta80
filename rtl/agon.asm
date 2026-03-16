@@ -12,12 +12,13 @@
 ;
 
 mos_call:
-;    push    ix
+;    push    ix     ;Doesn't need preserving at this stage
     ld      a,l     ;mos API routine to call
     push    de      ;address of register struct
     pop     ix
     ; AF is not used in these calls so not included in the registers.
     ;Consider macros for these if we use them again.
+    ; fetch all parameters from register block
     ;ld bc,(IX+0) ->  LD BC,(IX+d) 0/1 5/6 DD, 07, dd
     db      0ddh, 007h, 00
     ;ld de,(IX+2) ->  LD DE,(IX+d) 0/1 5/6 DD, 17, dd
@@ -27,16 +28,12 @@ mos_call:
 
 
     rst     08h ;MOS API call
-;    push    af
-;    or      64
-;    rst     10h
-;    pop     af
     ;ld (IX+0),bc -> LD (IX+d),BC 0/1 5/6 DD, 0F, dd
-    db      0ddh, 00Fh, 00
+    db      0ddh, 00Fh, 00h
     ;ld (IX+2),de -> LD (IX+d),DE 0/1 5/6 DD, 1F, dd
-    db      0ddh, 01Fh, 02
+    db      0ddh, 01Fh, 02h
     ;ld (IX+4),hl -> LD (IX+d),HL 0/1 5/6 DD, 2F, dd
-    db      0ddh, 02Fh, 04
+    db      0ddh, 02Fh, 04h
     ld      l,a ;Return A into HL.
     ld      h,0
 ;    pop     ix
@@ -52,14 +49,14 @@ mos_call_seek:
 ;
 ;Returns:
 ;A: Status code
-    ld      a,01ch     ;mos API routine to call
+    ld      a,01ch     ;mos_flseek API routine to call
     push    hl      ;address of register struct - only 1 param
     pop     ix
-    ld      de,0
+    ld      de,0    ;always zero in this situation - limited file size to 64k x 128 blocks
     ;ld bc,(IX+0) ->  LD BC,(IX+d) 0/1 5/6 DD, 07, dd
-    db      0ddh, 007h, 00
+    db      0ddh, 007h, 00h
     ;ld hl,(IX+4) ->  LD HL,(IX+d) 0/1 5/6 DD, 27, dd
-    db      0ddh, 027h, 04
+    db      0ddh, 027h, 04h
     ld      e,0
 
     ld      b,7
@@ -67,8 +64,6 @@ mos_call_seek_x7:
     mklil
     add     hl,hl
     djnz    mos_call_seek_x7
-
-    ld      hl,0
 
     rst     08h ;MOS API call
 
@@ -91,7 +86,7 @@ mos_file_length:
     pop     ix
     ld      de,0
     ;ld bc,(IX+0) ->  LD BC,(IX+d) 0/1 5/6 DD, 07, dd
-    db      0ddh, 007h, 00
+    db      0ddh, 007h, 00h
     rst     08h ;MOS API call
 
 ;this will be in a different page than the code, so everything needs to be mklil until you get the result
@@ -101,7 +96,7 @@ mos_file_length:
     mklil
     add hl,de
     mklil
-    ld     a,(hl)   ;top byte
+    ld      a,(hl)   ;top byte
     mklil
     dec     hl
     mklil
@@ -111,9 +106,10 @@ mos_file_length:
     ldhl_hl_
     ld      b,7
 mos_file_len_divlp:
-    rrca
-    rrc     h
-    rrc     l
+    or      a
+    rra
+    rr      h
+    rr      l
     djnz    mos_file_len_divlp
     ret
 
@@ -192,7 +188,7 @@ __readkey_1:
             mklil
             ld  a,(ix+5)    ;valid key?
             or  a
-            jr  z,__readkey_1            
+            jr  z,__readkey_1
             ld  l,a
             mklil
             ld  (ix+18h),h  ;zero

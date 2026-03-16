@@ -7675,7 +7675,7 @@ begin
     end
     else if Binary = btAgon then
     begin
-      if Alt then
+      if Shift then
         Execute(TnylpoCmd, '-soy -t @ ' + BinFile)
       else
         Execute(TnylpoCmd, BinFile)
