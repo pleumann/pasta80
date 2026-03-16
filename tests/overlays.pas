@@ -60,7 +60,11 @@ begin
   Delay(500);
 end;
 
+procedure Overload; register; external 'overload';
+
 begin
+  Overload;
+
   WriteLn('Here we go...');
 
   A;

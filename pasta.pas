@@ -2627,14 +2627,15 @@ begin
   else if Binary = btAgon then
   begin
     Emit('AGON', 'equ 1', 'Target is Agon Light/Console8');
-    EmitI('device NOSLOT64K');
+    EmitI('defdevice AGON,$2000,136');
+    EmitI('device AGON');
   end;
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
   Emit('TEXT', 'jp __init', '');
   Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
 
-  if Binary in [btZX128, btZXN] then
+  if Binary in [btZX128, btZXN, btAgon] then
   begin
     Emit('numpages', 'db 0', 'Number of overlay pages');
     if Overlays then
@@ -2678,6 +2679,7 @@ begin
     EmitI('print()');
 
     Is128K := Ord(Binary = btZX128);
+    if Binary = btAgon then Is128K := 2;
 
     for I := 0 to CurrentOverlay - 1 do
       EmitI('OvrInfo("' + IntToStr(I) + '",' + IntToStr(Is128K) + ')');
@@ -2702,7 +2704,12 @@ begin
   if Binary = btCPM then
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
   else if Binary = btAgon then
-    EmitI('savebin "' + BinFile + '",$0000,HEAP')
+  begin
+    EmitI('savebin "' + BinFile + '",$0000,HEAP');
+    if CurrentOverlay <> 0 then
+      EmitI('savedev "' + ChangeExt(BinFile, '.ovr') + '",8,0,' + IntToStr(CurrentOverlay * 8192))
+    else
+  end
   else if Format = tfBinary then
     EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
   else if Format = tfPlus3Dos then
@@ -7165,6 +7172,55 @@ begin
   Inc(CurrentOverlay);
 end;
 
+procedure ParseAgonOverlay(Sym: PSymbol);
+var
+  S, T: String;
+  Start: Integer;
+begin
+  if CurrentOverlay = 128 then Error('Too many overlays');
+
+  CurrentBank := 8 + CurrentOverlay;
+  Start := $E000;
+
+  S := IntToStr(CurrentOverlay);
+  T := IntToStr(Start);
+
+  Emit('OLD_ORG_' + S, 'equ $', '');
+  EmitI('slot 7');
+  EmitI('page ' + IntToStr(CurrentBank));
+  EmitI('org ' + T);
+  EmitI('dw 0');
+
+  Banked := True;
+
+  while Scanner.Token = toOverlay do
+  begin
+    NextToken;
+
+    if not ((Scanner.Token = toProcedure) or (Scanner.Token = toFunction)) then
+      Error('Procedure or function expected');
+
+    ParseProcFunc(Sym);
+  end;
+
+  //EmitI('display "Page:", $$');
+
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
+  Emit('OVR_' + S + '_START', 'equ ' + T, '');
+  Emit('OVR_' + S + '_END', 'equ $', '');
+
+  EmitI('org ' + T);
+  EmitI('dw (OVR_' + S + '_END-$E000)');
+
+  //EmitI('slot 7');
+  //EmitI('page 32');
+  EmitI('org OLD_ORG_' + S);
+
+  Banked := False;
+
+  Inc(CurrentOverlay);
+end;
+
 (**
  * Parses a declaration part, which can contain the following elements any
  * number of times and in any order: constants, types, variables, labels,
@@ -7266,6 +7322,8 @@ begin
         ParseOverlay(Sym)
       else if (Binary = btZXN) and Overlays then
         ParseNextOverlay(Sym)
+      else if (Binary = btAgon) and Overlays then
+        ParseAgonOverlay(Sym)
       else
         NextToken;
     end
@@ -8086,7 +8144,7 @@ begin
       Overlays := True;
       if Binary = btZX128 then
         AddrLimit := $C000
-      else if Binary = btZXN then
+      else if Binary in [btZXN, btAgon] then
         AddrLimit := $E000
       else
         Error('Target ' + BinaryStr[Binary] + ' does not support paging.');

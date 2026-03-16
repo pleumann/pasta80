@@ -28,6 +28,8 @@
 
                     if Is128K == 1 then
                         SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in bank %2d", Page))
+                    elseif Is128K == 2 then
+                        SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("at addr $%05X", Page))
                     else
                         SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in page %2d", Page))
                     end

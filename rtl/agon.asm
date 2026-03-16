@@ -565,3 +565,62 @@ al_setcoords:
 __scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
 
+    MACRO LDHL24 val
+        DB 0x49, 0x21
+        DB val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF
+    ENDM
+
+    MACRO LDDE24 val
+        DB 0x49, 0x11
+        DB val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF
+    ENDM
+
+    MACRO LDBC24 val
+        DB 0x49, 0x01
+        DB val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF
+    ENDM
+
+    MACRO CALLIS addr
+        DB 0x52
+        CALL addr
+    ENDM
+
+    MACRO RETS
+        DB 0x40
+        RET
+    ENDM
+
+ovl_name:   db 'overlays.ovr',0
+
+overload:
+    LDHL24  ovl_name            ; Dateiname (Adresse ins Extended RAM - Achtung!)
+    LDDE24  0x050000            ; Ziel
+    LDBC24  0                   ; ganze Datei
+    mos_call $01                 ; mos_load
+    RETS
+
+banksel:                    ; A = Overlay-Nummer
+    ; Quelladresse berechnen: 0x050000 + A * 0x2000
+    LD      HL, 0
+    LD      H, A
+    ADD     HL, HL
+    ADD     HL, HL
+    ADD     HL, HL
+    ADD     HL, HL
+    ADD     HL, HL
+    ; Jetzt Präfix für 24-Bit-Addition
+    DB      0x49, 0x01          ; LDBC24 inline: BC = 0x050000
+    DB      0x00, 0x00, 0x05
+    ADD     HL, BC              ; HL = 24-Bit-Quelladresse
+
+    ; Tatsächliche Größe aus den ersten 2 Bytes lesen
+    LD      C, (HL)             ; Low-Byte der Größe
+    INC     HL
+    LD      B, (HL)             ; High-Byte der Größe
+    INC     HL                  ; HL zeigt jetzt auf eigentlichen Code
+
+    ; BC Bytes nach 0x04E000 kopieren
+    DB      0x49, 0x11          ; LDDE24 inline: DE = 0x04E000
+    DB      0x00, 0xE0, 0x04
+    LDIR
+    RETS

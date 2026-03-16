@@ -44,7 +44,7 @@ var
   C               : Char;                   // Keyboard input
 
 begin
-  SetCpuSpeed(3);
+  // SetCpuSpeed(3);
   ClrScr;
 
   GotoXY(4, 11);
@@ -105,5 +105,5 @@ begin
 
   repeat until KeyPressed;
 
-  SetCpuSpeed(0);
+  // SetCpuSpeed(0);
 end.
