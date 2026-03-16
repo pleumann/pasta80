@@ -7421,17 +7421,15 @@ begin
     WriteLn('  ', PosixToNative(FRelative(SrcFile)),
             ' -> ', PosixToNative(FRelative(AsmFile)));
 
+    while SymbolTable <> nil do CloseScope(True);
+    while Source <> nil do CloseInput;
+    C := #0;
+
     ErrorLine := 0;
     ErrorColumn := 0;
     Level := 0;
     Offset := 0;
     Scanner.Token := toNone;
-    while Source <> nil do CloseInput;
-
-    C := #0;
-
-    while SymbolTable <> nil do CloseScope(True);
-
     CurrentScope := nil;
     LastBuiltIn := nil;
 
