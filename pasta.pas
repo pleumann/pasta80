@@ -7662,7 +7662,8 @@ procedure DoRun(Debug, Shift: Boolean);
 const
   NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
 var
-  Args, RunFile: String;
+  Args, RunFile, S, T: String;
+  BP: Text;
 begin
   if Length(BinFile) <> 0 then
   begin
