@@ -708,7 +708,7 @@ begin
   Writeln('Fuse     : ', S);
   WriteCheck(CheckPath(CSpectCmd, S));
   Writeln('CSpect   : ', S);
-  WriteCheck(CheckPath(FabAgonDir, S));
+  WriteCheck(CheckPath(FabAgonDir + '/fab-agon-emulator', S));
   Writeln('Agon emu : ', S);
   WriteLn;
   WriteCheck(FSize(ImagePath) <> -1);
