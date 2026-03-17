@@ -8,7 +8,7 @@ PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_
 * [ZX Spectrum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum)
 * [ZX Spectrum 128K](https://en.wikipedia.org/wiki/ZX_Spectrum#ZX_Spectrum_128)
 * [ZX Spectrum Next](https://www.specnext.com)
-* Early access Beta (expect a lot of issues): [Agon Light/Console 8](https://agonplatform.github.io/agon-docs/)
+* [Agon Light/Console8](https://agonplatform.github.io/agon-docs) (early access, please expect issues)
 
 The compiler follows the single-pass recursive-descent approach championed by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth), inventor of Pascal, in his books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, the compiler might not always generate the most efficient code possible (it definitely cannot compete with LLVM and doesn't try to), but it's very fast.
 
@@ -122,17 +122,7 @@ $ pasta --zxnext hello.pas    # Compiles for ZX Spectrum Next
 
 The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000.
 
-### Agon Light/Console 8 targets
-
-To generate a MOS binary for Agon targets, use the `--agon` parameter.
-
-The binary will always be built at &040000, so should be put in the `/bin` directory. There are also some functions which assume MOS version 3+.
-
-Note that this is an early release, and in particular larger programs can behave erratically.
-
-At this stage, only 64k is used; at a mimimum I plan to push the heap to a second 64k block. There are still many functions to be added, but this will compile most of the examples here with little to no modification, to run on directly on the Agon.
-
-### Tapes, snapshots and runnable directories
+#### Tapes, snapshots and runnable directories
 
 The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program (plus a +3DOS header when compiling for the Spectrum Next). In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
 
@@ -160,7 +150,29 @@ $ pasta --zxnext --run examples/pq.pas    # Results in directory named pq.run
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
 
-### Overlays
+### Agon Light/Console8 target
+
+To generate a MOS binary for the Agon target(s), use the `--agon` parameter.
+
+The Agon target is more or less en par with the CP/M target, supporting all the
+core features plus files (all three types of) and command line parameters. There
+are also a few graphics primitives that would allow you to run or port some of
+the graphics examples (like the 3D hat or the Mandelbrot set). It is fully
+integrated into mini IDE and supports emulation and debugging (see below).
+
+Note that the Agon has an eZ80 processor that is actually much more powerful
+than an ordinary Z80 and can address lots more of memory. The code generated
+for the Agon target (currently) only uses a single 64K block of memory (running
+from physical address 0x40000) because right now neither PASTA/80 nor sjasmplus
+can handle the 24 bit address space. We're looking at how to make more of the
+additional memory usable, either via overlays or by moving the heap or stack.
+
+Note that MOS version 3+ is recommended, as some functions expecte it.
+
+Note also that this is an early release of the Agon target, and in particular
+larger programs can behave erratically.
+
+## Overlays
 
 The Spectrum 128K and Next targets support overlays. This means you can have larger programs than would normally fit into the 64K address space of a Z80 machine. The rules are the same as for Turbo Pascal 3.0:
 
@@ -216,13 +228,22 @@ Overlay  4:  6392 bytes ($C000-$D8F7) in bank  3
 Overlay  5:  6527 bytes ($E000-$F97E) in bank  3
 ```
 
-Without the `--ovr` parameter, overlay markers are simply ignored. This means you can use the same source code for platforms that do support overlays and for those that don't.
+Without the `--ovr` parameter, overlay markers are simply ignored. This means
+you can use the same source code for platforms that do support overlays and for
+those that don't.
 
-**Caution**: Overlays somewhat break the safety of the Pascal language. Be careful when using pointers or `var` parameters for passing data between overlays. The memory you refer to may have just been paged out! It might make sense to compile your overlays with `{$a-}`, so that all local variables are stored on the stack (which is always visible).
+**Caution**: Overlays somewhat break the safety of the Pascal language. Be
+careful when using pointers or `var` parameters for passing data between
+overlays. The memory you refer to may have just been paged out! It might make
+sense to compile your overlays with `{$a-}`, so that all local variables are
+stored on the stack (which is always visible).
 
 ## Debugging and assertions
 
-The compiler is able to generate breakpoints for Fuse (ZX Spectrum 48K/128K) and CSpect (ZX Spectrum Next). To place a breakpoint, simply put a `Debug` statement into your source code. The statement accepts an optional `Boolean` parameter for making the breakpoint conditional.
+The compiler is able to generate breakpoints for Fuse (ZX Spectrum 48K/128K),
+CSpect (ZX Spectrum Next), and the fab-agon-emulator (Agon). To place such a
+breakpoint, simply put a `Debug` statement into your source code. The statement
+accepts an optional `Boolean` parameter for making the breakpoint conditional.
 
 ```pascal
 var
@@ -239,9 +260,18 @@ begin
 end.
 ```
 
-For Spectrum 48K/128K, the compiler generates a file that you can use with the `--debugger-commmand` parameter when calling Fuse. The file content is multiline, so it's a bit tricky, but not impossible, to insert this on the command line (the IDE - see below - handles all this for you conveniently). For the Spectrum Next, the compiler inserts the special Z80 opcode `$fd $00` that will trigger the debugger in CSpect.
+For Spectrum 48K/128K, the compiler generates a file that contains a snippet you
+can add to your Fuse command line. The file content is multiline, so it's a bit
+tricky, but not impossible, to insert this on the command line (the IDE - see
+below - handles all this for you conveniently). For the Agon, a similar snippet
+is generated, but it's single-line and easier to handle. For the Spectrum Next,
+the compiler inserts the special Z80 opcode `$fd $00` that will trigger the
+debugger in CSpect.
 
-Assertions check a given condition and display an error message when the condition is violated (i.e. does not evaluate to `True`). In contrast to other languages, your program does not stop in this case. Instead, passed and failed assertions are counted in the `AssertPassed` and `AssertFailed` variables.
+Assertions check a given condition and display an error message when the
+condition is violated (i.e. does not evaluate to `True`). In contrast to other
+languages, your program does not stop in this case. Instead, passed and failed
+assertions are counted in the `AssertPassed` and `AssertFailed` variables.
 
 ```pascal
 var
@@ -259,7 +289,8 @@ begin
 end.
 ```
 
-When your program is sufficiently tested, compile it with `--release` to get a binary that does not contain any generated code for `Debug` and `Assert`.
+Once your program is sufficiently tested, compile it with `--release` to get
+a binary that does not contain any generated code for `Debug` and `Assert`.
 
 ## Examples and tests
 
@@ -294,6 +325,7 @@ The following external tools are supported for running compiled programs on the 
 * [CSpect](https://mdf200.itch.io/cspect) for ZX Spectrum Next programs.
   * Please have [hdfmonkey](https://github.com/gasman/hdfmonkey) ready for manipulating the SD card image.
   * If you're on MacOS or Linux, you also need `mono` because CSpect is a .NET application.
+* [fab-agon-emulator](https://github.com/tomm/fab-agon-emulator) for Agon Light/Console8 programs.
 
 As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it. Use the `--config` parameter to let PASTA/80 check your setup and get feedback on what is in place and what is missing.
 
