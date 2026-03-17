@@ -709,7 +709,9 @@ begin
   WriteCheck(CheckPath(CSpectCmd, S));
   Writeln('CSpect   : ', S);
   WriteCheck(CheckPath(FabAgonDir + '/fab-agon-emulator', S));
-  Writeln('Agon emu : ', S);
+  Writeln('Fab Agon : ', S);
+  WriteLn;
+  WriteLn('--- SpecNext ---');
   WriteLn;
   WriteCheck(FSize(ImagePath) <> -1);
   Writeln('SD card  : ', ImagePath);
@@ -720,16 +722,6 @@ begin
   Writeln('Mono     : ', S);
   {$endif}
   WriteLn;
-(*
-  SjAsmCmd  := 'sjasmplus';
-  NanoCmd   := 'nano';
-  CodeCmd   := 'code';
-  TnylpoCmd := 'tnylpo';
-  FuseCmd   := {$ifdef darwin} 'Fuse.app' {$else} 'fuse' {$endif};
-  MonkeyCmd := 'hdfmonkey';
-  CSpectCmd := {$ifndef windows} 'CSpect.exe' {$else} 'CSpect' {$endif};
-  ImagePath := 'tbblue.img';
-*)
 end;
 
 procedure Emit(Tag, Instruction, Comment: String); forward;
