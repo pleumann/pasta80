@@ -7666,9 +7666,13 @@ begin
   else
     Exit;
 
-  if Build = 1 then
+  if Build <> 0 then
   begin
-    if not AltEditor then GetKey;
+    if not AltEditor then
+    begin
+      Write('Press a key...');
+      GetKey;
+    end;
     DoEdit(ErrorLine, ErrorColumn);
   end
 end;
