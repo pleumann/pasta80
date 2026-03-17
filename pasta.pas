@@ -7809,6 +7809,7 @@ var
 begin
   Write('Mask: ');
   ReadLn(Pattern);
+  WriteLn;
 
   {$ifdef windows}
   if Pattern = '' then Pattern := '*.*';
@@ -7821,7 +7822,7 @@ begin
   while DosError = 0 do
   begin
     I := I + 1;
-    if I = 5 then
+    if I = 4 then
     begin
       WriteLn;
       I := 0;
@@ -7830,7 +7831,7 @@ begin
     S := Dir.Name;
     if Dir.Attr and Directory <> 0 then
       S := '[' + S + ']';
-    Write(S + Space(15 - Length(S)) + ' ');
+    Write(S + Space(19 - Length(S)) + ' ');
     FindNext(Dir);
   end;
 
