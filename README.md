@@ -325,7 +325,7 @@ The following external tools are supported for running compiled programs on the 
 * [CSpect](https://mdf200.itch.io/cspect) for ZX Spectrum Next programs.
   * Please have [hdfmonkey](https://github.com/gasman/hdfmonkey) ready for manipulating the SD card image.
   * If you're on MacOS or Linux, you also need `mono` because CSpect is a .NET application.
-* [fab-agon-emulator](https://github.com/tomm/fab-agon-emulator) for Agon Light/Console8 programs.
+* [Fab Agon Emulator](https://github.com/tomm/fab-agon-emulator) for Agon Light/Console8 programs.
 
 As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it. Use the `--config` parameter to let PASTA/80 check your setup and get feedback on what is in place and what is missing.
 
@@ -337,7 +337,7 @@ The following screenshots show some applications compiled for the CP/M target an
 | :-------: | :----: |
 | ![Screenshot](docs/images/2048.png) | ![Screenshot](docs/images/life.png) |
 
-| Micro Calc | Galactic Empire |
+| Micro Calc | [Galactic Empire](https://gitlab.com/delysio/adventure) |
 | :-------: | :----: |
 | ![Screenshot](docs/images/microcalc.png) | ![Screenshot](docs/images/empire.png) |
 
@@ -351,11 +351,17 @@ These screenshots show some applications compiled for the ZX Spectrum 48K target
 | :-------: | :----: |
 | ![Screenshot](docs/images/graphics.png) | ![Screenshot](docs/images/pqformula.png) |
 
-These final screenshots show two applications compiled for the ZX Spectrum Next target and running in the CSpect emulator.
+The following screenshots show two applications compiled for the ZX Spectrum Next target and running in the CSpect emulator.
 
-| Mandelbrot | 3D Hat |
+| Recursive Maze | 3D Hat |
 | :--------: | :--------: |
-| ![Screenshot](docs/images/mandelbrot.png) | ![Screenshot](docs/images/hat256.png) |
+| ![Screenshot](docs/images/maze.png) | ![Screenshot](docs/images/hat256.png) |
+
+The final two screenshots show two applications compiled for the Agon target and running in the Fab Agon Emulator.
+
+| [Tale of Ancient Land](https://gitlab.com/delysio/adventure) | Mandelbrot Set |
+| :--------: | :--------: |
+| ![Screenshot](docs/images/adventure.png) | ![Screenshot](docs/images/mandelbrot.png) |
 
 # License
 
