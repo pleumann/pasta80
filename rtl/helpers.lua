@@ -27,7 +27,9 @@ function OvrInfo(Number, Is128K)
     Start = sj.calc(string.format("OVR_%d_START", Number))
     End = sj.calc(string.format("OVR_%d_END", Number))
 
-    if Is128K == 1 then
+    if Is128K == 2 then
+        SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("at addr $%05X", 0x40000 + Page * 8192))
+    elseif Is128K == 1 then
         SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in bank %2d", Page))
     else
         SegInfo(string.format("Overlay %2d", Number), Start, End, 8192, string.format("in page %2d", Page))

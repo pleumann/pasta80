@@ -1,6 +1,6 @@
 ; -------------------------------------------------------------------------
-; --- Agon/Console 8 MOS assembly routines --------------------------------------------
-; --- v3.0 required for some file routines --------------------------------------------
+; --- Agon/Console 8 MOS assembly routines --------------------------------
+; --- v3.0 required for some file routines --------------------------------
 ; -------------------------------------------------------------------------
 
 sysvar_time:        EQU 00h ; 4: Clock timer in centiseconds (incremented by 2 every VBLANK)
@@ -705,4 +705,3 @@ al_setcoords:
               ret
 __scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
-
