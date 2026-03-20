@@ -60,7 +60,27 @@ begin
   Delay(500);
 end;
 
+function Overload: Integer; register; external 'overload';
+
+var
+  I: Integer;
+
 begin
+  // WriteLn('Loading overlay...');
+
+  //I := Overload;
+  //WriteLn('rc=', I);
+  //if I = 0 then WriteLn('OK') else
+  //begin
+  //  WriteLn('Fail');
+  //  Halt;
+  //send;
+
+  //for I := 0 to 23 do
+  //  WriteLn(I:5, ' ', Mem[32768 + I]:3);
+
+  //Halt;
+
   WriteLn('Here we go...');
 
   A;

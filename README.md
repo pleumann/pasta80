@@ -174,7 +174,9 @@ larger programs can behave erratically.
 
 ## Overlays
 
-The Spectrum 128K and Next targets support overlays. This means you can have larger programs than would normally fit into the 64K address space of a Z80 machine. The rules are the same as for Turbo Pascal 3.0:
+The ZX Spectrum 128K, ZX Spectrum Next, and Agon targets support overlays. This
+means you can have larger programs than would normally fit into the 64K address
+space of a Z80 machine. The rules are the same as for Turbo Pascal 3.0:
 
 - Overlays can be applied to global procedures and functions only, not to nested ones (though nested ones will be overlaid if the containing ones are, too).
 - Overlays cannot be applied to global variables, that is, you cannot use them for data (at least not without tricks).
@@ -207,9 +209,21 @@ begin
 end;
 ```
 
-In contrast to Turbo Pascal 3.0, overlays are not implemented via disk files. Instead, they use the additional RAM of the Spectrum 128K and Next machines. The uppermost 16K bank (Spectrum 128K) or 8K page (Spectrum Next) will be reserved for overlays. Each overlay can have a maximum size of 8K. The compiler manages everything and generates special "far calls" whenever necessary.
+In contrast to Turbo Pascal 3.0, overlays are not implemented via disk files.
+Instead, they use the additional RAM of the machines. Each overlay can have a
+maximum size of 8K. The compiler manages everything and generates special "far
+calls" whenever necessary.
 
-To enable overlays, use the `--ovr` command line parameter, ideally in conjuncton with the `--tap` parameter, as the tape loaders for 128K and Next are fully overlay-aware.
+- For the Sinclair machines, the uppermost 16K bank (ZX Spectrum 128K) or 8K
+  page (ZX Spectrum Next) will be reserved for overlays. The overlays use RAM
+  bank/page switching.
+- For the Agon, a single, sparse overlay file is generated and loaded to
+  physical address 0x50000. Overlays are copied to the physical address range
+  $4E000-$4FFFF as needed (the upper 8K of the 64K area for non-ADL programs).
+
+To enable overlays, use the `--ovr` command line parameter. For the ZX targets,
+ideally combine this with the `--tap` parameter, as the tape loaders for 128K
+and Next are fully overlay-aware.
 
 ```bash
 $ pasta --zx128 --tap --opt --dep --ovr tests/all.pas # Test suite as 128K tape
@@ -236,7 +250,10 @@ those that don't.
 careful when using pointers or `var` parameters for passing data between
 overlays. The memory you refer to may have just been paged out! It might make
 sense to compile your overlays with `{$a-}`, so that all local variables are
-stored on the stack (which is always visible).
+stored on the stack (which is always visible). This is also a good idea for
+for the Agon target when having overlays that call into each other. Otherwise
+the values of local variables get reset when overlays are switched, which
+can lead to weird effects.
 
 ## Debugging and assertions
 
