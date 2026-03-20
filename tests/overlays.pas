@@ -60,7 +60,13 @@ begin
   Delay(500);
 end;
 
+procedure Overload; register; external 'overload';
+
 begin
+  WriteLn('Loading overlay...');
+
+  Overload;
+
   WriteLn('Here we go...');
 
   A;

@@ -564,4 +564,53 @@ al_setcoords:
               ret
 __scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
+; --- A futile attempt at overlay support ---
 
+    MACRO ld24 reg,val
+        DB 0x49
+        ld reg,val
+        db (val >> 16) % 0xff
+    ENDM
+
+ovl_name:   db 'overlays.ovr',0
+
+; Should load binary name with extension changed to ".ovr" to 0x50000.
+; Right now we simply use hardcoded filename for testing.
+;
+overload:
+            ld24    hl,0x040000 | ovl_name  ; Filename (in 0x40000 segment)
+            ld24    de,0x050000             ; Load to fixed address 0x50000
+            ld24    bc,0x010000             ; Up to 0x10000 bytes for now
+            ld      a,0x01                  ; mos_call 1 = load file
+            rst     0x08                    ; invoke MOS
+            ret
+
+; Used by "farcall" to ensure the right page is visible at 0x[4]e000. We don't
+; have memory paging, so we need to copy our overlay to the target address,
+; which is still better than loading it from disk each time. The first two
+; bytes of the overlay contain its actual size. All overlays start at 8K
+; boundaries.
+;
+banksel:
+            ld24    hl,0
+            ld      h,a
+            ld      b,5
+banksel1:
+            mklil
+            add     hl,hl
+            djnz    banksel1                ; Make UHL = A * 8192
+            ld24    bc,0x50000
+            mklil
+            add     hl,bc                   ; We copy from 0x50000
+            mklil
+            ld      c,(hl)                  ; Low byte of size
+            mklil
+            inc     hl
+            mklil
+            ld      b,(hl)                  ; High byte of size
+            mklil
+            dec     hl                      ; Restore UHL
+            ld24    de,0x4e000              ; Copy to 0x4e000
+            mklil
+            ldir                            ; And go!
+            ret
