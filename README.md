@@ -337,7 +337,7 @@ The following screenshots show some applications compiled for the CP/M target an
 | :-------: | :----: |
 | ![Screenshot](docs/images/2048.png) | ![Screenshot](docs/images/life.png) |
 
-| Micro Calc | [Galactic Empire](https://gitlab.com/delysio/adventure) |
+| Micro Calc | [Galactic Empire](https://github.com/stefanhaustein/empire) |
 | :-------: | :----: |
 | ![Screenshot](docs/images/microcalc.png) | ![Screenshot](docs/images/empire.png) |
 
