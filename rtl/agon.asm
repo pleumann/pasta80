@@ -566,10 +566,22 @@ __scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
 ; --- A futile attempt at overlay support ---
 
+    MACRO mksis
+        db 0x40
+    ENDM
+
+    MACRO mksil
+        db 0x49
+    ENDM
+
     MACRO ld24 reg,val
-        DB 0x49
-        ld reg,val
-        db (val >> 16) % 0xff
+        db      0x5b
+        ld      reg,val & 0xffff
+        db      (val >> 16) & 0xff
+    ENDM
+
+    MACRO ldmba
+        db      0xed, 0x6d
     ENDM
 
 ovl_name:   db 'overlays.ovr',0
@@ -577,12 +589,29 @@ ovl_name:   db 'overlays.ovr',0
 ; Should load binary name with extension changed to ".ovr" to 0x50000.
 ; Right now we simply use hardcoded filename for testing.
 ;
+; overload:
+            ; mklil
+            ;call    real_overload
+            ;db      0x04
+            ;ret
+
 overload:
-            ld24    hl,0x040000 | ovl_name  ; Filename (in 0x40000 segment)
-            ld24    de,0x050000             ; Load to fixed address 0x50000
-            ld24    bc,0x010000             ; Up to 0x10000 bytes for now
-            ld      a,0x01                  ; mos_call 1 = load file
-            rst     0x08                    ; invoke MOS
+;            ldamb
+;            push    af
+;            ld      a,0
+;            ldmba
+            ld24    hl,0x40000 + ovl_name   ; Filename (in 0x040000 segment)
+            ld24    de,0x50000              ; Load to fixed address 0x050000
+            ld24    bc,0                    ; Don't care about file length
+            ld      a,0x01                  ; Call #1 "load file"
+;            db      0x49, 0xcf, 0x08
+            rst     0x08                    ; Invoke MOS
+            out     (20),a
+            out     (10),a
+            ld      l,a                     ; fetch return code
+            ld      h,0
+;            pop     af
+;            ldmba
             ret
 
 ; Used by "farcall" to ensure the right page is visible at 0x[4]e000. We don't
@@ -592,25 +621,12 @@ overload:
 ; boundaries.
 ;
 banksel:
-            ld24    hl,0
-            ld      h,a
-            ld      b,5
+            ld24    hl,0x50000
+            ld24    de,8192
+            ld      b,a
 banksel1:
-            mklil
-            add     hl,hl
+            db 0x5b
+            add     hl,de
             djnz    banksel1                ; Make UHL = A * 8192
-            ld24    bc,0x50000
-            mklil
-            add     hl,bc                   ; We copy from 0x50000
-            mklil
-            ld      c,(hl)                  ; Low byte of size
-            mklil
-            inc     hl
-            mklil
-            ld      b,(hl)                  ; High byte of size
-            mklil
-            dec     hl                      ; Restore UHL
-            ld24    de,0x4e000              ; Copy to 0x4e000
-            mklil
-            ldir                            ; And go!
-            ret
+            db 0x5b
+            jp      (hl)

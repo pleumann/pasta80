@@ -2627,7 +2627,7 @@ begin
   Emit('TEXT', 'jp __init', '');
   Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
 
-  if Binary in [btZX128, btZXN, btAgon] then
+  if Binary in [btZX128, btZXN] then
   begin
     Emit('numpages', 'db 0', 'Number of overlay pages');
     if Overlays then
@@ -2702,7 +2702,7 @@ begin
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
   else if Binary = btAgon then
   begin
-    EmitI('savebin "' + BinFile + '",$0000,HEAP');
+    EmitI('savebin "' + BinFile + '",$0000,TEXT_END');
     if CurrentOverlay <> 0 then
       EmitI('savedev "' + ChangeExt(BinFile, '.ovr') + '",8,0,' + IntToStr(CurrentOverlay * 8192))
     else
@@ -7191,7 +7191,11 @@ begin
   EmitI('slot 7');
   EmitI('page ' + IntToStr(CurrentBank));
   EmitI('org ' + T);
-  EmitI('dw 0');
+  EmitI('ld24 hl, $' + IntToHex($40000 + CurrentOverlay * 8192, 5));
+  EmitI('ld24 de, $4e000');
+  EmitI('ld24 bc, OVR_' + S + '_END-OVR_' + S + '_START');
+  EmitI('ldir');
+  EmitI('ret');
 
   Banked := True;
 
@@ -7210,9 +7214,6 @@ begin
   Emit('OVR_' + S + '_PAGE', 'equ $$', '');
   Emit('OVR_' + S + '_START', 'equ ' + T, '');
   Emit('OVR_' + S + '_END', 'equ $', '');
-
-  EmitI('org ' + T);
-  EmitI('dw (OVR_' + S + '_END-$E000)');
 
   //EmitI('slot 7');
   //EmitI('page 32');
@@ -7432,6 +7433,9 @@ begin
   Expect(toPeriod);
   NextToken;
 
+  if (Binary = btAgon) and Overlays then
+      EmitI('include "' + PosixToNative(HomeDir + '/rtl/overlays.asm"'));
+
   LastBuiltIn := SymbolTable;
 
   OpenScope(False);
@@ -7559,9 +7563,9 @@ begin
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Execute(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + AsmFile)
+      Execute(SjAsmCmd,  '--zxnext --lst --syntax=abf --nologo --msg=err ' + AsmFile)
     else
-      Execute(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + AsmFile);
+      Execute(SjAsmCmd, '--syntax=abf --lst --nologo --msg=err ' + AsmFile);
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
