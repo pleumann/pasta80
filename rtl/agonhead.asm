@@ -9,6 +9,10 @@
 	db		49h		;add .LIS to next instruction
 	ENDM
 ; .SIL					52
+	MACRO	mksil
+	db		52h		;add .LIS to next instruction
+	ENDM
+
 ; .LIL					5B
 	MACRO	mklil
 	db		5Bh		;add .LIS to next instruction
@@ -18,6 +22,11 @@
 	MACRO	ldamb
 	db		0edh			;not supported by sjasm+ so just put in the bytes
 	db		06eh
+	ENDM
+
+; LD MB,A	;Segment base
+	MACRO	ldmba
+        db      0xed, 0x6d
 	ENDM
 
 ; LD		(IX+0), BC		; can't prefix this because it isn't a valid z80 instruction so compiles incorrectly.
@@ -38,7 +47,7 @@
 	ENDM
 
 argv_ptrs_max:		EQU	16			; Maximum number of arguments allowed in argv
-			
+
 ;
 ; Start in mixed mode. Assumes MBASE is set to correct segment
 ;
@@ -50,13 +59,13 @@ RST_08:
 			RST	08h		; MOS API call
 			RET
 			DS 		5
-			
+
 RST_10:
 			mklis
 			RST 	10h		; Display character
 			RET
 			DS		5
-			
+
 RST_18:
 			mklis
 			RST 	18h		; Display string
@@ -64,8 +73,8 @@ RST_18:
 			DS		5
 RST_20:			DS		8
 RST_28:			DS		8
-RST_30:			DS		8	
-;	
+RST_30:			DS		8
+;
 ;
 ;
 RST_38:
@@ -76,7 +85,7 @@ RST_38:
 ; The header stuff is from byte 64 onwards
 ;
 			ALIGN	64
-			
+
 			DB	"MOS"				; Flag for MOS - to confirm this is a valid MOS command
 			DB	00h				; MOS header version 0
 			DB	00h				; Flag for run mode (0: Z80, 1: ADL)
@@ -87,7 +96,7 @@ _exec_name:
 ;
 ; And the code follows on immediately after the header
 ;
-__init:	
+__init:
 			mklil
 			PUSH	IY			; Preserve IY
 
@@ -96,8 +105,8 @@ __init:
 
 			mklil
 			PUSH	IY
-			LD		SP, 0FFFEh		; And set to 0000h, top of the RAM in z80 space
-	
+			LD		SP, LIMIT-2		; And SP set to LIMIT defined by compiler
+
 			PUSH		AF			; Preserve the rest of the registers
 			mklil
 			PUSH	BC
@@ -109,8 +118,8 @@ __init:
 			ldamb	;LD		A, MB			; Segment base
 
 			LD		IX, argv_ptrs		; The argv array pointer address
-			CALL		_set_aix24		; Convert to a 24-bit address	
-;			mklil		
+			CALL		_set_aix24		; Convert to a 24-bit address
+;			mklil
 ;			PUSH	IX
 			CALL		_parse_params		; Parse the parameters
 			LD		B, 0			;  Now BC: argc
@@ -131,7 +140,7 @@ __init:
 ;
 ;
 __done:
-            ld      hl,0 
+            ld      hl,0
 
 
 
@@ -148,11 +157,11 @@ __done:
 			POP		IY			; Get the preserved SPS
 			LD		SP, IY			; Restore the SP
 
-			mklil			
+			mklil
 			POP		IY			; Restore IY
 			mklis				;RET.L encodes to RET.LIS
 			RET					; Return to MOS
-			
+
 ; Parse the parameter string into a C array
 ; Parameters
 ; -   A: Segment base
@@ -162,7 +171,7 @@ __done:
 ; -   C: Number of parameters parsed
 ;
 _parse_params:
-			LD		BC, _exec_name		; Get the address of the app name in this segment			
+			LD		BC, _exec_name		; Get the address of the app name in this segment
 			CALL		_set_abc24		; Convert it to a 24-bit address based upon segment base
 ;			LD		(IX+0), BC		; ARGV[0] = the executable name
 			ldixbc	0
@@ -178,7 +187,7 @@ _parse_params:
 			LD		B, argv_ptrs_max - 1	; B: Maximum number of argv_ptrs
 ;
 _parse_params_1:	PUSH		BC			; Stack ARGC
-			mklil	
+			mklil
 			PUSH	HL			; Stack start address of token
 			CALL		_get_token		; Get the next token
 			LD		A, C			; A: Length of the token in characters
@@ -230,7 +239,7 @@ _get_token_lp:
 			INC		HL			; Advance to next character
 			INC 		C			; Increment length
 			JR		_get_token_lp
-	
+
 ; Skip spaces in the parameter string
 ; Parameters:
 ; - HL: Address of parameter string
@@ -240,13 +249,13 @@ _get_token_lp:
 ;
 _skip_spaces:
 			mklil
-			LD		A, (HL)			; Get the character from the parameter string	
+			LD		A, (HL)			; Get the character from the parameter string
 			CP		' '			; Exit if not space
 			RET		NZ
 			mklil
 			INC		HL			; Advance to next character
 			JR		_skip_spaces		; Increment length
-			
+
 ; Set the MSB of BC (U) to A
 ; Parameters:
 ; - BC: 16-bit address
@@ -293,7 +302,7 @@ _set_aix24:
 			mklil
 			POP		IX			; Fetch ammended IX
 			RET
-			
+
 ; Storage for the argv array pointers
 ; THERE SEEMS TO BE A BUG WITH SJASM+ CALCULATING THE SIZE OF THE POINTERS ARRAY
 argv_ptrs:		block	argv_ptrs_max,0	  		; Storage for the argv array pointers
@@ -396,7 +405,7 @@ ffs_getfree:		EQU	0A2h
 ffs_getlabel:		EQU	0A3h
 ffs_setlabel:		EQU	0A4h
 ffs_setcp:		EQU	0A5h
-	
+
 ; File access modes
 ;
 fa_read:		EQU	01h

@@ -564,4 +564,67 @@ al_setcoords:
               ret
 __scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
+; --- An excellent attempt at overlay support ---
 
+
+    MACRO ld24 reg,val
+        db      0x5b
+        ld      reg,val & 0xffff
+        db      (val >> 16) & 0xff
+    ENDM
+
+
+ovl_name:   db 'overlays.ovr',0
+
+; Should load binary name with extension changed to ".ovr" to 0x50000.
+; Right now we simply use hardcoded filename for testing.
+;
+overload:
+            mksil
+            call    real_overload
+            db      0x04
+            ret
+
+real_overload:
+            ldamb
+            push    af
+            xor     a
+            ldmba
+            ld24    hl,0x40000 + ovl_name   ; Filename (in 0x040000 segment)
+            ld24    de,0x50000              ; Load to fixed address 0x050000
+            ld24    bc,0x40000                    ; Don't care about file length - but set maximum
+;	    ld      hl,ovl_name
+;            db      0x04
+;	    ld      de,0
+;            db      0x04
+;	    ld      bc,0
+;            db      0x06            
+            ld      a,0x01                  ; Call #1 "load file"
+;            db      0x49, 0xcf, 0x08
+            mklil
+            rst     0x08                    ; Invoke MOS
+            out     (20),a
+            out     (10),a
+            ld      l,a                     ; fetch return code
+            ld      h,0
+            pop     af
+            ldmba
+	    mklil
+            ret
+
+; Used by "farcall" to ensure the right page is visible at 0x[4]e000. We don't
+; have memory paging, so we need to copy our overlay to the target address,
+; which is still better than loading it from disk each time. The first two
+; bytes of the overlay contain its actual size. All overlays start at 8K
+; boundaries.
+;
+banksel:
+            ld24    hl,0x50000
+            ld24    de,8192
+            ld      b,a
+banksel1:
+            db 0x5b
+            add     hl,de
+            djnz    banksel1                ; Make UHL = A * 8192
+            db 0x5b
+            jp      (hl)
