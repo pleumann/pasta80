@@ -40,7 +40,7 @@ procedure ClrScr; register;                 external '__clrscr';
  * Clear everything from the current cursor position to the end of the
  * line.
  *)
-procedure ClrEol; register;                  external '__clrscr';
+procedure ClrEol; register;                  external '__clreol';
 
 (**
  * Moves the the cursor (aka printing position) to a given location. Note

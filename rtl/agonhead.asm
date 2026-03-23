@@ -9,6 +9,9 @@
 	db		49h		;add .LIS to next instruction
 	ENDM
 ; .SIL					52
+	MACRO	mksil
+	db		52h		;add .LIS to next instruction
+	ENDM
 ; .LIL					5B
 	MACRO	mklil
 	db		5Bh		;add .LIS to next instruction
@@ -16,8 +19,12 @@
 
 ; LD A,MB	;Segment base
 	MACRO	ldamb
-	db		0edh			;not supported by sjasm+ so just put in the bytes
-	db		06eh
+	db		0edh,06eh		;LD A,MB - eZ80 not supported by sjasm+	
+	ENDM
+
+; LD MB,A	;Segment base
+	MACRO	ldmba
+	db		0edh,06dh		;LD MB,a - eZ80 not supported by sjasm+
 	ENDM
 
 ; LD		(IX+0), BC		; can't prefix this because it isn't a valid z80 instruction so compiles incorrectly.
@@ -96,7 +103,7 @@ __init:
 
 			mklil
 			PUSH	IY
-			LD		SP, 0FFFEh		; And set to 0000h, top of the RAM in z80 space
+			LD		SP, LIMIT-2		; SP set to LIMIT defined by compiler
 	
 			PUSH		AF			; Preserve the rest of the registers
 			mklil

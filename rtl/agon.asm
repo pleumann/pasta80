@@ -262,15 +262,30 @@ __getline_2:
                 ret
 
 ; Agon Screen controls
+; We are manually tracking "high" - i.e. reverse fg/bg
 
-__textfg:       ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
+__textfg:
+                ld      a,l        ; l has text colour 0-7.
+                ld      (__cur_fgtext),a
+                ld      a,(__rev_mode)
+                or      a
+                jr      nz,__textbg_do
+__textfg_do:
+                ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
                 rst     10h
                 ld      a,l        ; l has text colour 0-7.
                 rst     10h
                 ret
 
 
-__textbg:       ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
+__textbg:
+                ld      a,l         ; l has background colour 0-7.
+                ld      (__cur_bgtext),a
+                ld      a,(__rev_mode)
+                or      a
+                jr      nz,__textfg_do
+__textbg_do:
+                ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
                 rst     10h
                 ld      a,l         ; l has background colour 0-7.
                 or      128         ; set top bit for background
@@ -278,45 +293,39 @@ __textbg:       ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
                 ret
 
 ;
-; Currentlty assuming that we are in 16 or 64 colour mode.
+; Currentlty assuming that we are in 16 colour mode for text purposes.
 ; might enforce this at the beginning during the startup??
 ;
-; Also assuming that these are used when we aren't using colour,
-; so no attempt to track current colour is made as yet. This
-; could be a future improvement.
+; Assumes colours are possible.
+; textlow has been implemented to be the same as textnorm rather than
+; bit manipulating off the current colour. This could be done in
+; future if there is a demand.
 ;
-__texthigh:     ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
-                rst     10h
-                ld      a,128+15        ; solid white background
-;                ld      a,128        ; solid black background
-                rst     10h
-                ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
-                rst     10h
-                xor     a        ;black text
-;                ld      a,10        ;bright green text
-                rst     10h
-                ret
+__texthigh:
+                ld      a,1
+                ld      (__rev_mode),a
+                ld      a,(__cur_fgtext)
+                ld      l,a
+                call    __textbg_do
+                ld      a,(__cur_bgtext)
+                ld      l,a
+                jp      __textfg_do
 
-__textnorm:     ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
-                rst     10h
-                ld      a,128        ; solid black background
-                rst     10h
-                ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
-                rst     10h
-                ld      a,15        ;bright white text
-                rst     10h
-                ret
+__textnorm:
+__textlow:
+                xor     a
+                ld      (__rev_mode),a
+                ld      a,(__cur_fgtext)
+                ld      l,a
+                call    __textfg_do
+                ld      a,(__cur_bgtext)
+                ld      l,a
+                jp      __textbg_do
 
-__textlow:      ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
-                rst     10h
-                ld      a,128        ; solid black background
-                rst     10h
-                ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
-                rst     10h
-                ld      a,7        ;dim white text
-                rst     10h
-                ret
-
+; Text colour variables
+__rev_mode:     db      0
+__cur_fgtext:   db      15
+__cur_bgtext:   db      0
 
 __gotoxy:     ld a,31   ;VDU 31, x, y: Move text cursor to x, y text position.
                         ;note top left is (1,1) so we need to adjust.
@@ -329,7 +338,16 @@ __gotoxy:     ld a,31   ;VDU 31, x, y: Move text cursor to x, y text position.
               rst 10h
               ret
 
-__clrscr:     ld    a,12    ;VDU 12: Clear text area (CLS)
+;Clear screen and reset text colour + tracking
+__clrscr:
+              ld    a,15
+              ld    (__cur_fgtext),a
+              xor   a
+              ld    (__cur_bgtext),a
+              ld      (__rev_mode),a
+              call  __textnorm
+
+              ld    a,12    ;VDU 12: Clear text area (CLS)
               rst   10h
               ret
 
@@ -358,6 +376,7 @@ __clreol:
             ld      a,(IX+13h)
             mklil
             sub     (IX+7h)
+            jr      z,__skip_clr
             ld      b,a
             ld      c,a
             ld      a,' '       ;spaces
@@ -369,6 +388,7 @@ __clreol_sp:
 __clreol_bs:
             rst     10h
             djnz    __clreol_bs
+__skip_clr:
             pop     bc
             pop     ix
             ret
