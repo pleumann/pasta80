@@ -115,12 +115,15 @@ function KeyPressed: Boolean; register;        external '__keypressed';
  *)
 function ReadKey: Char; register;        external '__readkey';
 
+(* --------------------------------------------------------------------- *)
+(* --- Misc. standard functions ---------------------------------------- *)
+(* --------------------------------------------------------------------- *)
+
 (**
- * Waits for the given interval in milliseconds. Assumes a CP/M platform
- * with BDOS call 141 (i.e. normally CP/M 3, but tnylpo has this as an
- * extension) and a "tick" value of 20 ms (which is the case for both the
- * Spectrum Next's CP/M and tnylpo).
- * Note: Agon has a refresh counter only, so 60Hz (or 75Hz sometimes)
+ * Waits for the given interval in milliseconds as near as possible.
+ * Agon has a refresh counter only at 60Hz for most video modes.
+ * This means timer is to approx 17ms resolution.
+ * 75Hz for a couple of video modes but this is not corrected.
  *)
 procedure Delay(Duration: Integer);  register;        external '__delay';
 //var
@@ -128,6 +131,25 @@ procedure Delay(Duration: Integer);  register;        external '__delay';
 //begin
 //  A := BDos(141, Duration div 20);
 //end;
+
+(* --------------------------------------------------------------------- *)
+(* --- Machine-specific functions -------------------------------------- *)
+(* --------------------------------------------------------------------- *)
+
+function sysvar_time_lo: Integer; register; external '__sysver_time_lo';
+function sysvar_time_hi: Integer; register; external '__sysver_time_hi';
+
+(**
+ * Returns the value of the 32 bit frame counter that is normally increased by
+ * two during the 60 Hz screen refresh. Multiplying this value by 17 results
+ * in the machine's uptime in milliseconds (minus the time interrupts where
+ * disabled).
+ *)
+function Frames: Real;
+begin
+  Frames := 65536.0 * sysvar_time_hi + sysvar_time_lo;
+end;
+
 
 (* -------------------------------------------------------------------------- *)
 (* --- Command-line parameters ---------------------------------------------- *)
@@ -602,12 +624,12 @@ end;
 (**
  * Plots a point at the given coordinates.
  *)
-procedure Plot(X, Y: Byte); register;               external 'al_plot';
+procedure Plot(X, Y: Integer); register;               external 'al_plot';
 
 (**
  * Queries a point at the given coordinates.
  *)
-function Point(X, Y: Byte): Boolean; register;      external 'al_point';
+function Point(X, Y: Integer): Boolean; register;      external 'al_point';
 
 (**
  * Draws a line from the last plot position to the given (relative) coordinates.
