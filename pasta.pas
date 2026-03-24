@@ -2017,13 +2017,14 @@ begin
     ErrorColumn := 0;
   end;
 
-  WriteLn();
-
   // TODO Get rid of need for LongJmp by making "IDE" a separate program?
   if HasStoredState then
     LongJmp(StoredState, 1)
   else
+  begin
+    WriteLn();
     Halt(1);
+  end;
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -7430,6 +7431,9 @@ begin
   begin
     HasStoredState := True;
 
+    if FSize(SrcFile) = -1 then
+      Error('File "' + PosixToNative(FRelative(SrcFile)) + '" not found');
+
     Build := 2;
 
     WriteLn('Compiling...');
@@ -7658,11 +7662,12 @@ begin
   else
     Exit;
 
-  if Build <> 0 then
+  if Build = 2 then
   begin
     if not AltEditor then
     begin
-      Write('Press a key...');
+      WriteLn;
+      Write('Press a key... ');
       GetKey;
     end;
     DoEdit(ErrorLine, ErrorColumn);
