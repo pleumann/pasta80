@@ -241,7 +241,7 @@ stored on the stack (which is always visible).
 ## Debugging and assertions
 
 The compiler is able to generate breakpoints for Fuse (ZX Spectrum 48K/128K),
-CSpect (ZX Spectrum Next), and the fab-agon-emulator (Agon). To place such a
+CSpect (ZX Spectrum Next), and the Fab Agon Emulator (Agon, obviously). To place such a
 breakpoint, simply put a `Debug` statement into your source code. The statement
 accepts an optional `Boolean` parameter for making the breakpoint conditional.
 
