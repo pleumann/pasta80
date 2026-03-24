@@ -121,7 +121,7 @@ __getargc:
 
 ; return a character indexed from the parameter number
 ; No bounds checking.
-; Entry: HL has Parameter Number (1 index = the first parameter), DE has Byte Number (1 index)
+; In: HL has Parameter Number (1 index = the first parameter), DE has Byte Number (1 index)
 __getargvchar:
     dec     de
     push    de
@@ -151,8 +151,8 @@ __getargvchar:
 ;
 ; Print character to screen
 ;
-; Entry:  A (ASCII code)
-; Exit:   -
+; In:  A (ASCII code)
+; Out:   -
 ; Uses:   C,E,IY
 ;
 __putc:
@@ -162,8 +162,8 @@ __putc:
 ;
 ; New line
 ;
-; Entry:  -
-; Exit:   -
+; In:  -
+; Out:   -
 ; Uses:   -
 ;
 __newline:
@@ -224,8 +224,8 @@ __keypressed_1
 ; Reads a whole line of input from the keyboard into the central buffer, so
 ; that other routines can consume it.
 ;
-; Entry:  -
-; Exit:   HL points to buffer
+; In:  -
+; Out:   HL points to buffer
 ; Uses:   AF,BC,DE
 ;
 ; TODO Separate input from string-to-integer functionality (??)
@@ -421,8 +421,8 @@ __checkbreak:
 ; Delay routine
 ; This will need to be an estimate, subtracking 17ms for every 60Hz (or 75hz) tick...
 ; sysvar_time:            EQU 00h ; 4: Clock timer in centiseconds (incremented by 2 every VBLANK)
-; Entry: HL = Milliseconds
-; Exit: Uses A, HL
+; In: HL = Milliseconds
+; Out: Uses A, HL
 __delay:
             push    ix
             push    de
@@ -450,6 +450,29 @@ __delay_inner:
 __delay_exit:
             pop bc
             pop hl
+            pop ix
+            ret
+
+; Return high value of sysvar+00
+; sysvar_time:            EQU 00h ; 4: Clock timer in centiseconds (incremented by 2 every VBLANK)
+; In: -
+; Out: HL has value
+__sysver_time_lo:
+            push    ix
+            ld  a, 8        ;0x08: mos_sysvars
+            rst 08h         ;IX(U) now has sysvars
+            mklil
+    ;ld hl,(IX+0) ->  LD HL,(IX+d) 0/1 5/6 DD, 27, dd
+    db      0ddh, 027h, 00
+            pop ix
+            ret   
+__sysver_time_hi:
+            push    ix
+            ld  a, 8        ;0x08: mos_sysvars
+            rst 08h         ;IX(U) now has sysvars
+            mklil
+    ;ld hl,(IX+2) ->  LD HL,(IX+d) 0/1 5/6 DD, 27, dd
+    db      0ddh, 027h, 02
             pop ix
             ret
 ;
@@ -550,11 +573,15 @@ al_circle:
 ;
 
 ; sysvar_scrpixelIndex:   EQU 16h ; 1: Index of pixel data read from screen
-;
+
+; sysvar_vpd_pflags:      EQU 04h ; 1: Flags to indicate completion of VDP commands
+; #define PACKET_SCRPIXEL           0x04    // Pixel read from screen == bit 2
 
 al_point:
             ld  a, 8        ;0x08: mos_sysvars
             rst 08h         ;IX(U) now has sysvars
+            mklil
+            res     2,(IX+4)
             ld      a,23
             rst     10h
             xor     a
@@ -569,8 +596,12 @@ al_point:
             rst     10h
             ld      a,d
             rst     10h
+al_point_1:
             mklil
-            ld      l,(IX + 16h)    ;SYSVARS will not be in the same RAM page
+            bit     2,(ix+4)
+            jr      z,al_point_1
+            mklil
+            ld      l,(IX + 16h)    ;SYSVARS will not be in the same RAM page so need prefix
             ld      h,0
             ret
 
