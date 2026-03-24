@@ -2599,11 +2599,11 @@ begin
   EmitC('');
 
   if Binary = btZXN then
-    Emit('', 'DEFINE CPU_Z80N 1', 'CPU is Z80N')
+    Emit('', 'DEFINE CPU_Z80N', 'CPU is Z80N')
   else if Binary = btAgon then
-    Emit('', 'DEFINE CPU_EZ80 1', 'CPU is eZ80')
+    Emit('', 'DEFINE CPU_EZ80', 'CPU is eZ80')
   else
-    Emit('', 'DEFINE CPU_Z80 1',  'CPU is Z80');
+    Emit('', 'DEFINE CPU_Z80',  'CPU is Z80');
 
   if Binary = btCPM then
   begin
