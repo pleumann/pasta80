@@ -2617,7 +2617,7 @@ begin
                 EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
-    btZX128:    begin
+    btZX128:  begin
                 EmitI('define CPU_Z80');
                 EmitI('define SYS_SPEC128');
                 EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4));
