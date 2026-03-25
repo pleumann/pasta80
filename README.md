@@ -241,9 +241,10 @@ stored on the stack (which is always visible).
 ## Debugging and assertions
 
 The compiler is able to generate breakpoints for Fuse (ZX Spectrum 48K/128K),
-CSpect (ZX Spectrum Next), and the Fab Agon Emulator (Agon, obviously). To place such a
-breakpoint, simply put a `Debug` statement into your source code. The statement
-accepts an optional `Boolean` parameter for making the breakpoint conditional.
+CSpect (ZX Spectrum Next), and the Fab Agon Emulator (Agon, obviously). To place
+such a breakpoint, simply put a `Debug` statement into your source code. The
+statement accepts an optional `Boolean` parameter for making the breakpoint
+conditional.
 
 ```pascal
 var
@@ -260,13 +261,12 @@ begin
 end.
 ```
 
-For Spectrum 48K/128K, the compiler generates a file that contains a snippet you
+For Spectrum 48K/128K, the compiler generates a snippet (in a `.brk` file) you
 can add to your Fuse command line. The file content is multiline, so it's a bit
-tricky, but not impossible, to insert this on the command line (the IDE - see
-below - handles all this for you conveniently). For the Agon, a similar snippet
-is generated, but it's single-line and easier to handle. For the Spectrum Next,
-the compiler inserts the special Z80 opcode `$fd $00` that will trigger the
-debugger in CSpect.
+tricky, but not impossible, to insert this on the command line. The IDE (see 
+below) handles all this for you conveniently. For Spectrum Next and Agon, the
+compiler inserts special Z80 opcodes that will trigger the debuggers in CSpect
+and the Fab Agon Emulator, respectively.
 
 Assertions check a given condition and display an error message when the
 condition is violated (i.e. does not evaluate to `True`). In contrast to other
