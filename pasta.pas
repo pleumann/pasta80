@@ -2683,11 +2683,6 @@ begin
       EmitI('OvrInfo("' + IntToStr(I) + '",' + IntToStr(Is128K) + ')');
   end;
 
-  if (Binary in [btZX, btZX128]) then
-    EmitI('WriteFuseBreakpoints("' + ChangeExt(BinFile, '.brk') + '")')
-  else if (Binary = btAgon) then
-    EmitI('WriteAgonBreakpoints("' + ChangeExt(BinFile, '.brk') + '")');
-
   EmitI('ENDLUA');
 
   if Binary = btZX128 then
@@ -2772,6 +2767,9 @@ begin
   end
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
+
+  if (Binary in [btZX, btZX128]) and not Release then
+      EmitI('.BPLIST "' + ChangeExt(BinFile, '.brk') + '" fuse');
 end;
 
 (**
@@ -4415,9 +4413,7 @@ begin
       else if Binary in [btZX, btZX128] then
       begin
         EmitI('pop hl');
-        EmitI('LUA');
-        EmitI('AddBreakpoint("z80:hl!=0")');
-        EmitI('ENDLUA');
+        EmitI('.setbp "z80:hl!=0"');
       end;
 
       Expect(toRParen); NextToken;
@@ -4430,9 +4426,7 @@ begin
         EmitI('out ($10),a')
       else if Binary in [btZX, btZX128] then
       begin
-        EmitI('LUA');
-        EmitI('AddBreakpoint()');
-        EmitI('ENDLUA');
+        EmitI('.setbp');
       end;
     end;
 
@@ -7729,7 +7723,7 @@ begin
         Args := Args + '--machine 128';
 
       if Debug then
-        Args := Args + ' ' + StrFromFile(ChangeExt(BinFile, '.brk'))
+        Args := Args + ' --debugger-command ''' + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
       else
         Args := Args + ' --debugger-command ''del''';
 
