@@ -289,7 +289,7 @@ zx_draw:        ld      bc,hl
 ; In:   DE=coordinate
 ; Out:  DE=coordinate, HL=address, a=bit mask
 ;
-zx_pixelad:     ifdef ZXN
+zx_pixelad:     ifdef CPU_Z80N
                 push    de
                 ld      a,175
                 sub     d
@@ -353,7 +353,7 @@ fill:
 ; calculate bit position of pixel
 
 nextrun:
-        ifdef ZXN
+        ifdef CPU_Z80N
                 ld c,0
         else
                 ld a,e
@@ -375,7 +375,7 @@ seekleft:
                 or a
                 jr z,goright
                 dec e
-        ifdef ZXN
+        ifdef CPU_Z80N
                 pixelad
                 setae
                 or (hl)
@@ -391,13 +391,13 @@ seekleft:
 ; save their coordinates to fill later if necessary
 
 seekright:
-        ifndef ZXN
+        ifndef CPU_Z80N
                 rrc b
         endif
                 inc e
                 jr z,rightedge
 goright:
-        ifdef ZXN
+        ifdef CPU_Z80N
                 pixelad
                 setae
                 or (hl)
@@ -427,7 +427,7 @@ rightedge:
 ; calculate the pixel address and whether or not it's set
 ; not used in Spectrum Next case because opcodes are inlined
 
-        ifndef ZXN
+        ifndef CPU_Z80N
 scrpos:
                 ld      a,d
                 and     248
@@ -461,7 +461,7 @@ checkadj:
                 ld      a,d
                 cp      175
                 ret     nc
-        ifdef ZXN
+        ifdef CPU_Z80N
                 pixelad
                 setae
                 or      (hl)

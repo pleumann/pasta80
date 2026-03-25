@@ -2598,38 +2598,37 @@ begin
   EmitC('program ' + SrcFile);
   EmitC('');
 
-  if Binary = btZXN then
-    Emit('', 'DEFINE CPU_Z80N', 'CPU is Z80N')
-  else if Binary = btAgon then
-    Emit('', 'DEFINE CPU_EZ80', 'CPU is eZ80')
-  else
-    Emit('', 'DEFINE CPU_Z80',  'CPU is Z80');
+  case Binary of
+    btAgon:   begin
+                EmitI('define CPU_EZ80');
+                EmitI('define SYS_AGON');
+                EmitI('device NOSLOT64K');
+              end;
 
-  if Binary = btCPM then
-  begin
-    Emit('CPM', 'equ 1', 'Target is CP/M');
-    EmitI('device NOSLOT64K');
-  end
-  else if Binary = btZX then
-  begin
-    Emit('ZX', 'equ 1', 'Target is ZX Spectrum 48K');
-    EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
-  end
-  else if Binary = btZX128 then
-  begin
-    Emit('ZX128', 'equ 1', 'Target is ZX Spectrum 128K');
-    EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4))
-  end
-  else if Binary = btZXN then
-  begin
-    Emit('NXT', 'equ 1', 'Target is ZX Spectrum Next');
-    EmitI('device ZXSPECTRUMNEXT');
-  end
-  else if Binary = btAgon then
-  begin
-    Emit('AGON', 'equ 1', 'Target is Agon Light/Console8');
-    EmitI('device NOSLOT64K');
-  end;
+    btCPM:    begin
+                EmitI('define CPU_Z80');
+                EmitI('define SYS_CPM');
+                EmitI('device NOSLOT64K');
+              end;
+
+    btZX:    begin
+                EmitI('define CPU_Z80');
+                EmitI('define SYS_SPEC48');
+                EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
+              end;
+
+    btZX128:    begin
+                EmitI('define CPU_Z80');
+                EmitI('define SYS_SPEC128');
+                EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4));
+              end;
+
+    btZXN:    begin
+                EmitI('define CPU_Z80N');
+                EmitI('define SYS_SPECNEXT');
+                EmitI('device ZXSPECTRUMNEXT');
+              end;
+  end;  
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
   Emit('TEXT', 'jp __init', '');
