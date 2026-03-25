@@ -4409,11 +4409,8 @@ begin
       else if Binary = btAgon then
       begin
         EmitI('pop af');
-        EmitI('jr nc,$+3');
-        EmitI('LUA');
-        EmitI('AddBreakpoint()');
-        EmitI('ENDLUA');
-        EmitI('nop');
+        EmitI('jr nc,$+4');
+        EmitI('out ($10),a');
       end
       else if Binary in [btZX, btZX128] then
       begin
@@ -4429,7 +4426,9 @@ begin
     begin
       if Binary = btZXN then
         EmitI('db $fd, $00')
-      else if Binary in [btZX, btZX128, btAgon] then
+      else if Binary = btAgon then
+        EmitI('out ($10),a')
+      else if Binary in [btZX, btZX128] then
       begin
         EmitI('LUA');
         EmitI('AddBreakpoint()');
@@ -7714,8 +7713,7 @@ begin
 
       Args := '';
 
-      if Debug then
-        Args := Args + StrFromFile(ChangeExt(BinFile, '.brk'));
+      if Debug then Args := Args + ' -d';
 
       WriteLn(Args);
       Execute('./fab-agon-emulator', Args);
