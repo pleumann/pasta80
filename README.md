@@ -38,6 +38,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
+  * Conditional compilation via compiler directives (aka a preprocessor).
   * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
   * Binary literals (using a `%` prefix).
   * `Break` and `Continue` for loop control.
@@ -291,6 +292,61 @@ end.
 
 Once your program is sufficiently tested, compile it with `--release` to get
 a binary that does not contain any generated code for `Debug` and `Assert`.
+
+## Compiler directives
+
+Compiler directives control the way the compiler works. They can be used to
+include Pascal or Assembly files, turn certain features of the compiler on
+or off, and compile part of the source code only under certain conditions.
+The latter feature can help you to maintain a common source code for the
+various target platforms of PASTA/80 and, potentially, even original Turbo
+Pascal.
+
+The following table shows the supported directives:
+
+| Directive | Purpose |
+| :-------- | :------ |
+| `{$i <file>}` | Includes the given Pascal file. |
+| `{$l <file>}` | Includes the given Assembly file. |
+| `{$a+}`, `{$a-}` | Turns absolute addressing on or off. Default is **on**. |
+| `{$i+}`, `{$i-}` | Turns IO checking on or off. Default is **on**. |
+| `{$k+}`, `{$k-}` | Turns stack checking on or off. Default is **off**. |
+| `{$u+}`, `{$u-}` | Turns break (Ctrl-C) checking on or off. Default is **off**. |
+| `{$define <id>}` | Defines the conditional symbol `<id>`. |
+| `{$undef <id>}` | Undefines the conditional symbol `<id>`. |
+| `{$ifdef <id>}` | Compiles the following block only if `<id>` is defined. |
+| `{$ifndef <id>}` | Compiles the following block only if `<id>` is not defined. |
+| `{$else}` | Introduces an "else" branch in a conditional block (optional). |
+| `{$endif}` | Finishes a conditional block (mandatory). |
+
+Some symbols are predefined to reflect the compiler itself or the current target platform:
+
+| Directive | Defined |
+| :-------- | :------ |
+| `PASTA` | Always |
+| `CPU_Z80`| For targets that use a standard Z80 processor |
+| `CPU_Z80N`| For targets that use a Z80N processor |
+| `CPU_EZ80`| For targets that use an eZ80 processor |
+| `SYS_AGON`| For the Agon Light/Console8 target |
+| `SYS_CPM` | For the CP/M target |
+| `SYS_ZX48` | For the ZX Spectrum 48K target |
+| `SYS_ZX128`| For the ZX Spectrum 128K target |
+| `SYS_ZXNEXT`| For the ZX Spectrum Next target |
+
+As a simple example, the following code prints the CPU type using
+conditional compilation. Notice how conditional blocks can be nested.
+
+```pascal
+{$ifdef CPU_EZ80}
+  WriteLn('This is an eZ80.');
+{$else}
+  {$ifdef CPU_Z80N}
+    WriteLn('This is a Z80N.');
+  {$else}
+    WriteLn('This is a Z80.');
+  {$endif}
+{$endif}
+```
 
 ## Examples and tests
 

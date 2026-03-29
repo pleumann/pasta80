@@ -1500,6 +1500,203 @@ begin
 end;
 
 (* --------------------------------------------------------------------- *)
+(* --- Preprocessor ---------------------------------------------------- *)
+(* --------------------------------------------------------------------- *)
+
+type
+  (**
+   * A conditional definition (i.e. a symbol handled by $IFDEF etc.). We
+   * don't ever delete those that get undefined, but rather change their
+   * value to False.
+   *)
+  PDefine = ^TDefine;
+  TDefine = record
+    Key: String;
+    Value: Boolean;
+    Next: PDefine;
+  end;
+
+var
+  Defines: PDefine = nil;               // The head of the definition list
+  IfDefStack: array[0..15] of Boolean;  // The stack for nested $IFDEFs
+  IfDefLevel: Integer = -1;             // Index in that stack
+  ScannerMuted: Boolean = False;        // Whether the scanner is muted
+
+  AbsCode: Boolean = False;             // Controls absolute mode
+  CheckBreak: Boolean = False;          // Controls break checking
+  IOMode: Boolean = True;               // Controls IO checking
+  StackMode: Boolean = False;           // Controls stack checking
+
+(**
+ * Clears all defines. Needed for multiple compiler runs in IDE.
+ *)
+procedure ClearDefines;
+var
+  P: PDefine;
+begin
+  while Defines <> nil do
+  begin
+    P := Defines^.Next;
+    Dispose(Defines);
+    Defines := P;
+  end;
+end;
+
+(**
+ * Searches for a conditional definition. Returns either the pointer, if
+ * found, or nil otherwise.
+ *)
+function FindDefine(S: String): PDefine;
+var
+  P: PDefine;
+begin
+  P := Defines;
+  while P <> nil do
+  begin
+    if P^.Key = S then Exit(P);
+    P := P^.Next;
+  end;
+
+  Exit(nil);
+end;
+
+(**
+ * Returns the value of a conditional definition, or False if that
+ * definition does not exist.
+ *)
+function GetDefine(S: String): Boolean;
+var
+  P: PDefine;
+begin
+  P := FindDefine(UpperStr(S));
+  if P = nil then
+    Exit(False)
+  else
+    Exit(P^.Value);
+end;
+
+(**
+ * Sets the value of the given conditional definition.
+ *)
+procedure SetDefine(S: String; B: Boolean);
+var
+  P: PDefine;
+begin
+  S := UpperStr(S);
+
+  P := FindDefine(S);
+  if P = nil then
+  begin
+    New(P);
+    P^.Key := S;
+    P^.Value := B;
+    P^.Next := Defines;
+    Defines := P;
+  end
+  else P^.Value := B;
+
+  if B then EmitI('define ' + S) else EmitI('undefine ' + S);
+end;
+
+(**
+ * Pushes the current state of the preprocessor to the stack. This happens
+ * whenever we encounter an $IFDEF or $IFNDEF.
+ *)
+procedure PushIfDefState;
+begin
+  if IfDefLevel = High(IfDefStack) then Error('Too many $ifdefs');
+  Inc(IfDefLevel);
+  IfDefStack[IfDefLevel] := ScannerMuted;
+end;
+
+(**
+ * Pops the previous state of the preprocessor off the stack. This happens
+ * whenever we encounter an $ENDIF.
+ *)
+procedure PopIfDefState;
+begin
+  if IfDefLevel = -1 then Error('Missing $ifdef');
+  ScannerMuted := IfDefStack[IfDefLevel];
+  Dec(IfDefLevel);
+end;
+
+(**
+ * Queries the previous state of the preprocessor without actually popping
+ * if off the stack. This is used for handling $ELSE.
+ *)
+function TopIfDefState: Boolean;
+begin
+  if IfDefLevel = -1 then Error('Missing $ifdef');
+  TopIfDefState := IfDefStack[IfDefLevel];
+end;
+
+(**
+ * Handles the given directive. Directives are Pascal's way of dealing with
+ * conditional compilation, compiler switches, and things like includes.
+ * New directives should be added here.
+ *)
+procedure HandleDirective(C: String);
+var
+  S, T: String;
+  P: Integer;
+begin
+  P := Pos(' ', C);
+  if P = 0 then
+  begin
+    S := LowerStr(C);
+    T := '';
+  end
+  else
+  begin
+    S := LowerStr(TrimStr(Copy(C, 1, P - 1)));
+    T := TrimStr(Copy(C, P + 1, 255));
+  end;
+
+  // Might turn out to be compiler directives
+  if S = '$define' then
+  begin
+    if not ScannerMuted then SetDefine(T, True);
+  end
+  else if S = '$undef' then
+  begin
+    if not ScannerMuted then SetDefine(T, False);
+  end
+  else if S = '$ifdef' then
+  begin
+    PushIfDefState;
+    ScannerMuted := ScannerMuted or not GetDefine(T);
+  end
+  else if S = '$ifndef' then
+  begin
+    PushIfDefState;
+    ScannerMuted := ScannerMuted or GetDefine(T);
+  end
+  else if S = '$else' then
+  begin
+    if not TopIfDefState then ScannerMuted := not ScannerMuted;
+  end
+  else if S = '$endif' then
+  begin
+    PopIfDefState;
+  end
+  else if S = '$a' then
+    EmitI(T)
+  else if S = '$i' then
+    OpenInput(NativeToPosix(T))
+  else if S = '$l' then
+    SetLibrary(NativeToPosix(T))
+  else if Copy(S, 1, 2) = '$u' then
+    CheckBreak := S[3] = '+'
+  else if Copy(S, 1, 2) = '$a' then
+    AbsCode := S[3] = '+'
+  else if Copy(S, 1, 2) = '$i' then
+    IOMode := S[3] = '+'
+  else if Copy(S, 1, 2) = '$k' then
+    StackMode := S[3] = '+'
+  else Error('Invalid directive: ' + S);
+end;
+
+(* --------------------------------------------------------------------- *)
 (* --- Scanner --------------------------------------------------------- *)
 (* --------------------------------------------------------------------- *)
 
@@ -1510,7 +1707,7 @@ type
    * accordingly. Also all tokens representing keywords are in one large,
    * alphabetically sorted block.
    *)
-  TToken = (toNone,
+  TToken = (toNone, toComment,
             toIdent, toNumber, toString, toFloat, toAdd, toSub, toMul, toDiv,
             toEq, toNeq, toLt, toLeq, toGt, toGeq, toLParen, toRParen, toLBrack, toRBrack,
             toBecomes, toComma, toColon, toSemicolon, toPeriod, toCaret, toRange,
@@ -1538,7 +1735,7 @@ const
    * alphabetically sorted block.
    *)
   TokenStr: array[TToken] of String =
-           ('<nul>',
+           ('<nul>', '{...}',
             'Identifier', 'Number', 'String', 'Real', '+', '-', '*', '/',
             '=', '#', '<', '<=', '>', '>=', '(', ')', '[', ']',
             ':=', ',', ':', ';', '.', '^', '..',
@@ -1565,13 +1762,6 @@ var
    * The line and column of the current token.
    *)
   TokenLine, TokenColumn: Integer;
-
-(* TODO Doesn't belong here. Fix later. *)
-const
-  AbsCode: Boolean = False;
-  CheckBreak: Boolean = False;
-  IOMode: Boolean = True;
-  StackMode: Boolean = False;
 
 (**
  * Returns True if the given character is a valid Pascal identifier head.
@@ -1652,303 +1842,289 @@ var
   S: String;
   I: Integer;
 begin
-  // Ignore whitespace
-  while (C <= ' ') do
-  begin
-    C := GetChar;
-  end;
-
-  with Scanner do
-  begin
-    // Start a new token
-    Token := toNone;
-    StrValue := '';
-    NumValue := 0;
-    TokenLine := Source^.Line;
-    TokenColumn := Source^.Column - 1;
-
-    if IsIdentHead(C) then
+  repeat
+    // Ignore whitespace
+    while (C <= ' ') do
     begin
-      // Identifier
-      StrValue := C;
       C := GetChar;
-      while IsIdentTail(C) do
-      begin
-        StrValue := StrValue + C;
-        C := GetChar;
-      end;
-      Token := LookupKeyword(StrValue);
-    end
-    else if IsDecDigit(C) then
-    begin
-      // Let's start with an integer number
-      Token := toNumber;
-      StrValue := C;
-      NumValue := Ord(C) - Ord('0');
-      C := GetChar;
-      while IsDecDigit(C) do
-      begin
-        StrValue := StrValue + C;
-        NumValue := 10 * NumValue + (Ord(C) - Ord('0'));
-        C := GetChar;
-      end;
+    end;
 
-      // Might turn out to be floating point
-      if C = '.' then
+    with Scanner do
+    begin
+      // Start a new token
+      Token := toNone;
+      StrValue := '';
+      NumValue := 0;
+      TokenLine := Source^.Line;
+      TokenColumn := Source^.Column - 1;
+
+      if IsIdentHead(C) then
       begin
+        // Identifier
+        StrValue := C;
         C := GetChar;
+        while IsIdentTail(C) do
+        begin
+          StrValue := StrValue + C;
+          C := GetChar;
+        end;
+        Token := LookupKeyword(StrValue);
+      end
+      else if IsDecDigit(C) then
+      begin
+        // Let's start with an integer number
+        Token := toNumber;
+        StrValue := C;
+        NumValue := Ord(C) - Ord('0');
+        C := GetChar;
+        while IsDecDigit(C) do
+        begin
+          StrValue := StrValue + C;
+          NumValue := 10 * NumValue + (Ord(C) - Ord('0'));
+          C := GetChar;
+        end;
+
+        // Might turn out to be floating point
         if C = '.' then
         begin
-          UngetChar;
-          Exit;
-        end;
-
-        Token := toFloat;
-        StrValue := StrValue + '.';
-
-        while IsDecDigit(C) do
-        begin
-          StrValue := StrValue + C;
           C := GetChar;
-        end;
-      end;
-
-      // And even have an exponential part
-      if (C = 'E') or (C = 'e') then
-      begin
-        Token := toFloat;
-
-        StrValue := StrValue + C;
-        C := GetChar;
-
-        if (C = '+') or (C = '-') then
-        begin
-          StrValue := StrValue + C;
-          C := GetChar;
-        end;
-
-        if not IsDecDigit(C) then Error('Digit expected');
-
-        while IsDecDigit(C) do
-        begin
-          StrValue := StrValue + C;
-          C := GetChar;
-        end;
-      end;
-
-    end
-    else if C = '$' then
-    begin
-      // Hex numbers are numbers, too.
-      Token := toNumber;
-      StrValue := '$';
-      C := GetChar;
-
-      if not IsHexDigit(C) then Error('Hex digit expected');
-
-      repeat
-        StrValue := StrValue + C;
-        NumValue := (NumValue shl 4);
-        if (C >= '0') and (C <= '9') then
-          NumValue := NumValue + Ord(C) - Ord('0')
-        else if (C >= 'A') and (C <= 'F') then
-          NumValue := NumValue + Ord(C) - Ord('A') + 10
-        else
-          NumValue := NumValue + Ord(C) - Ord('a') + 10;
-
-        C := GetChar;
-      until not IsHexDigit(C);
-    end
-    else if C = '%' then
-    begin
-      // Binary numbers are numbers, too.
-      Token := toNumber;
-      StrValue := '%';
-      C := GetChar;
-
-      if not IsBinDigit(C) then Error('Binary digit expected');
-
-      repeat
-        StrValue := StrValue + C;
-        NumValue := (NumValue shl 1);
-        if C = '1' then NumValue := NumValue + 1;
-        C := GetChar;
-      until not IsBinDigit(C);
-    end
-    else if (C = '''') or (C = '#') then
-    begin
-      // Strings come in various forms
-      Token := toString;
-
-      repeat
-        if C = '''' then
-        begin
-          // Standard string delimited by apostrophes
-          C := GetChar;
-          while True do
+          if C = '.' then
           begin
-            while (C <> '''') and (C <> #26) do
-            begin
-              StrValue := StrValue + C;
-              C := GetChar;
-            end;
-
-            if C = #26 then Error('Unterminated String') else C := GetChar; (* ??? *)
-
-            if C = '''' then
-            begin
-              StrValue := StrValue + '''';
-              C := GetChar;
-            end
-            else Break;
-          end;
-        end
-        else
-        begin
-          // Hash sign followed by an ASCII code
-          I := 0;
-          C := GetChar;
-          if not IsDecDigit(C) then Error('Dec digit expected');
-          repeat
-            I := I * 10 + Ord(C) - Ord('0');
-            C := GetChar;
-          until not IsDecDigit(C);
-          StrValue := StrValue + Char(I);
-        end;
-      until (C <> '''') and (C <> '#');
-    end
-    else if C = '{' then
-    begin
-      // Standard Pascal comments
-      S := '{';
-      repeat
-        C := GetChar;
-        S := S + C;
-      until C = '}';
-      C := GetChar;
-
-      // Might turn out to be compiler directives
-      if LowerStr(Copy(S, 2, 3)) = '$i ' then
-        OpenInput(NativeToPosix(TrimStr(Copy(S, 4, Length(S) - 4))))
-      else if LowerStr(Copy(S, 2, 3)) = '$a ' then
-        EmitI(TrimStr(Copy(S, 4, Length(S) - 4)))
-      else if LowerStr(Copy(S, 2, 2)) = '$u' then
-        CheckBreak := S[4] = '+'
-      else if LowerStr(Copy(S, 2, 2)) = '$a' then
-        AbsCode := S[4] = '+'
-      else if LowerStr(Copy(S, 2, 2)) = '$i' then
-        IOMode := S[4] = '+'
-      else if LowerStr(Copy(S, 2, 2)) = '$k' then
-        StackMode := S[4] = '+'
-      else if LowerStr(Copy(S, 2, 2)) = '$l' then
-        SetLibrary(NativeToPosix(TrimStr(Copy(S, 4, Length(S) - 4))));
-
-      NextToken;
-      Exit;
-    end
-    else
-    begin
-      // Various Single-character tokens
-      case C of
-        '+': Token := toAdd;
-        '-': Token := toSub;
-        '*': Token := toMul;
-        '/': Token := toDiv;
-        '=': Token := toEq;
-        '<': Token := toLt;
-        '>': Token := toGt;
-        '(': Token := toLParen;
-        ')': Token := toRParen;
-        '[': Token := toLBrack;
-        ']': Token := toRBrack;
-        ':': Token := toColon;
-        ',': Token := toComma;
-        ';': Token := toSemicolon;
-        '.': Token := toPeriod;
-        '^': Token := toCaret;
-        else Error('Invalid character "' + C + '"');
-      end;
-
-      C := GetChar;
-
-      // These might turn out to be multi-character tokens
-      case Token of
-        toDiv:
-          if C = '/' then               // C-style one-line comment
-          begin
-            Source^.Column := Length(Source^.Buffer) + 1;
-            C := GetChar;
-            NextToken; (* TODO Eliminate recursion??? *)
-          end;
-        toLt:
-          if C = '>' then               // Not equal
-          begin
-            Token := toNeq;
-            C := GetChar;
-          end
-          else if C = '=' then          // Less than or equal
-          begin
-            Token := toLeq;
-            C := GetChar;
-          end;
-
-        toGt:
-          if C = '=' then               // Greater than or equal
-          begin
-            Token := toGeq;
-            C := GetChar;
-          end;
-
-        toLParen:
-          if C = '.' then               // Alternative notation for [
-          begin
-            Token := toLBrack;
-            C := GetChar;
-          end
-          else if C = '*' then          // Alternative notation for comments
-          begin
-            C := GetChar;
-            S := '(*' + C;
-            repeat
-              while C <> '*' do
-              begin
-                C := GetChar;
-                S := S + C;
-              end;
-              C := GetChar;
-              S := S + C;
-            until C = ')';
-            C := GetChar;
-
-            // TODO Do we really need to support directives for both comment types?
-            if LowerStr(Copy(S, 3, 2)) = '$i' then
-              OpenInput(NativeToPosix(TrimStr(Copy(S, 5, Length(S) - 6))));
-
-            NextToken;
+            UngetChar;
             Exit;
           end;
 
-        toColon:
-          if C = '=' then               // Assignment operator
+          Token := toFloat;
+          StrValue := StrValue + '.';
+
+          while IsDecDigit(C) do
           begin
-            Token := toBecomes;
+            StrValue := StrValue + C;
+            C := GetChar;
+          end;
+        end;
+
+        // And even have an exponential part
+        if (C = 'E') or (C = 'e') then
+        begin
+          Token := toFloat;
+
+          StrValue := StrValue + C;
+          C := GetChar;
+
+          if (C = '+') or (C = '-') then
+          begin
+            StrValue := StrValue + C;
             C := GetChar;
           end;
 
-        toPeriod:
-          if C = ')' then               // Alternative notation for ]
+          if not IsDecDigit(C) then Error('Digit expected');
+
+          while IsDecDigit(C) do
           begin
-            Token := toRBrack;
-            C := GetChar;
-          end
-          else if C = '.' then          // Double dot for ranges
-          begin
-            Token := toRange;
+            StrValue := StrValue + C;
             C := GetChar;
           end;
+        end;
+
+      end
+      else if C = '$' then
+      begin
+        // Hex numbers are numbers, too.
+        Token := toNumber;
+        StrValue := '$';
+        C := GetChar;
+
+        if not IsHexDigit(C) then Error('Hex digit expected');
+
+        repeat
+          StrValue := StrValue + C;
+          NumValue := (NumValue shl 4);
+          if (C >= '0') and (C <= '9') then
+            NumValue := NumValue + Ord(C) - Ord('0')
+          else if (C >= 'A') and (C <= 'F') then
+            NumValue := NumValue + Ord(C) - Ord('A') + 10
+          else
+            NumValue := NumValue + Ord(C) - Ord('a') + 10;
+
+          C := GetChar;
+        until not IsHexDigit(C);
+      end
+      else if C = '%' then
+      begin
+        // Binary numbers are numbers, too.
+        Token := toNumber;
+        StrValue := '%';
+        C := GetChar;
+
+        if not IsBinDigit(C) then Error('Binary digit expected');
+
+        repeat
+          StrValue := StrValue + C;
+          NumValue := (NumValue shl 1);
+          if C = '1' then NumValue := NumValue + 1;
+          C := GetChar;
+        until not IsBinDigit(C);
+      end
+      else if (C = '''') or (C = '#') then
+      begin
+        // Strings come in various forms
+        Token := toString;
+
+        repeat
+          if C = '''' then
+          begin
+            // Standard string delimited by apostrophes
+            C := GetChar;
+            while True do
+            begin
+              while (C <> '''') and (C <> #26) do
+              begin
+                StrValue := StrValue + C;
+                C := GetChar;
+              end;
+
+              if C = #26 then Error('Unterminated String') else C := GetChar; (* ??? *)
+
+              if C = '''' then
+              begin
+                StrValue := StrValue + '''';
+                C := GetChar;
+              end
+              else Break;
+            end;
+          end
+          else
+          begin
+            // Hash sign followed by an ASCII code
+            I := 0;
+            C := GetChar;
+            if not IsDecDigit(C) then Error('Dec digit expected');
+            repeat
+              I := I * 10 + Ord(C) - Ord('0');
+              C := GetChar;
+            until not IsDecDigit(C);
+            StrValue := StrValue + Char(I);
+          end;
+        until (C <> '''') and (C <> '#');
+      end
+      else if C = '{' then
+      begin
+        // Standard Pascal comments
+        StrValue := '{';
+        repeat
+          C := GetChar;
+          StrValue := StrValue + C;
+        until C = '}';
+        C := GetChar;
+
+        StrValue := Copy(StrValue, 2, Length(StrValue) - 2);
+        Token := toComment;
+        if (StrValue <> '') and (StrValue[1] = '$') then
+          HandleDirective(StrValue);
+      end
+      else
+      begin
+        // Various Single-character tokens
+        case C of
+          '+': Token := toAdd;
+          '-': Token := toSub;
+          '*': Token := toMul;
+          '/': Token := toDiv;
+          '=': Token := toEq;
+          '<': Token := toLt;
+          '>': Token := toGt;
+          '(': Token := toLParen;
+          ')': Token := toRParen;
+          '[': Token := toLBrack;
+          ']': Token := toRBrack;
+          ':': Token := toColon;
+          ',': Token := toComma;
+          ';': Token := toSemicolon;
+          '.': Token := toPeriod;
+          '^': Token := toCaret;
+          else Error('Invalid character "' + C + '"');
+        end;
+
+        C := GetChar;
+
+        // These might turn out to be multi-character tokens
+        case Token of
+          toDiv:
+            if C = '/' then               // C-style one-line comment
+            begin
+              Source^.Column := Length(Source^.Buffer) + 1;
+              C := GetChar;
+              Token := toComment;
+            end;
+          toLt:
+            if C = '>' then               // Not equal
+            begin
+              Token := toNeq;
+              C := GetChar;
+            end
+            else if C = '=' then          // Less than or equal
+            begin
+              Token := toLeq;
+              C := GetChar;
+            end;
+
+          toGt:
+            if C = '=' then               // Greater than or equal
+            begin
+              Token := toGeq;
+              C := GetChar;
+            end;
+
+          toLParen:
+            if C = '.' then               // Alternative notation for [
+            begin
+              Token := toLBrack;
+              C := GetChar;
+            end
+            else if C = '*' then          // Alternative notation for comments
+            begin
+              S := '(*';
+              C := GetChar;
+              repeat
+                while C <> '*' do
+                begin
+                  C := GetChar;
+                  StrValue := StrValue + C;
+                end;
+                C := GetChar;
+                StrValue := StrValue + C;
+              until C = ')';
+              C := GetChar;
+
+              StrValue := Copy(StrValue, 3, Length(StrValue) - 4);
+              Token := toComment;
+              if (StrValue <> '') and (StrValue[1] = '$') then
+                HandleDirective(StrValue);
+            end;
+
+          toColon:
+            if C = '=' then               // Assignment operator
+            begin
+              Token := toBecomes;
+              C := GetChar;
+            end;
+
+          toPeriod:
+            if C = ')' then               // Alternative notation for ]
+            begin
+              Token := toRBrack;
+              C := GetChar;
+            end
+            else if C = '.' then          // Double dot for ranges
+            begin
+              Token := toRange;
+              C := GetChar;
+            end;
+        end;
       end;
     end;
-  end;
+  until (not ScannerMuted) and (Scanner.Token <> toComment); 
 end;
 
 (**
@@ -2598,34 +2774,36 @@ begin
   EmitC('program ' + SrcFile);
   EmitC('');
 
+  SetDefine('PASTA', True);
+
   case Binary of
     btAgon:   begin
-                EmitI('define CPU_EZ80');
-                EmitI('define SYS_AGON');
+                SetDefine('CPU_EZ80', True);
+                SetDefine('SYS_AGON', True);
                 EmitI('device NOSLOT64K');
               end;
 
     btCPM:    begin
-                EmitI('define CPU_Z80');
-                EmitI('define SYS_CPM');
+                SetDefine('CPU_Z80', True);
+                SetDefine('SYS_CPM', True);
                 EmitI('device NOSLOT64K');
               end;
 
     btZX:    begin
-                EmitI('define CPU_Z80');
-                EmitI('define SYS_SPEC48');
+                SetDefine('CPU_Z80', True);
+                SetDefine('SYS_ZX48', True);
                 EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
     btZX128:  begin
-                EmitI('define CPU_Z80');
-                EmitI('define SYS_SPEC128');
+                SetDefine('CPU_Z80', True);
+                SetDefine('SYS_ZX128', True);
                 EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
     btZXN:    begin
-                EmitI('define CPU_Z80N');
-                EmitI('define SYS_SPECNEXT');
+                SetDefine('CPU_Z80N', True);
+                SetDefine('SYS_ZXNEXT', True);
                 EmitI('device ZXSPECTRUMNEXT');
               end;
   end;  
@@ -7453,6 +7631,7 @@ begin
     LastBuiltIn := nil;
 
     ClearStrings;
+    ClearDefines;
 
     Source := nil;
 

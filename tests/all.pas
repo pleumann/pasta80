@@ -1397,7 +1397,16 @@ end;
 
 var
   AbsI: Integer;
-  AbsJ: Integer absolute $6C;
+  {$ifdef SYS_AGON}
+    AbsJ: Integer absolute $3E;
+  {$else}
+    {$ifdef SYS_CPM}
+      AbsJ: Integer absolute $6C;
+    {$else}
+      AbsJ: Integer absolute $4000;
+    {$endif}
+  {$endif}
+
   AbsX: Integer absolute AbsI;
   AbsY: Integer absolute AbsJ;
   AbsZ: Integer absolute '__buffer';
@@ -1406,7 +1415,16 @@ overlay procedure TestAbsolute;
 begin
   WriteLn('--- TestAbsolute ---');
 
-  Assert(Addr(AbsJ) = $6C);
+  {$ifdef SYS_AGON}
+    Assert(Addr(AbsJ) = $3E);
+  {$else}
+    {$ifdef SYS_CPM}
+      Assert(Addr(AbsJ) = $6C);
+    {$else}
+      Assert(Addr(AbsJ) = $4000);
+    {$endif}
+  {$endif}
+
   Assert(Addr(AbsX) = Addr(AbsI));
   Assert(Addr(AbsY) = Addr(AbsJ));
   Assert(Addr(AbsZ) <> 0);
@@ -3006,6 +3024,164 @@ begin
   ValEnum('', None, 1);
 end;
 
+procedure TestDirectives;
+var
+  I: Integer;
+begin
+  WriteLn('--- TestDirectives ---');
+
+  I := 0;
+
+  // Check simple cases for undefined symbol
+  {$ifdef abc}
+    Assert(False);
+  {$endif}
+
+  {$ifdef abc}
+    Assert(False);
+  {$else}
+    Inc(I);
+  {$endif}
+  Assert(I = 1);
+
+  {$ifndef abc}
+    Inc(I);
+  {$else} 
+    Assert(False);
+  {$endif}
+  Assert(I = 2);
+
+  // Check simple cases for defined symbol
+  {$define abc}
+
+  {$ifdef abc}
+    Inc(I);
+  {$endif}
+  Assert(I = 3);
+
+  {$ifdef abc}
+    Inc(I);
+  {$else}
+    Assert(False);
+  {$endif}
+  Assert(I = 4);
+
+  {$ifndef abc}
+    Assert(False);
+  {$else}
+    Inc(I);
+  {$endif}
+  Assert(I = 5);
+
+  // Undefine symbol again
+  {$undef abc}
+
+  {$ifdef abc}
+    Assert(False);
+  {$endif}
+
+  // (Un)define must have no effect in inactive branches
+  {$define foo}
+
+  {$ifdef xyz}
+    Assert(False);
+    {$undef foo}
+    {$define bar}
+  {$endif}
+
+  {$ifdef foo}
+    Inc(I);
+  {$endif}
+  Assert(I = 6);
+
+  {$ifdef bar}
+    Assert(False);
+  {$endif}
+
+  // Check nested cases
+  {$define abc}
+
+  {$ifdef abc}
+    {$ifdef xyz}
+      Assert(False);
+    {$else}
+      Inc(I);
+    {$endif}
+    Inc(I);
+  {$endif}
+  Assert(I = 8);
+
+  {$ifdef abc}
+    {$ifndef xyz}
+      Inc(I);
+    {$else}
+      Inc(I);
+    {$endif}
+    Inc(I);
+  {$endif}
+  Assert(I = 10);
+
+  // Check PASTA/80 compiler
+  {$ifdef pasta}
+    Inc(I);
+    Write('This is PASTA/80 for ');
+  {$else}
+    Assert(False);
+  {$endif}
+  Assert(I = 11);
+
+  // Check target system
+  {$ifdef sys_cpm}
+    Inc(I);
+    Write('CP/M');
+  {$else}
+    {$ifdef sys_agon}
+      Inc(I);
+      Write('Agon Light/Console8');
+    {$else}
+      {$ifdef sys_zxnext}
+        Inc(I);
+        Write('ZX Spectrum Next');
+      {$else}
+        {$ifdef sys_zx128}
+          Inc(I);
+          Write('ZX Spectrum 128K');
+        {$else}
+          {$ifdef sys_zx48}
+            Inc(I);
+            Write('ZX Spectrum 48K');
+          {$else}
+            Write('unknown machine');
+          {$endif}
+        {$endif}
+      {$endif}
+    {$endif}
+  {$endif}
+  Assert(I = 12);
+
+  Write(' running on ');
+
+  // Check target CPU
+  {$ifdef cpu_z80n}
+    Inc(I);
+    WriteLn('a Z80N.');
+  {$else}
+    {$ifdef cpu_ez80}
+      Inc(I);
+      WriteLn('an eZ80.');
+    {$else}
+      {$ifdef cpu_z80}
+        Inc(I);
+        WriteLn('a good old Z80.');
+      {$else}
+        Assert(False);
+        WriteLn('unknown CPU');
+      {$endif}
+    {$endif}
+  {$endif}
+  Assert(I = 13); // Lucky number
+end;
+
 begin
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
@@ -3103,6 +3279,8 @@ begin
   TestVal;
 
   TestBuiltIns;
+
+  TestDirectives;
 
   WriteLn;
   WriteLn('************************');
