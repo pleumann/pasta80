@@ -3,6 +3,18 @@
 ; --- v3.0 required for some file routines --------------------------------------------
 ; -------------------------------------------------------------------------
 
+sysvar_time:        EQU 00h ; 4: Clock timer in centiseconds (incremented by 2 every VBLANK)
+sysvar_vpd_pflags:  EQU 04h ; 1: Flags to indicate completion of VDP commands
+sysvar_keyascii:    EQU 05h ; 1: ASCII keycode, or 0 if no key is pressed
+sysvar_cursorX:     EQU 07h ; 1: Cursor X position
+sysvar_audioChannel:    EQU 0Dh ; 1: Audio channel 
+sysvar_audioSuccess:    EQU 0Eh ; 1: Audio channel note queued (0 = no, 1 = yes)
+sysvar_scrCols:     EQU 13h ; 1: Screen columns in characters
+sysvar_scrpixelIndex:   EQU 16h ; 1: Index of pixel data read from screen
+sysvar_vkeydown:    EQU 18h ; 1: Virtual key state from FabGL (0=up, 1=down)
+
+
+
 ; Calls a MOS API function.
 ;
 ; In:           hl      MOS API function number
@@ -182,16 +194,16 @@ __readkey:
             ld  h,0
 __readkey_1:
             mklil
-            ld  a,(ix+18h)  ;key down?
+            ld  a,(ix+sysvar_vkeydown)  ;key down?
             or  a
             jr  z,__readkey_1
             mklil
-            ld  a,(ix+5)    ;valid key?
+            ld  a,(ix+sysvar_keyascii)    ;valid key?
             or  a
             jr  z,__readkey_1
             ld  l,a
             mklil
-            ld  (ix+18h),h  ;zero
+            ld  (ix+sysvar_vkeydown),h  ;zero
 ;__readkey_1:
                 pop     ix
 ;                rst     10h    ;not sure we need to re-display this?
@@ -207,11 +219,11 @@ __keypressed:
             ld  a, 8        ;0x08: mos_sysvars
             rst 08h         ;IX(U) now has sysvars
             mklil
-            ld  a,(ix+18h)  ;Is a key down?
+            ld  a,(ix+sysvar_vkeydown)  ;Is a key down?
             or  a
             jr  z,__keypressed_1    ;return no key down
             mklil
-            ld  a,(ix+05h)  ;Is key down returning a character?
+            ld  a,(ix+sysvar_keyascii)  ;Is key down returning a character?
             or  a
             jr  z,__keypressed_1    ;if not, return no key down
             ld  a,1         ;Else return key down.
@@ -373,9 +385,9 @@ __clreol:
             ld      a, 8        ;0x08: mos_sysvars
             rst     08h         ;IX(U) now has sysvars
             mklil
-            ld      a,(IX+13h)
+            ld      a,(IX+sysvar_scrCols)
             mklil
-            sub     (IX+7h)
+            sub     (IX+sysvar_cursorX)
             jr      z,__skip_clr
             ld      b,a
             ld      c,a
@@ -408,15 +420,91 @@ __checkbreak:
 ; sysvar_keyascii:        EQU 05h ; 1: ASCII keycode, or 0 if no key is pressed
 ; not sure why we are preserving IX
             push    ix
-            ld  a, 8        ;0x08: mos_sysvars
-            rst 08h         ;IX(U) now has sysvars
+            ld      a, 8        ;0x08: mos_sysvars
+            rst     08h         ;IX(U) now has sysvars
             mklil
-            ld  a,(ix+5)
+            ld      a,(ix+sysvar_keyascii)
             pop     ix
             cp      3
             ret     nz
             pop     hl  ;go up to the next level - TODO: Can this even work?
             jp      __done
+
+; Agon Beep:
+; Uses Channel 1 to make a beep. Blocking - i.e. waits for beep to finish.
+; VDU 23, 0, &85, channel, 0, volume, frequency; duration;
+; sysvar_vpd_pflags:      EQU 04h ; 1: Flags to indicate completion of VDP commands
+; VDPP_FLAG_AUDIO:  EQU     00001000b - doesn't work
+; sysvar_audioChannel:    EQU 0Dh ; 1: Audio channel
+; sysvar_audioSuccess:   EQU 0Eh ; 1: Audio channel note queued (0 = no, 1 = yes)
+; bit 1 is still playing. 
+
+;Command 1: Status
+; VDU 23, 0, &85, channel, 1 - let's assume we are uninterrupted and this will turn up eventually when it's finished.
+
+; need to ignore DE = -1 because we will never exit here.
+
+; In: HL = Frequency in Hz, DE = Milliseconds
+; Out: Uses A
+__agon_beep:
+            inc     de      ;safety to prevent infinite note
+            ld      a,d
+            or      e
+            ret     z
+            dec     de
+            push    ix
+            ld  a, 8        ;0x08: mos_sysvars
+            rst 08h         ;IX(U) now has sysvars
+            mklil
+            res     3,(IX+sysvar_vpd_pflags)    ; VDPP_FLAG_AUDIO
+__agon_beep_resend:
+            ld      a,23
+            rst     10h
+            xor     a
+            rst     10h
+            ld      a,085h
+            rst     10h
+            ld      a,1     ;channel 1
+            rst     10h
+            xor     a       ;wave form
+            rst     10h
+            ld      a,90   ;full volume
+            rst     10h
+            ld      a,l     ;frequency
+            rst     10h
+            ld      a,h
+            rst     10h
+            ld      a,e     ;duration
+            rst     10h
+            ld      a,d
+            rst     10h
+__agon_beep_2:
+            mklil
+            bit     3,(ix+sysvar_vpd_pflags)    ;test if audio command was received
+            jr      z,__agon_beep_2             ;wait until beep command received
+__agon_beep_0:
+            mklil
+            res     3,(IX+sysvar_vpd_pflags)    ; reset VDPP_FLAG_AUDIO
+            ld      a,23
+            rst     10h
+            xor     a
+            rst     10h
+            ld      a,085h
+            rst     10h
+            ld      a,1     ;channel 1
+            rst     10h
+            rst     10h     ;Command 1 - check status
+__agon_beep_1:
+            mklil
+            bit     3,(ix+sysvar_vpd_pflags)    ;test if audio has updated status
+            jr      z,__agon_beep_1 ;wait until status packet returned
+            mklil
+            ld      a,(ix+sysvar_audioSuccess)  ;sysvar_audioSuccess
+            and     03h         ;check if still playing
+            jr      nz,__agon_beep_0    ;yes, so keep blocking until done
+            pop     ix
+            ret
+
 
 ; Delay routine
 ; This will need to be an estimate, subtracking 17ms for every 60Hz (or 75hz) tick...
@@ -435,10 +523,10 @@ __delay:
             jr  z,__delay_exit  ;trivial delay
 __delay_outer:
             mklil
-            ld  b,(ix+0)    ;lowest time tick counter, watching for change
+            ld  b,(ix+sysvar_time)    ;lowest time tick counter, watching for change
 __delay_inner:
             mklil
-            ld  a,(ix+0)    ;lowest time tick counter, watching for change
+            ld  a,(ix+sysvar_time)    ;lowest time tick counter, watching for change
             cp  b
             jr  z,__delay_inner ;no tick yet
             ld  b,a
@@ -485,19 +573,20 @@ __sysver_time_hi:
 ; &40-&47   64-71   Point plot
 ; 4 (C) Move absolute
 ; 5 (D) Plot absolute in current foreground colour
-al_plot:        ld      a,25
-                rst     10h
-                ld      a,045h
-                rst     10h
-                ld      a,l
-                rst     10h
-                ld      a,h
-                rst     10h
-                ld      a,e
-                rst     10h
-                ld      a,d
-                rst     10h
-                ret
+al_plot:
+            ld      a,25
+            rst     10h
+            ld      a,045h
+            rst     10h
+            ld      a,l
+            rst     10h
+            ld      a,h
+            rst     10h
+            ld      a,e
+            rst     10h
+            ld      a,d
+            rst     10h
+            ret
 
 ;
 ; Draws a relative line starting at the most recent plot position.
@@ -507,19 +596,20 @@ al_plot:        ld      a,25
 ;
 ; &00-&07   0-7 Solid line, includes both ends
 ; 1 (9) Plot relative in current foreground colour
-al_draw:        ld      a,25
-                rst     10h
-                ld      a,001h
-                rst     10h
-                ld      a,l
-                rst     10h
-                ld      a,h
-                rst     10h
-                ld      a,e
-                rst     10h
-                ld      a,d
-                rst     10h
-                ret
+al_draw:
+            ld      a,25
+            rst     10h
+            ld      a,001h
+            rst     10h
+            ld      a,l
+            rst     10h
+            ld      a,h
+            rst     10h
+            ld      a,e
+            rst     10h
+            ld      a,d
+            rst     10h
+            ret
 
 ;
 ; Draws a circle.
@@ -537,30 +627,30 @@ al_draw:        ld      a,25
 ; &90-&97   144-151 Circle outline
 ; 1 (9) Plot relative in current foreground colour
 al_circle:
-                ld      a,25
-                rst     10h
-                ld      a,044h  ;move current cursor to X,Y
-                rst     10h
-                ld      a,l
-                rst     10h
-                ld      a,h
-                rst     10h
-                ld      a,e
-                rst     10h
-                ld      a,d
-                rst     10h
-                ld      a,25
-                rst     10h
-                ld      a,091h  ;Draw circle of radius BC
-                rst     10h
-                ld      a,c
-                rst     10h
-                ld      a,b
-                rst     10h
-                xor     a
-                rst     10h
-                rst     10h
-                ret
+            ld      a,25
+            rst     10h
+            ld      a,044h  ;move current cursor to X,Y
+            rst     10h
+            ld      a,l
+            rst     10h
+            ld      a,h
+            rst     10h
+            ld      a,e
+            rst     10h
+            ld      a,d
+            rst     10h
+            ld      a,25
+            rst     10h
+            ld      a,091h  ;Draw circle of radius BC
+            rst     10h
+            ld      a,c
+            rst     10h
+            ld      a,b
+            rst     10h
+            xor     a
+            rst     10h
+            rst     10h
+            ret
 
 ; Returns the colour of a point
 ;
@@ -581,7 +671,7 @@ al_point:
             ld  a, 8        ;0x08: mos_sysvars
             rst 08h         ;IX(U) now has sysvars
             mklil
-            res     2,(IX+4)
+            res     2,(IX+sysvar_vpd_pflags)    ; VDPP_FLAG_POINT/PACKET_SCRPIXEL
             ld      a,23
             rst     10h
             xor     a
@@ -598,10 +688,10 @@ al_point:
             rst     10h
 al_point_1:
             mklil
-            bit     2,(ix+4)
+            bit     2,(ix+sysvar_vpd_pflags)    ;check if VDP packet returned
             jr      z,al_point_1
             mklil
-            ld      l,(IX + 16h)    ;SYSVARS will not be in the same RAM page so need prefix
+            ld      l,(IX+sysvar_scrpixelIndex)    ;Get the pixel colour to return
             ld      h,0
             ret
 
