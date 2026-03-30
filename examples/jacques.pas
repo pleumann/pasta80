@@ -2,14 +2,18 @@ program Jacques;
 
 procedure Note(Duration: Real; Pitch: Integer);
 begin
+  {$ifndef sys_agon}
   Border((Pitch + 15) mod 8);
+  {$endif}
   Beep(Duration * 1.5, Pitch);
 end;
 
 var
   I: Integer;
 begin
+  {$ifndef sys_agon}
   Border(7);
+  {$endif}
   TextBackground(7);
   TextColor(0);
   ClrScr;
