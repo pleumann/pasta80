@@ -136,6 +136,35 @@ procedure Delay(Duration: Integer);  register;        external '__delay';
 (* --- Machine-specific functions -------------------------------------- *)
 (* --------------------------------------------------------------------- *)
 
+(**
+ * Plays a note. Duration is in seconds. Pitch is the key number on a
+ * piano, similar to MIDI, but with 0 being the middle C. For consistency,
+ * this is the same model as the ZX Spectrum. See the BEEP command in the
+ * ZX Spectrum BASIC manual for details.
+ * This is also written to be blocking to keep it consistent.
+ * "Beep" routine in Agon uses
+ * VDU 23, 0, &85, channel, 0, volume, frequency; duration;
+ * where volume is up to 127 (we'll assume it is)
+ *       channel is 0 for noise or 1-3 for tone (default is square wave)
+ *                need to consider sine wave. We use channel 1 only.
+ *       frequency is in Hz (16 bit integer) = HL
+ *       duration is in ms, where 65535=forever. DE = passed duration * 1000
+ *)
+
+procedure Beep(Duration: Real; Pitch: Integer);
+const
+  LN2 = 0.693147180559945;
+var
+  Frequency, Cycles: Real;
+  DE, HL: Integer;
+
+  procedure AgonBeep(HL, DE: Integer); register;     external '__agon_beep';
+
+begin
+  Frequency := 440.0 * Exp(((Pitch - 9) / 12.0) * LN2);
+  AgonBeep(Trunc(Frequency), Trunc(Duration * 1000));
+end;
+
 function sysvar_time_lo: Integer; register; external '__sysver_time_lo';
 function sysvar_time_hi: Integer; register; external '__sysver_time_hi';
 
