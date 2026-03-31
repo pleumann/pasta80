@@ -107,6 +107,17 @@ end;
 (* Built-in: procedure Continue;                *)
 (* Built-in: procedure Exit;                    *)
 
+{$ifdef sys_agon}
+const
+  Black   = 0;
+  Blue    = 4;
+  Red     = 1;
+  Magenta = 5;
+  Green   = 2;
+  Cyan    = 6;
+  Yellow  = 3;
+  White   = 7;
+{$else}
 const
   Black   = 0;
   Blue    = 1;
@@ -116,6 +127,7 @@ const
   Cyan    = 5;
   Yellow  = 6;
   White   = 7;
+{$endif}
 
 
 
