@@ -1527,6 +1527,8 @@ var
   IOMode: Boolean = True;               // Controls IO checking
   StackMode: Boolean = False;           // Controls stack checking
 
+  Klive: Boolean = False;               // SLD info generation for Klive
+
 (**
  * Clears all defines. Needed for multiple compiler runs in IDE.
  *)
@@ -2948,6 +2950,13 @@ begin
 
   if (Binary in [btZX, btZX128]) and not Release then
       EmitI('.BPLIST "' + ChangeExt(BinFile, '.brk') + '" fuse');
+
+  if Klive then
+  begin
+    EmitI('LUA');
+    EmitI('WriteLineInfo("' + ChangeExt(BinFile, '.sld') + '")');
+    EmitI('ENDLUA');
+  end;
 end;
 
 (**
@@ -6001,6 +6010,13 @@ var
   Delta: Integer;
   (*T: PSymbol;*)
 begin
+  if Klive then
+  begin
+    EmitI('LUA');
+    EmitI('AddLineInfo("' + PosixToNative(Source^.Name) + '", ' + IntToStr(TokenLine) + ', ' + IntToStr(TokenColumn) + ')');
+    EmitI('ENDLUA');
+  end;
+
   if CheckBreak then EmitI('call __checkbreak');
 
   if Scanner.Token = toNumber then
@@ -8291,6 +8307,8 @@ begin
       Release := True
     else if SrcFile = '--ide' then
       Ide := True
+    else if SrcFile = '--klive' then
+      Klive := True
     else
       Error('Invalid option: ' + SrcFile);
 

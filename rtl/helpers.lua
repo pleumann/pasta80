@@ -62,4 +62,55 @@ function WriteFuseBreakpoints(Name)
     WriteBreakpoints(Name, "--debugger-command 'del", "\nbr 0x%04X", "\nbr 0x%04X if %s", "'")
 end
 
+local Files = {}
+
+local Statements = {}
+
+function FileNumber(File)
+    for I, F in ipairs(Files) do
+        if F == File then
+            return I - 1
+        end
+    end
+    Files[#Files + 1] = File
+    return #Files - 1
+end
+
+function AddLineInfo(File, Line, Column)
+    table.insert(Statements, {sj.calc("$"), FileNumber(File), Line, Column})
+end
+
+function WriteLineInfo(Name)
+    File = assert(io.open(Name, "w"))
+
+    File:write("{\n")
+    File:write("  \"files\": [\n")
+    
+    for I, F in ipairs(Files) do
+        File:write(string.format("    \"%s\"", F))
+        if I == #Files then
+            File:write("\n")
+        else
+            File:write(",\n")
+        end
+    end
+    
+    File:write("  ],\n")
+    File:write("  \"statements\": [\n")
+
+    for I, S in ipairs(Statements) do
+        File:write(string.format("    { \"addr\": \"0x%04X\", \"file\": %d, \"line\": %d, \"column\": %d }", S[1], S[2], S[3], S[4]))
+        if I == #Statements then
+            File:write("\n")
+        else
+            File:write(",\n")
+        end
+    end
+    
+    File:write("  ]\n")
+    File:write("}\n")
+
+    File:close()
+end
+
     ENDLUA
