@@ -32,7 +32,6 @@ This reference describes all constants, types, variables, procedures and functio
 | `ScreenWidth` | `Integer` | Depends | [ZX48] [CPM] [Agon] | Default screen width in characters. ZX: `32`; CP/M and Agon: `80`. |
 | `ScreenHeight` | `Integer` | Depends | [ZX48] [CPM] [Agon] | Default screen height in characters. ZX: `22`; CP/M and Agon: `24`. |
 | `LineBreak` | `String` | Depends | [ZX48] [CPM] [Agon] | Line-break convention. ZX: `#13`; CP/M and Agon: `#13#10`. |
-| `LastError` | `Byte` | `0` | [CPM] [ZXNext] [Agon] | Last file-system error code; `0` means no error. Most file operations are skipped while this value is non-zero. |
 
 ---
 
@@ -42,19 +41,13 @@ This reference describes all constants, types, variables, procedures and functio
 |-----------|----------|-------------|
 | `Integer` | [All*] | Signed 16-bit integer (`-32768`..`32767`). |
 | `Boolean` | [All*] | Boolean type; enumeration with values `False` and `True`. |
-| `Char` | [All*] | 8-bit character (`0`..`255`). |
+| `Char` | [All*] | 8-bit character (`#0`..`#255`). |
 | `Byte` | [All*] | Unsigned 8-bit integer (`0`..`255`). |
 | `String` | [All*] | Pascal string; a length byte followed by up to 255 characters. |
-| `Real` | [All*] | 6-byte floating-point number in ZX Spectrum format. |
+| `Real` | [All*] | 6-byte floating-point number in Turbo Pascal format. |
 | `Pointer` | [All*] | Untyped 16-bit pointer. |
 | `File` | [All*] | Untyped file. |
 | `Text` | [All*] | Text file. |
-| `PBlock = ^TBlock` | [All] | Pointer to a free heap block. |
-| `TBlock = record Next: PBlock; Size: Integer end` | [All] | Entry in the heap free list. `Next` points to the next block; `Size` gives its size in bytes. |
-| `Registers` | [ZXNext] [Agon] | Helper type for passing Z80 registers to esxDOS / MOS calls. Variant with byte fields (`F, A, C, B, E, D, L, H`) and integer fields (`AF, BC, DE, HL`). |
-| `FileControlBlock` | [CPM] [ZXNext] [Agon] | Internal file control block. CP/M: drive number, filename, extension and CP/M-internal fields. Next/Agon: handle, null-terminated filename and record position. |
-| `TextRec` | [File] | Internal representation of a text file. Contains a `FileControlBlock`, status flags and a 128-byte sector buffer. |
-| `FileRec` | [File] | Internal representation of a typed file. Contains a `FileControlBlock`, component size and count, and a 128-byte sector buffer. |
 
 ---
 
@@ -64,11 +57,8 @@ This reference describes all constants, types, variables, procedures and functio
 |-----------|----------|-------------|
 | `Mem[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the entire Z80 address space. |
 | `Port[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the Z80 I/O address space. |
-| `HeapPtr: PBlock` | [All] | Points to the first block of the heap free list; `nil` when the heap is empty. |
 | `AssertPassed: Integer` | [All] | Counts the number of `Assert` calls that passed. |
 | `AssertFailed: Integer` | [All] | Counts the number of `Assert` calls that failed. |
-| `RandSeed1: Integer` | [All] | First 16-bit half of the random-number generator seed. |
-| `RandSeed2: Integer` | [All] | Second 16-bit half of the random-number generator seed. |
 
 ---
 
@@ -78,7 +68,7 @@ This reference describes all constants, types, variables, procedures and functio
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Assert(B: Boolean)` | [All*] | Evaluates `B`. If the assertion fails, the source file and line number are printed and the program is terminated. In release mode (`{$r+}`) the code is removed entirely. |
+| `Assert(B: Boolean)` | [All*] | Evaluates `B`. If the assertion fails, the source file and line number are printed and the program is terminated. In release mode the code is removed entirely. |
 | `Debug` | [All*] | Sets a debugger breakpoint (platform-specific encoding). Optional form: `Debug(B: Boolean)` sets the breakpoint only when `B` is true. |
 | `Break` | [All*] | Exits the innermost `for`, `while` or `repeat` loop. |
 | `Continue` | [All*] | Jumps to the next iteration of the innermost loop. |
@@ -96,10 +86,7 @@ This reference describes all constants, types, variables, procedures and functio
 | `Move(var Source, Dest; Count: Integer)` | [All] | Copies `Count` bytes from `Source` to `Dest`. |
 | `GetMem(var P: Pointer; Size: Integer)` | [All] | Low-level heap allocation: reserves `Size` bytes and stores the address in `P`. |
 | `FreeMem(P: Pointer; Size: Integer)` | [All] | Low-level heap deallocation: returns `Size` bytes at address `P` to the free list. |
-| `InitHeap` | [All] | Initialises the heap between the end of the program and the start of the stack aea. Called automatically by the compiler. |
 | `Randomize` | [All] | Seeds the random-number generator from the Z80 R register. |
-| `CheckBreak` | [All] | Tests whether Shift+Space (Break) is pressed and terminates the program if so. Inserted automatically by the compiler in appropriate places when `{$u+}` is active. |
-| `CheckStack` | [All] | Checks for stack overflow. Inserted automatically by the compiler at the start of every procedure/function when `{$k+}` is active. |
 
 ### Input / Output
 
@@ -125,8 +112,6 @@ This reference describes all constants, types, variables, procedures and functio
 | `Rename(var F: File; NewName: String)` | [All*] | Renames the file associated with file variable `F` to `NewName`. |
 | `BlockRead(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [All*] | Reads `Count` 128-byte blocks from untyped file `F` into `Buf`. The optional `Actual` receives the number actually read. |
 | `BlockWrite(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [All*] | Writes `Count` 128-byte blocks from `Buf` to untyped file `F`. |
-| `BDosThrow` | [CPM] [ZXNext] [Agon] | Checks `LastError` and terminates the program with an error message if the value is non-zero. Inserted automatically by the compiler after file operations in `{$i+}` mode. |
-| `BDosCatch(Func: Byte; Param: Integer)` | [CPM] | Executes a BDOS call and stores a non-zero return value in `LastError`. |
 
 ### Screen and Cursor
 
@@ -145,7 +130,6 @@ This reference describes all constants, types, variables, procedures and functio
 | `HighVideo` | [CPM] [Agon] | Switches to high-intensity / reverse video. |
 | `LowVideo` | [CPM] [Agon] | Switches to low-intensity video. |
 | `NormVideo` | [CPM] [Agon] | Restores normal video intensity. |
-| `ConOut(C: Char)` | [CPM] [Agon] | Sends character `C` directly to the console driver (BDOS call 2 / VDP). |
 | `Border(Color: Integer)` | [ZX48] | Sets the ZX Spectrum border colour (0..7) via the ROM routine. |
 
 ### Graphics
@@ -189,8 +173,7 @@ This reference describes all constants, types, variables, procedures and functio
 | Signature | Platform | Description |
 |-----------|----------|-------------|
 | `EsxDos(I: Integer; var R: Registers): Byte` | [ZXNext] | Executes esxDOS call number `I`. Arguments and return values are passed via the `Registers` structure. |
-| `MOSAPI(I: Integer; var R: Registers): Byte` | [Agon] | Executes MOS API call number `I`. |
-| `MOSAPISeek(var R: Registers): Byte` | [Agon] | Specialised variant of the MOS API call for seek operations. |
+| `MosApi(I: Integer; var R: Registers): Byte` | [Agon] | Executes MOS API call number `I`. |
 
 ### String Operations
 
@@ -209,18 +192,18 @@ This reference describes all constants, types, variables, procedures and functio
 |-----------|----------|-------------|
 | `Abs(I: Integer): Integer` | [All*] | Returns the absolute value of an integer. |
 | `Abs(R: Real): Real` | [All*] | Returns the absolute value of a real number. |
-| `ArcTan(R: Real): Real` | [All] | Arctangent of `R` (result in radians). Uses ZX ROM routine `ATN`. |
+| `ArcTan(R: Real): Real` | [All] | Arctangent of `R` (result in radians). |
 | `Cos(R: Real): Real` | [All] | Cosine of `R` (radians). |
 | `Exp(R: Real): Real` | [All] | Exponential function e^R. |
 | `Frac(R: Real): Real` | [All] | Fractional part of `R`. |
 | `Int(R: Real): Real` | [All] | Integer part of `R` (returned as `Real`). |
 | `Ln(R: Real): Real` | [All] | Natural logarithm of `R`. |
-| `Log(R: Real): Real` | [All] | Common logarithm (base 10) of `R`. Uses ZX ROM routine `LOG`. |
+| `Log(R: Real): Real` | [All] | Common logarithm (base 10) of `R`. |
 | `Sin(R: Real): Real` | [All] | Sine of `R` (radians). |
 | `Sqr(R: Real): Real` | [All] | Square of `R` (R²). |
 | `Sqrt(R: Real): Real` | [All] | Square root of `R`. |
 | `Tan(R: Real): Real` | [All] | Tangent of `R` (radians). |
-| `Pi: Real` | [All] | Returns the constant π. Uses ZX ROM routine `ACPI`. |
+| `Pi: Real` | [All] | Returns the constant π. |
 | `MaxReal: Real` | [All] | Returns the largest representable floating-point number. |
 | `MinReal: Real` | [All] | Returns the smallest representable floating-point number (largest negative value). |
 | `Random(Range: Integer): Integer` | [All] | Returns a pseudo-random integer in the range 0..`Range`-1. |
@@ -309,11 +292,6 @@ This reference describes all constants, types, variables, procedures and functio
 | `GetCpuSpeed: Integer` | [ZXNext] | Returns the current CPU speed: 0 = 3.5 MHz, 1 = 7 MHz, 2 = 14 MHz, 3 = 28 MHz. |
 | `GetMemPage(Slot: Byte): Byte` | [ZXNext] | Returns the 8K memory page currently mapped to slot `Slot` (0..7). |
 
-### MOS API Queries (Agon)
-
-| Signature | Platform | Description |
-|-----------|----------|-------------|
-| `MOSAPILength(var R: Registers): Integer` | [Agon] | Returns the length of a file opened via MOS. |
 
 ### CP/M / Agon OS Interface
 
@@ -323,3 +301,45 @@ This reference describes all constants, types, variables, procedures and functio
 | `BdosHL(Func: Integer [; Param: Integer]): Integer` | [CPM] [Agon] | Like `Bdos`, but returns the full HL register value as an `Integer`. |
 | `ParamCount: Byte` | [CPM] [Agon] | Returns the number of command-line parameters. |
 | `ParamStr(I: Byte): String` | [CPM] [Agon] | Returns the `I`-th command-line parameter, or an empty string if `I` is out of range. |
+
+## Internal
+
+These identifiers are part of the runtime infrastructure. They may be visible in user code but are not intended for direct use.
+
+### Types
+
+| Signature | Platform | Description |
+|-----------|----------|--------------|
+| `PBlock = ^TBlock` | [All] | Pointer to a free heap block. |
+| `TBlock = record Next: PBlock; Size: Integer end` | [All] | Entry in the heap free list. `Next` points to the next block; `Size` gives its size in bytes. |
+| `Registers` | [ZXNext] [Agon] | Helper type for passing Z80 registers to esxDOS / MOS calls. Variant with byte fields (`F, A, C, B, E, D, L, H`) and integer fields (`AF, BC, DE, HL`). |
+| `FileControlBlock` | [CPM] [ZXNext] [Agon] | Internal file control block. CP/M: drive number, filename, extension and CP/M-internal fields. Next/Agon: handle, null-terminated filename and record position. |
+| `TextRec` | [File] | Internal representation of a text file. Contains a `FileControlBlock`, status flags and a 128-byte sector buffer. |
+| `FileRec` | [File] | Internal representation of a typed file. Contains a `FileControlBlock`, component size and count, and a 128-byte sector buffer. |
+
+### Variables
+
+| Signature | Platform | Description |
+|-----------|----------|--------------|
+| `HeapPtr: PBlock` | [All] | Points to the first block of the heap free list; `nil` when the heap is empty. |
+| `LastError: Byte` | [CPM] [ZXNext] [Agon] | Last file-system error code; `0` means no error. Most file operations are skipped while this value is non-zero. |
+| `RandSeed1: Integer` | [All] | First 16-bit half of the random-number generator seed. |
+| `RandSeed2: Integer` | [All] | Second 16-bit half of the random-number generator seed. |
+
+### Procedures
+
+| Signature | Platform | Description |
+|-----------|----------|--------------|
+| `InitHeap` | [All] | Initialises the heap between the end of the program and the start of the stack area. Called automatically by the compiler. |
+| `CheckBreak` | [All] | Tests whether the user tried to interrupt the program and terminates i program if so. The actual key combination depends on the platform: Break+Space on ZX machine, Ctrl-C elsewhere. Inserted automatically by the compiler in appropriate places when `{$u+}` is active. |
+| `CheckStack` | [All] | Checks for stack overflow. Inserted automatically by the compiler at the start of every procedure/function when `{$k+}` is active. |
+| `BDosThrow` | [CPM] [ZXNext] [Agon] | Checks `LastError` and terminates the program with an error message if the value is non-zero. Inserted automatically by the compiler after file operations in `{$i+}` mode. |
+| `BDosCatch(Func: Byte; Param: Integer)` | [CPM] | Executes a BDOS call and stores a non-zero return value in `LastError`. |
+| `ConOut(C: Char)` | [CPM] [Agon] | Sends character `C` directly to the console driver (BDOS call 2 / VDP). |
+| `MOSAPISeek(var R: Registers): Byte` | [Agon] | Specialised variant of the MOS API call for seek operations. |
+
+### Functions
+
+| Signature | Platform | Description |
+|-----------|----------|--------------|
+| `MOSAPILength(var R: Registers): Integer` | [Agon] | Returns the length of a file opened via MOS. |
