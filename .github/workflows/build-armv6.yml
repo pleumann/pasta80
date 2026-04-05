@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-build-armv6:
+  build-armv6:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
