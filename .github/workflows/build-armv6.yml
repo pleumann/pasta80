@@ -18,7 +18,8 @@ jobs:
           cpu: arm1176
           image_additional_mb: 512
           commands: |
-            apt-get install -y fpc
+            apt-get update
+            apt-get install -y --no-install-recommends fpc
             fpc -dNEXTPI -o pasta80-armv6 pasta.pas
 
       - name: Upload artifact
