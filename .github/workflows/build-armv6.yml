@@ -22,8 +22,11 @@ jobs:
             apt-get install -y --no-install-recommends fpc
             fpc pasta.pas
 
+      - name: Find binary
+        run: find . -name "pasta" -type f
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pasta
-          path: ${{ github.workspace }}/../pasta
+          name: pasta-armv6
+          path: pasta
