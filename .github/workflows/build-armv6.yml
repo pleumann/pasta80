@@ -31,3 +31,33 @@ jobs:
         with:
           name: pasta-armv6
           path: pasta
+
+  build-sjasmplus-armv6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sjasmplus with static Lua in ARM environment
+        uses: pguyot/arm-runner-action@v2
+        with:
+          cpu: arm1176
+          base_image: raspios_lite:2024-11-19
+          image_additional_mb: 1024
+          copy_artifact_path: sjasmplus/sjasmplus
+          commands: |
+            apt-get update
+            apt-get install -y --no-install-recommends \
+                git cmake make g++ liblua5.4-dev
+            git clone https://github.com/z00m128/sjasmplus.git
+            cd sjasmplus
+            cmake . \
+                -DUSE_LUA=1 \
+                -DLUA_LIBRARY=/usr/lib/arm-linux-gnueabihf/liblua5.4.a \
+                -DLUA_INCLUDE_DIR=/usr/include/lua5.4
+            make
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sjasmplus-armv6-lua
+          path: sjasmplus/sjasmplus
