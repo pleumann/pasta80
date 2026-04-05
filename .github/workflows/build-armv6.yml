@@ -62,4 +62,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sjasmplus-armv6-lua
-          path: pasta80/sjasmplus/sjasmplus
+          path: sjasmplus/sjasmplus
