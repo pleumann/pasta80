@@ -42,7 +42,7 @@ jobs:
         with:
           cpu: arm1176
           image_additional_mb: 1024
-          copy_artifact_path: sjasmplus/sjasmplus
+          copy_artifact_path: sjasmplus/sjasmplus:sjasmplus-bin
           commands: |
             apt-get update
             apt-get install -y --no-install-recommends \
@@ -62,4 +62,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sjasmplus-armv6-lua
-          path: sjasmplus/sjasmplus
+          path: sjasmplus-bin
