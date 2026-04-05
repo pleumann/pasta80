@@ -6,24 +6,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+build-armv6:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build natively in ARM environment
-        uses: pguyot/arm-runner-action@v2
+      - uses: pguyot/arm-runner-action@v2
         with:
           cpu: arm1176
+          base_image: raspios_lite:2024-11-19
           image_additional_mb: 512
+          copy_artifact_path: pasta
           commands: |
             apt-get update
             apt-get install -y --no-install-recommends fpc
-            fpc pasta.pas
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+            fpc -dNEXTPI -opasta pasta.pas
+      - uses: actions/upload-artifact@v4
         with:
-          name: pasta
-          path: ${{ github.workspace }}/pasta
+          name: pasta-armv6
+          path: pasta
