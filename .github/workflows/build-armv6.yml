@@ -17,6 +17,7 @@ jobs:
         with:
           cpu: arm1176
           image_additional_mb: 512
+          copy_artifact_path: pasta
           commands: |
             apt-get update
             apt-get install -y --no-install-recommends fpc
