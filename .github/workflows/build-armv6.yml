@@ -57,10 +57,10 @@ jobs:
             cp sjasmplus sjasmplus-bin
 
       - name: Find binary
-        run: find . -name "sjasmplus" -type f
+        run: find . -name "sjasmplus-bin" -type f
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: sjasmplus-armv6-lua
-          path: sjasmplus/sjasmplus-bin
+          path: sjasmplus-bin
