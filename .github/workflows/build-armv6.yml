@@ -42,7 +42,7 @@ jobs:
         with:
           cpu: arm1176
           image_additional_mb: 1024
-          copy_artifact_path: sjasmplus/sjasmplus:sjasmplus-bin
+          copy_artifact_path: sjasmplus/sjasmplus-bin
           commands: |
             apt-get update
             apt-get install -y --no-install-recommends \
@@ -54,6 +54,7 @@ jobs:
                 -DLUA_LIBRARY=/usr/lib/arm-linux-gnueabihf/liblua5.4.a \
                 -DLUA_INCLUDE_DIR=/usr/include/lua5.4
             make
+            cp sjasmplus sjasmplus-bin
 
       - name: Find binary
         run: find . -name "sjasmplus" -type f
@@ -62,4 +63,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sjasmplus-armv6-lua
-          path: sjasmplus-bin
+          path: sjasmplus/sjasmplus-bin
