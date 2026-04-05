@@ -2,8 +2,8 @@ name: Build ARMv6 for NextPi2
 
 on:
   push:
-    branches: [ master ]
-  workflow_dispatch:    # erlaubt manuellen Start per Knopfdruck
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,17 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install FPC and ARM toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y fpc binutils-arm-linux-gnueabihf
-
-      - name: Build for ARMv6
-        run: |
-          fpc -Parm -CpARMv6 -Cfvfpv2 \
-              -dNEXTPI \
-              -o pasta80-armv6 \
-              pasta.pas
+      - name: Build natively in ARM environment
+        uses: pguyot/arm-runner-action@v2
+        with:
+          cpu: arm1176
+          image_additional_mb: 512
+          commands: |
+            apt-get install -y fpc
+            fpc -dNEXTPI -o pasta80-armv6 pasta.pas
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
