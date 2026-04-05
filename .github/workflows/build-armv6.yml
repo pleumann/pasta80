@@ -49,7 +49,6 @@ jobs:
                 git cmake make g++ liblua5.4-dev
             git clone --recursive https://github.com/z00m128/sjasmplus.git
             cd sjasmplus
-            mkdir build && cd build
             cmake \
                 -DUSE_LUA=1 \
                 -DLUA_LIBRARY=/usr/lib/arm-linux-gnueabihf/liblua5.4.a \
