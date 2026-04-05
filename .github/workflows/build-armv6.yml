@@ -2,7 +2,7 @@ name: Build ARMv6 for NextPi2
 
 on:
   push:
-    branches: [ master ]
+    branches: [ nextpi ]
   workflow_dispatch:
 
 jobs:
