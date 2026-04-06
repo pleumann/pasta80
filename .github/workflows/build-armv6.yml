@@ -45,16 +45,19 @@ jobs:
           image_additional_mb: 1024
           copy_artifact_path: sjasmplus/sjasmplus-bin
           commands: |
+            echo "deb http://archive.raspbian.org/raspbian stretch main" > /etc/apt/sources.list
+            echo "deb http://archive.raspberrypi.org/debian stretch main" > /etc/apt/sources.list.d/raspi.list
             apt-get update
             apt-get install -y --no-install-recommends \
-                git cmake make g++ liblua5.4-dev
+                git cmake make g++ liblua5.3-dev
             git clone --recursive https://github.com/z00m128/sjasmplus.git
             cd sjasmplus
             cmake \
                 -DUSE_LUA=1 \
-                -DLUA_LIBRARY=/usr/lib/arm-linux-gnueabihf/liblua5.4.a \
-                -DLUA_INCLUDE_DIR=/usr/include/lua5.4
+                -DLUA_LIBRARY=/usr/lib/arm-linux-gnueabihf/liblua5.3.a \
+                -DLUA_INCLUDE_DIR=/usr/include/lua5.3
             make
+            cp sjasmplus ../sjasmplus-armv6
             cp sjasmplus sjasmplus-bin
 
       - name: Find binary
