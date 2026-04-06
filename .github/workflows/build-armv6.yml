@@ -46,7 +46,7 @@ jobs:
           commands: |
             apt-get update
             apt-get install -y --no-install-recommends \
-                git cmake make g++ liblua5.4-dev libstdc++-dev
+                git cmake make g++ liblua5.4-dev
             git clone --recursive https://github.com/z00m128/sjasmplus.git
             cd sjasmplus
             cmake \
