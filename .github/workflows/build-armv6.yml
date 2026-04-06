@@ -57,7 +57,6 @@ jobs:
                 -DLUA_LIBRARY=/usr/lib/arm-linux-gnueabihf/liblua5.3.a \
                 -DLUA_INCLUDE_DIR=/usr/include/lua5.3
             make
-            cp sjasmplus ../sjasmplus-armv6
             cp sjasmplus sjasmplus-bin
 
       - name: Find binary
