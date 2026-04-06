@@ -574,8 +574,15 @@ begin
   ImagePath := 'tbblue.img';
 
   {$I-}
-  Assign(T, UserDir + '/.pasta80.cfg');
+  Assign(T, '.pasta80.cfg');
   Reset(T);
+
+  if IOResult <> 0 then
+  begin
+    Assign(T, UserDir + '/.pasta80.cfg');
+    Reset(T);
+  end;
+
   if IOResult = 0 then
   begin
     while not Eof(T) do
