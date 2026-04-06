@@ -41,7 +41,6 @@ jobs:
         uses: pguyot/arm-runner-action@v2
         with:
           cpu: arm1176
-          base_image: https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2019-04-09/2019-04-08-raspbian-stretch-lite.zip
           image_additional_mb: 1024
           copy_artifact_path: sjasmplus/sjasmplus-bin
           commands: |
