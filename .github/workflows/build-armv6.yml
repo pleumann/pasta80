@@ -42,6 +42,7 @@ jobs:
         with:
           cpu: arm1176
           image_additional_mb: 1024
+          base_image: https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-05-28/2021-05-27-raspios-buster-armhf-lite.zip
           copy_artifact_path: sjasmplus/sjasmplus-bin
           commands: |
             apt-get update
@@ -52,8 +53,7 @@ jobs:
             cmake \
                 -DUSE_LUA=1 \
                 -DLUA_LIBRARY=/usr/lib/arm-linux-gnueabihf/liblua5.4.a \
-                -DLUA_INCLUDE_DIR=/usr/include/lua5.4 \
-                -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++"
+                -DLUA_INCLUDE_DIR=/usr/include/lua5.4
             make
             cp sjasmplus sjasmplus-bin
 
