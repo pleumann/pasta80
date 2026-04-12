@@ -8277,7 +8277,7 @@ begin
   if ParamCount = 0 then
   begin
     WriteLn('Usage:');
-    WriteLn('  pasta80 { <option> } <input>');
+    WriteLn('  pasta { <option> } <input>');
     WriteLn;
     WriteLn('Options:');
     WriteLn('  --cpm          Sets target to CP/M (default)');
