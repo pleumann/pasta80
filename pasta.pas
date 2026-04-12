@@ -8278,7 +8278,7 @@ end;
  *)
 procedure Parameters;
 var
-  Ide: Boolean;
+  Ide, NextPi: Boolean;
   I: Integer;
 begin
   if ParamCount = 0 then
@@ -8383,6 +8383,8 @@ begin
       Release := True
     else if SrcFile = '--ide' then
       Ide := True
+    else if SrcFile = '--nextpi' then
+      NextPi := True
     else
       Error('Invalid option: ' + SrcFile);
 
@@ -8412,7 +8414,7 @@ begin
   end
   else
   begin
-    Copyright(False);
+    if not NextPi then Copyright(False);
     I := Build;
     WriteLn;
     Halt(I);
