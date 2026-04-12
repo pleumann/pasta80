@@ -8276,6 +8276,8 @@ var
 begin
   if ParamCount = 0 then
   begin
+    Copyright(False);
+
     WriteLn('Usage:');
     WriteLn('  pasta { <option> } <input>');
     WriteLn;
@@ -8403,6 +8405,7 @@ begin
   end
   else
   begin
+    Copyright(False);
     I := Build;
     WriteLn;
     Halt(I);
@@ -8420,11 +8423,11 @@ begin
     Halt;
   end;
 
-  Copyright(False);
   LoadConfig;
 
   if ParamStr(1) = '--config' then
   begin
+    Copyright(False);
     Doctor;
     Halt;
   end;
