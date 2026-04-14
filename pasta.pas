@@ -2774,6 +2774,12 @@ begin
   EmitC('program ' + SrcFile);
   EmitC('');
 
+  EmitI('if __SJASMPLUS__ < 0x011600');
+  EmitI('LUA');
+  EmitI('print("Warning: sjasmplus too old. Please upgrade to version 1.2.2 or newer.\n")');
+  EmitI('ENDLUA');
+  EmitI('endif');
+
   SetDefine('PASTA', True);
 
   case Binary of
