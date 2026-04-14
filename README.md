@@ -77,7 +77,7 @@ The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https
 ```
 # PASTA/80 config
 
-HOME      = ~/Spectrum/pasta80
+PASTA     = ~/Spectrum/pasta80
 ASSEMBLER = ~/Spectrum/sjasmplus/sjasmplus
 ...
 ```
