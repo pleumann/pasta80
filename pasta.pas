@@ -6920,15 +6920,18 @@ var
   DataType: PSymbol;
 begin
   if Scanner.Token = toStringKW then
-  begin
-    DataType := dtString;
-  end
+    DataType := dtString
+  else if Scanner.Token = toFile then
+    DataType := dtFile
   else
   begin
     Expect(toIdent);
     DataType := LookupGlobalOrFail(Scanner.StrValue);
 
-    if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType]) then Error('Type expected');
+    while DataType^.Kind = scAliasType do
+      DataType := DataType^.DataType;
+
+    if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scFileType]) then Error('Type expected');
   end;
 
   NextToken;
@@ -7061,6 +7064,8 @@ begin
     Expect(toColon);
     NextToken;
     DataType := ParseTypeRef;
+    if (DataType^.Kind = scFileType) and not IsRef then
+      Error('File types must be passed by reference.');
   end
   else DataType := nil;
 
@@ -7210,6 +7215,8 @@ begin
 
       NewSym^.DataType := ParseTypeRef();
       ResVar^.DataType := NewSym^.DataType;
+
+      if NewSym^.DataType^.Kind = scFileType then Error('Files types not allowed as return values.');
     end;
 
     AdjustOffsets;
