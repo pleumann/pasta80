@@ -2828,6 +2828,47 @@ procedure EmitFooter(BinFile: String);
 var
   BinFile2, S, T: String;
   I, Is128K: Integer;
+
+  (**
+   * Helper that emits the instructions necessary for writing the ZX overlays
+   * regardless of the chosen file format (because of the shared logic).
+   *)
+  procedure WriteZXOverlays(BaseName: String);
+  var
+    OvrIdx, OvrStr, OvrOff, OvrLen: String;
+    I: Integer;
+  begin
+    for I := 0 to CurrentOverlay - 1 do
+    begin
+      if Binary = btZXN then
+      begin
+        EmitI('slot 7');
+        EmitI('page ' + IntToStr(I + 32));
+      end
+      else
+      begin
+        EmitI('slot 3');
+        EmitI('page ' + IntToStr(ToastrackBanks[I]));
+      end;
+
+      OvrIdx := IntToStr(I);
+      OvrStr := Copy('00', Length(OvrIdx), 2) + OvrIdx;
+      OvrOff := 'OVR_' + OvrIdx + '_START';
+      OvrLen := 'OVR_' + OvrIdx + '_END - ' + OvrOff;
+
+      if Format = tfTape then
+        EmitI('savetap "' + BaseName + '",CODE,"' + OvrStr + '",' + OvrOff + ',' + OvrLen)
+      else if Format = tfBinary then
+        EmitI('savebin "' + BaseName + '.' + OvrStr + '",' + OvrOff + ',' + OvrLen)
+      else if Format = tfPlus3Dos then
+        EmitI('save3dos "' + BaseName + '.' + OvrStr + '",' + OvrOff + ',' + OvrLen + ',3,' + OvrOff)
+      else if Format = tfRunDir then
+        EmitI('save3dos "' + BaseName + '/' + OvrStr + '",' + OvrOff + ',' + OvrLen + ',3,' + OvrOff)
+      else
+        Error('Overlays not allowed for this format. How did you get here?');
+    end;
+  end;
+
 begin
   if (Binary = btAgon) and Overlays then
     Emit('ovl_name', 'db "' + ChangeExt(NameOnly(BinFile), '.ovr') + '",0', '');
@@ -2892,9 +2933,15 @@ begin
     else
   end
   else if Format = tfBinary then
-    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
+  begin
+    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000');
+    WriteZXOverlays(ChangeExt(BinFile, ''))
+  end
   else if Format = tfPlus3Dos then
-    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
+  begin
+    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000');
+    WriteZXOverlays(ChangeExt(BinFile, ''))
+  end
   else if Format = tfTape then
   begin
     EmitI('emptytap "' + BinFile2 + '"');
@@ -2910,25 +2957,7 @@ begin
 
     EmitI('savetap "' + BinFile2 + '",BASIC,"run.bas",$0080,$-$0080,0');
     EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,HEAP-$8000');
-
-    for I := 0 to CurrentOverlay - 1 do
-    begin
-      if Binary = btZXN then
-      begin
-        EmitI('slot 7');
-        EmitI('page ' + IntToStr(I + 32));
-      end
-      else
-      begin
-        EmitI('slot 3');
-        EmitI('page ' + IntToStr(ToastrackBanks[I]));
-      end;
-
-      S := IntToStr(I);
-      T := Copy('00', Length(S), 2) + S;
-
-      EmitI('savetap "' + BinFile2 + '",CODE,"' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START');
-    end;
+    WriteZXOverlays(BinFile2);
   end
   else if Format = tfRunDir then
   begin
@@ -2939,19 +2968,8 @@ begin
     {$i+}
 
     CopyFile(HomeDir + '/misc/specnext.bas', BinFile + '/run.bas');
-
     EmitI('save3dos "' + BinFile + '/bin",$8000,HEAP-$8000,3,8000');
-
-    for I := 0 to CurrentOverlay - 1 do
-    begin
-      EmitI('slot 7');
-      EmitI('page ' + IntToStr(I + 32));
-
-      S := IntToStr(I);
-      T := Copy('00', Length(S), 2) + S;
-
-      EmitI('save3dos "' + BinFile + '/' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START,3,57344');
-    end;
+    WriteZXOverlays(BinFile + '/');
   end
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
