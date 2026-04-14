@@ -592,7 +592,7 @@ begin
           if StartsWith(Value, '~') then
             Value := UserDir + Copy(Value, 2, 255);
 
-          if Key = 'home' then
+          if (Key = 'home') or (Key = 'pasta') then
             HomeDir := Value
           else if Key = 'assembler' then
             SjAsmCmd := Value
@@ -610,7 +610,7 @@ begin
             CSpectCmd := Value
           else if Key = 'image' then
             ImagePath := Value
-          else if Key = 'agon' then
+          else if (Key = 'agon') or (Key = 'fabagon') then
             FabAgonDir := Value
           else
           begin
@@ -709,7 +709,7 @@ begin
   WriteCheck(CheckPath(CSpectCmd, S));
   Writeln('CSpect   : ', S);
   WriteCheck(CheckPath(FabAgonDir + '/fab-agon-emulator', S));
-  Writeln('Fab Agon : ', S);
+  Writeln('Fab Agon : ', ParentDir(S));
   WriteLn;
   WriteLn('--- SpecNext ---');
   WriteLn;
