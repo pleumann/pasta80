@@ -599,7 +599,7 @@ begin
           if StartsWith(Value, '~') then
             Value := UserDir + Copy(Value, 2, 255);
 
-          if Key = 'home' then
+          if (Key = 'home') or (Key = 'pasta') then
             HomeDir := Value
           else if Key = 'assembler' then
             SjAsmCmd := Value
@@ -617,7 +617,7 @@ begin
             CSpectCmd := Value
           else if Key = 'image' then
             ImagePath := Value
-          else if Key = 'agon' then
+          else if (Key = 'agon') or (Key = 'fabagon') then
             FabAgonDir := Value
           else
           begin
@@ -716,7 +716,7 @@ begin
   WriteCheck(CheckPath(CSpectCmd, S));
   Writeln('CSpect   : ', S);
   WriteCheck(CheckPath(FabAgonDir + '/fab-agon-emulator', S));
-  Writeln('Fab Agon : ', S);
+  Writeln('Fab Agon : ', ParentDir(S));
   WriteLn;
   WriteLn('--- SpecNext ---');
   WriteLn;
@@ -1846,7 +1846,6 @@ var
  *)
 procedure NextToken();
 var
-  S: String;
   I: Integer;
 begin
   repeat
@@ -2091,7 +2090,6 @@ begin
             end
             else if C = '*' then          // Alternative notation for comments
             begin
-              S := '(*';
               C := GetChar;
               repeat
                 while C <> '*' do
@@ -2781,6 +2779,12 @@ begin
   EmitC('program ' + SrcFile);
   EmitC('');
 
+  EmitI('if __SJASMPLUS__ < 0x011600');
+  EmitI('LUA');
+  EmitI('print("Warning: sjasmplus too old. Please upgrade to version 1.22.0 or newer.\n")');
+  EmitI('ENDLUA');
+  EmitI('endif');
+
   SetDefine('PASTA', True);
 
   case Binary of
@@ -2833,8 +2837,49 @@ end;
  *)
 procedure EmitFooter(BinFile: String);
 var
-  BinFile2, S, T: String;
+  BinFile2: String;
   I, Is128K: Integer;
+
+  (**
+   * Helper that emits the instructions necessary for writing the ZX overlays
+   * regardless of the chosen file format (because of the shared logic).
+   *)
+  procedure WriteZXOverlays(BaseName: String);
+  var
+    OvrIdx, OvrStr, OvrOff, OvrLen: String;
+    I: Integer;
+  begin
+    for I := 0 to CurrentOverlay - 1 do
+    begin
+      if Binary = btZXN then
+      begin
+        EmitI('slot 7');
+        EmitI('page ' + IntToStr(I + 32));
+      end
+      else
+      begin
+        EmitI('slot 3');
+        EmitI('page ' + IntToStr(ToastrackBanks[I]));
+      end;
+
+      OvrIdx := IntToStr(I);
+      OvrStr := Copy('00', Length(OvrIdx), 2) + OvrIdx;
+      OvrOff := 'OVR_' + OvrIdx + '_START';
+      OvrLen := 'OVR_' + OvrIdx + '_END - ' + OvrOff;
+
+      if Format = tfTape then
+        EmitI('savetap "' + BaseName + '",CODE,"' + OvrStr + '",' + OvrOff + ',' + OvrLen)
+      else if Format = tfBinary then
+        EmitI('savebin "' + BaseName + '.' + OvrStr + '",' + OvrOff + ',' + OvrLen)
+      else if Format = tfPlus3Dos then
+        EmitI('save3dos "' + BaseName + '.' + OvrStr + '",' + OvrOff + ',' + OvrLen + ',3,' + OvrOff)
+      else if Format = tfRunDir then
+        EmitI('save3dos "' + BaseName + '/' + OvrStr + '",' + OvrOff + ',' + OvrLen + ',3,' + OvrOff)
+      else
+        Error('Overlays not allowed for this format. How did you get here?');
+    end;
+  end;
+
 begin
   if (Binary = btAgon) and Overlays then
     Emit('ovl_name', 'db "' + ChangeExt(NameOnly(BinFile), '.ovr') + '",0', '');
@@ -2899,9 +2944,15 @@ begin
     else
   end
   else if Format = tfBinary then
-    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000')
+  begin
+    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000');
+    WriteZXOverlays(ChangeExt(BinFile, ''))
+  end
   else if Format = tfPlus3Dos then
-    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000')
+  begin
+    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000');
+    WriteZXOverlays(ChangeExt(BinFile, ''))
+  end
   else if Format = tfTape then
   begin
     EmitI('emptytap "' + BinFile2 + '"');
@@ -2917,25 +2968,7 @@ begin
 
     EmitI('savetap "' + BinFile2 + '",BASIC,"run.bas",$0080,$-$0080,0');
     EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,HEAP-$8000');
-
-    for I := 0 to CurrentOverlay - 1 do
-    begin
-      if Binary = btZXN then
-      begin
-        EmitI('slot 7');
-        EmitI('page ' + IntToStr(I + 32));
-      end
-      else
-      begin
-        EmitI('slot 3');
-        EmitI('page ' + IntToStr(ToastrackBanks[I]));
-      end;
-
-      S := IntToStr(I);
-      T := Copy('00', Length(S), 2) + S;
-
-      EmitI('savetap "' + BinFile2 + '",CODE,"' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START');
-    end;
+    WriteZXOverlays(BinFile2);
   end
   else if Format = tfRunDir then
   begin
@@ -2946,19 +2979,8 @@ begin
     {$i+}
 
     CopyFile(HomeDir + '/misc/specnext.bas', BinFile + '/run.bas');
-
     EmitI('save3dos "' + BinFile + '/bin",$8000,HEAP-$8000,3,8000');
-
-    for I := 0 to CurrentOverlay - 1 do
-    begin
-      EmitI('slot 7');
-      EmitI('page ' + IntToStr(I + 32));
-
-      S := IntToStr(I);
-      T := Copy('00', Length(S), 2) + S;
-
-      EmitI('save3dos "' + BinFile + '/' + T + '",OVR_' + S + '_START, OVR_' + S + '_END - OVR_' + S + '_START,3,57344');
-    end;
+    WriteZXOverlays(BinFile + '/');
   end
   else if Format = tfSnapshot then
     EmitI('savesna "' + BinFile + '",$8000');
@@ -6456,8 +6478,16 @@ begin
 
     if Scanner.Token = toString then
     begin
-      Sym^.DataType := dtString;
-      Sym^.Tag := AddString(Scanner.StrValue);
+      if Length(Scanner.StrValue) = 1 then
+      begin
+        Sym^.DataType := dtChar;
+        Sym^.Value := Ord(Scanner.StrValue[1]);
+      end
+      else
+      begin
+        Sym^.DataType := dtString;
+        Sym^.Tag := AddString(Scanner.StrValue);
+      end;
     end
     else if Scanner.Token = toFloat then
     begin
@@ -6909,15 +6939,18 @@ var
   DataType: PSymbol;
 begin
   if Scanner.Token = toStringKW then
-  begin
-    DataType := dtString;
-  end
+    DataType := dtString
+  else if Scanner.Token = toFile then
+    DataType := dtFile
   else
   begin
     Expect(toIdent);
     DataType := LookupGlobalOrFail(Scanner.StrValue);
 
-    if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType]) then Error('Type expected');
+    while DataType^.Kind = scAliasType do
+      DataType := DataType^.DataType;
+
+    if not (DataType.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scSetType, scSubrangeType, scPointerType, scFileType]) then Error('Type expected');
   end;
 
   NextToken;
@@ -7050,6 +7083,8 @@ begin
     Expect(toColon);
     NextToken;
     DataType := ParseTypeRef;
+    if (DataType^.Kind = scFileType) and not IsRef then
+      Error('File types must be passed by reference.');
   end
   else DataType := nil;
 
@@ -7199,6 +7234,8 @@ begin
 
       NewSym^.DataType := ParseTypeRef();
       ResVar^.DataType := NewSym^.DataType;
+
+      if NewSym^.DataType^.Kind = scFileType then Error('Files types not allowed as return values.');
     end;
 
     AdjustOffsets;
@@ -7948,8 +7985,7 @@ procedure DoRun(Debug, Shift: Boolean);
 const
   NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
 var
-  Args, RunFile, S, T: String;
-  BP: Text;
+  Args, RunFile, S: String;
 begin
   if Length(BinFile) <> 0 then
   begin

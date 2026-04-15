@@ -4,12 +4,14 @@ This reference describes all constants, types, variables, procedures and functio
 
 | Tag | Platform |
 |-----|----------|
-| **[All]** | Included on every target platform. * indicates "magic" symbols built into the compiler that are not defined in any `.pas` source file |
+| **[All]** | Included on every target platform. |
 | **[CPM]** | CP/M |
 | **[ZX48]** | ZX Spectrum 48K, and 128K, and Next |
 | **[ZX128]** | ZX Spectrum 128K only |
 | **[ZXNext]** | ZX Spectrum Next only |
 | **[Agon]** | Agon / Console8 |
+
+Note that * indicates "magic" symbols built into the compiler that are not defined in any `.pas` source file.
 
 ---
 
@@ -69,7 +71,7 @@ This reference describes all constants, types, variables, procedures and functio
 | Signature | Platform | Description |
 |-----------|----------|-------------|
 | `Assert(B: Boolean)` | [All*] | Evaluates `B`. If the assertion fails, the source file and line number are printed and the program is terminated. In release mode the code is removed entirely. |
-| `Debug` | [All*] | Sets a debugger breakpoint (platform-specific encoding). Optional form: `Debug(B: Boolean)` sets the breakpoint only when `B` is true. |
+| `Debug` | [All*] | Sets a debugger breakpoint (platform-specific encoding). Optional form: `Debug(B: Boolean)` sets the breakpoint only when `B` is true. In release mode these are removed entirely. |
 | `Break` | [All*] | Exits the innermost `for`, `while` or `repeat` loop. |
 | `Continue` | [All*] | Jumps to the next iteration of the innermost loop. |
 | `Exit` | [All*] | Leaves the current procedure or function. In functions also usable as `Exit(Value)` to return a value. |
@@ -99,17 +101,19 @@ This reference describes all constants, types, variables, procedures and functio
 
 ### File Operations
 
+Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file of`, or a `Text` file.
+
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Assign(var F: File; Name: String)` | [All*] | Associates the file variable `F` with the file name `Name`. |
-| `Reset(var F: File)` | [All*] | Opens file `F` for reading (and for writing in the case of untyped files). |
-| `Rewrite(var F: File)` | [All*] | Creates or truncates file `F` and opens it for writing. |
-| `Append(var F: Text)` | [All*] | Opens text file `F` for appending at the end. |
-| `Close(var F: File)` | [All*] | Closes file `F` and flushes any pending buffer data. |
-| `Flush(var F: File)` | [All*] | Writes any pending buffer data of file `F` to the medium. |
-| `Seek(var F: File; I: Integer)` | [All*] | Sets the current position in typed or untyped file `F` to the record at index `I`. |
-| `Erase(var F: File)` | [All*] | Deletes the file associated with file variable `F` from the storage medium. |
-| `Rename(var F: File; NewName: String)` | [All*] | Renames the file associated with file variable `F` to `NewName`. |
+| `Assign(var F; Name: String)` | [All*] | Associates the file variable `F` with the file name `Name`. |
+| `Reset(var F)` | [All*] | Opens file `F` for reading (and for writing in the case of untyped files). |
+| `Rewrite(var F)` | [All*] | Creates or truncates file `F` and opens it for writing. |
+| `Append(var F)` | [All*] | Opens file `F` for appending at the end. |
+| `Close(var F)` | [All*] | Closes file `F` and flushes any pending buffer data. |
+| `Flush(var F)` | [All*] | Writes any pending buffer data of file `F` to the medium. |
+| `Seek(var F; I: Integer)` | [All*] | Sets the current position in typed or untyped file `F` to the record at index `I`. |
+| `Erase(var F)` | [All*] | Deletes the file associated with file variable `F` from the storage medium. |
+| `Rename(var F; NewName: String)` | [All*] | Renames the file associated with file variable `F` to `NewName`. |
 | `BlockRead(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [All*] | Reads `Count` 128-byte blocks from untyped file `F` into `Buf`. The optional `Actual` receives the number actually read. |
 | `BlockWrite(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [All*] | Writes `Count` 128-byte blocks from `Buf` to untyped file `F`. |
 
@@ -260,21 +264,23 @@ This reference describes all constants, types, variables, procedures and functio
 
 ### File Functions
 
+Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file of`, or a `Text` file.
+
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Eof(var F: File): Boolean` | [All*] | Returns `True` if the end of file has been reached or an error occurred. |
+| `Eof(var F): Boolean` | [All*] | Returns `True` if the end of file has been reached or an error occurred. |
 | `Eoln(var F: Text): Boolean` | [All*] | Returns `True` if the current character is the end-of-line marker. |
 | `SeekEof(var F: Text): Boolean` | [All*] | Skips spaces and line breaks and returns `True` if end of file follows. |
 | `SeekEoln(var F: Text): Boolean` | [All*] | Skips spaces and tabs and returns `True` if end of line or end of file follows. |
-| `FilePos(var F: File): Integer` | [All*] | Returns the current file position (record index, 0-based). |
-| `FileSize(var F: File): Integer` | [All*] | Returns the total number of records in the file. |
+| `FilePos(var F): Integer` | [All*] | Returns the current file position (record index, 0-based). `F` must by either typed or untyped. |
+| `FileSize(var F: File): Integer` | [All*] | Returns the total number of records in the file. `F` must by either typed or untyped. |
 | `IOResult: Byte` | [CPM] [ZXNext] [Agon] | Returns `LastError` and resets it to `0` so that further file operations can proceed. |
 
 ### Keyboard and Timing
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `KeyPressed: Boolean` | [ZX48] [CPM] [Agon] | Returns `True` if a key has been pressed and `ReadKey` can be called. |
+| `KeyPressed: Boolean` | [ZX48] [CPM] [Agon] | Returns `True` if a key has been pressed and `ReadKey` can be called without blocking. |
 | `ReadKey: Char` | [ZX48] [CPM] [Agon] | Reads a key press and returns the corresponding ASCII character. Waits for a key press if none is pending. |
 | `Frames: Real` | [ZX48] [Agon] | Returns the current value of the 24-bit frame counter. On the ZX Spectrum it runs at 50 Hz (multiply by 20 to get milliseconds). On the Agon at 60 Hz (multiply by 17 for an approximate millisecond value). |
 
