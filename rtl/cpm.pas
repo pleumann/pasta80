@@ -96,9 +96,9 @@ procedure InsLine; register; inline
  *)
 procedure DelLine; register; inline
 (
-  $2e / 27 /                  (* ld   l,27      *)
+  $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
-  $3e / 'M' /                 (* ld   l,'M'     *)
+  $3e / 'M' /                 (* ld   a,'M'     *)
   $cd / ConOut /              (* call ConOut    *)
   $c9                         (* ret            *)
 );
