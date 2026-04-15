@@ -2776,7 +2776,7 @@ begin
 
   EmitI('if __SJASMPLUS__ < 0x011600');
   EmitI('LUA');
-  EmitI('print("Warning: sjasmplus too old. Please upgrade to version 1.2.2 or newer.\n")');
+  EmitI('print("Warning: sjasmplus too old. Please upgrade to version 1.22.0 or newer.\n")');
   EmitI('ENDLUA');
   EmitI('endif');
 
