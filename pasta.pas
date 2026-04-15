@@ -1839,7 +1839,6 @@ var
  *)
 procedure NextToken();
 var
-  S: String;
   I: Integer;
 begin
   repeat
@@ -2084,7 +2083,6 @@ begin
             end
             else if C = '*' then          // Alternative notation for comments
             begin
-              S := '(*';
               C := GetChar;
               repeat
                 while C <> '*' do
@@ -2832,7 +2830,7 @@ end;
  *)
 procedure EmitFooter(BinFile: String);
 var
-  BinFile2, S, T: String;
+  BinFile2: String;
   I, Is128K: Integer;
 
   (**
@@ -7980,8 +7978,7 @@ procedure DoRun(Debug, Shift: Boolean);
 const
   NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
 var
-  Args, RunFile, S, T: String;
-  BP: Text;
+  Args, RunFile, S: String;
 begin
   if Length(BinFile) <> 0 then
   begin
