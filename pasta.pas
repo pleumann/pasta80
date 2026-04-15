@@ -6473,8 +6473,16 @@ begin
 
     if Scanner.Token = toString then
     begin
-      Sym^.DataType := dtString;
-      Sym^.Tag := AddString(Scanner.StrValue);
+      if Length(Scanner.StrValue) = 1 then
+      begin
+        Sym^.DataType := dtChar;
+        Sym^.Value := Ord(Scanner.StrValue[1]);
+      end
+      else
+      begin
+        Sym^.DataType := dtString;
+        Sym^.Tag := AddString(Scanner.StrValue);
+      end;
     end
     else if Scanner.Token = toFloat then
     begin
