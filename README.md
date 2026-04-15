@@ -252,7 +252,7 @@ careful when using pointers or `var` parameters for passing data between
 overlays. The memory you refer to may have just been paged out! It might make
 sense to compile your overlays with `{$a-}`, so that all local variables are
 stored on the stack (which is always visible). This is also a good idea for
-for the Agon target when having overlays that call into each other. Otherwise
+the Agon target when having overlays that call into each other. Otherwise
 the values of local variables get reset when overlays are switched, which
 can lead to weird effects.
 
