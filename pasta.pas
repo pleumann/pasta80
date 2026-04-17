@@ -521,7 +521,7 @@ type
   (**
    * The possible output formats.
    *)
-  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot, tfRunDir);
+  TTargetFormat = (tfBinary, tfPlus3Dos, tfTape, tfSnapshot, tfRunDir, tfMOSlet);
 
 var
   (**
@@ -7711,7 +7711,7 @@ begin
 
   if Binary = btCPM then
     BinFile := ChangeExt(SrcFile, '.com')
-  else if (Format = tfBinary) or (Format = tfPlus3Dos) then
+  else if Format in [tfBinary, tfPlus3Dos, tfMOSlet] then
     BinFile := ChangeExt(SrcFile, '.bin')
   else if Format = tfRunDir then
     BinFile := ChangeExt(SrcFile, '.run')
@@ -7776,6 +7776,8 @@ begin
       AddrLimit := $e000
     else if (Binary = btAgon) and Overlays then
       AddrLimit := $e000
+    else if (Binary = btAgon) and (Format = tfMOSlet) then
+      AddrLimit := $8000
     else
       AddrLimit := $10000;
 
@@ -7831,7 +7833,7 @@ const
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
    *)
-  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot', 'Runnable dir');
+  FormatStr: array[TTargetFormat] of String = ('Raw binary', '+3DOS binary', 'Tape file', 'Snapshot', 'Runnable dir', 'MOSlet');
 
   (**
    * Yes/no strings. Why is this here and not in the IDE sestion?
@@ -8001,7 +8003,10 @@ begin
       if Overlays then
         CopyFile(ChangeExt(BinFile, '.ovr'), 'sdcard/' + NameOnly(ChangeExt(BinFile, '.ovr')));
 
-      StrToFile(NameOnly(BinFile), 'sdcard/autoexec.txt');
+      if Format = tfMosLet then
+        StrToFile('load ' + NameOnly(BinFile) + ' 0xb0000'#13#10'run 0xb0000', 'sdcard/autoexec.txt')
+      else
+        StrToFile(NameOnly(BinFile), 'sdcard/autoexec.txt');
 
       Args := '';
 
@@ -8329,6 +8334,7 @@ begin
     WriteLn('  --tap          Generates .tap file with loader');
     WriteLn('  --sna          Generates .sna snapshot file');
     WriteLn('  --run          Generates .run runnable directory');
+    WriteLn('  --mos          Generates Agon MOSlet');
     WriteLn;
     WriteLn('  --dep          enable dependency analysis');
     WriteLn('  --opt          enable peephole optimizations');
@@ -8389,13 +8395,20 @@ begin
       Overlays := True;
       if Binary = btZX128 then
         AddrLimit := $C000
-      else if Binary in [btZXN, btAgon] then
+      else if (Binary in [btZXN, btAgon]) and not (Format = tfMosLet) then
         AddrLimit := $E000
+      else if Format = tfMosLet then
+        Error('Overlays not supported for MOSlet format.')
       else
-        Error('Target ' + BinaryStr[Binary] + ' does not support paging.');
+        Error('Overlays not supported for ' + BinaryStr[Binary] + ' target.');
     end
     else if SrcFile = '--bin' then
       Format := tfBinary
+    else if SrcFile = '--mos' then
+    begin
+      Format := tfMosLet;
+      AddrLimit := $8000;
+    end
     else if SrcFile = '--3dos' then
       Format := tfPlus3Dos
     else if SrcFile = '--run' then
