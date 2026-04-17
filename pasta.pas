@@ -2879,12 +2879,9 @@ begin
 
   Emit('TEXT_END', '= $', '');
   Emit('STACK', '= $' + IntToHex(AddrLimit - StackSize, 4), '');
-  Emit('HEAP', '= STACK-32767', '');
-  EmitI('if HEAP < $');
-  Emit('HEAP', '= $', '');
-  EmitI('endif');
-  EmitI('if HEAP > STACK');
-  Emit('HEAP', '= STACK', '');
+  Emit('HEAP', '= TEXT_END', '');
+  EmitI('if HEAP + 32767 < STACK');
+  Emit('STACK', '= HEAP + 32767', '');
   EmitI('endif');
 
   EmitC('');
@@ -2898,7 +2895,7 @@ begin
 
   EmitI('SegInfo("Program",sj.calc("TEXT"),sj.calc("$"),sj.calc("STACK-TEXT"), "")');
   EmitI('SegInfo("Heap",sj.calc("HEAP"),sj.calc("STACK"), 32767, "")');
-  EmitI('SegInfo("Stack",sj.calc("STACK"),sj.calc("LIMIT"),' + IntToStr(StackSize) + ', "")');
+  EmitI('SegInfo("Stack",sj.calc("STACK"),sj.calc("LIMIT"),65535, "")');
 
   if CurrentOverlay <> 0 then
   begin
@@ -2910,6 +2907,9 @@ begin
     for I := 0 to CurrentOverlay - 1 do
       EmitI('OvrInfo("' + IntToStr(I) + '",' + IntToStr(Is128K) + ')');
   end;
+
+  EmitI('if sj.calc("HEAP")>sj.calc("STACK") then print() error("\nProgram too large.") end');
+  EmitI('if sj.calc("__ERRORS__") ~= 0 then sj.exit() end');
 
   EmitI('ENDLUA');
 
