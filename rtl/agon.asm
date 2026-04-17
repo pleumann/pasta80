@@ -51,6 +51,20 @@ mos_call:
 ;    pop     ix
     ret
 
+mos_call_oscli:
+;0x10: mos_oscli
+;Execute a MOS command
+;Parameters:
+;HL(U): Pointer the the MOS command string
+;Preserves: HL(U)
+;Returns:
+;A: Status code
+    ld      a,010h
+    rst     08h ;MOS API call
+    ld      l,a ;Return A into HL.
+    ld      h,0
+    ret
+
 mos_call_seek:
 ; 0x1C: mos_flseek
 ; Parameters:

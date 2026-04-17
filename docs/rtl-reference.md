@@ -305,6 +305,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 |-----------|----------|-------------|
 | `Bdos(Func: Integer [; Param: Integer]): Byte` | [CPM] [Agon] | Executes a BDOS/MOS system call and returns the result in register A as a `Byte`. If `Param` is omitted, 0 is passed. |
 | `BdosHL(Func: Integer [; Param: Integer]): Integer` | [CPM] [Agon] | Like `Bdos`, but returns the full HL register value as an `Integer`. |
+| `Exec(Command, Params: String): Byte` | [Agon] | TP4+ procedure to execute the command `Command` using the `Params` as parameters. Parameters may be empty/blank. Result is returned in `DosExitCode`. Will only work with built-in MOS commands and MOSlets - i.e. excutables that run from `0x0b0000`. Other bin files will crash or not return. No checking is performed for load location as this needs to be done manually. |
 | `ParamCount: Byte` | [CPM] [Agon] | Returns the number of command-line parameters. |
 | `ParamStr(I: Byte): String` | [CPM] [Agon] | Returns the `I`-th command-line parameter, or an empty string if `I` is out of range. |
 
@@ -327,6 +328,8 @@ These identifiers are part of the runtime infrastructure. They may be visible in
 
 | Signature | Platform | Description |
 |-----------|----------|--------------|
+| `DosError: Byte` | [Agon] | Compatibility placeholder for `Exec()` procedure. Currently holds `0`. |
+| `DosExitCode: Byte` | [Agon] | Returns the value passed back from the most recent `Exec()` procedure. `0` means success. |
 | `HeapPtr: PBlock` | [All] | Points to the first block of the heap free list; `nil` when the heap is empty. |
 | `LastError: Byte` | [CPM] [ZXNext] [Agon] | Last file-system error code; `0` means no error. Most file operations are skipped while this value is non-zero. |
 | `RandSeed1: Integer` | [All] | First 16-bit half of the random-number generator seed. |
