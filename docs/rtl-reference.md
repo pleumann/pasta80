@@ -186,6 +186,12 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `Delete(var S: String; Start, Count: Integer)` | [All] | Deletes `Count` characters from string `S` starting at position `Start` (1-based). |
 | `Insert(S: String; var T: String; Start: Integer)` | [All] | Inserts string `S` into string `T` at position `Start`. |
 
+### Agon OS Interface
+
+| Signature | Platform | Description |
+|-----------|----------|-------------|
+| `Exec(Command, Params: String)` | [Agon] | TP4+ procedure to execute the command `Command` using the `Params` as parameters. Parameters may be empty/blank. Result is returned in `DosExitCode`. Will only work with built-in MOS commands and MOSlets - i.e. excutables that run from `0x0b0000`. Other bin files will crash or not return. No checking is performed for load location as this needs to be done manually. |
+
 ---
 
 ## Functions
@@ -305,7 +311,6 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 |-----------|----------|-------------|
 | `Bdos(Func: Integer [; Param: Integer]): Byte` | [CPM] [Agon] | Executes a BDOS/MOS system call and returns the result in register A as a `Byte`. If `Param` is omitted, 0 is passed. |
 | `BdosHL(Func: Integer [; Param: Integer]): Integer` | [CPM] [Agon] | Like `Bdos`, but returns the full HL register value as an `Integer`. |
-| `Exec(Command, Params: String): Byte` | [Agon] | TP4+ procedure to execute the command `Command` using the `Params` as parameters. Parameters may be empty/blank. Result is returned in `DosExitCode`. Will only work with built-in MOS commands and MOSlets - i.e. excutables that run from `0x0b0000`. Other bin files will crash or not return. No checking is performed for load location as this needs to be done manually. |
 | `ParamCount: Byte` | [CPM] [Agon] | Returns the number of command-line parameters. |
 | `ParamStr(I: Byte): String` | [CPM] [Agon] | Returns the `I`-th command-line parameter, or an empty string if `I` is out of range. |
 
