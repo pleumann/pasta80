@@ -5252,6 +5252,85 @@ begin
 end;
 
 (**
+ * Parses a scalar constant, storing the Value, and returns its type. Performs
+ * various checks and throws errors accordingly.
+ *)
+function ParseScalar(var Value: Integer): PSymbol;
+var
+  AType, CoSym: PSymbol;
+  Neg: Boolean;
+begin
+  if Scanner.Token = toSub then
+  begin
+    Neg := True;
+    NextToken;
+  end
+  else Neg := False;
+
+  if Scanner.Token = toNumber then
+  begin
+    AType := dtInteger;
+    Value := Scanner.NumValue;
+  end
+  else if (Scanner.Token = toString) and not Neg then
+  begin
+    if Length(Scanner.StrValue) <> 1 then Error('Invalid type');
+
+    AType := dtChar;
+    Value := Ord(Scanner.StrValue[1]);
+  end
+  else if (Scanner.Token = toCaret) and not Neg then
+  begin
+    AType := dtChar;
+    Value := GetCtrlChar;
+  end
+  else if Scanner.Token = toIdent then
+  begin
+    CoSym := LookupGlobalOrFail(Scanner.StrValue);
+    AType := CoSym^.DataType;
+    Value := CoSym^.Value;
+
+    if (CoSym^.Kind <> scConst) then
+      Error('Not a constant');
+    if not (AType.Kind in [scType, scEnumType, scSubrangeType]) then
+      Error('Invalid type');
+    
+    if Neg then
+    begin
+      if AType <> dtInteger then Error('Integer expected');
+      Value := -Value;
+    end;
+  end
+  else Error('Invalid type');
+
+  NextToken;
+
+  ParseScalar := AType;
+end;
+
+(**
+ * Parses a scalar range, storing the First and Last values, and returns its
+ * type. Performs various checks and throws errors accordingly. The range may
+ * be "degenerate" (i.e. just one value, not dots), in which case First and
+ * Last are equal.
+ *)
+function ParseScalarRange(var First, Last: Integer): PSymbol;
+var
+  AType: PSymbol;
+begin
+  AType := ParseScalar(First);
+
+  if Scanner.Token = toRange then
+  begin
+    NextToken;
+    if ParseScalar(Last) <> AType then Error('Incompatible types');
+  end
+  else Last := First;
+
+  ParseScalarRange := AType;
+end;
+
+(**
  * Parses a set constant and generates a 32 byte block containing the proper
  * bits.
  *
@@ -5260,105 +5339,43 @@ end;
  *)
 function ParseSetConstant: PSymbol;
 var
-  I, J, K: Integer;
-  Sym, T: PSymbol;
-  S3: string;
-  BA: array[0..31] of Byte;
+  I, First, Last: Integer;
+  Sym, AType, BType: PSymbol;
+  S: string;
+  Bits: array[0..31] of Byte;
 begin
-  for I := 0 to 31 do BA[I] := 0;
+  for I := 0 to 31 do Bits[I] := 0;
 
-  T := nil;
+  AType := nil;
   while Scanner.Token <> toRBrack do
   begin
-    if Scanner.Token = toNumber then
+    BType := ParseScalarRange(First, Last);
+
+    if (AType <> nil) and (AType <> BType) then
+      Error('Incompatible types');
+    if (First < 0) or (First > 255) or (Last < 0) or (Last > 255) then
+      Error('Value out of range');
+    if (Last < First) then
+      Error('Invalid range');
+    
+    AType := BType;
+
+    for I := First to Last do
     begin
-      if (T <> nil) and (T <> dtInteger) then Error('Integer expected');
-
-      T := dtInteger;
-
-      I := Scanner.NumValue;
-      J := I;
-      NextToken;
-      if Scanner.Token = toRange then
-      begin
-        NextToken;
-        Expect(toNumber);
-        J := Scanner.NumValue;
-        NextToken;
-      end
-    end
-    else if (Scanner.Token = toString) or (Scanner.Token = toCaret) then
-    begin
-      if (T <> nil) and (T <> dtChar) then Error('Char expected');
-      if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
-
-      T := dtChar;
-
-      if Scanner.Token = toCaret then
-        I := GetCtrlChar
-      else
-      I := Ord(Scanner.StrValue[1]);
-
-      J := I;
-      NextToken;
-      if Scanner.Token = toRange then
-      begin
-        NextToken;
-
-        if (Scanner.Token <> toString) and (Scanner.Token <> toCaret) then
-          Error('Char expected');
-        if (Length(Scanner.StrValue) <> 1) and (Scanner.Token <> toCaret) then Error('Char expected');
-
-        if Scanner.Token = toCaret then
-          J := GetCtrlChar
-        else
-        J := Ord(Scanner.StrValue[1]);
-        NextToken;
-      end
-    end
-    else if Scanner.Token = toIdent then
-    begin
-      Sym := LookupGlobalOrFail(Scanner.StrValue);
-      if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
-
-      if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
-      T := Sym^.DataType;
-
-      I := Sym^.Value;
-      J := I;
-      NextToken;
-      if Scanner.Token = toRange then
-      begin
-        NextToken;
-        Expect(toIdent);
-        Sym := LookupGlobalOrFail(Scanner.StrValue);
-        if (Sym^.Kind <> scConst) or (Sym^.DataType^.Kind <> scEnumType) then Error('Not an enum const');
-        if (T <> nil) and (T <> Sym^.DataType) then Error('Wrong type');
-
-        J := Sym^.Value;
-        NextToken;
-      end
-    end
-    else Error('Scalar expected');
-
-    //WriteLn('Adding: ', I, ' to ', J);
-    for K := I to J do
-    begin
-      BA[K shr 3] := BA[K shr 3] or (1 shl (K and 7));
+      Bits[I shr 3] := Bits[I shr 3] or (1 shl (I and 7));
     end;
     if Scanner.Token = toComma then NextToken;
   end;
 
-  S3 := '$' + IntToHex(BA[0], 2);;
-  for K := 1 to 31 do S3 := S3 + ',$' + IntToHex(BA[K], 2);
-  EmitI('db ' + S3);
+  S := '$' + IntToHex(Bits[0], 2);
+  for I := 1 to 31 do S := S + ',$' + IntToHex(Bits[I], 2);
+  EmitI('db ' + S);
 
   Sym := CreateSymbol(scSetType, '');
   Sym^.Value := 32;
-  Sym^.DataType := T;
-  T := Sym;
+  Sym^.DataType := AType;
 
-  ParseSetConstant := T;
+  ParseSetConstant := Sym;
 end;
 
 (**
@@ -5937,50 +5954,12 @@ begin
   NextToken;
 end;
 
-procedure ParseCaseValue(T: PSymbol; var V: Integer);
-var
-  C: PSymbol;
-begin
-  if T = dtByte then T := dtInteger;
-
-  if Scanner.Token = toIdent then
-  begin
-    C := LookupGlobalOrFail(Scanner.StrValue);
-    if C^.Kind <> scConst then Error('Const expected');
-    if C^.DataType <> T then Error('Invalid type');
-    V := C^.Value;
-  end
-  else if Scanner.Token = toNumber then
-  begin
-    if T <> dtInteger then Error('Invalid type');
-    V := Scanner.NumValue;
-  end
-  else if Scanner.Token = toCaret then
-  begin
-    if T <> dtChar then Error('Invalid type');
-    V := GetCtrlChar;
-  end
-  else (* toString *)
-  begin
-    if Length(Scanner.StrValue) <> 1 then Error('Invalid type');
-    if T <> dtChar then Error('Invalid type');
-    V := Ord(Scanner.StrValue[1]);
-  end;
-
-  NextToken;
-end;
-
 procedure ParseCaseLabel(T: PSymbol; OfTarget: String);
 var
   Low, High: Integer;
 begin
-  ParseCaseValue(T, Low);
-  High := Low;
-  if Scanner.Token = toRange then
-  begin
-    NextToken;
-    ParseCaseValue(T, High);
-  end;
+  ParseScalarRange(Low, High);
+  // TODO: type check against case variable
 
   if High = Low then
   begin
@@ -6312,7 +6291,7 @@ function ParseTypeDef: PSymbol; forward;
 procedure ParseConstValue(DataType: PSymbol);
 var
   I, Sign, Value, Offset: Integer;
-  Sym: PSymbol;
+  Sym, T: PSymbol;
   Test: Boolean;
 begin
   if DataType^.Kind = scArrayType then
@@ -6376,83 +6355,52 @@ begin
     Expect(toRParen);
     NextToken;
   end
-  else if DataType^.Kind = scEnumType then
+  else if DataType = dtReal then
   begin
-    Expect(toIdent);
-    Sym := LookupGlobalOrFail(Scanner.StrValue);
-    if (Sym^.Kind <> scConst) or (Sym^.DataType <> DataType) then
-      Error('Invalid enum constant');
+    if Scanner.Token = toSub then
+    begin
+      Sign := -1;
+      NextToken;
+    end
+    else Sign := 1;
+    Expect(toFloat);
 
-    Emit('', 'db ' + IntToStr(Sym^.Value), '');
+    Emit('', 'dw ' + EncodeReal(Scanner.StrValue), '');
 
+    NextToken;
+  end
+  else if DataType^.Kind = scStringType then
+  begin
+    Expect(toString);
+    // Emit('', 'db ' + IntToStr(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
+    Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
+    Emit('', 'ds ' + IntToStr(DataType^.Value - Length(Scanner.StrValue) - 1) + ',0', '');
+    NextToken;
+  end
+  else if DataType^.Kind = scSetType then
+  begin
+    Expect(toLBrack);
+    NextToken;
+
+    ParseSetConstant; (* FIXME: Type check!!! *)
+
+    Expect(toRBrack);
     NextToken;
   end
   else
   begin
-    if DataType = dtInteger then
+    T := ParseScalar(Value);
+
+    if not ((DataType = T) or (DataType = dtByte) and (T = dtInteger)) then
+      Error('Type error');
+
+    if DataType^.Value = 1 then
     begin
-      if Scanner.Token = toSub then
-      begin
-        Sign := -1;
-        NextToken;
-      end
-      else Sign := 1;
-      Expect(toNumber);
-
-      Value := Sign * Scanner.NumValue;
-      Emit('', 'dw ' + IntToStr(Value), '');
-
-      NextToken;
-    end
-    else if DataType = dtByte then
-    begin
-      Expect(toNumber);
-
-      Emit('', 'db ' + IntToStr(Scanner.NumValue), '');
-
-      NextToken;
-    end
-    else if DataType = dtReal then
-    begin
-      if Scanner.Token = toSub then
-      begin
-        Sign := -1;
-        NextToken;
-      end
-      else Sign := 1;
-      Expect(toFloat);
-
-      Emit('', 'dw ' + EncodeReal(Scanner.StrValue), '');
-
-      NextToken;
-    end
-    else if DataType = dtChar then
-    begin
-      Expect(toString);
-      if Length(Scanner.StrValue) <> 1 then Error('Char expected');
-      Emit('', 'db "' + Scanner.StrValue + '"', '');
-      NextToken;
-    end
-    else if DataType^.Kind = scStringType then
-    begin
-      Expect(toString);
-      // Emit('', 'db ' + IntToStr(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
-      Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
-      Emit('', 'ds ' + IntToStr(DataType^.Value - Length(Scanner.StrValue) - 1) + ',0', '');
-      NextToken;
-    end
-    else if DataType^.Kind = scSetType then
-    begin
-      Expect(toLBrack);
-      NextToken;
-
-      ParseSetConstant; (* FIXME: Type check!!! *)
-
-      Expect(toRBrack);
-      NextToken;
+      if (Value < 0) or (Value > 255) then Error('Type error');
+      Emit('', 'db ' + IntToStr(Value), '');
     end
     else
-      Error('Not supported');
+      Emit('', 'dw ' + IntToStr(Value), '')
   end;
 end;
 
