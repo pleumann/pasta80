@@ -20,13 +20,13 @@ const
   h0              = 56;  // Number of slices, 2x64 total
   n0              = 64;  // Max angle of sinusoidal to revolve, 270 deg
 
-  { Values for ZX Spectrum }
+  { Values for ZX Spectrum }
   scrX            = 256; // Screen width in pixels
   scrY            = 176; // Screen height in pixels
   nSlices         = 32;  // Half the number of slices
 
 var
-  { Working variables from Python version }
+  { Working variables from Python version }
   a0              : real;
   hatHgt, hatRad  : real;
   stagger, xf     : real;
@@ -44,7 +44,9 @@ var
   C               : Char;                   // Keyboard input
 
 begin
+  {$ifndef sys_agon}
   SetCpuSpeed(3);
+  {$endif}
   ClrScr;
 
   GotoXY(4, 11);
@@ -105,5 +107,7 @@ begin
 
   repeat until KeyPressed;
 
+  {$ifndef sys_agon}
   SetCpuSpeed(0);
+  {$endif}
 end.
