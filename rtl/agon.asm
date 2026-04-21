@@ -289,9 +289,11 @@ __getline_2:
 
 ; Agon Screen controls
 ; We are manually tracking "high" - i.e. reverse fg/bg
+; Agon supports 2 - 64 colours, depending on screen mode.
+; Colour choice is not checked.
 
 __textfg:
-                ld      a,l        ; l has text colour 0-7.
+                ld      a,l        ; l has text colour 0-63.
                 ld      (__cur_fgtext),a
                 ld      a,(__rev_mode)
                 or      a
@@ -299,13 +301,13 @@ __textfg:
 __textfg_do:
                 ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
                 rst     10h
-                ld      a,l        ; l has text colour 0-7.
+                ld      a,l        ; l has text colour 0-63.
                 rst     10h
                 ret
 
 
 __textbg:
-                ld      a,l         ; l has background colour 0-7.
+                ld      a,l         ; l has background colour 0-63.
                 ld      (__cur_bgtext),a
                 ld      a,(__rev_mode)
                 or      a
@@ -313,7 +315,7 @@ __textbg:
 __textbg_do:
                 ld      a,17    ;VDU 17, colour: Set text colour (COLOUR)
                 rst     10h
-                ld      a,l         ; l has background colour 0-7.
+                ld      a,l         ; l has background colour 0-63.
                 or      128         ; set top bit for background
                 rst     10h
                 ret
@@ -521,7 +523,7 @@ __agon_beep_1:
 
 
 ; Delay routine
-; This will need to be an estimate, subtracking 17ms for every 60Hz (or 75hz) tick...
+; This will need to be an estimate, subtracking 17ms for every 60Hz (or 70hz) tick...
 ; sysvar_time:            EQU 00h ; 4: Clock timer in centiseconds (incremented by 2 every VBLANK)
 ; In: HL = Milliseconds
 ; Out: Uses A, HL
@@ -665,6 +667,37 @@ al_circle:
             rst     10h
             rst     10h
             ret
+
+;
+; Flood fill.
+;
+; In:   HL, DE = absolute X,Y
+; Out:  -
+;
+; VDU 25, code, x; y;
+;
+; We are using flood fill until non-background, absolute coordinates
+;
+; &80-&87 128-135 Flood until non-background §§§§§
+; &88-&8F 136-143 Flood until foreground §§§§§
+;
+; 5 (D) Plot absolute in current foreground colour
+
+al_fill:
+            ld      a,25
+            rst     10h
+            ld      a,085h  ;flood fill until non-background, absolute coordinates
+            rst     10h
+            ld      a,l
+            rst     10h
+            ld      a,h
+            rst     10h
+            ld      a,e
+            rst     10h
+            ld      a,d
+            rst     10h
+            ret
+
 
 ; Returns the colour of a point
 ;
