@@ -1662,11 +1662,12 @@ begin
 
   S := '';
 
-  for I := 0 to 12 do
+  for I := -1 to 12 do
   begin
     Write(I, ' is ');
 
     case I of
+      -1:         begin WriteLn('negative'); S := S + '-'; end;
       0:          begin WriteLn('nothing'); S := S + 'n'; end;
       2..3, 5, 7: begin WriteLn('prime'); S := S + 'p'; end;
       4, 9:       begin WriteLn('square'); S := S + 's'; end;
@@ -1680,7 +1681,7 @@ begin
 
   WriteLn;
 
-  Assert(S = 'ntppsptptshtd');
+  Assert(S = '-ntppsptptshtd');
 
   S := 'ZX Spectrum+ 128K';
 

@@ -5294,14 +5294,14 @@ begin
       Error('Not a constant');
     if not (AType.Kind in [scType, scEnumType, scSubrangeType]) then
       Error('Invalid type');
-    
-    if Neg then
-    begin
-      if AType <> dtInteger then Error('Integer expected');
-      Value := -Value;
-    end;
   end
   else Error('Invalid type');
+
+  if Neg then
+  begin
+    if AType <> dtInteger then Error('Integer expected');
+    Value := -Value;
+  end;
 
   NextToken;
 
@@ -5995,7 +5995,7 @@ begin
   Expect(toOf);
   NextToken;
 
-  while Scanner.Token in [toIdent, toNumber, toString, toCaret] do
+  while Scanner.Token in [toSub, toIdent, toNumber, toString, toCaret] do
   begin
     OfTarget := GetLabel('case');
     NextTest := GetLabel('test');
