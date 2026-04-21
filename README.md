@@ -161,14 +161,19 @@ are also a few graphics primitives that would allow you to run or port some of
 the graphics examples (like the 3D hat or the Mandelbrot set). It is fully
 integrated into mini IDE and supports emulation and debugging (see below).
 
-Note that the Agon has an eZ80 processor that is actually much more powerful
-than an ordinary Z80 and can address lots more of memory. The code generated
-for the Agon target (currently) only uses a single 64K block of memory (running
-from physical address 0x40000) because right now neither PASTA/80 nor sjasmplus
-can handle the flat 24 bit address space. You can make use of overlays (see
-below) to write larger programs.
+Note that the Agon's eZ80 processor extends the Z80 address space out to 24 bit.
+The code generated for the Agon target (currently) uses a 64K block of memory in
+classic Z80 mode (usually running from physical address 0x40000) because neither
+PASTA/80 nor sjasmplus directly support the flat 24 bit address space yet. You
+can, however, extend this via RAM-based overlays (see below), allowing a single
+program to be up to 440K in size.
 
-Note that MOS version 3+ is recommended, as some functions expect it.
+PASTA/80 also supports the MOSlet format for smaller programs that can be run
+from 0xB0000 without overwriting a larger main (or BASIC) program running from
+0x40000. MOSlets cannot exceed 32K size and are not allowed to use overlays.
+
+Note that MOS version 3 or newer is generally recommended, as some functions
+expect it. Some graphics primitives require VDP 2.16 or newer to work.
 
 Note also that this is an early release of the Agon target, and in particular
 larger programs can behave erratically.
