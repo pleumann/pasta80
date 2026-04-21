@@ -143,7 +143,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `Plot(X, Y: Byte)` | [ZX48] [Agon] | Sets a pixel at coordinates `(X, Y)`. The origin (0, 0) is in the upper-left corner. |
 | `Draw(DX, DY: Integer)` | [ZX48] [Agon] | Draws a line from the last plot position by the relative offset `(DX, DY)`. |
 | `Circle(CX, CY, Radius: Integer)` | [ZX48] [Agon] | Draws a circle with centre `(CX, CY)` and the given radius. |
-| `FloodFill(X, Y: Integer)` | [ZX48] | Performs a recursive flood-fill operation starting at `(X, Y)`. |
+| `FloodFill(X, Y: Integer)` | [ZX48] [Agon] | Performs a recursive flood-fill operation starting at `(X, Y)`. Agon requires VDP 2.16.0+ for this function.|
 
 ### Sound
 
