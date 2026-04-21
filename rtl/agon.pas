@@ -688,4 +688,10 @@ procedure Draw(DX, DY: Integer); register;               external 'al_draw';
  *)
 procedure Circle(CX, CY, Radius: Integer);  register;               external 'al_circle';
 
+(**
+ * Performs a recursive flood-fill starting at the given point.
+ *)
+procedure FloodFill(X, Y: Integer); register;       external 'al_fill';
+
+
 end.
