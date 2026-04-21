@@ -8,7 +8,7 @@ PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_
 * [ZX Spectrum 48K](https://en.wikipedia.org/wiki/Sinclair_ZX_Spectrum)
 * [ZX Spectrum 128K](https://en.wikipedia.org/wiki/ZX_Spectrum#ZX_Spectrum_128)
 * [ZX Spectrum Next](https://www.specnext.com)
-* [Agon Light/Console8](https://agonplatform.github.io/agon-docs) (early access, please expect issues)
+* [Agon Light/Console8](https://agonplatform.github.io/agon-docs)
 
 The compiler follows the single-pass recursive-descent approach championed by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth), inventor of Pascal, in his books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, the compiler might not always generate the most efficient code possible (it definitely cannot compete with LLVM and doesn't try to), but it's very fast.
 
@@ -174,9 +174,6 @@ from 0xB0000 without overwriting a larger main (or BASIC) program running from
 
 Note that MOS version 3 or newer is generally recommended, as some functions
 expect it. Some graphics primitives require VDP 2.16 or newer to work.
-
-Note also that this is an early release of the Agon target, and in particular
-larger programs can behave erratically.
 
 ## Overlays
 
