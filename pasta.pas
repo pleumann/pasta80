@@ -10,7 +10,7 @@ uses
   {$ifdef darwin} BaseUnix, {$endif} Keyboard, Dos, Math, Process;
 
 const
-  Version = '0.97';
+  Version = '0.98';
 
 (* -------------------------------------------------------------------------- *)
 (* --- Utility functions ---------------------------------------------------- *)
@@ -5357,7 +5357,7 @@ begin
       Error('Value out of range');
     if (Last < First) then
       Error('Invalid range');
-    
+
     AType := BType;
 
     for I := First to Last do
