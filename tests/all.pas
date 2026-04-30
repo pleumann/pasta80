@@ -38,6 +38,10 @@ type
     X, Y: Integer;
   end;
 
+  TPointOptSemi = record
+    X, Y: Integer
+  end;
+
   SubRange1 = 10 .. 20;
   SubRange2 = Start .. 20;
   SubRange3 = 10 .. Stop;
@@ -1700,6 +1704,19 @@ begin
   WriteLn;
 
   Assert(S = 'zx sPECTRUM+ 128k');
+
+  // These check the optional semicolon at the end. They just need to compile.
+  case I of
+    0: WriteLn('No');
+    1: WriteLn('Yes')
+  end;
+
+  case I of
+    0: WriteLn('No');
+    1: WriteLn('Yes')
+  else
+    WriteLn('Error')
+  end;
 end;
 
 overlay procedure TestWhile;
@@ -3155,7 +3172,7 @@ begin
 
   {$ifndef abc}
     Inc(I);
-  {$else} 
+  {$else}
     Assert(False);
   {$endif}
   Assert(I = 2);

@@ -6015,12 +6015,11 @@ begin
     Emit(OfTarget, '', '');
 
     ParseStatement(ContTarget, BreakTarget);
-    Expect(toSemicolon);
-    NextToken;
-
     EmitI('jp ' + EndTarget);
-
     Emit(NextTest, '', '');
+
+    if Scanner.Token <> toSemicolon then Break;
+    NextToken;
   end;
 
   if Scanner.Token = toElse then
@@ -6391,6 +6390,9 @@ begin
   begin
     T := ParseScalar(Value);
 
+    while DataType^.Kind in [scAliasType, scSubrangeType] do
+      DataType := DataType^.DataType;
+
     if not ((DataType = T) or (DataType = dtByte) and (T = dtInteger)) then
       Error('Type error');
 
@@ -6562,7 +6564,7 @@ begin
   while Scanner.Token = toIdent do
   begin
     ParseFieldGroup(RecSym^.DataType, RecSym^.Value);
-    Expect(toSemicolon);
+    if Scanner.Token <> toSemicolon then Break;
     NextToken;
   end;
 
