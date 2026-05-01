@@ -1529,6 +1529,40 @@ __setexclude:
         ld      (hl),a
         ret
 
+__set_empty:
+        pop     de
+        ld      hl,0
+        ld      b,16
+__set_empty_loop:
+        push    hl
+        djnz    __set_empty_loop
+        ex      de,hl
+        jp      (hl)
+
+__setinclude_range:
+        ld      a,c
+        sub     e
+        ret     c
+
+        ld      b,a
+        ld      c,e
+        inc     b
+
+        ld      (__setinclude_range_base),hl
+
+__setinclude_range_loop:
+        ld      a,c
+        inc     c
+        ld      hl,(__setinclude_range_base)
+        call    __setoff
+        add     hl,de
+        or      (hl)
+        ld      (hl),a
+        djnz    __setinclude_range_loop
+        ret
+__setinclude_range_base:
+        dw      0
+
 ;
 ; Superset of two sets
 ;

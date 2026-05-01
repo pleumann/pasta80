@@ -5379,6 +5379,69 @@ begin
 end;
 
 (**
+ * Parses a set expression and generates a 32 byte block containing the proper
+ * bits on the stack.
+ *
+ * TODO Can we detect the constant case and generate the bits at compile-time?
+ *)
+function ParseSet: PSymbol;
+var
+  Sym, AType, BType, CType: PSymbol;
+begin
+  EmitI('call __set_empty');
+  EmitI('ex de,hl');
+  EmitI('add hl,sp');
+  EmitI('push hl');
+
+  AType := nil;
+  while Scanner.Token <> toRBrack do
+  begin
+    BType := ParseExpression;
+
+    if (AType <> nil) and (AType <> BType) then
+      Error('Incompatible types');
+    //if (First < 0) or (First > 255) or (Last < 0) or (Last > 255) then
+    //  Error('Value out of range');
+    //if (Last < First) then
+    //  Error('Invalid range');
+
+    if Scanner.Token = toRange then
+    begin
+      NextToken;
+      CType := ParseExpression;
+
+      if (AType <> nil) and (AType <> CType) or (BType <> CType) then
+        Error('Incompatible types');
+
+      EmitI('pop bc');
+      EmitI('pop de');
+      EmitI('pop hl');
+      EmitI('push hl');
+      EmitI('call __setinclude_range');
+    end
+    else
+    begin
+      EmitI('pop de');
+      EmitI('pop hl');
+      EmitI('push hl');
+      EmitI('call __setinclude');
+    end;
+
+    AType := BType;
+
+    if Scanner.Token = toComma then NextToken;
+  end;
+
+  EmitI('pop hl');
+
+  Sym := CreateSymbol(scSetType, '');
+  Sym^.Value := 32;
+  Sym^.DataType := AType;
+
+  ParseSet := Sym;
+end;
+
+(**
  * Parses a factor, which is the smallest building block of an expression. A
  * factor can be a constant, a variable, a function call or a literal number,
  * string, set or pointer. We also handle unary operators on this level.
@@ -5519,18 +5582,7 @@ begin
   begin
     NextToken;
 
-    S1 := GetLabel('set');
-    S2 := GetLabel('set');
-    EmitI('jr ' + S2);
-    Emit(S1, '', '');
-
-    T := ParseSetConstant();
-
-    Emit(S2, '', '');
-
-    Emit('', 'ld hl,' + S1, 'Load set constant');
-    EmitI('push hl');
-    EmitLoad(T);
+    T := ParseSet();
 
     Expect(toRBrack);
     NextToken;

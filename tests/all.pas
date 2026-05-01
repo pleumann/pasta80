@@ -952,14 +952,23 @@ type
 
   String5 = String[255];
 
-var
-  AllDays, Working, Weekend, Mon_Thu, Thu_Sun: DaySet;
+  CharSet = set of Char;
 
-  Lower, Upper, Digit, Alpha: set of Char;
+const
+  AllDays: DaySet = [Mon..Sun];
+  Working: DaySet = [Mon..Fri];
+  Weekend: DaySet = [Sat, Sun];
+  Mon_Thu: DaySet = [Mon..Thu];
+  Thu_Sun: DaySet = [Thu..Sun];
+
+var
+  Lower, Upper, Digit, Alpha, CS: set of Char;
 
   Primes: set of Byte;
 
   I: Byte;
+
+  C, X, Y, Z: Char;
 
   procedure DumpSet(DS: DaySet);
   var
@@ -979,6 +988,19 @@ var
     WriteLn(']');
   end;
 
+  function SetToStr(CS: CharSet): String;
+  var
+    S: String;
+    C: Char;
+  begin
+    S := '';
+
+    for C := ' ' to Chr(255) do
+      if C in CS then S := S + C;
+
+    SetToStr := S;
+  end;
+
   function Check(B: Boolean): String5;
   begin
     if B then Check := '  X  ' else Check := '     ';
@@ -987,12 +1009,6 @@ var
 begin
   WriteLn('--- TestSets ---');
   WriteLn;
-
-  AllDays := [Mon..Sun];
-  Working := [Mon..Fri];
-  Weekend := [Sat, Sun];
-  Mon_Thu := [Mon..Thu];
-  Thu_Sun := [Thu..Sun];
 
   Write('AllDays .............. '); DumpSet(AllDays);
   Write('Working .............. '); DumpSet(Working);
@@ -1069,6 +1085,28 @@ begin
   Assert(42 in Primes);
   Exclude(Primes, 42);
   Assert(not (42 in Primes));
+
+  CS := [];
+
+  Assert(SetToStr(CS) = '');
+
+  CS := ['a', 'b', 'c', 'x'..'z'];
+
+  Assert(SetToStr(CS) = 'abcxyz');
+
+  C := 'c';
+  X := 'x';
+  Y := 'y';
+  Z := 'z';
+
+  CS := ['a', 'b', C, X .. Z];
+  Assert(SetToStr(CS) = 'abcxyz');
+
+  CS := ['a', 'b', C, Y .. Y];
+  Assert(SetToStr(CS) = 'abcy');
+
+  CS := ['a', 'b', C, Z .. X];
+  Assert(SetToStr(CS) = 'abc');
 
   WriteLn;
 end;
