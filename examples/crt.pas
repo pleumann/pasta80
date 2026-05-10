@@ -8,8 +8,8 @@ begin
   I := 0;
   while I < 10000 do
   begin
-    X := 1 + Random(71);
-    Y := 1 + Random(23);
+    X := 1 + Random(ScreenWidth - 10);
+    Y := 1 + Random(ScreenHeight);
     repeat
       F := Random(8);
       B := Random(8);
