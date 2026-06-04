@@ -7907,6 +7907,35 @@ begin
   end;
 end;
 
+
+(**
+ * Checks whether the given platform supports the given format.
+ *)
+function SupportsFormat(Binary: TBinaryType; Format: TTargetFormat): Boolean;
+begin
+  case Binary of
+    btAgon:   SupportsFormat := Format in [tfBinary, tfMosLet];
+    btCPM:    SupportsFormat := Format = tfBinary;
+    btZX, 
+    btZX128:  SupportsFormat := Format in [tfBinary, tfPlus3Dos, tfTape, tfSnapshot];
+    btZXN:    SupportsFormat := Format in [tfBinary, tfPlus3Dos, tfTape, tfRunDir];
+  end;
+end;
+
+(**
+ * Checks whether the given platform supports overlays.
+ *)
+function SupportsOverlays(Binary: TBinaryType; Format: TTargetFormat): Boolean;
+begin
+  case Binary of
+    btAgon:   SupportsOverlays := Format = tfBinary;
+    btCPM,
+    btZX:     SupportsOverlays := False;
+    btZX128,
+    btZXN:    SupportsOverlays := True;
+  end;
+end;
+
 (**
  * Changes the current directory.
  *)
@@ -8231,9 +8260,11 @@ begin
 
     WriteLn(TermStr('Target ~machine     : '), BinaryStr[Binary]);
     WriteLn(TermStr('Output ~format      : '), FormatStr[Format]);
+    WriteLn(TermStr('Enable ~overlays    : '), YesNoStr[Overlays]);
+    WriteLn;
     WriteLn(TermStr('~Peephole optimizer : '), YesNoStr[Optimize]);
     WriteLn(TermStr('~Dependency analysis: '), YesNoStr[SmartLink]);
-    WriteLn(TermStr('Enable ~overlays    : '), YesNoStr[Overlays]);
+    WriteLn;
     WriteLn(TermStr('~Release build      : '), YesNoStr[Release]);
     WriteLn;
     WriteLn(TermStr('~Back'));
@@ -8246,26 +8277,19 @@ begin
              else
                Binary := Succ(Binary);
 
-            if Binary = btCPM then
-            begin
-              AddrOrigin := $0100;
-              AddrLimit := $0F000;
-              Format := tfBinary;
-            end
-            else
-            begin
-              AddrOrigin := $0100;
-              AddrLimit := $0F000;
-              Format := tfTape;
-            end;
-
-            if (Binary = btCPM) or (Binary = btZX) then Overlays := False;
+            if not SupportsFormat(Binary, Format) then Format := tfBinary;
+            if not SupportsOverlays(Binary, Format) then Overlays := False;
           end;
 
-      'f': if Format = tfRunDir then Format := tfBinary else Format := Succ(Format);
+      'f': repeat
+             if Format = High(TTargetFormat) then
+               Format := Low(TTargetFormat)
+             else
+               Format := Succ(Format);
+            until SupportsFormat(Binary, Format);
       'p': Optimize := not Optimize;
       'd': SmartLink := not SmartLink;
-      'o': Overlays := not Overlays;
+      'o': if SupportsOverlays(Binary, Format) then Overlays := not Overlays;
       'r': Release := not Release;
     end;
   until C = 'b';
@@ -8380,59 +8404,21 @@ begin
   while Copy(SrcFile, 1, 2) = '--' do
   begin
     if SrcFile = '--cpm' then
-    begin
-      Binary := btCPM;
-      AddrOrigin := $0100;
-      AddrLimit := $F000;
-      Overlays := False;
-    end
+      Binary := btCPM
     else if SrcFile = '--zx48' then
-    begin
-      Binary := btZX;
-      AddrOrigin := 32768;
-      AddrLimit := 65536;
-      Overlays := False;
-    end
+      Binary := btZX
     else if SrcFile = '--zx128' then
-    begin
-      Binary := btZX128;
-      AddrOrigin := 32768;
-      AddrLimit := 65536;
-      Overlays := False;
-    end
+      Binary := btZX128
     else if SrcFile = '--zxnext' then
-    begin
-      Binary := btZXN;
-      AddrOrigin := 32768;
-      AddrLimit := 65536;
-      Overlays := False;
-    end
+      Binary := btZXN
     else if SrcFile = '--agon' then
-    begin
-      Binary := btAgon;
-      AddrOrigin := $0000;
-      AddrLimit := $10000;
-      Overlays := False;
-    end
+      Binary := btAgon
     else if SrcFile = '--ovr' then
-    begin
-      Overlays := True;
-      if Binary = btZX128 then
-        AddrLimit := $C000
-      else if (Binary in [btZXN, btAgon]) and not (Format = tfMosLet) then
-        AddrLimit := $E000
-      else if Format = tfMosLet then
-        Error('Overlays not supported for MOSlet format.')
-      else
-        Error('Overlays not supported for ' + BinaryStr[Binary] + ' target.');
-    end
+      Overlays := True
     else if SrcFile = '--bin' then
       Format := tfBinary
     else if SrcFile = '--mos' then
-    begin
-      Format := tfMosLet;
-      AddrLimit := $8000;
-    end
+      Format := tfMosLet
     else if SrcFile = '--3dos' then
       Format := tfPlus3Dos
     else if SrcFile = '--run' then
@@ -8467,9 +8453,11 @@ begin
     AsmFile := ChangeExt(SrcFile, '.z80');
   end;
 
-  if (Binary = btCPM) and (Format <> tfBinary) or
-     (Binary = btZXN) and (Format = tfSnapshot) then
-    Error('Invalid machine/format combination');
+  if not SupportsFormat(Binary, Format) then
+    Error(FormatStr[Format] + ' format not supported by ' + BinaryStr[Binary] + '.');
+
+  if Overlays and not SupportsOverlays(Binary, Format) then
+    Error('Overlays not supported by ' + BinaryStr[Binary] + ' [' + FormatStr[Format] + '].');
 
   if Ide then
   begin
