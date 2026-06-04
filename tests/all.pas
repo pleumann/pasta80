@@ -2896,6 +2896,7 @@ end;
 overlay procedure TestBuiltIns;
 var
   S, T: String[15];
+  P, Q: Pointer;
 begin
   WriteLn('--- TestBuiltIns ---');
 
@@ -2937,6 +2938,15 @@ begin
 
   FillChar(S[2], 0, 'X');
   Assert(S = 'ZZZ');
+
+  P := Ptr(Addr(S[1]));
+  FillChar(P^, 3, 'P'); (* De-ref generic pointer *)
+  Assert(S = 'PPP');
+
+  P := Ptr(Addr(S));
+  Q := Ptr(Addr(T));
+  Move(P^, Q^, 10);     (* De-ref generic pointer *)
+  Assert(T = 'PPP');
 end;
 
 const Dummy2 = 0;

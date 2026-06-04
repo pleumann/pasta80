@@ -1013,7 +1013,7 @@ var
    * Pointers to several important built-in base types.
    *)
   dtInteger, dtBoolean, dtChar, dtByte, dtString, dtReal, dtPointer, dtFile,
-  dtText: PSymbol;
+  dtText, dtUnknown: PSymbol;
 
   (**
    * Pointers to the built-in Mem[] and Port[] pseudo-arrays.
@@ -1425,6 +1425,9 @@ begin
 
   dtPointer := CreateSymbol(scPointerType, 'Pointer');
   dtPointer^.Value := 2;
+
+  dtUnknown := CreateSymbol(scType, '<unknown>');
+  dtUnknown^.Value := 0;
 
   MemArray := CreateSymbol(scVar, 'Mem');
   MemArray^.DataType := dtByte;
@@ -3224,6 +3227,9 @@ end;
  *)
 procedure EmitLoad(DataType: PSymbol);
 begin
+  if DataType = dtUnknown then
+    Error('Cannot read through untyped pointer');
+
   if DataType^.Kind = scStringType then
   begin
     EmitI('pop hl');
@@ -4192,9 +4198,6 @@ begin
       if DataType^.Kind <> scPointerType then
         Error('Not a pointer');
 
-      if DataType = dtPointer then
-        Error('Cannot deref generic pointer');
-
       NextToken;
 
       EmitI('pop hl');
@@ -4203,7 +4206,10 @@ begin
       EmitI('ld d,(hl)');
       EmitI('push de');
 
-      DataType := DataType^.DataType;
+      if DataType = dtPointer then
+        DataType := dtUnknown
+      else
+        DataType := DataType^.DataType;
     end;
 
   end;
