@@ -7,8 +7,6 @@ begin
   Draw(X2 - X1, Y2 - Y1);
   Draw(X3 - X2, Y3 - Y2);
   Draw(X1 - X3, Y1 - Y3);
-
-  //FloodFill((X1 + X2 + X3) div 3, (Y1 + Y2 + Y3) div 3);
 end;
 
 {$a-}
