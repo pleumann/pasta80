@@ -4083,17 +4083,20 @@ end;
 function ParseExpression: PSymbol; forward;
 
 (**
- * Parses access to a variable, result in the final address being on the stack.
- * This includes potentially multiple stages of array indexing, record field
- * selection or following pointers. We try to delay the emitting of the address
- * as long as possible in order to avoid additions at runtime when could let
- * the assembler do them at compile-time.
+ * Parses a (potentially empty) chain of Pascal selectors, that is, array
+ * indexing ([]), field selection (.), and pointer dereference (^). Used by
+ * ParseVariableAccess (coming from a vairable) and ParseVariabeChain (coming
+ * from an expression). Variable and Offset implement deferred global-address
+ * optimisation:
+ * - When Offset >= 0 the base address has not been emitted yet
+ *   and will be folded with constant field offsets at compile time
+ * - When Offset = -1 the address is already on the stack and Variable is
+ *   unused.
  *)
-function ParseVariableAccess(Symbol: PSymbol): PSymbol;
+function ParseSelectorChain(Variable, DataType: PSymbol; Offset: Integer): PSymbol;
 var
-  Variable, DataType: PSymbol;
+  Field: PSymbol;
   Size: Integer;
-  Offset: Integer;
 
   procedure DelayedEmitAddr;
   begin
@@ -4106,18 +4109,6 @@ var
   end;
 
 begin
-  Variable := Symbol;
-
-  if (Symbol^.Tag <> '') and (Symbol^.Tag <> 'RESULT') then
-    Offset := 0
-  else
-  begin
-    EmitAddress(Symbol);
-    Offset := -1;
-  end;
-
-  DataType := Symbol^.DataType;
-
   while Scanner.Token in [toLBrack, toPeriod, toCaret] do
   begin
     if Scanner.Token = toLBrack then
@@ -4155,7 +4146,6 @@ begin
         else if DataType^.Kind = scStringType then
         begin
           TypeCheck(dtInteger, ParseExpression(), tcExpr);
-
           DataType := dtChar;
           EmitBinOp(toAdd, dtInteger);
         end
@@ -4163,7 +4153,6 @@ begin
       until Scanner.Token <> toComma;
 
       Expect(toRBrack);
-
       NextToken;
     end
     else if Scanner.Token = toPeriod then
@@ -4173,19 +4162,19 @@ begin
 
       NextToken;
       Expect(toIdent);
-      Symbol := Lookup(Scanner.StrValue, DataType^.DataType, nil);
-      if Symbol = nil  then Error('Unknown field "' + Scanner.StrValue + '"');
+      Field := Lookup(Scanner.StrValue, DataType^.DataType, nil);
+      if Field = nil then Error('Unknown field "' + Scanner.StrValue + '"');
 
-      DataType := Symbol^.DataType;
+      DataType := Field^.DataType;
 
       if Offset >= 0 then
-        Inc(Offset, Symbol^.Value)
+        Inc(Offset, Field^.Value)
       else
       begin
-      if Symbol^.Value <> 0 then
-      begin
-        EmitLiteral(Symbol^.Value);
-        EmitBinOp(toAdd, dtInteger);
+        if Field^.Value <> 0 then
+        begin
+          EmitLiteral(Field^.Value);
+          EmitBinOp(toAdd, dtInteger);
         end;
       end;
 
@@ -4211,12 +4200,38 @@ begin
       else
         DataType := DataType^.DataType;
     end;
-
   end;
 
   DelayedEmitAddr;
+  ParseSelectorChain := DataType;
+end;
 
-  ParseVariableAccess := DataType;
+(**
+ * Parses access to a variable, result in the final address being on the stack.
+ * Defers emitting the base address for globals so the assembler can fold
+ * constant field offsets at compile time.
+ *)
+function ParseVariableAccess(Symbol: PSymbol): PSymbol;
+var
+  Offset: Integer;
+begin
+  if (Symbol^.Tag <> '') and (Symbol^.Tag <> 'RESULT') then
+    Offset := 0
+  else
+  begin
+    EmitAddress(Symbol);
+    Offset := -1;
+  end;
+  ParseVariableAccess := ParseSelectorChain(Symbol, Symbol^.DataType, Offset);
+end;
+
+(**
+ * Continues variable access when the address is already on the stack. Used
+ * when a pointer expression (rather than a variable) is the var-param root.
+ *)
+function ParseVariableChain(DataType: PSymbol): PSymbol;
+begin
+  ParseVariableChain := ParseSelectorChain(nil, DataType, -1);
 end;
 
 (**
@@ -4230,13 +4245,21 @@ begin
   begin
     Expect(toIdent);
     Sym2 := LookupGlobalOrFail(Scanner.StrValue);
-    if Sym2^.Kind <> scVar then
-      Error('Not a variable: ' + Scanner.StrValue);
-
-    NextToken;
-
-    T := ParseVariableAccess(Sym2);
-
+    if Sym2^.Kind = scVar then
+    begin
+      NextToken;
+      T := ParseVariableAccess(Sym2);
+    end
+    else
+    begin
+      T := ParseExpression;
+      if T^.Kind <> scPointerType then
+        Error('Variable or pointer dereference expected');
+      Expect(toCaret);
+      NextToken;
+      if T = dtPointer then T := dtUnknown else T := T^.DataType;
+      T := ParseVariableChain(T);
+    end;
     if Sym^.ArgTypes[I] <> nil then
       TypeCheck(Sym^.ArgTypes[I], T, tcAssign);
   end
@@ -4277,17 +4300,33 @@ begin
 end;
 
 (**
- * Parses a reference to a variable.
+ * Parses a reference to a variable or pointer dereference for use as a var
+ * parameter. Accepts either a plain variable (possibly with field/index/deref
+ * access) or any pointer expression followed by at least one ^, so that e.g.
+ * FillChar(GetDisplayFile^, ...) and FillChar(BytePtr(16384)^, ...) work.
  *)
 function ParseVariableRef: PSymbol;
 var
   Sym: PSymbol;
+  T: PSymbol;
 begin
   Expect(toIdent);
   Sym := LookupGlobalOrFail(Scanner.StrValue);
-  if Sym^.Kind <> scVar then Error('Variable expected');
-  NextToken;
-  ParseVariableRef := ParseVariableAccess(Sym);
+  if Sym^.Kind = scVar then
+  begin
+    NextToken;
+    ParseVariableRef := ParseVariableAccess(Sym);
+  end
+  else
+  begin
+    T := ParseExpression;
+    if T^.Kind <> scPointerType then
+      Error('Variable or pointer dereference expected');
+    Expect(toCaret);
+    NextToken;
+    if T = dtPointer then T := dtUnknown else T := T^.DataType;
+    ParseVariableRef := ParseVariableChain(T);
+  end;
 end;
 
 (**
