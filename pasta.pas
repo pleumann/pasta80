@@ -1647,6 +1647,54 @@ procedure HandleDirective(C: String);
 var
   S, T: String;
   P: Integer;
+
+  (**
+   * Throws an error.
+   *)
+  procedure Invalid;
+  begin
+    Error('Invalid directive: ' + S);
+  end;
+
+  (**
+   * Handles one or more switches. Multiple switches must be separated by commas
+   * and not repeat the initial dollar sign.
+   *)
+  procedure Switches;
+  var
+    I: Byte;
+    C: Char;
+    B: Boolean;
+  begin
+    I := 1;
+    repeat
+      if I + 2 > Length(S) then
+        Invalid;
+
+      C := S[I + 1];
+
+      case S[I + 2] of
+        '+': B := True;
+        '-': B := False;
+      else
+        Invalid;
+      end;
+
+      case C of
+        'a': AbsCode    := B;
+        'i': IOMode     := B;
+        'k': StackMode  := B;
+        'u': CheckBreak := B;
+      else
+        Invalid;
+      end;
+
+      Inc(I, 3);
+      if (I <= Length(S)) and (S[I] <> ',') then
+        Invalid;
+    until I > Length(S);
+  end;
+
 begin
   P := Pos(' ', C);
   if P = 0 then
@@ -1660,7 +1708,6 @@ begin
     T := TrimStr(Copy(C, P + 1, 255));
   end;
 
-  // Might turn out to be compiler directives
   if S = '$define' then
   begin
     if not ScannerMuted then SetDefine(T, True);
@@ -1693,15 +1740,8 @@ begin
     OpenInput(NativeToPosix(T))
   else if S = '$l' then
     SetLibrary(NativeToPosix(T))
-  else if Copy(S, 1, 2) = '$u' then
-    CheckBreak := S[3] = '+'
-  else if Copy(S, 1, 2) = '$a' then
-    AbsCode := S[3] = '+'
-  else if Copy(S, 1, 2) = '$i' then
-    IOMode := S[3] = '+'
-  else if Copy(S, 1, 2) = '$k' then
-    StackMode := S[3] = '+'
-  else Error('Invalid directive: ' + S);
+  else
+    Switches;
 end;
 
 (* --------------------------------------------------------------------- *)
