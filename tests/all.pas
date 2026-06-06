@@ -1166,6 +1166,11 @@ var
     TestFuncExitWithResult := -2;
   end;
 
+  function HelloFunc: string;
+  begin
+    HelloFunc := 'Hello, World!';
+  end;
+
 begin
   WriteLn('--- TestProcFunc ---');
 
@@ -1191,6 +1196,17 @@ begin
   Assert(J = 1111);
   Assert(TestFuncExit = 2222);
   Assert(TestFUncExitWithResult = 3333);
+
+  X := 0;
+  J := 0;
+
+  // Ignore results for different types
+  MulFunc(6, 7);
+  Assert(True);
+  HelloFunc;
+  Assert(True);
+  Copy('Hello, World!', 8, 5);
+  Assert(True);
 end;
 
 const

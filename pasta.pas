@@ -6141,7 +6141,7 @@ var
   Sym: PSymbol;
   Tag, Tag2, Tag3, Tag4: String;
   Delta: Integer;
-  (*T: PSymbol;*)
+  T: PSymbol;
 begin
   if CheckBreak then EmitI('call __checkbreak');
 
@@ -6186,6 +6186,37 @@ begin
       ParseArguments(Sym);
 
       EmitCall(Sym);
+    end
+    else if (Sym^.Kind = scFunc) and (Sym^.IsMagic) then
+    begin
+      T := ParseBuiltInFunction(Sym);
+      if T = dtReal then EmitI('popfp')
+      else if T^.Kind = scStringType then EmitClear(256)
+      else EmitI('pop hl');
+    end
+    else if Sym^.Kind = scFunc then
+    begin
+      T := Sym^.DataType;
+      if Sym^.IsStdCall then
+      begin
+        if T^.Kind = scStringType then EmitSpace(256)
+        else if T^.Value = 1 then EmitLiteral(0)
+        else EmitSpace(T^.Value);
+      end;
+      NextToken;
+      ParseArguments(Sym);
+      EmitCall(Sym);
+      if Sym^.IsStdCall then
+      begin
+        if T^.Kind = scStringType then EmitClear(256)
+        else if T^.Value = 1 then EmitClear(2)
+        else EmitClear(T^.Value);
+      end
+      else
+      begin
+        if T = dtReal then EmitI('popfp')
+        else EmitI('pop hl');
+      end;
     end
     else if (Sym^.Kind = scVar) and (Sym^.IsMagic) then
     begin
