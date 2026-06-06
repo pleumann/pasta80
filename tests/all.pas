@@ -1131,7 +1131,7 @@ begin
   SumFunc := A + B;
 end;
 
-overlay procedure TestProcFunc;
+overlay procedure TestProcFunc();
 var
   J: Integer;
 
@@ -1159,7 +1159,7 @@ var
     TestFuncExit := -1;
   end;
 
-  function TestFuncExitWithResult: Integer;
+  function TestFuncExitWithResult(): Integer;
   begin
     TestFuncExitWithResult := -1;
     Exit(3333);
@@ -1174,10 +1174,20 @@ var
 begin
   WriteLn('--- TestProcFunc ---');
 
+  X := 0;
   NoParamProc;
   Assert(X = 1234);
 
+  X := 0;
+  NoParamProc();
+  Assert(X = 1234);
+
+  J := 0;
   J := NoParamFunc;
+  Assert(J = 5678);
+
+  J := 0;
+  J := NoParamFunc();
   Assert(J = 5678);
 
   SumProc(123, 456);
