@@ -1731,8 +1731,10 @@ begin
     if not TopIfDefState then ScannerMuted := not ScannerMuted;
   end
   else if S = '$endif' then
+    PopIfDefState
+  else if S = '$error' then
   begin
-    PopIfDefState;
+    if not ScannerMuted then Error(T)
   end
   else if S = '$a' then
     EmitI(T)
