@@ -1889,287 +1889,289 @@ var
   I: Integer;
 begin
   repeat
-    // Ignore whitespace
-    while (C <= ' ') do
-    begin
-      C := GetChar;
-    end;
-
-    with Scanner do
-    begin
-      // Start a new token
-      Token := toNone;
-      StrValue := '';
-      NumValue := 0;
-      TokenLine := Source^.Line;
-      TokenColumn := Source^.Column - 1;
-
-      if IsIdentHead(C) then
+    repeat
+      // Ignore whitespace
+      while (C <= ' ') do
       begin
-        // Identifier
-        StrValue := C;
         C := GetChar;
-        while IsIdentTail(C) do
-        begin
-          StrValue := StrValue + C;
-          C := GetChar;
-        end;
-        Token := LookupKeyword(StrValue);
-      end
-      else if IsDecDigit(C) then
-      begin
-        // Let's start with an integer number
-        Token := toNumber;
-        StrValue := C;
-        NumValue := Ord(C) - Ord('0');
-        C := GetChar;
-        while IsDecDigit(C) do
-        begin
-          StrValue := StrValue + C;
-          NumValue := 10 * NumValue + (Ord(C) - Ord('0'));
-          C := GetChar;
-        end;
+      end;
 
-        // Might turn out to be floating point
-        if C = '.' then
+      with Scanner do
+      begin
+        // Start a new token
+        Token := toNone;
+        StrValue := '';
+        NumValue := 0;
+        TokenLine := Source^.Line;
+        TokenColumn := Source^.Column - 1;
+
+        if IsIdentHead(C) then
         begin
+          // Identifier
+          StrValue := C;
           C := GetChar;
+          while IsIdentTail(C) do
+          begin
+            StrValue := StrValue + C;
+            C := GetChar;
+          end;
+          Token := LookupKeyword(StrValue);
+        end
+        else if IsDecDigit(C) then
+        begin
+          // Let's start with an integer number
+          Token := toNumber;
+          StrValue := C;
+          NumValue := Ord(C) - Ord('0');
+          C := GetChar;
+          while IsDecDigit(C) do
+          begin
+            StrValue := StrValue + C;
+            NumValue := 10 * NumValue + (Ord(C) - Ord('0'));
+            C := GetChar;
+          end;
+
+          // Might turn out to be floating point
           if C = '.' then
           begin
-            UngetChar;
-            Exit;
-          end;
-
-          Token := toFloat;
-          StrValue := StrValue + '.';
-
-          while IsDecDigit(C) do
-          begin
-            StrValue := StrValue + C;
             C := GetChar;
-          end;
-        end;
-
-        // And even have an exponential part
-        if (C = 'E') or (C = 'e') then
-        begin
-          Token := toFloat;
-
-          StrValue := StrValue + C;
-          C := GetChar;
-
-          if (C = '+') or (C = '-') then
-          begin
-            StrValue := StrValue + C;
-            C := GetChar;
-          end;
-
-          if not IsDecDigit(C) then Error('Digit expected');
-
-          while IsDecDigit(C) do
-          begin
-            StrValue := StrValue + C;
-            C := GetChar;
-          end;
-        end;
-
-      end
-      else if C = '$' then
-      begin
-        // Hex numbers are numbers, too.
-        Token := toNumber;
-        StrValue := '$';
-        C := GetChar;
-
-        if not IsHexDigit(C) then Error('Hex digit expected');
-
-        repeat
-          StrValue := StrValue + C;
-          NumValue := (NumValue shl 4);
-          if (C >= '0') and (C <= '9') then
-            NumValue := NumValue + Ord(C) - Ord('0')
-          else if (C >= 'A') and (C <= 'F') then
-            NumValue := NumValue + Ord(C) - Ord('A') + 10
-          else
-            NumValue := NumValue + Ord(C) - Ord('a') + 10;
-
-          C := GetChar;
-        until not IsHexDigit(C);
-      end
-      else if C = '%' then
-      begin
-        // Binary numbers are numbers, too.
-        Token := toNumber;
-        StrValue := '%';
-        C := GetChar;
-
-        if not IsBinDigit(C) then Error('Binary digit expected');
-
-        repeat
-          StrValue := StrValue + C;
-          NumValue := (NumValue shl 1);
-          if C = '1' then NumValue := NumValue + 1;
-          C := GetChar;
-        until not IsBinDigit(C);
-      end
-      else if (C = '''') or (C = '#') then
-      begin
-        // Strings come in various forms
-        Token := toString;
-
-        repeat
-          if C = '''' then
-          begin
-            // Standard string delimited by apostrophes
-            C := GetChar;
-            while True do
+            if C = '.' then
             begin
-              while (C <> '''') and (C <> #26) do
+              UngetChar;
+              Break;
+            end;
+
+            Token := toFloat;
+            StrValue := StrValue + '.';
+
+            while IsDecDigit(C) do
+            begin
+              StrValue := StrValue + C;
+              C := GetChar;
+            end;
+          end;
+
+          // And even have an exponential part
+          if (C = 'E') or (C = 'e') then
+          begin
+            Token := toFloat;
+
+            StrValue := StrValue + C;
+            C := GetChar;
+
+            if (C = '+') or (C = '-') then
+            begin
+              StrValue := StrValue + C;
+              C := GetChar;
+            end;
+
+            if not IsDecDigit(C) then Error('Digit expected');
+
+            while IsDecDigit(C) do
+            begin
+              StrValue := StrValue + C;
+              C := GetChar;
+            end;
+          end;
+
+        end
+        else if C = '$' then
+        begin
+          // Hex numbers are numbers, too.
+          Token := toNumber;
+          StrValue := '$';
+          C := GetChar;
+
+          if not IsHexDigit(C) then Error('Hex digit expected');
+
+          repeat
+            StrValue := StrValue + C;
+            NumValue := (NumValue shl 4);
+            if (C >= '0') and (C <= '9') then
+              NumValue := NumValue + Ord(C) - Ord('0')
+            else if (C >= 'A') and (C <= 'F') then
+              NumValue := NumValue + Ord(C) - Ord('A') + 10
+            else
+              NumValue := NumValue + Ord(C) - Ord('a') + 10;
+
+            C := GetChar;
+          until not IsHexDigit(C);
+        end
+        else if C = '%' then
+        begin
+          // Binary numbers are numbers, too.
+          Token := toNumber;
+          StrValue := '%';
+          C := GetChar;
+
+          if not IsBinDigit(C) then Error('Binary digit expected');
+
+          repeat
+            StrValue := StrValue + C;
+            NumValue := (NumValue shl 1);
+            if C = '1' then NumValue := NumValue + 1;
+            C := GetChar;
+          until not IsBinDigit(C);
+        end
+        else if (C = '''') or (C = '#') then
+        begin
+          // Strings come in various forms
+          Token := toString;
+
+          repeat
+            if C = '''' then
+            begin
+              // Standard string delimited by apostrophes
+              C := GetChar;
+              while True do
               begin
-                StrValue := StrValue + C;
+                while (C <> '''') and (C <> #26) do
+                begin
+                  StrValue := StrValue + C;
+                  C := GetChar;
+                end;
+
+                if C = #26 then Error('Unterminated String') else C := GetChar; (* ??? *)
+
+                if C = '''' then
+                begin
+                  StrValue := StrValue + '''';
+                  C := GetChar;
+                end
+                else Break;
+              end;
+            end
+            else
+            begin
+              // Hash sign followed by an ASCII code
+              I := 0;
+              C := GetChar;
+              if not IsDecDigit(C) then Error('Dec digit expected');
+              repeat
+                I := I * 10 + Ord(C) - Ord('0');
+                C := GetChar;
+              until not IsDecDigit(C);
+              StrValue := StrValue + Char(I);
+            end;
+          until (C <> '''') and (C <> '#');
+        end
+        else if C = '{' then
+        begin
+          // Standard Pascal comments
+          StrValue := '{';
+          repeat
+            C := GetChar;
+            StrValue := StrValue + C;
+          until C = '}';
+          C := GetChar;
+
+          StrValue := Copy(StrValue, 2, Length(StrValue) - 2);
+          Token := toComment;
+          if (StrValue <> '') and (StrValue[1] = '$') then
+            HandleDirective(StrValue);
+        end
+        else
+        begin
+          // Various Single-character tokens
+          case C of
+            '+': Token := toAdd;
+            '-': Token := toSub;
+            '*': Token := toMul;
+            '/': Token := toDiv;
+            '=': Token := toEq;
+            '<': Token := toLt;
+            '>': Token := toGt;
+            '(': Token := toLParen;
+            ')': Token := toRParen;
+            '[': Token := toLBrack;
+            ']': Token := toRBrack;
+            ':': Token := toColon;
+            ',': Token := toComma;
+            ';': Token := toSemicolon;
+            '.': Token := toPeriod;
+            '^': Token := toCaret;
+            else Error('Invalid character "' + C + '"');
+          end;
+
+          C := GetChar;
+
+          // These might turn out to be multi-character tokens
+          case Token of
+            toDiv:
+              if C = '/' then               // C-style one-line comment
+              begin
+                Source^.Column := Length(Source^.Buffer) + 1;
+                C := GetChar;
+                Token := toComment;
+              end;
+            toLt:
+              if C = '>' then               // Not equal
+              begin
+                Token := toNeq;
+                C := GetChar;
+              end
+              else if C = '=' then          // Less than or equal
+              begin
+                Token := toLeq;
                 C := GetChar;
               end;
 
-              if C = #26 then Error('Unterminated String') else C := GetChar; (* ??? *)
-
-              if C = '''' then
+            toGt:
+              if C = '=' then               // Greater than or equal
               begin
-                StrValue := StrValue + '''';
+                Token := toGeq;
+                C := GetChar;
+              end;
+
+            toLParen:
+              if C = '.' then               // Alternative notation for [
+              begin
+                Token := toLBrack;
                 C := GetChar;
               end
-              else Break;
-            end;
-          end
-          else
-          begin
-            // Hash sign followed by an ASCII code
-            I := 0;
-            C := GetChar;
-            if not IsDecDigit(C) then Error('Dec digit expected');
-            repeat
-              I := I * 10 + Ord(C) - Ord('0');
-              C := GetChar;
-            until not IsDecDigit(C);
-            StrValue := StrValue + Char(I);
-          end;
-        until (C <> '''') and (C <> '#');
-      end
-      else if C = '{' then
-      begin
-        // Standard Pascal comments
-        StrValue := '{';
-        repeat
-          C := GetChar;
-          StrValue := StrValue + C;
-        until C = '}';
-        C := GetChar;
-
-        StrValue := Copy(StrValue, 2, Length(StrValue) - 2);
-        Token := toComment;
-        if (StrValue <> '') and (StrValue[1] = '$') then
-          HandleDirective(StrValue);
-      end
-      else
-      begin
-        // Various Single-character tokens
-        case C of
-          '+': Token := toAdd;
-          '-': Token := toSub;
-          '*': Token := toMul;
-          '/': Token := toDiv;
-          '=': Token := toEq;
-          '<': Token := toLt;
-          '>': Token := toGt;
-          '(': Token := toLParen;
-          ')': Token := toRParen;
-          '[': Token := toLBrack;
-          ']': Token := toRBrack;
-          ':': Token := toColon;
-          ',': Token := toComma;
-          ';': Token := toSemicolon;
-          '.': Token := toPeriod;
-          '^': Token := toCaret;
-          else Error('Invalid character "' + C + '"');
-        end;
-
-        C := GetChar;
-
-        // These might turn out to be multi-character tokens
-        case Token of
-          toDiv:
-            if C = '/' then               // C-style one-line comment
-            begin
-              Source^.Column := Length(Source^.Buffer) + 1;
-              C := GetChar;
-              Token := toComment;
-            end;
-          toLt:
-            if C = '>' then               // Not equal
-            begin
-              Token := toNeq;
-              C := GetChar;
-            end
-            else if C = '=' then          // Less than or equal
-            begin
-              Token := toLeq;
-              C := GetChar;
-            end;
-
-          toGt:
-            if C = '=' then               // Greater than or equal
-            begin
-              Token := toGeq;
-              C := GetChar;
-            end;
-
-          toLParen:
-            if C = '.' then               // Alternative notation for [
-            begin
-              Token := toLBrack;
-              C := GetChar;
-            end
-            else if C = '*' then          // Alternative notation for comments
-            begin
-              C := GetChar;
-              repeat
-                while C <> '*' do
-                begin
+              else if C = '*' then          // Alternative notation for comments
+              begin
+                C := GetChar;
+                repeat
+                  while C <> '*' do
+                  begin
+                    C := GetChar;
+                    StrValue := StrValue + C;
+                  end;
                   C := GetChar;
                   StrValue := StrValue + C;
-                end;
+                until C = ')';
                 C := GetChar;
-                StrValue := StrValue + C;
-              until C = ')';
-              C := GetChar;
 
-              StrValue := Copy(StrValue, 3, Length(StrValue) - 4);
-              Token := toComment;
-              if (StrValue <> '') and (StrValue[1] = '$') then
-                HandleDirective(StrValue);
-            end;
+                StrValue := Copy(StrValue, 3, Length(StrValue) - 4);
+                Token := toComment;
+                if (StrValue <> '') and (StrValue[1] = '$') then
+                  HandleDirective(StrValue);
+              end;
 
-          toColon:
-            if C = '=' then               // Assignment operator
-            begin
-              Token := toBecomes;
-              C := GetChar;
-            end;
+            toColon:
+              if C = '=' then               // Assignment operator
+              begin
+                Token := toBecomes;
+                C := GetChar;
+              end;
 
-          toPeriod:
-            if C = ')' then               // Alternative notation for ]
-            begin
-              Token := toRBrack;
-              C := GetChar;
-            end
-            else if C = '.' then          // Double dot for ranges
-            begin
-              Token := toRange;
-              C := GetChar;
-            end;
+            toPeriod:
+              if C = ')' then               // Alternative notation for ]
+              begin
+                Token := toRBrack;
+                C := GetChar;
+              end
+              else if C = '.' then          // Double dot for ranges
+              begin
+                Token := toRange;
+                C := GetChar;
+              end;
+          end;
         end;
       end;
-    end;
-  until (not ScannerMuted) and (Scanner.Token <> toComment);
+    until Scanner.Token <> toComment;
+  until not ScannerMuted;
 end;
 
 (**
