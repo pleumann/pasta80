@@ -38,7 +38,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
-  * Empty `()` parameter lists (declaration and/or call).
+  * Empty `()` parameter lists (declaration and/or invocation).
   * Functions that can be called as procedures (i.e. ignorable results). 
   * Conditional compilation via compiler directives (aka a preprocessor).
   * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
@@ -339,6 +339,7 @@ The following table shows the supported directives:
 | `{$ifndef <id>}` | Compiles the following block only if `<id>` is not defined. |
 | `{$else}` | Introduces an "else" branch in a conditional block (optional). |
 | `{$endif}` | Finishes a conditional block (mandatory). |
+| `{$error <msg>}` | Terminates the compilation with an error message. |
 
 Some symbols are predefined to reflect the compiler itself or the current target platform:
 
@@ -350,6 +351,7 @@ Some symbols are predefined to reflect the compiler itself or the current target
 | `CPU_EZ80`| For targets that use an eZ80 processor |
 | `SYS_AGON`| For the Agon Light/Console8 target |
 | `SYS_CPM` | For the CP/M target |
+| `SYS_ZX` | For all ZX Spectrum targets |
 | `SYS_ZX48` | For the ZX Spectrum 48K target |
 | `SYS_ZX128`| For the ZX Spectrum 128K target |
 | `SYS_ZXNEXT`| For the ZX Spectrum Next target |
