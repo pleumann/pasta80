@@ -1708,15 +1708,7 @@ begin
     T := TrimStr(Copy(C, P + 1, 255));
   end;
 
-  if S = '$define' then
-  begin
-    if not ScannerMuted then SetDefine(T, True);
-  end
-  else if S = '$undef' then
-  begin
-    if not ScannerMuted then SetDefine(T, False);
-  end
-  else if S = '$ifdef' then
+  if S = '$ifdef' then
   begin
     PushIfDefState;
     ScannerMuted := ScannerMuted or not GetDefine(T);
@@ -1732,18 +1724,23 @@ begin
   end
   else if S = '$endif' then
     PopIfDefState
-  else if S = '$error' then
+  else if not ScannerMuted then
   begin
-    if not ScannerMuted then Error(T)
-  end
-  else if S = '$a' then
-    EmitI(T)
-  else if S = '$i' then
-    OpenInput(NativeToPosix(T))
-  else if S = '$l' then
-    SetLibrary(NativeToPosix(T))
-  else
-    Switches;
+    if S = '$define' then
+      SetDefine(T, True)
+    else if S = '$undef' then
+      SetDefine(T, False)
+    else if S = '$error' then
+      Error(T)
+    else if S = '$a' then
+      EmitI(T)
+    else if S = '$i' then
+      OpenInput(NativeToPosix(T))
+    else if S = '$l' then
+      SetLibrary(NativeToPosix(T))
+    else
+      Switches;
+  end;
 end;
 
 (* --------------------------------------------------------------------- *)
