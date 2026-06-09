@@ -2851,18 +2851,21 @@ begin
 
     btZX:    begin
                 SetDefine('CPU_Z80', True);
+                SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZX48', True);
                 EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
     btZX128:  begin
                 SetDefine('CPU_Z80', True);
+                SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZX128', True);
                 EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
     btZXN:    begin
                 SetDefine('CPU_Z80N', True);
+                SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZXNEXT', True);
                 EmitI('device ZXSPECTRUMNEXT');
               end;
