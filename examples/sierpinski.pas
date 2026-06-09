@@ -1,4 +1,11 @@
+(**
+ * Sierpinski triangle.
+ *)
 program Sierpinski;
+
+{$ifdef SYS_CPM}
+  {$error Agon or ZX Spectrum 48K/128K/Next required.}
+{$endif}
 
 procedure DrawTriangle(X1, Y1, X2, Y2, X3, Y3: Integer);
 begin
@@ -41,5 +48,9 @@ begin
   DrawSierpinski(20, 175, 235, 175, 127.5, 0, 5);
   {$endif}
 
-  repeat until Keypressed;
+  GotoXY(12, 13);
+  WriteLn('Sierpinski');
+  GotoXY(12, 14);
+  WriteLn(' Triangle');
+  ReadKey;
 end.

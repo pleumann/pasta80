@@ -1,3 +1,6 @@
+(**
+ * Shows all combinations of standard colors for text and background.
+ *)
 program Colors;
 
 var

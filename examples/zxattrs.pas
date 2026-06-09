@@ -1,4 +1,11 @@
+(**
+ * Demonstrates the various ZX Spectrum screen attributes.
+ *)
 program ZXAttrs;
+
+{$ifndef SYS_ZX}
+  {$error ZX Spectrum 48K/128K/Next required.}
+{$endif}
 
 procedure Flash(B: Boolean);
 begin
@@ -16,7 +23,7 @@ begin
 end;
 
 var
-  I: Byte;
+  I, B: Byte;
 
 begin
   ClrScr;
@@ -43,5 +50,20 @@ begin
     Inverse(True);
     Write('Inverse');
     Inverse(False);
+  end;
+  
+  GotoXY(5, 12);
+  WriteLn('Press BREAK to exit...');
+
+  B := 0;
+
+  while True do
+  begin
+    Border(B);
+
+    Inc(B);
+    if B = 8 then B := 0;
+
+    CheckBreak;
   end;
 end.

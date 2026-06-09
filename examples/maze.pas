@@ -1,7 +1,10 @@
 program Maze;
 
-{$a-}
-{$k-}
+{$ifdef SYS_CPM}
+  {$error Agon or ZX Spectrum 48K/128K/Next required.}
+{$endif}
+
+{$a-,k-}
 
 procedure Recurse(OldX, OldY, X, Y: Integer);
 var

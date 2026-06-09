@@ -1,7 +1,10 @@
+(**
+ * Calculates the first 1000 prime numbers.
+ *)
 program Primes;
 
 var
-  Primes: array[0..9999] of Integer;
+  Primes: array[0..999] of Integer;
   Count, N: Integer;
 
 function IsPrime(N: Integer): Boolean;

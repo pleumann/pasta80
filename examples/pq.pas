@@ -1,3 +1,6 @@
+(**
+ * PQ solver for quadratic equations.
+ *)
 program PQ;
 
 var

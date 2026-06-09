@@ -1,7 +1,9 @@
-program Anagrams;
+(**
+ * Recursive anagram generator.
+ *)
+ program Anagrams;
 
-{$A-}
-{$U+}
+{$a-,u+}
 
 var
   B: Byte;
@@ -23,8 +25,6 @@ begin
       B := 0;
     end;
     R := R + 1;
-//    B := (B + 1) mod 4;
-//    if B = 0 then WriteLn;
     Exit;
   end;
 

@@ -7,8 +7,8 @@
  * track of the highest pixel drawn per x-value so far. That way it can avoid
  * having to erase existing content. It's also nicer to look at. :)
  *
- * This is a monochrome version targeting the ZX Spectrum ULA screen. It will
- * work on a classic ZX Spectrum if you comment out the calls to SetCpuSpeed.
+ * This is a monochrome version that should work on all targets capable of
+ * outputting graphics.
  *)
 program Hat;
 
@@ -44,7 +44,7 @@ var
   C               : Char;                   // Keyboard input
 
 begin
-  {$ifndef sys_agon}
+  {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(3);
   {$endif}
   ClrScr;
@@ -107,7 +107,7 @@ begin
 
   repeat until KeyPressed;
 
-  {$ifndef sys_agon}
+  {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(0);
   {$endif}
 end.

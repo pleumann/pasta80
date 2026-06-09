@@ -1,3 +1,6 @@
+(**
+ * 2048 game implementation. Should compile for all target platforms.
+ *)
 program TwoKay;
 
 var

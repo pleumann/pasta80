@@ -1,14 +1,24 @@
 (**
- * Adapted from an article by Markus Lautenbacher in MC 12/1986.
+ * Mandelbrot set generator adapted from an article by Markus Lautenbacher in
+ * MC magazine 12/1986.
+ *
+ * This is a monochrome version that should work on all targets capable of
+ * outputting graphics.
  *)
 program Mandelbrot;
+
+{$ifdef SYS_CPM}
+  {$error This program cannot be compiled for CP/M.}
+{$endif}
 
 var
   X, Y, OldX, OldY, ReC, ImC, DC: Real;
   K, L, N: Integer;
 
 begin
+  {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(3);
+  {$endif}
   ClrScr;
   DC := 3 / 256;
   for K := 0 TO 255 do
@@ -35,4 +45,5 @@ begin
       end
     end;
   end;
+  ReadKey;
 end.

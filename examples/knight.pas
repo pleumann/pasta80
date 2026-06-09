@@ -1,3 +1,6 @@
+(**
+ * Calculates all possible tours of a knight on a 5x5 chess field.
+ *)
 program Knight;
 
 {$a-}

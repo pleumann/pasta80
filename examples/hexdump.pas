@@ -1,4 +1,13 @@
+(**
+ * Prints a hex-dump of a given file. Name is passed on the command line.
+ *)
 program HexDump;
+
+{$ifndef SYS_CPM}
+  {$ifndef SYS_AGON}
+    {$error Agon or CP/M required.}
+  {$endif}
+{$endif}
 
 {$u+}
 
@@ -26,6 +35,12 @@ var
   C: Char;
   S: String;
 begin
+  if ParamCount = 0 then
+  begin
+    WriteLn('File name missing.');
+    Halt(1);
+  end;
+
   Assign(T, ParamStr(1));
   Reset(T);
 

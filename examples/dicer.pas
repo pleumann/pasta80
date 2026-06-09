@@ -1,3 +1,6 @@
+(**
+ * Simulates throwing six-sided dice.
+ *)
 program Dice;
 
 const

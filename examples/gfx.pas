@@ -1,4 +1,11 @@
+(**
+ * Simple graphics demo showing some of the available primitives.
+ *)
 program Gfx;
+
+{$ifdef SYS_CPM}
+  {$error Agon or ZX Spectrum 48K/128K/Next required.}
+{$endif}
 
 {$k+}
 
@@ -6,6 +13,9 @@ var
   I, J, K, L: Integer;
 
 begin
+  {$ifdef SYS_ZXNEXT}
+  SetCpuSpeed(3);
+  {$endif}
   ClrScr;
 
   for I := 0 to 1000 do
@@ -53,6 +63,5 @@ begin
         Plot(K + 1, L + 1);
       end;
 
-  (*ClrScr;
-  Fill(128, 88); *)
+  ReadKey;
 end.

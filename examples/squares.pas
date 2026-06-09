@@ -1,3 +1,6 @@
+(**
+ * Generates some quare numbers.
+ *)
 program Squares;
 
 var

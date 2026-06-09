@@ -1,3 +1,6 @@
+(**
+ * Good old-fashioned bubble-sort.
+ *)
 program Bubble;
 
 const

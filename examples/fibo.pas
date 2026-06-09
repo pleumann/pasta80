@@ -1,3 +1,6 @@
+(**
+ * Calculates the first 25 elements of the Fibonacci sequence.
+ *)
 program Fibonacci;
 
 var

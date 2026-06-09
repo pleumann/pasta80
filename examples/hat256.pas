@@ -8,9 +8,13 @@
  * having to erase existing content. It's also nicer to look at. :)
  *
  * This is a 256 color version targeting the ZX Spectrum Next Layer 2 screen.
- * It will not work on a classic ZX Spectrum.
+ * It will not work on a classic ZX Spectrum or the Agon.
  *)
 program Hat256;
+
+{$ifndef SYS_ZXNEXT}
+  {$error ZX Spectrum Next required.}
+{$endif}
 
 const
   { Original values from Commodore PET ad }
@@ -53,7 +57,7 @@ procedure L2Enable; register; external 'l2_enable';
 procedure L2SetPixel(X, Y, Color: Byte); register; external 'l2_set_pixel';
 function L2GetPixel(X, Y: Byte): Byte; register; external 'l2_get_pixel';
 
-{$l hat256.asm}
+{$l layer2.asm}
 
 function GetPalette(I: Byte): Byte;
 begin
@@ -81,8 +85,8 @@ end;
 
 begin
   SetCpuSpeed(3);
-  ClrScr;
 
+  ClrScr;
   GotoXY(4, 11);
   WriteLn('Do you want stripes (y/n)?');
   repeat
@@ -90,11 +94,9 @@ begin
   until (C = 'y') or (c = 'n');
   Stripes := C = 'y';
 
-  { ClrScr; }
   L2Enable;
   TextBackground($B6);
-  for I := 0 to 191 do
-    Write('    ');
+  Write(#14);
 
   FillChar(Watermarks, 256, 176);
   Count := 0;
@@ -134,8 +136,8 @@ begin
         L2SetPixel(x1, y1, 0);
         { Fill every slice }
         if Stripes and (Watermarks[x1] < 176) then
-          for I := y1 + 1 to Watermarks[x1] - 1 do
-            L2SetPixel(x1, I, Colors[Count and 3]);
+            for I := y1 + 1 to Watermarks[x1] - 1 do
+              L2SetPixel(x1, I, Colors[Count and 3]);
 
         Watermarks[x1] := y1;
       end;

@@ -22,7 +22,13 @@ program MicroCalc;
     2.  Exit the program by typing: /Q
 }
 
-{$R-,U-,V-,X-,A+,C-}
+{$ifndef SYS_CPM}
+  {$ifndef SYS_AGON}
+    {$error This program only compiles for CP/M and Agon.}
+  {$endif}
+{$endif}
+
+{$A+,U-} { $R-,V-,X-,C- }
 
 
 const

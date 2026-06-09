@@ -1,3 +1,6 @@
+(**
+ * Demo for breakpoints via "Debug". Start in debugger to see how it works.
+ *)
 program Breakpoints;
 
 var
@@ -5,13 +8,13 @@ var
 
 begin
   WriteLn('Foo');
-  Debug;
+  Debug;                  (* Unconditional breakpoint. *)
   WriteLn('Bar');
 
   for I := 1 to 20 do
   begin
     WriteLn(I);
     Delay(100);
-    Debug(I mod 6 = 0);
+    Debug(I mod 6 = 0);   (* Conditional beakpoint.    *)
   end;
 end.

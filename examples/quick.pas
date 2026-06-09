@@ -1,3 +1,6 @@
+(**
+ * Good old-fashioned Quicksort.
+ *)
 program Quick;
 
 {$a-}

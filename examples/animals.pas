@@ -1,4 +1,15 @@
+(**
+ * Animal guessing game. Similar to Pangolins from the ZX Spectrum manual.
+ *)
 program Animals;
+
+{$ifndef SYS_CPM}
+  {$ifndef SYS_AGON}
+    {$ifndef SYS_ZXNEXT}
+      {$error Agon, CP/M, or ZX Spectrum Next required.}
+    {$endif}
+  {$endif}
+{$endif}
 
 type
   AnimalRec = record

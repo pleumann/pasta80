@@ -1,5 +1,6 @@
-(* Test *)
-
+(**
+ * A simple "Hello, world" example.
+ *)
 program Hello;
 
 var

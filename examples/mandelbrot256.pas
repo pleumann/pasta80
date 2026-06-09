@@ -1,7 +1,15 @@
 (**
- * Adapted from an article by Markus Lautenbacher in MC 12/1986.
+ * Mandelbrot set generator adapted from an article by Markus Lautenbacher in
+ * MC magazine 12/1986.
+ *
+ * This is a 256 color version targeting the ZX Spectrum Next Layer 2 screen.
+ * It will not work on a classic ZX Spectrum or the Agon.
  *)
 program Mandelbrot;
+
+{$ifndef SYS_ZXNEXT}
+  {$error ZX Spectrum Next required.}
+{$endif}
 
 var
   X, Y, OldX, OldY, ReC, ImC, DC: Real;
@@ -10,7 +18,7 @@ var
 procedure L2Enable; register; external 'l2_enable';
 procedure L2SetPixel(X, Y, Color: Byte); register; external 'l2_set_pixel';
 
-{$l hat256.asm}
+{$l layer2.asm}
 
 begin
   SetCpuSpeed(3);

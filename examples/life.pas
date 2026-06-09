@@ -1,3 +1,6 @@
+(**
+ * Game of life.
+ *)
 program Life;
 
 const

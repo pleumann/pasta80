@@ -1,40 +1,42 @@
 (**
- * Barnsley fern fractal.
+ * Barnsley fern fractal. Next-only variant with different shades of green.
  *)
-program Farn;
+program Barnsley256;
 
-{$ifdef SYS_CPM}
-  {$error Agon or ZX Spectrum 48K/128K/Next required.}
+{$ifndef SYS_ZXNEXT}
+  {$error ZX Spectrum Next required.}
 {$endif}
 
 const
-  {$ifdef SYS_AGON}
-    Width = 640;
-    Height = 480;
-    Cycles = 32767;
-  {$else}
-    Width = 256;
-    Height = 176;
-    Cycles = 8191;
-  {$endif}
+  Width = 256;
+  Height = 192;
+  Cycles = 32767;
 
 var
   X, Y, XN, YN, R, FX, FY: Real;
   T, U, PX, PY, OX, OY, V: Integer;
   C: Char;
 
+  procedure L2Enable; register; external 'l2_enable';
+  procedure L2SetPixel(X, Y, Color: Byte); register; external 'l2_set_pixel';
+  function L2GetPixel(X, Y: Byte): Byte; register; external 'l2_get_pixel';
+
+  procedure Plot(X, Y: Byte);
+  begin
+    (* Increase green channel by 1. *)
+    V := L2GetPixel(PX, PY);
+    if V <= 24 then L2SetPixel(PX, PY, V + 4);
+  end;
+
+  {$l layer2.asm}
+
 begin
-  {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(3);
-  {$endif}
-
-  {$ifndef SYS_AGON}
   Border(0);
-  {$endif}
-
-  TextBackground(Black);
-  TextColor(Green);
-  ClrScr;
+  L2Enable;
+  TextBackground(0);
+  TextColor(28);
+  Write(#14);
 
   X := 0.0;
   Y := 0.0;

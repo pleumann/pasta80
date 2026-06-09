@@ -1,4 +1,11 @@
+(**
+ * Plays "Frere Jacques" on the beeper.
+ *)
 program Jacques;
+
+{$ifdef SYS_CPM}
+  {$error Agon or ZX Spectrum 48K/128K/Next required.}
+{$endif}
 
 procedure Note(Duration: Real; Pitch: Integer);
 begin

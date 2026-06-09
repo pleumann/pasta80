@@ -1,3 +1,6 @@
+(**
+ * ROT13 (aka Cesar Code) encryptor.
+ *)
 program Rot13;
 
 function Crypt(S: string): string;

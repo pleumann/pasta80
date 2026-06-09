@@ -1,3 +1,6 @@
+(**
+ * Prints colored text at random locations.
+ *)
 program Crt;
 
 var
