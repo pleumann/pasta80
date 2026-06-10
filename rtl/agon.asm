@@ -287,10 +287,21 @@ __getline_2:
                 call    __newline
                 ret
 
+
 ; Agon Screen controls
 ; We are manually tracking "high" - i.e. reverse fg/bg
 ; Agon supports 2 - 64 colours, depending on screen mode.
 ; Colour choice is not checked.
+__graphfg:
+                ld      a,18    ;VDU 18, mode, colour: Set graphics colour (GCOL mode, colour)
+                rst     10h
+                xor     a       ;Set on-screen pixel to target colour value
+                rst     10h
+                ld      a,l     ; l has colour 0-63.
+                rst     10h
+                ret
+
+
 
 __textfg:
                 ld      a,l        ; l has text colour 0-63.
@@ -421,16 +432,27 @@ __skip_clr:
             pop     ix
             ret
 
-__cursor_on:  ld hl,__cur_on_str
-              call  __puts
-              ret
-__cur_on_str: db 3,23,1,1   ;VDU 23, 1, n: Cursor control
+__cursor_on: 
+            ld hl,__cur_on_str
+            jp  __puts
+__cur_on_str:
+            db 3,23,1,1   ;VDU 23, 1, n: Cursor control
 
 
-__cursor_off: ld hl,__cur_off_str
-              call  __puts
-              ret
-__cur_off_str: db 3,23,1,0   ;VDU 23, 1, n: Cursor control
+__cursor_off:
+            ld hl,__cur_off_str
+            jp  __puts
+__cur_off_str:
+            db 3,23,1,0   ;VDU 23, 1, n: Cursor control
+
+;set video mode
+;see for details https://agonplatform.github.io/agon-docs/vdp/Screen-Modes/
+__setgraphmode:
+            ld      a,22
+            rst     10h
+            ld      a,l
+            rst     10h
+            ret
 
 __checkbreak:
 ; sysvar_keyascii:        EQU 05h ; 1: ASCII keycode, or 0 if no key is pressed

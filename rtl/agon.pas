@@ -14,14 +14,14 @@
 
 const
   (**
-   * Defines the default with of the CP/M screen in characters.
+   * Defines the default with of the Agon mode 0 screen in characters.
    *)
   ScreenWidth = 80;
 
   (**
-   * Defines the default height of the CP/M screen in characters.
+   * Defines the default height of the Agon mode 0 screen in characters.
    *)
-  ScreenHeight = 24;
+  ScreenHeight = 60;
 
   (**
    * Defines the line break convention used by CP/M.
@@ -59,14 +59,24 @@ procedure CursorOn; register;               external '__cursor_on';
  *)
 procedure CursorOff; register;              external '__cursor_off';
 
+(**
+ * Sets the Agon screen/graphics mode (doesn't update the default text screen size values)
+ * See available modes here https://agonplatform.github.io/agon-docs/vdp/Screen-Modes/
+ **)
+procedure SetGraphMode(I: Integer); register;        external '__setgraphmode';
 
 (**
- * Sets the text color (0..7).
+ * Sets the GCOL graphics color (range depends on screen mode).
+ *)
+procedure SetColor(I: Integer); register;      external '__graphfg';
+
+(**
+ * Sets the text color (range depends on screen mode).
  *)
 procedure TextColor(I: Integer); register;      external '__textfg';
 
 (**
- * Sets the text background (0..7).
+ * Sets the text background (range depends on screen mode).
  *)
 procedure TextBackground(I: Integer); register; external '__textbg';
 
