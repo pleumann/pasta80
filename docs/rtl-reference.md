@@ -135,6 +135,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `LowVideo` | [CPM] [Agon] | Switches to low-intensity video. |
 | `NormVideo` | [CPM] [Agon] | Restores normal video intensity. |
 | `Border(Color: Integer)` | [ZX48] | Sets the ZX Spectrum border colour (0..7) via the ROM routine. |
+| `SetGraphMode(Mode: Integer)` | [Agon] | Sets the graphics and text screen mode for Agon. |
 
 ### Graphics
 
@@ -144,6 +145,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `Draw(DX, DY: Integer)` | [ZX48] [Agon] | Draws a line from the last plot position by the relative offset `(DX, DY)`. |
 | `Circle(CX, CY, Radius: Integer)` | [ZX48] [Agon] | Draws a circle with centre `(CX, CY)` and the given radius. |
 | `FloodFill(X, Y: Integer)` | [ZX48] [Agon] | Performs a recursive flood-fill operation starting at `(X, Y)`. Agon requires VDP 2.16.0+ for this function.|
+| `SetColor(Color: Integer)` | [Agon] | Sets the graphics plot colour (range depends on screen mode). |
 
 ### Sound
 
