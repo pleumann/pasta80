@@ -7856,6 +7856,7 @@ function Build: Integer;
 var
   StartTime: Int64;
   Duration: Real;
+  Sym: PSymbol;
 begin
   StartTime := GetMSCount;
 
@@ -7885,7 +7886,16 @@ begin
     WriteLn('  ', PosixToNative(FRelative(SrcFile)),
             ' -> ', PosixToNative(FRelative(AsmFile)));
 
-    while SymbolTable <> nil do CloseScope(True);
+    // Dispose all symbol table entries directly to avoid CloseScope calling
+    // Error() for unresolved forward declarations left by a failed compile.
+    // If Error() were called here (HasStoredState is already True), LongJmp
+    // would abort the cleanup and leave the table permanently dirty.
+    while SymbolTable <> nil do
+    begin
+      Sym := SymbolTable^.Prev;
+      Dispose(SymbolTable);
+      SymbolTable := Sym;
+    end;
     while Source <> nil do CloseInput;
     C := #0;
 
@@ -7895,6 +7905,7 @@ begin
     Offset := 0;
     Scanner.Token := toNone;
     CurrentScope := nil;
+    CurrentBlock := nil;
     LastBuiltIn := nil;
 
     ClearStrings;
