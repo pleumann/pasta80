@@ -7964,9 +7964,9 @@ begin
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Execute(SjAsmCmd,  '--zxnext --lst --syntax=abf --nologo --msg=err ' + AsmFile)
+      Execute(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + AsmFile)
     else
-      Execute(SjAsmCmd, '--syntax=abf --lst --nologo --msg=err ' + AsmFile);
+      Execute(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + AsmFile);
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
