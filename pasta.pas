@@ -455,6 +455,17 @@ begin
   end;
 end;
 
+procedure DeleteFile(const Name: String);
+var
+  F: File;
+begin
+  Assign(F, Name);
+  {$i-}
+  Erase(F);
+  IOResult;
+  {$i+}
+end;
+
 procedure CleanDir(const Dir: String);
 var
   R: SearchRec;
@@ -542,6 +553,7 @@ var
 
   Overlays: Boolean = False;
   Release: Boolean = False;
+  KeepInt: Boolean = False;
 
 var
   HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -7982,6 +7994,9 @@ begin
     Build := 0;
   end;
 
+  if (Result <> 3) and not KeepInt then
+    DeleteFile(AsmFile);
+
   HasStoredState := False;
 end;
 
@@ -8528,6 +8543,7 @@ begin
     WriteLn('  --ovr          enable banked-switched overlays');
     WriteLn;
     WriteLn('  --release      disable assertions and breakpoints');
+    WriteLn('  --keepint      keep intermediate files (like .asm)');
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --config       shows (and checks) the configuration');
@@ -8572,6 +8588,8 @@ begin
       SmartLink := True
     else if SrcFile = '--release' then
       Release := True
+    else if SrcFile = '--keepint' then
+      KeepInt := True
     else if SrcFile = '--ide' then
       Ide := True
     else
