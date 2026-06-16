@@ -31,6 +31,8 @@ __done:         di
                 exx
                 ei
 
+                ld      bc,(__exitcode)
+
                 ret
 
 __saved_sp:     dw      0

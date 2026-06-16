@@ -4817,9 +4817,16 @@ begin
     begin
       NextToken;
       TypeCheck(dtByte, ParseExpression, tcExpr);
+      EmitI('pop hl');
+      EmitI('ld (__exitcode),hl');
       (* TODO Currently ignored. CP/M 2.2 does not support this. *)
       Expect(toRParen);
       NextToken;
+    end
+    else
+    begin
+      EmitI('ld hl,0');
+      EmitI('ld (__exitcode),hl');
     end;
 
     EmitI('jp __done')

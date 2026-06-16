@@ -252,6 +252,7 @@ function LoCase(C: Char): Char; register; inline
 var
   RandSeed1: Integer absolute 'seed1';
   RandSeed2: Integer absolute 'seed2';
+  ExitCode: Integer absolute '__exitcode';
 
 function Random(Range: Integer): Integer; register; external '__random';
 function RandomReal: Real; register;                external '__random48';

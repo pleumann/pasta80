@@ -4,7 +4,7 @@
 
 __cur_file      dw      0
 __text_buf      dw      0
-
+__exitcode      dw      0
 ;
 ; Some stuff shared between the routines
 ;
