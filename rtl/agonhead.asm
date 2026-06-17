@@ -4,18 +4,21 @@
 ; Table 12. CPU Code Suffix to Assembled Prefix Mapping
 ; CPU Code Suffix   Assembled Prefix Byte (hex)
 ; .SIS					40
+	MACRO	mksis
+	db		09h		;add .SIS to next instruction
+	ENDM
 ; .LIS					49
 	MACRO	mklis
 	db		49h		;add .LIS to next instruction
 	ENDM
 ; .SIL					52
 	MACRO	mksil
-	db		52h		;add .LIS to next instruction
+	db		52h		;add .SIL to next instruction
 	ENDM
 
 ; .LIL					5B
 	MACRO	mklil
-	db		5Bh		;add .LIS to next instruction
+	db		5Bh		;add .LIL to next instruction
 	ENDM
 
 ; LD A,MB	;Segment base
@@ -139,7 +142,8 @@ __init:
 ;
 ;
 __done:
-            ld      hl,0
+			mksis
+			ld		hl,(__exitcode)
 
 
 
