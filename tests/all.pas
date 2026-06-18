@@ -51,6 +51,10 @@ type
 
   Str255 = string[255];
 
+  ArrayWithConstants = array[Start..Stop] of Byte;
+
+  StringWithConst = String[Stop];
+
 var
   X, Y, Z: Integer;
   B: Boolean;

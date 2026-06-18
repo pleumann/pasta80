@@ -6895,8 +6895,18 @@ begin
     if Scanner.Token = toLBrack then
     begin
       NextToken;
-      Expect(toNumber);
-      DataType^.Value := Scanner.NumValue + 1;
+      if Scanner.Token = toIdent then
+      begin
+        Sym := LookupGlobalOrFail(Scanner.StrValue);
+        if Sym^.Kind <> scConst then Error('Not a constant: ' + Scanner.StrValue);
+        TypeCheck(dtInteger, Sym^.DataType, tcAssign);
+        DataType^.Value := Sym.Value + 1;
+      end
+      else
+      begin
+        Expect(toNumber);
+        DataType^.Value := Scanner.NumValue + 1;
+      end;
       NextToken;
       Expect(toRBrack);
       NextToken;
