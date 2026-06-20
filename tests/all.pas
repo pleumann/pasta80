@@ -1135,6 +1135,9 @@ begin
   SumFunc := A + B;
 end;
 
+const
+  Overlay1 = 1;
+
 overlay procedure TestProcFunc();
 var
   J: Integer;
@@ -1222,9 +1225,6 @@ begin
   Copy('Hello, World!', 8, 5);
   Assert(True);
 end;
-
-const
-  Overlay1 = 1;
 
 overlay procedure AddPoints1(P, Q: TPoint; var R: TPoint);
 begin
