@@ -434,21 +434,12 @@ __clrscr:
 ; sysvar_scrCols:         EQU 13h ; 1: Screen columns in characters
 ; VDU 23, 0, &82: Request text cursor position
 ; Requires scroll protection set on
-; TODO: add code to request cursor location update and wait for result.
 __clreol:
 ; not sure why we are preserving IX
 ; update cursor position first.
-            ld      a,23
-            rst     10h
-            xor     a
-            rst     10h
-            ld      a,82h
-            rst     10h
-; now try to calculate the required data
             push    ix
             push    bc
-            ld      a, 8        ;0x08: mos_sysvars
-            rst     08h         ;IX(U) now has sysvars
+            call    __get_cursor
             mklil
             ld      a,(IX+sysvar_scrCols)
             mklil
