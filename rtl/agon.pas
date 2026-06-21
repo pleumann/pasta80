@@ -49,6 +49,11 @@ procedure ClrEol; register;                  external '__clreol';
  *)
 procedure GotoXY(X, Y: Integer); register;  external '__gotoxy';
 
+function WhereX: Integer; register; external '__wherex';
+
+function WhereY: Integer; register; external '__wherey';
+
+
 (**
  * Shows the cursor.
  *)

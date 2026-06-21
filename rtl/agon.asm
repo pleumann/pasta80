@@ -7,6 +7,7 @@ sysvar_time:        EQU 00h ; 4: Clock timer in centiseconds (incremented by 2 e
 sysvar_vpd_pflags:  EQU 04h ; 1: Flags to indicate completion of VDP commands
 sysvar_keyascii:    EQU 05h ; 1: ASCII keycode, or 0 if no key is pressed
 sysvar_cursorX:     EQU 07h ; 1: Cursor X position
+sysvar_cursorY:     EQU 08h ; 1: Cursor Y position
 sysvar_audioChannel:    EQU 0Dh ; 1: Audio channel 
 sysvar_audioSuccess:    EQU 0Eh ; 1: Audio channel note queued (0 = no, 1 = yes)
 sysvar_scrCols:     EQU 13h ; 1: Screen columns in characters
@@ -377,6 +378,43 @@ __gotoxy:     ld a,31   ;VDU 31, x, y: Move text cursor to x, y text position.
               rst 10h
               ret
 
+__get_cursor:
+                ; Get sysvars pointer in uix
+                ld      a,8
+                rst     $08
+                ; Clear cursor position flag
+                mklil
+                res     0, (IX + $04) 
+                ; Request cursor position
+                ld      a, 23
+                rst     $10
+                ld      a, 0
+                rst     $10
+                ld      a, $82
+                rst     $10
+
+__get_cursor_wait:
+                ; Wait for flag to be set again
+                mklil
+                bit    0, (IX + $04)
+                jr      z, __get_cursor_wait
+                ret
+
+__wherex:
+                call __get_cursor
+                ld      h,0
+                mklil
+                ld      l, (IX + sysvar_cursorX)
+                inc     l
+                ret
+
+__wherey:
+                call __get_cursor
+                ld      h,0
+                mklil
+                ld      l, (IX + sysvar_cursorY)
+                inc     l
+                ret
 ;Clear screen and reset text colour + tracking
 __clrscr:
               ld    a,15
