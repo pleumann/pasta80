@@ -53,6 +53,24 @@ function WhereX: Integer; register; external '__wherex';
 
 function WhereY: Integer; register; external '__wherey';
 
+procedure InsLine; register; external '__insline';
+
+procedure DelLine; register; external '__delline';
+
+procedure ClrEos;
+var
+  X, Y: Integer;
+
+  procedure ClrEosAsm; register; external '__clreos';
+
+begin
+  ClrEol;
+  X := WhereX;
+  Y := WhereY;
+  GotoXY(X, Y + 1);
+  ClrEosAsm;
+  GotoXY(X, Y);
+end;
 
 (**
  * Shows the cursor.

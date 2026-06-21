@@ -11,6 +11,7 @@ sysvar_cursorY:     EQU 08h ; 1: Cursor Y position
 sysvar_audioChannel:    EQU 0Dh ; 1: Audio channel 
 sysvar_audioSuccess:    EQU 0Eh ; 1: Audio channel note queued (0 = no, 1 = yes)
 sysvar_scrCols:     EQU 13h ; 1: Screen columns in characters
+sysvar_scrRows:     EQU 14h ; 1: Screen rows in characters
 sysvar_scrpixelIndex:   EQU 16h ; 1: Index of pixel data read from screen
 sysvar_vkeydown:    EQU 18h ; 1: Virtual key state from FabGL (0=up, 1=down)
 
@@ -415,6 +416,60 @@ __wherey:
                 ld      l, (IX + sysvar_cursorY)
                 inc     l
                 ret
+
+; Sets a viewport from the current cursor to the end of the screen.
+__set_viewport:
+                call    __get_cursor
+
+                ld      a,28            ; Set text viewport
+                rst     10h
+                xor     a               ; Left = 0
+                rst     10h
+                mklil
+                ld      a, (IX + sysvar_scrRows)   ; Bottom = screen height - 1
+                dec     a
+                rst     10h
+                mklil
+                ld      a, (IX + sysvar_scrCols)   ; Right = screen width - 1
+                dec     a
+                rst     10h
+                mklil
+                ld      a, (IX + $08)   ; Top = cursor row
+                rst     10h
+                ret
+
+; Scrolls depending on the value given in the e register.
+__scroll:
+                ld      a,23            ; System command
+                rst     10h
+                ld      a,7             ; Scroll
+                rst     10h
+                xor     a               ; Extent 0 = text viewport
+                rst     10h
+                ld      a,e             ; Direction 2 = down, 3 = up
+                rst     10h
+                xor     a               ; Movement 0 = 1 character
+                rst     10h
+
+; Resets the current viewport.
+__reset_viewport
+                ld      a,26
+                rst     10h
+                ret
+
+__insline:
+                ld      e, 2
+                jp      __insdel
+
+__delline:
+                ld      e, 3
+                jp      __insdel
+
+__insdel:
+                call    __set_viewport
+                call    __scroll
+                jp      __reset_viewport
+            
 ;Clear screen and reset text colour + tracking
 __clrscr:
               ld    a,15
@@ -460,6 +515,12 @@ __skip_clr:
             pop     bc
             pop     ix
             ret
+
+__clreos:
+            call    __set_viewport
+            ld      a,12    ;VDU 12: Clear text area (CLS)
+            rst     10h
+            jp      __reset_viewport
 
 __cursor_on: 
             ld hl,__cur_on_str
