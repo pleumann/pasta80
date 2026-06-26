@@ -640,14 +640,14 @@ begin
     Inc(F.RL);
     Inc(Actual);
     Dec(Count);
-    Inc(R.HL, 128);
 
-// do we have to fill after EOF? Not sure this will work for us.
-//    if R.DE < 128 then
-//    begin
-//      FillChar(R.HL, 128 - R.DE, #26);
-//      Exit;
-//    end;
+    if R.DE < 128 then
+    begin
+      FillChar(Ptr(R.HL + R.DE)^, 128 - R.DE, #26);
+      Exit;
+    end;
+
+    Inc(R.HL, 128);
   end;
 end;
 
