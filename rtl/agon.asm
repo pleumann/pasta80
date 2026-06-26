@@ -434,7 +434,7 @@ __set_viewport:
                 dec     a
                 rst     10h
                 mklil
-                ld      a, (IX + $08)   ; Top = cursor row
+                ld      a, (IX + sysvar_cursorY)   ; Top = cursor row
                 rst     10h
                 ret
 
@@ -459,16 +459,29 @@ __reset_viewport
 
 __insline:
                 ld      e, 2
-                jp      __insdel
+                jr      __insdel
 
 __delline:
                 ld      e, 3
-                jp      __insdel
 
 __insdel:
                 call    __set_viewport
+                mklil
+                ld      l,(IX+sysvar_cursorX)
+                mklil
+                ld      h,(IX+sysvar_cursorY)
+                push    hl
                 call    __scroll
-                jp      __reset_viewport
+                call    __reset_viewport
+                pop     hl
+                ld      a,31
+                rst     $10
+                ld      a,l
+                rst     $10
+                ld      a,h
+                rst     $10
+                ret
+
             
 ;Clear screen and reset text colour + tracking
 __clrscr:
