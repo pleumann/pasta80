@@ -140,6 +140,21 @@ procedure NormVideo; register; inline
   $c9 (* TODO implement me! *)
 );
 
+(**
+ * Activates inverse display.
+ *)
+procedure InverseOn;
+begin
+  Write(#27'p');
+end;
+
+(**
+ * Deactivates inverse display.
+ *)
+procedure InverseOff;
+begin
+  Write(#27'q');
+end;
 (* -------------------------------------------------------------------------- *)
 (* --- Keyboard support ----------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)

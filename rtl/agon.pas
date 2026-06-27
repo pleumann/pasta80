@@ -129,6 +129,21 @@ procedure LowVideo; register;   external '__textlow';
  *)
 procedure NormVideo; register;   external '__textnorm';
 
+(**
+ * Activates inverse display.
+ *)
+procedure InverseOn;
+begin
+  HighVideo;
+end;
+
+(**
+ * Deactivates inverse display.
+ *)
+procedure InverseOff;
+begin
+  LowVideo;
+end;
 
 (* -------------------------------------------------------------------------- *)
 (* --- Keyboard support ----------------------------------------------------- *)
