@@ -142,11 +142,7 @@ __init:
 ;
 ;
 __done:
-			mksis
 			ld		hl,(__exitcode)
-
-
-
 
 			mklil
 			POP		IX			; Restore the registers

@@ -234,13 +234,11 @@ function ParamChar(Param: Byte; Bytenum: Byte): Char; register;        external 
  *)
 function ParamStr(I: Byte): String;
 var
-  CmdLine: String[128];
   Tmp: String[255];
   Tmpchar: Char;
-  C, D: Boolean;
   J: Byte;
 begin
-  C := True;
+  Tmp[0] := #255; //preset the length to maximum
 
   if I <= ParamCount then
     begin

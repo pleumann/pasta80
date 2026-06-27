@@ -1729,6 +1729,16 @@ __conout:       equ     __putc
 ; Exit:   -
 ; Uses:   AF,BC
 ;
+        ifdef   SYS_AGON
+__puts:         ld      bc,0
+                ld      a,(hl)
+                or      a
+                ret     z
+                inc     hl
+                ld      c,a
+                rst     18h
+                ret
+        else
 __puts:         ld      b,(hl)
                 inc     b
                 jr      __putschk
@@ -1741,6 +1751,7 @@ __putsloop:     ld      a,(hl)
 __putschk:      inc     hl
                 djnz    __putsloop
                 ret
+        endif
 
 __lineptr:      ds      2
 
