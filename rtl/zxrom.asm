@@ -54,6 +54,26 @@ __newline:      ld      a,13
 __putc:         rst     16
                 ret
 
+;
+; Print string to screen
+;
+; Entry:  HL (string address)
+; Exit:   -
+; Uses:   AF,BC
+;
+__puts:         ld      b,(hl)
+                inc     b
+                jr      __putschk
+__putsloop:     ld      a,(hl)
+                push    hl
+                push    bc
+                call    __putc
+                pop     bc
+                pop     hl
+__putschk:      inc     hl
+                djnz    __putsloop
+                ret
+
 ; Reads a whole line of input from the keyboard into the central buffer, so
 ; that other routines can consume it.
 ;
