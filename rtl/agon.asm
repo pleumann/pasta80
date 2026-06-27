@@ -26,7 +26,6 @@ sysvar_vkeydown:    EQU 18h ; 1: Virtual key state from FabGL (0=up, 1=down)
 ;
 
 mos_call:
-;    push    ix     ;Doesn't need preserving at this stage
     ld      a,l     ;mos API routine to call
     push    de      ;address of register struct
     pop     ix
@@ -40,7 +39,6 @@ mos_call:
     ;ld hl,(IX+4) ->  LD HL,(IX+d) 0/1 5/6 DD, 27, dd
     db      0ddh, 027h, 04
 
-
     rst     08h ;MOS API call
     ;ld (IX+0),bc -> LD (IX+d),BC 0/1 5/6 DD, 0F, dd
     db      0ddh, 00Fh, 00h
@@ -50,7 +48,6 @@ mos_call:
     db      0ddh, 02Fh, 04h
     ld      l,a ;Return A into HL.
     ld      h,0
-;    pop     ix
     ret
 
 mos_call_oscli:
@@ -158,7 +155,6 @@ __getargvchar:
     add     hl,de   ;* 3
 
     ld      de,argv_ptrs
-;    add     hl,de
     push    hl
     pop     ix
     add     ix,de
@@ -181,7 +177,7 @@ __getargvchar:
 ;
 ; In:  A (ASCII code)
 ; Out:   -
-; Uses:   C,E,IY
+; Uses:   -
 ;
 __putc:
                 rst     10h
@@ -873,7 +869,6 @@ al_point_1:
 ; turn off logical scaling as soon as possible as we don't want this for pascal.
 al_setcoords:
               ld hl,__scaling_off_str
-              call  __puts
-              ret
+              jp    __puts
 __scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
