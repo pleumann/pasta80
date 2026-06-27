@@ -1718,40 +1718,7 @@ __setgeq:
 ; Exclude shared with in
 
 
-
-
 __conout:       equ     __putc
-
-;
-; Print string to screen
-;
-; Entry:  HL (string address)
-; Exit:   -
-; Uses:   AF,BC
-;
-        ifdef   SYS_AGON
-__puts:         ld      bc,0
-                ld      a,(hl)
-                or      a
-                ret     z
-                inc     hl
-                ld      c,a
-                rst     18h
-                ret
-        else
-__puts:         ld      b,(hl)
-                inc     b
-                jr      __putschk
-__putsloop:     ld      a,(hl)
-                push    hl
-                push    bc
-                call    __putc
-                pop     bc
-                pop     hl
-__putschk:      inc     hl
-                djnz    __putsloop
-                ret
-        endif
 
 __lineptr:      ds      2
 

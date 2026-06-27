@@ -178,9 +178,23 @@ __getargvchar:
 ; In:  A (ASCII code)
 ; Out:   -
 ; Uses:   -
+; equivalent to rst 10h
+__putc:         equ     10h
+
 ;
-__putc:
-                rst     10h
+; Print string to screen
+;
+; Entry:  HL (string address)
+; Exit:   -
+; Uses:   AF,BC
+;
+__puts:         ld      bc,0
+                ld      a,(hl)
+                or      a
+                ret     z
+                inc     hl
+                ld      c,a
+                rst     18h
                 ret
 
 ;
