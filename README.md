@@ -329,6 +329,7 @@ The following table shows the supported directives:
 | :-------- | :------ |
 | `{$i <file>}` | Includes the given Pascal file. |
 | `{$l <file>}` | Includes the given Assembly file. |
+| `{$m <size>}` | Sets the minimum stack size (in bytes). |
 | `{$a+}`, `{$a-}` | Turns absolute addressing on or off. Default is **on**. |
 | `{$i+}`, `{$i-}` | Turns IO checking on or off. Default is **on**. |
 | `{$k+}`, `{$k-}` | Turns stack checking on or off. Default is **off**. |

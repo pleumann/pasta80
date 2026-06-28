@@ -1750,6 +1750,11 @@ begin
       OpenInput(NativeToPosix(T))
     else if S = '$l' then
       SetLibrary(NativeToPosix(T))
+    else if S = '$m' then
+    begin
+      Val(T, StackSize, P);
+      if P <> 0 then Error('Invalid stack size');
+    end
     else
       Switches;
   end;
