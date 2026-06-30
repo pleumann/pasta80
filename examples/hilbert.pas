@@ -16,9 +16,6 @@ const
     StartX =  50; StartY = 10; Order = 5; Step = 5;
   {$endif}
 
-var
-  X, Y : Integer;
-
 procedure Recurse(N, DX, DY : Integer);
 begin
   if N > 0 then
