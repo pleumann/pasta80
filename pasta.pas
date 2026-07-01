@@ -4357,12 +4357,7 @@ begin
     Expect(toRParen);
     NextToken;
   end
-  else if Scanner.Token = toLParen then
-  begin
-    NextToken;
-    Expect(toRParen);
-    NextToken;
-  end;
+  else if Scanner.Token = toLParen then Error('Arguments not allowed here')
 end;
 
 (**
@@ -7378,8 +7373,18 @@ begin
     begin
       NextToken;
 
-      if Scanner.Token <> toRParen then
+      IsRef := False;
+      if Scanner.Token = toVar then
       begin
+        IsRef := True;
+        NextToken;
+      end;
+
+      ParseParamList(IsRef);
+      while Scanner.Token = toSemicolon do
+      begin
+        NextToken;
+
         IsRef := False;
         if Scanner.Token = toVar then
         begin
@@ -7387,20 +7392,7 @@ begin
           NextToken;
         end;
 
-        ParseParamList(IsRef);
-        while Scanner.Token = toSemicolon do
-        begin
-          NextToken;
-
-          IsRef := False;
-          if Scanner.Token = toVar then
-          begin
-            IsRef := True;
-            NextToken;
-          end;
-
-          ParseParamList(IsRef); (* ParamGroup *)
-        end;
+        ParseParamList(IsRef); (* ParamGroup *)
       end;
       Expect(toRParen);
       NextToken;
