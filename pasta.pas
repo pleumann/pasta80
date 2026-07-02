@@ -5563,7 +5563,7 @@ function ParseFactor: PSymbol;
 var
   Sym: PSymbol; T: PSymbol;
   Op: TToken;
-  S1, S2, Tag: String;
+  Tag: String;
 begin
   if Scanner.Token = toIdent then
   begin
