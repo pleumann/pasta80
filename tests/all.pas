@@ -1123,6 +1123,8 @@ begin
   WriteLn;
 end;
 
+const Dummy2 = 0;
+
 overlay procedure NoParamProc;
 begin
   X := 1234;
@@ -2985,7 +2987,7 @@ begin
   Assert(T = 'Alrighty!');
 end;
 
-const Dummy2 = 0;
+const Dummy3 = 0;
 
 overlay procedure TestSubrange;
 var
