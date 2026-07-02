@@ -6485,7 +6485,7 @@ function ParseTypeDef: PSymbol; forward;
  *)
 procedure ParseConstValue(DataType: PSymbol);
 var
-  I, Sign, Value, Offset: Integer;
+  I, Value, Offset: Integer;
   Sym, T: PSymbol;
   Test: Boolean;
 begin
@@ -6554,13 +6554,15 @@ begin
   begin
     if Scanner.Token = toSub then
     begin
-      Sign := -1;
       NextToken;
+      Expect(toFloat);
+      Emit('', 'dw ' + EncodeReal('-' + Scanner.StrValue), '');
     end
-    else Sign := 1;
-    Expect(toFloat);
-
-    Emit('', 'dw ' + EncodeReal(Scanner.StrValue), '');
+    else
+    begin
+      Expect(toFloat);
+      Emit('', 'dw ' + EncodeReal(Scanner.StrValue), '');
+    end;
 
     NextToken;
   end
@@ -6652,11 +6654,6 @@ begin
         Sym^.Tag := AddString(Scanner.StrValue);
       end;
     end
-    else if Scanner.Token = toFloat then
-    begin
-      Sym^.DataType := dtReal;
-      Sym^.Tag := EncodeReal(Scanner.StrValue);
-    end
     else if Scanner.Token = toIdent then
     begin
       Sym2 := LookupGlobalOrFail(Scanner.StrValue);
@@ -6682,13 +6679,17 @@ begin
       if Scanner.Token = toFloat then
       begin
         Sym^.DataType := dtReal;
-        Sym^.Tag := EncodeReal('-' + Scanner.StrValue);
+        if Sign = -1 then
+          Sym^.Tag := EncodeReal('-' + Scanner.StrValue)
+        else
+          Sym^.Tag := EncodeReal(Scanner.StrValue)
       end
       else
       begin
         Sym^.Value := Sign * Scanner.NumValue;
         Sym^.DataType := dtInteger;
-      end;    end;
+      end;
+    end;
 
     NextToken;
   end;

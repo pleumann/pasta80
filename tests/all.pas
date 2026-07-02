@@ -6,8 +6,10 @@ const
   NumberOfTheBeast = 666;
 
   MyPi = 3.1415;
+  MyNegPi = -3.1415;
 
-  NegPi = -3.1415;
+  MyTypedPi: Real = 3.1415;
+  MyTypedNegPi: Real = -3.1415;
 
   NotTrue = False;
 
@@ -164,6 +166,12 @@ begin
 
   Assert(BinVar = 85);
   Assert(HexVar = -21555);
+
+  Assert(MyPi > 0);
+  Assert(MyNegPi < 0);
+
+  Assert(MyTypedPi > 0);
+  Assert(MyTypedNegPi < 0);
 end;
 
 overlay procedure TestAdd;
