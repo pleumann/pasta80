@@ -38,6 +38,22 @@ procedure ClrScr; register;                         external 'zx_clrscr';
 procedure GotoXY(X, Y: Integer); register;          external 'zx_gotoxy';
 
 (**
+ * Returns the current cursor column, as tracked by the ROM.
+ *)
+function WhereX: Integer;
+begin
+  WhereX := 34 - Mem[$5C88];
+end;
+
+(**
+ * Returns the current cursor row, as tracked by the ROM.
+ *)
+function WhereY: Integer;
+begin
+  WhereY := 25 - Mem[$5C89];
+end;
+
+(**
  * Sets the text color (0..7).
  *)
 procedure TextColor(Color: Integer); register;      external 'zx_color';
