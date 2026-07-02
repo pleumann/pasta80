@@ -7990,9 +7990,9 @@ begin
 
     //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
-      Execute(SjAsmCmd,  '--zxnext --syntax=abf --nologo --msg=err ' + AsmFile)
+      Execute(SjAsmCmd,  '--zxnext --lst --syntax=abf --nologo --msg=err ' + AsmFile)
     else
-      Execute(SjAsmCmd, '--syntax=abf --nologo --msg=err ' + AsmFile);
+      Execute(SjAsmCmd, '--lst --syntax=abf --nologo --msg=err ' + AsmFile);
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
@@ -8009,7 +8009,10 @@ begin
   end;
 
   if (Result <> 3) and not KeepInt then
+  begin
     DeleteFile(AsmFile);
+    DeleteFile(ChangeExt(AsmFile, '.lst'));
+  end;
 
   HasStoredState := False;
 end;
