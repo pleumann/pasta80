@@ -38,7 +38,6 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
-  * Empty `()` parameter lists (declaration and/or invocation).
   * Functions that can be called as procedures (i.e. ignorable results). 
   * Conditional compilation via compiler directives (aka a preprocessor).
   * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
