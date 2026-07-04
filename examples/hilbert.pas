@@ -28,6 +28,9 @@ begin
 end;
 
 begin
+  {$ifdef SYS_ZXNEXT}
+  SetCpuSpeed(3);
+  {$endif}
   ClrScr;
   Plot(StartX, StartY);
   Recurse(Order, Step, 0)
