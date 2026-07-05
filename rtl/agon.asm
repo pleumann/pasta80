@@ -15,6 +15,7 @@ sysvar_scrRows:     EQU 14h ; 1: Screen rows in characters
 sysvar_scrpixelIndex:   EQU 16h ; 1: Index of pixel data read from screen
 sysvar_vkeydown:    EQU 18h ; 1: Virtual key state from FabGL (0=up, 1=down)
 
+_audiochannel    equ 2   ;agon audio channel for sound routines - independent of beep
 
 
 ; Calls a MOS API function.
@@ -656,6 +657,63 @@ __agon_beep_1:
             pop     ix
             ret
 
+;Sound commands use channel 2
+
+;Command 0: Play note
+;VDU 23, 0, &85, channel, 0, volume, frequency; duration;
+;VDU 23, 0, &85, channel, 10: Reset Channel
+
+__sound:
+            ld  a,23
+            rst 10h
+            xor a
+            rst 10h
+            ld  a,085h
+            rst 10h
+            ld  a,_audiochannel
+            rst 10h
+            ld  a,10
+            rst 10h
+            ld  a,23
+            rst 10h
+            xor a
+            rst 10h
+            ld  a,085h
+            rst 10h
+            ld  a,_audiochannel
+            rst 10h
+            xor a
+            rst 10h
+            ld  a,127   ;max volume
+            rst 10h
+            ld  a,l
+            rst 10h
+            ld  a,h
+            rst 10h
+            ld  a,255
+            rst 10h
+            rst 10h
+            ret
+
+; Command 12: Set duration
+; VDU 23, 0, &85, channel, 12, duration; durationHighByte
+__nosound:
+            ld  a,23
+            rst 10h
+            xor a
+            rst 10h
+            ld  a,085h
+            rst 10h
+            ld  a,_audiochannel
+            rst 10h
+            ld  a,12
+            rst 10h
+            xor a
+            rst 10h
+            rst 10h
+            rst 10h
+            ret
+
 
 ; Delay routine
 ; This will need to be an estimate, subtracking 17ms for every 60Hz (or 70hz) tick...
@@ -878,11 +936,25 @@ al_point_1:
             ret
 
 
+; Initialize Agon Hardware
+; Turn off logical scaling, set up cursor, set up channel 2 as sine wave for audio
+; which is separate to beep
+
 ; VDU 23, 0, &C0, n: Turn logical screen scaling on and off *
 ; Turns logical screen scaling on and off, where 1=on and 0=off.
 ; turn off logical scaling as soon as possible as we don't want this for pascal.
-al_setcoords:
-              ld hl,__scaling_off_str
+
+; Command 10: Reset Channel
+; VDU 23, 0, &85, channel, 10
+; This is equivalent to disabling and then enabling the channel.
+; 
+;Command 4: Set waveform
+;VDU 23, 0, &85, channel, 4, waveformOrSample, [bufferId;]
+
+al_initagonhw:
+              ld hl,__agon_init_hw_str
               jp    __puts
-__scaling_off_str: db 8,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
+__agon_init_hw_str: db 19,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
+                db 23, 0, 85h, _audiochannel, 10    ;VDU 23, 0, &85, channel, 10: Reset Channel
+                db 23, 0, 85h, _audiochannel, 4, 3  ;VDU 23, 0, &85, channel, 4, waveformOrSample: Set waveform (sine wave) 

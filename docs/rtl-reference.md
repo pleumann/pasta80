@@ -151,7 +151,9 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Sound(Frequency, Duration: Integer)` | [ZX48] [Agon] | Plays a tone at the given frequency (Hz) for the given duration (ms). Synchronous; requires CPU speed 3.5 MHz. |
+| `Sound(Frequency, Duration: Integer)` | [ZX48] | Plays a tone at the given frequency (Hz) for the given duration (ms). Synchronous; requires CPU speed 3.5 MHz. |
+| `Sound(Frequency)` | [Agon] | Plays a tone at the given frequency (Hz) continuously in the background until a different Sound frequency specified or until NoSound. Uses a separate channel to Beep. |
+| `NoSound` | [Agon] | Stops the current sound. |
 | `Beep(Duration: Real; Pitch: Integer)` | [ZX48] [Agon] | Plays a note. `Duration` is in seconds; `Pitch` is the piano key number relative to middle C (0 = middle C, like MIDI note 60). Synchronous. |
 
 ### Timing
