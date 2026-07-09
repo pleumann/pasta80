@@ -2866,7 +2866,11 @@ var
   I: Integer;
   C: Char;
   E: (East, North, West, South);
-  Z: Boolean;
+  J: Boolean;
+  X: Pointer;
+  Y: ^Byte;
+  Z: ^Real;
+  BigPtr: ^array[0..499] of Char;
 begin
   WriteLn('--- TestIncDec ---');
 
@@ -2913,11 +2917,36 @@ begin
   Dec(E);
   Assert(E = North);
 
-  Z := False;
+  J := False;
+  Inc(J);
+  Assert(J = True);
+  Dec(J);
+  Assert(J = False);
+
+  X := Ptr(1000);
+  Y := Ptr(1000);
+  Z := Ptr(1000);
+
+  Inc(X);
+  Assert(X = Ptr(1001));
+  Inc(Y, 3);
+  Assert(Y = Ptr(1003));
   Inc(Z);
-  Assert(Z = True);
+  Assert(Z = Ptr(1006));
+
+  Dec(X);
+  Assert(X = Ptr(1000));
+  Dec(Y, 3);
+  Assert(Y = Ptr(1000));
   Dec(Z);
-  Assert(Z = False);
+  Assert(Z = Ptr(1000));
+
+  BigPtr := Ptr(0);
+
+  Inc(BigPtr, 50);
+  Assert(BigPtr = Ptr(25000));
+  Dec(BigPtr, 50);
+  Assert(BigPtr = Ptr(0))
 end;
 
 overlay procedure TestBuiltIns;

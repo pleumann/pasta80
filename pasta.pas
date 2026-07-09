@@ -4710,7 +4710,7 @@ end;
 procedure ParseBuiltInProcedure(Proc: PSymbol; BreakTarget, ContTarget: String);
 var
   Sym, T, TT, V, U: PSymbol;
-  F: Integer;
+  F, Size: Integer;
 begin
   if Proc^.Kind <> scProc then
     Error('Not a built-in procedure: ' + Proc^.Name);
@@ -5077,7 +5077,40 @@ begin
       end
       else EmitInc(V);
     end
-    else Error('Invalid type, need Integer or Byte');
+    else if V^.Kind = scPointerType then
+    begin
+      if V = dtPointer then
+        Size := 1
+      else
+        Size := V^.DataType^.Value;
+
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        if Size <> 1 then
+        begin
+          EmitI('ld hl,' + IntToStr(Size));
+          EmitI('pop de');
+          EmitI('call __mul16');
+          EmitI('ld bc,hl');
+        end
+        else EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('call __inc16by');
+      end
+      else
+      begin
+        if Size <> 1 then
+        begin
+          EmitI('ld bc,' + IntToStr(Size));
+          EmitI('pop hl');
+          EmitI('call __inc16by');
+        end
+        else EmitInc(dtInteger);
+      end;
+    end
+    else Error('Ordinal or pointer type expected');
 
     Expect(toRParen);
     NextToken;
@@ -5114,7 +5147,40 @@ begin
       end
       else EmitDec(V);
     end
-    else Error('Invalid type, need Integer or Byte');
+    else if V^.Kind = scPointerType then
+    begin
+      if V = dtPointer then
+        Size := 1
+      else
+        Size := V^.DataType^.Value;
+
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        if Size <> 1 then
+        begin
+          EmitI('ld hl,' + IntToStr(Size));
+          EmitI('pop de');
+          EmitI('call __mul16');
+          EmitI('ld bc,hl');
+        end
+        else EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('call __dec16by');
+      end
+      else
+      begin
+        if Size <> 1 then
+        begin
+          EmitI('ld bc,' + IntToStr(Size));
+          EmitI('pop hl');
+          EmitI('call __dec16by');
+        end
+        else EmitDec(dtInteger);
+      end;
+    end
+    else Error('Ordinal or pointer type expected');
 
     Expect(toRParen);
     NextToken;
