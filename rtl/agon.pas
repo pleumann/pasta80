@@ -216,6 +216,19 @@ end;
 function sysvar_time_lo: Integer; register; external '__sysver_time_lo';
 function sysvar_time_hi: Integer; register; external '__sysver_time_hi';
 
+
+(**
+ * The PC's speaker is accessed through the standard procedure Sound 
+ * Sound( I ) ; 
+ * where I is an integer expression specifying the frequency in Hertz. The 
+ * specified frequency will be emitted until the speaker is turned off with a 
+ * call to the NoSound standard procedure: 
+ * NoSound 
+ *)
+procedure Sound(Freq: Integer);  register;        external '__sound';
+procedure NoSound; register;                         external '__nosound';
+
+
 (**
  * Returns the value of the 32 bit frame counter that is normally increased by
  * two during the 60 Hz screen refresh. Multiplying this value by 17 results

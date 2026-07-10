@@ -127,7 +127,8 @@ __init:
 			LD		B, 0			;  Now BC: argc
 			dec		BC				;Pascal does NOT count the filename as a parameter.
 			ld		(__parmcount),BC
-			call	al_setcoords	;uses AF and BC. Sets absolute coordinate system.
+			call	al_initagonhw	;uses AF and BC. initialize agon hw
+									;Sets absolute coordinate system and sets up audio.
 
 ;			mklil
 ;			POP		IX			; IX: argv - don't need to preserve it now.
