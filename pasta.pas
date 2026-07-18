@@ -2217,6 +2217,11 @@ end;
 
 var
   (**
+   * The file in which an error occurred.
+   *)
+  ErrorFile: String;
+
+  (**
    * The line and column where an error occurred.
    *)
   ErrorLine, ErrorColumn: Integer;
@@ -2246,7 +2251,8 @@ begin
     WriteLn(Source^.Buffer);
     for I := 1 to TokenColumn - 1 do Write(' ');
     WriteLn('^');
-    WriteLn('*** Error at ', TokenLine, ',', TokenColumn, ': ', Message);
+    WriteLn('*** Error at ', PosixToNative(FRelative(Source^.Name)), '(', TokenLine, ',', TokenColumn, '): ', Message);
+    ErrorFile := Source^.Name;    
     ErrorLine := TokenLine;
     ErrorColumn := TokenColumn;
   end
@@ -8203,33 +8209,33 @@ begin
 end;
 
 (**
- * Starts the editor. Asks for a file name, if necessary. Jumps to the given
- * line and column if these are non-zero (after a compile error).
+ * Starts the editor. Asks for a file name, if necessary. Jumps to the error
+ * line and column in case of a compile error.
  *)
-procedure DoEdit(Line, Column: Integer);
+procedure DoEdit(Error: Boolean);
 var
   S: String;
 begin
-  if (WorkFile = '') and (MainFile = '') then DoWorkFile;
-
-  if WorkFile <> '' then
-    S := WorkFile
-  else if MainFile <> '' then
-    S := MainFile
-  else
-    Exit;
-
-  if AltEditor then
+  if Error then
   begin
-    if (Line <> 0) and (Column <> 0) then
-      Execute(CodeCmd, '-g ' + S + ':' + IntToStr(Line) + ':' + IntToStr(Column))
+    if AltEditor then
+      Execute(CodeCmd, '-g ' + ErrorFile + ':' + IntToStr(ErrorLine) + ':' + IntToStr(ErrorColumn))
     else
-      Execute(CodeCmd, S)
+      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(ErrorLine) + ',' + IntToStr(ErrorColumn) + ' ' + ErrorFile)
   end
   else
   begin
-    if (Line <> 0) and (Column <> 0) then
-      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
+    if (WorkFile = '') and (MainFile = '') then DoWorkFile;
+
+    if WorkFile <> '' then
+      S := WorkFile
+    else if MainFile <> '' then
+      S := MainFile
+    else
+      Exit;
+
+    if AltEditor then
+      Execute(CodeCmd, S)
     else
       Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
   end;
@@ -8259,7 +8265,7 @@ begin
       Write('Press a key... ');
       GetKey;
     end;
-    DoEdit(ErrorLine, ErrorColumn);
+    DoEdit(True);
   end
 end;
 
@@ -8578,7 +8584,7 @@ begin
         'a': DoDirectory;
         'm': DoMainFile;
         'w': DoWorkFile;
-        'e': DoEdit(0, 0);
+        'e': DoEdit(False);
         'c', 'C': DoCompile(C = 'C');
         'r', 'R': DoRun(False, C = 'R');
         'd', 'D': DoRun(True, C = 'D');
