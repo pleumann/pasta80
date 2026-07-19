@@ -6561,7 +6561,17 @@ var
   Sym, T: PSymbol;
   Test: Boolean;
 begin
-  if DataType^.Kind = scArrayType then
+  if (DataType^.Kind = scArrayType) and (DataType^.DataType = dtChar) and (Scanner.Token = toString) then
+  begin
+    if Length(Scanner.StrValue) <> DataType^.IndexType^.High - DataType^.IndexType^.Low + 1 then
+      Error('String length mismatch');
+
+    for I := 1 to Length(Scanner.StrValue) do
+      EmitI('db ' + IntToStr(Ord(Scanner.StrValue[I])));
+
+    NextToken;
+  end
+  else if DataType^.Kind = scArrayType then
   begin
     Expect(toLParen);
     NextToken;

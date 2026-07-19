@@ -127,6 +127,8 @@ overlay procedure TestConst;
 const
   BinConst = %10101010;
   HexConst = $0F0F;
+  PastaStr: String[8] = 'PASTA/80';
+  PastaChr: array[0..7] of Char = 'PASTA/80';
 var
   I, J, BinVar, HexVar: Integer;
 begin
@@ -172,6 +174,9 @@ begin
 
   Assert(MyTypedPi > 0);
   Assert(MyTypedNegPi < 0);
+
+  for I := 0 to 7 do
+    Assert(PastaChr[I] = PastaStr[I + 1]);
 end;
 
 overlay procedure TestAdd;
