@@ -623,6 +623,10 @@ begin
 end;
 
 begin
+  {$ifdef SYS_ZXNEXT}
+  SetCpuSpeed(3);
+  {$endif}
+  
   WriteLn;
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
