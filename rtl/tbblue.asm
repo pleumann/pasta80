@@ -32,9 +32,6 @@ nxt_setreg:     ld      bc,$243B
 ; Out:  -
 ;
 banksel:
-        ld      c,a             ; Save desired bank
-        and     7
-        out     ($fe),a
         ld      a,c
         nextreg $57,a
         ret
