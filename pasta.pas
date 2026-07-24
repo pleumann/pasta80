@@ -1902,6 +1902,26 @@ var
  * TODO Pull a couple of longer blocks into their own procedures.
  *)
 procedure NextToken();
+
+  function DecDigit(C: Char): Integer;
+  begin
+    if C in ['0'..'9'] then
+      DecDigit := Ord(C) - Ord('0')
+    else
+      Error('Decimal digit expected.');
+  end;
+
+  function HexDigit(C: Char): Integer;
+  begin
+    case C of
+      '0'..'9': HexDigit := Ord(C) - Ord('0');
+      'A'..'F': HexDigit := Ord(C) - Ord('A') + 10;
+      'a'..'f': HexDigit := Ord(C) - Ord('a') + 10;
+    else
+      Error('Hexadecimal digit expected');
+    end;
+  end;
+
 var
   I: Integer;
 begin
@@ -1938,15 +1958,11 @@ begin
         begin
           // Let's start with an integer number
           Token := toNumber;
-          StrValue := C;
-          NumValue := Ord(C) - Ord('0');
-          C := GetChar;
-          while IsDecDigit(C) do
-          begin
+          repeat
             StrValue := StrValue + C;
-            NumValue := 10 * NumValue + (Ord(C) - Ord('0'));
+            NumValue := 10 * NumValue + DecDigit(C);
             C := GetChar;
-          end;
+          until not IsDecDigit(C);
 
           // Might turn out to be floating point
           if C = '.' then
@@ -1982,13 +1998,11 @@ begin
               C := GetChar;
             end;
 
-            if not IsDecDigit(C) then Error('Digit expected');
-
-            while IsDecDigit(C) do
-            begin
+            repeat
               StrValue := StrValue + C;
+              DecDigit(C);
               C := GetChar;
-            end;
+            until not IsDecDigit(C);
           end;
 
         end
@@ -1999,18 +2013,9 @@ begin
           StrValue := '$';
           C := GetChar;
 
-          if not IsHexDigit(C) then Error('Hex digit expected');
-
           repeat
             StrValue := StrValue + C;
-            NumValue := (NumValue shl 4);
-            if (C >= '0') and (C <= '9') then
-              NumValue := NumValue + Ord(C) - Ord('0')
-            else if (C >= 'A') and (C <= 'F') then
-              NumValue := NumValue + Ord(C) - Ord('A') + 10
-            else
-              NumValue := NumValue + Ord(C) - Ord('a') + 10;
-
+            NumValue := (NumValue shl 4) + HexDigit(C);
             C := GetChar;
           until not IsHexDigit(C);
         end
@@ -2060,14 +2065,24 @@ begin
             end
             else
             begin
-              // Hash sign followed by an ASCII code
-              I := 0;
+              // Hash sign followed by an ASCII code (decimal or hex)
               C := GetChar;
-              if not IsDecDigit(C) then Error('Dec digit expected');
-              repeat
-                I := I * 10 + Ord(C) - Ord('0');
+              I := 0;
+              if C = '$' then
+              begin
                 C := GetChar;
-              until not IsDecDigit(C);
+                repeat
+                  I := (I shl 4) + HexDigit(C);
+                  C := GetChar;
+                until not IsHexDigit(C);
+              end
+              else
+              begin
+                repeat
+                  I := I * 10 + DecDigit(C);
+                  C := GetChar;
+                until not IsDecDigit(C);
+              end;
               StrValue := StrValue + Char(I);
             end;
           until (C <> '''') and (C <> '#');

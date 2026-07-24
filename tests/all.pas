@@ -129,6 +129,7 @@ const
   HexConst = $0F0F;
   PastaStr: String[8] = 'PASTA/80';
   PastaChr: array[0..7] of Char = 'PASTA/80';
+  MessyStr = 'P'#65#$53'C'#01'L';
 var
   I, J, BinVar, HexVar: Integer;
 begin
@@ -177,6 +178,9 @@ begin
 
   for I := 0 to 7 do
     Assert(PastaChr[I] = PastaStr[I + 1]);
+
+  WriteLn(MessyStr);
+  Assert(MessyStr = 'PASC'#1'L');
 end;
 
 overlay procedure TestAdd;
