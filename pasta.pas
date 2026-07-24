@@ -7957,6 +7957,50 @@ begin
 end;
 
 (**
+ * Resets the compiler to its initial state, allowing for another compilation.
+ *)
+procedure ResetCompiler;
+var
+  Sym: PSymbol;
+begin
+  // Cannot use CloseScope because that might
+  // trigger "unresolved forward" errors.
+  while SymbolTable <> nil do
+  begin
+    Sym := SymbolTable^.Prev;
+    Dispose(SymbolTable);
+    SymbolTable := Sym;
+  end;
+
+  C := #0;
+
+  ErrorLine := 0;
+  ErrorColumn := 0;
+  Level := 0;
+  Offset := 0;
+  Scanner.Token := toNone;
+  CurrentScope := nil;
+  CurrentBlock := nil;
+  LastBuiltIn := nil;
+
+  ClearStrings;
+  ClearDefines;
+
+  Source := nil;
+
+  Code := nil;
+
+  AbsCode := True;
+  CheckBreak := False;
+  IOMode := True;
+  StackMode := False;
+
+  CurrentOverlay := 0;
+  Banked := False;
+  Muted := 0;
+end;
+
+(**
  * Performs a build. All relevant information is assumed to be in the respective
  * global variables. The procedure does everything up to and including a
  * possible conversion to a specialized file format.
@@ -7965,9 +8009,12 @@ function Build: Integer;
 var
   StartTime: Int64;
   Duration: Real;
-  Sym: PSymbol;
 begin
   StartTime := GetMSCount;
+
+  Build := 1;
+
+  ResetCompiler;
 
   AsmFile := ChangeExt(SrcFile, '.z80');
 
@@ -7982,6 +8029,26 @@ begin
   else if Format = tfSnapshot then
     BinFile := ChangeExt(SrcFile, '.sna');
 
+  if Binary = btCPM then
+    AddrOrigin := $0100
+  else if Binary = btAgon then
+    AddrOrigin := $0000
+  else
+    AddrOrigin := $8000;
+
+  if Binary = btCPM then
+    AddrLimit := $f000
+  else if (Binary = btZX128) and Overlays then
+    AddrLimit := $c000
+  else if (Binary = btZXN) and Overlays then
+    AddrLimit := $e000
+  else if (Binary = btAgon) and Overlays then
+    AddrLimit := $e000
+  else if (Binary = btAgon) and (Format = tfMOSlet) then
+    AddrLimit := $8000
+  else
+    AddrLimit := $10000;
+
   if SetJmp(StoredState) = 0 then
   begin
     HasStoredState := True;
@@ -7995,83 +8062,23 @@ begin
     WriteLn('  ', PosixToNative(FRelative(SrcFile)),
             ' -> ', PosixToNative(FRelative(AsmFile)));
 
-    // Dispose all symbol table entries directly to avoid CloseScope calling
-    // Error() for unresolved forward declarations left by a failed compile.
-    // If Error() were called here (HasStoredState is already True), LongJmp
-    // would abort the cleanup and leave the table permanently dirty.
-    while SymbolTable <> nil do
-    begin
-      Sym := SymbolTable^.Prev;
-      Dispose(SymbolTable);
-      SymbolTable := Sym;
-    end;
-    while Source <> nil do CloseInput;
-    C := #0;
-
-    ErrorLine := 0;
-    ErrorColumn := 0;
-    Level := 0;
-    Offset := 0;
-    Scanner.Token := toNone;
-    CurrentScope := nil;
-    CurrentBlock := nil;
-    LastBuiltIn := nil;
-
-    ClearStrings;
-    ClearDefines;
-
-    Source := nil;
-
-    Code := nil;
-
-    AbsCode := True;
-    CheckBreak := False;
-    IOMode := True;
-    StackMode := False;
-
-    CurrentOverlay := 0;
-    Banked := False;
-    Muted := 0;
-
-    if Binary = btCPM then
-      AddrOrigin := $0100
-    else if Binary = btAgon then
-      AddrOrigin := $0000
-    else
-      AddrOrigin := $8000;
-
-    if Binary = btCPM then
-      AddrLimit := $f000
-    else if (Binary = btZX128) and Overlays then
-      AddrLimit := $c000
-    else if (Binary = btZXN) and Overlays then
-      AddrLimit := $e000
-    else if (Binary = btAgon) and Overlays then
-      AddrLimit := $e000
-    else if (Binary = btAgon) and (Format = tfMOSlet) then
-      AddrLimit := $8000
-    else
-      AddrLimit := $10000;
-
     OpenInput(SrcFile);
     OpenTarget(AsmFile);
+
     EmitHeader(HomeDir, SrcFile);  (* TODO Move this elsewhere. *)
-
     ParseProgram;
-
     EmitFooter(BinFile);           (* TODO Move this elsewhere. *)
+
     CloseTarget();
-    CloseInput();
+    while Source <> nil do CloseInput();
 
     Build := 3;
 
-    //CopyFile(HomeDir + '/misc/loader.tap', BinFile);
-
     WriteLn('Assembling...');
-    WriteLn('  ', PosixToNative(FRelative(AsmFile)), ' -> ', PosixToNative(FRelative(BinFile)));
+    WriteLn('  ', PosixToNative(FRelative(AsmFile)),
+            ' -> ', PosixToNative(FRelative(BinFile)));
     WriteLn;
 
-    //Exec(ZasmCmd,  '-w ' + AsmFile + ' ' + BinFile);
     if Binary = btZXN then
       Execute(SjAsmCmd,  '--zxnext --lst --syntax=abf --nologo --msg=err ' + AsmFile)
     else
@@ -8089,6 +8096,12 @@ begin
     WriteLn(' build finished (', Duration:0:3, 's).');
 
     Build := 0;
+  end;
+
+  if Result = 2 then
+  begin
+    CloseTarget;
+    while Source <> nil do CloseInput();
   end;
 
   if (Result <> 3) and not KeepInt then
