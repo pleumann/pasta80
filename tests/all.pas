@@ -3355,6 +3355,25 @@ begin
   Assert(S = 'ABC' + Chr(27) + Chr(29) + 'DEF');
 end;
 
+overlay procedure TestRandom;
+var
+  I, J: Integer;
+  R: Real;
+begin
+  WriteLn('--- TestRandom ---');
+
+  for I := 1 to 10 do
+  begin
+    J := Random(10);
+    Assert(J >= 0);
+    Assert(J < 10);
+
+    R := Random;
+    Assert(R >= 0);
+    Assert(R < 1);
+  end;
+end;
+
 overlay procedure TestDirectives;
 var
   I: Integer;
@@ -3615,6 +3634,7 @@ begin
   TestBuiltIns;
 
   TestCtrlChars;
+  TestRandom;
 
   TestDirectives;
 

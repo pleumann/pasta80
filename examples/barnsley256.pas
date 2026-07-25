@@ -50,7 +50,7 @@ begin
 
   while T >= 0 do
   begin
-    R := RandomReal;
+    R := Random;
 
     if R < 0.01 then
     begin

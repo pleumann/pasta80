@@ -1044,7 +1044,7 @@ var
   FileSizeFunc, EolFunc, EofFunc, AbsFunc, AddrFunc, DisposeProc, EvenFunc,
   HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc, FillProc, IncProc,
   DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc,
-  SuccFunc, BDosFunc, BDosHLFunc, DebugProc: PSymbol;
+  SuccFunc, BDosFunc, BDosHLFunc, DebugProc, RandomFunc: PSymbol;
 
   SmartLink: Boolean; (* TODO Move elsewhere *)
 
@@ -1506,6 +1506,7 @@ begin
   PtrFunc := RegisterMagic(scFunc, 'Ptr');
   SizeFunc := RegisterMagic(scFunc, 'SizeOf');
   SuccFunc := RegisterMagic(scFunc, 'Succ');
+  RandomFunc := RegisterMagic(scFunc, 'Random');
 
   if Binary = btCPM then
   begin
@@ -4514,6 +4515,23 @@ var
 begin
   if Func^.Kind <> scFunc then
     Error('Not a built-in function: ' + Func^.Name);
+
+  if Func = RandomFunc then
+  begin
+    NextToken;
+
+    if Scanner.Token = toLParen then
+      Sym := LookupBuiltInOrFail('RandomInt')
+    else
+      Sym := LookupBuiltInOrFail('RandomReal');
+
+    ParseArguments(Sym);
+    EmitCall(Sym);
+
+    ParseBuiltInFunction := Sym^.DataType;
+
+    Exit;
+  end;
 
   NextToken; Expect(toLParen); NextToken;
 

@@ -218,8 +218,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `Pi: Real` | [All] | Returns the constant π. |
 | `MaxReal: Real` | [All] | Returns the largest representable floating-point number. |
 | `MinReal: Real` | [All] | Returns the smallest representable floating-point number (largest negative value). |
-| `Random(Range: Integer): Integer` | [All] | Returns a pseudo-random integer in the range 0..`Range`-1. |
-| `RandomReal: Real` | [All] | Returns a uniformly distributed pseudo-random real number in the range 0.0..1.0. |
+| `Random(Range: Integer): Integer` | [All] | Returns a pseudo-random integer in the range 0..`Range` (upper end exclusive). |
+| `Random: Real` | [All] | Returns a uniformly distributed pseudo-random real number in the range 0.0..1.0 (upper end exclusive). |
 | `Round(R: Real): Integer` | [All] | Rounds `R` to the nearest integer and returns it as `Integer`. |
 | `Trunc(R: Real): Integer` | [All] | Truncates the fractional part of `R` (towards zero) and returns the result as `Integer`. |
 
