@@ -1,6 +1,7 @@
 program All;
 
 {$a+}
+{$m 3072}
 
 const
   NumberOfTheBeast = 666;
@@ -3274,7 +3275,87 @@ begin
   ValEnum('', None, 1);
 end;
 
-procedure TestDirectives;
+(**
+ * Regression tests for that ugly Turbo-Pascal-3.0-style '^' control
+ * character notation (issue #83). Covers all four places where '^X'
+ * can occur:
+ *
+ * 1. Untyped constants           (ParseConst)
+ * 2. Typed String constants      (ParseConstValue, scStringType)
+ * 3. Typed Char array constants  (ParseConstValue, array of Char)
+ * 4. General expressions         (ParseFactor)
+ *
+ * In each case '^X' may also appear fused with adjacent string
+ * literals, e.g. 'AB'^A'CD'.
+ *)
+overlay procedure TestCtrlChars;
+const
+  (* 1. Untyped constants *)
+  CtrlA    = ^A;
+  CtrlLA   = ^a;
+  CtrlZ    = ^Z;
+  CtrlLZ   = ^z;
+  CtrlAt   = ^@;
+  CtrlLB   = ^[;
+  CtrlRB   = ^];
+  CtrlQ    = ^?;
+
+  CtrlConstStr = ^A^a^Z^z^@^[^]^?;
+
+  (* 2. Typed String constants *)
+  TypedStr:  String[12] = ^A^a^Z^z^@^[^]^?;
+  MixedStr:  String[12] = 'AB'^A'CD'^[^]'EF';
+
+  (* 3. Typed Char array constants *)
+  CharArr: array[0..7] of Char = ^A^a^Z^z^@^[^]^?;
+
+var
+  I: Integer;
+  S: String[12];
+  Ch: Char;
+
+begin
+  WriteLn('--- TestCtrl ---');
+
+  (* 1. Untyped constants *)
+  Assert(Ord(CtrlA)  = 1);
+  Assert(Ord(CtrlLA) = 1);
+  Assert(Ord(CtrlZ)  = 26);
+  Assert(Ord(CtrlLZ) = 26);
+  Assert(Ord(CtrlAt) = 0);
+  Assert(Ord(CtrlLB) = 27);
+  Assert(Ord(CtrlRB) = 29);
+  Assert(Ord(CtrlQ)  = 127);
+
+  Assert(Length(CtrlConstStr) = 8);
+  Assert(CtrlConstStr = Chr(1) + Chr(1) + Chr(26) + Chr(26) + Chr(0) +
+                         Chr(27) + Chr(29) + Chr(127));
+
+  (* 2. Typed String constants *)
+  Assert(Length(TypedStr) = 8);
+  Assert(TypedStr = CtrlConstStr);
+
+  Assert(Length(MixedStr) = 9);
+  Assert(MixedStr = 'AB' + Chr(1) + 'CD' + Chr(27) + Chr(29) + 'EF');
+
+  (* 3. Typed Char array constants *)
+  for I := 0 to 7 do
+    Assert(Ord(CharArr[I]) = Ord(TypedStr[I + 1]));
+
+  (* 4. General expressions *)
+  Ch := ^A;
+  Assert(Ord(Ch) = 1);
+  Assert(Ord(^?) = 127);
+
+  S := 'Hello'^A'World';
+  Assert(Length(S) = 11);
+  Assert(S = 'Hello' + Chr(1) + 'World');
+
+  S := 'ABC'^[^]'DEF';
+  Assert(S = 'ABC' + Chr(27) + Chr(29) + 'DEF');
+end;
+
+overlay procedure TestDirectives;
 var
   I: Integer;
 begin
@@ -3529,10 +3610,11 @@ begin
   TestSubrange;
 
   TestStr;
-
   TestVal;
 
   TestBuiltIns;
+
+  TestCtrlChars;
 
   TestDirectives;
 

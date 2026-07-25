@@ -2211,9 +2211,38 @@ end;
  *)
 function GetCtrlChar: Integer;
 begin
-  if not (C in ['@'..'_']) then Error('Invalid control character ^' + C);
-  GetCtrlChar := Ord(C) - 64;
+  if not (UpCase(C) in ['@'..'_', '?']) then
+    Error('Invalid control character ^' + C);
+  GetCtrlChar := Ord(UpCase(C)) xor $40;
   C := GetChar;
+end;
+
+(**
+ * Parses one or more adjacent string and control-character fragments (e.g.
+ * 'AB'^C'DE') into a single compile-time string. Assumes the caller has
+ * already established that a string value is expected here, i.e. that
+ * neither a pointer type nor a dereference can be meant by '^' at this
+ * point.
+ *)
+function ParseStringLiteral: String;
+var
+  S: String;
+begin
+  S := '';
+  while Scanner.Token in [toString, toCaret] do
+  begin
+    if Scanner.Token = toString then
+    begin
+      S := S + Scanner.StrValue;
+      NextToken;
+    end
+    else
+    begin
+      S := S + Chr(GetCtrlChar);
+      NextToken;
+    end;
+  end;
+  ParseStringLiteral := S;
 end;
 
 (**
@@ -5650,7 +5679,7 @@ function ParseFactor: PSymbol;
 var
   Sym: PSymbol; T: PSymbol;
   Op: TToken;
-  Tag: String;
+  Tag, S: String;
 begin
   if Scanner.Token = toIdent then
   begin
@@ -5730,28 +5759,22 @@ begin
       Error('"' + Scanner.StrValue + '" cannot be used in expressions.');
     end;
   end
-  else if Scanner.Token = toString then
+  else if Scanner.Token in [toString, toCaret] then
   begin
-    if Length(Scanner.StrValue)=1 then
+    S := ParseStringLiteral;
+    if Length(S) = 1 then
     begin
       T := dtChar;
-      EmitLiteral(Ord(Scanner.StrValue[1]));
+      EmitLiteral(Ord(S[1]));
     end
     else
     begin
       T := dtString;
-      Tag := AddString(Scanner.StrValue);
+      Tag := AddString(S);
       EmitI('ld hl,' + Tag);
       EmitI('push hl');
       EmitLoad(T);
     end;
-    NextToken;
-  end
-  else if Scanner.Token = toCaret then
-  begin
-    T := dtChar;
-    EmitLiteral(GetCtrlChar);
-    NextToken;
   end
   else if Scanner.Token = toFloat then
   begin
@@ -6575,16 +6598,17 @@ var
   I, Value, Offset: Integer;
   Sym, T: PSymbol;
   Test: Boolean;
+  S: String;
 begin
-  if (DataType^.Kind = scArrayType) and (DataType^.DataType = dtChar) and (Scanner.Token = toString) then
+  if (DataType^.Kind = scArrayType) and (DataType^.DataType = dtChar) and (Scanner.Token in [toString, toCaret]) then
   begin
-    if Length(Scanner.StrValue) <> DataType^.IndexType^.High - DataType^.IndexType^.Low + 1 then
+    S := ParseStringLiteral;
+
+    if Length(S) <> DataType^.IndexType^.High - DataType^.IndexType^.Low + 1 then
       Error('String length mismatch');
 
-    for I := 1 to Length(Scanner.StrValue) do
-      EmitI('db ' + IntToStr(Ord(Scanner.StrValue[I])));
-
-    NextToken;
+    for I := 1 to Length(S) do
+      EmitI('db ' + IntToStr(Ord(S[I])));
   end
   else if DataType^.Kind = scArrayType then
   begin
@@ -6665,11 +6689,9 @@ begin
   end
   else if DataType^.Kind = scStringType then
   begin
-    Expect(toString);
-    // Emit('', 'db ' + IntToStr(Length(Scanner.StrValue)) + ', "' +  EncodeAsmStr(Scanner.StrValue) + '"', '');
-    Emit('', 'db ' + EncodeAsmStr(Scanner.StrValue), '');
-    Emit('', 'ds ' + IntToStr(DataType^.Value - Length(Scanner.StrValue) - 1) + ',0', '');
-    NextToken;
+    S := ParseStringLiteral;
+    Emit('', 'db ' + EncodeAsmStr(S), '');
+    Emit('', 'ds ' + IntToStr(DataType^.Value - Length(S) - 1) + ',0', '');
   end
   else if DataType^.Kind = scSetType then
   begin
@@ -6707,7 +6729,7 @@ end;
  *)
 procedure ParseConst;
 var
-  Name: String;
+  Name, S: String;
   Sym, Sym2: PSymbol;
   Sign: Integer;
 begin
@@ -6738,18 +6760,20 @@ begin
     Expect(toEq);
     NextToken;
 
-    if Scanner.Token = toString then
+    if Scanner.Token in [toString, toCaret] then
     begin
-      if Length(Scanner.StrValue) = 1 then
+      S := ParseStringLiteral;
+      if Length(S) = 1 then
       begin
         Sym^.DataType := dtChar;
-        Sym^.Value := Ord(Scanner.StrValue[1]);
+        Sym^.Value := Ord(S[1]);
       end
       else
       begin
         Sym^.DataType := dtString;
-        Sym^.Tag := AddString(Scanner.StrValue);
+        Sym^.Tag := AddString(S);
       end;
+      Exit;
     end
     else if Scanner.Token = toIdent then
     begin
@@ -6758,11 +6782,6 @@ begin
 
       Sym^.DataType := Sym2^.DataType;
       Sym^.Value := Sym2^.Value;
-    end
-    else if Scanner.Token = toCaret then
-    begin
-      Sym^.DataType := dtChar;
-      Sym^.Value := GetCtrlChar;
     end
     else
     begin
