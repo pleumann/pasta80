@@ -2212,7 +2212,7 @@ end;
  *)
 function GetCtrlChar: Integer;
 begin
-  if not (UpCase(C) in ['@'..'_', '?']) then
+  if not (C in [' '..'~']) then
     Error('Invalid control character ^' + C);
   GetCtrlChar := Ord(UpCase(C)) xor $40;
   C := GetChar;
