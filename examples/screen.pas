@@ -168,16 +168,77 @@ begin
     Halt(ErrInvalidParameter);
 end;
 
+(**
+ * Switches to the given mode, then asks the user whether to keep it,
+ * counting down from TryTimeout seconds. If 'y' is pressed, the new mode
+ * is kept. If 'n' is pressed, or no key is pressed before the countdown
+ * runs out, the previous mode is restored.
+ *)
+procedure TryMode(Mode: Integer);
+const
+  TryTimeout = 30; { seconds }
+var
+  PrevMode, Index, Ticks, Seconds: Integer;
+  Keep, Done: Boolean;
+  C: Char;
+begin
+  Index := FindMode(Mode);
+  if Index = -1 then
+  begin
+    WriteLn('Invalid mode: ', Mode);
+    Halt(ErrInvalidParameter);
+  end;
+
+  PrevMode := GetGraphMode;
+  SetGraphMode(Mode);
+
+  Keep := False;
+  Done := False;
+  Seconds := TryTimeout;
+
+  while (Seconds > 0) and not Done do
+  begin
+    Write(#13, 'Keep this mode (y/n)? ', Seconds:2, 's remaining. ');
+
+    Ticks := 0;
+    while (Ticks < 20) and (not KeyPressed) do
+    begin
+      Delay(50);
+      Inc(Ticks);
+    end;
+
+    if KeyPressed then
+    begin
+      C := ReadKey;
+      if (C = 'y') or (C = 'Y') then
+      begin
+        Keep := True;
+        Done := True;
+      end
+      else if (C = 'n') or (C = 'N') then
+        Done := True;
+    end;
+
+    Dec(Seconds);
+  end;
+
+  if not Keep then SetGraphMode(PrevMode);
+
+  WriteLn;
+  if Keep then WriteLn('Mode kept.') else WriteLn('Mode reverted.');
+end;
+
 procedure PrintUsage;
 begin
   WriteLn('Purpose:');
   WriteLn;
-  WriteLn(' Get, set, or list Agon screen modes.');
+  WriteLn(' Get, set, or query Agon screen modes.');
   WriteLn;
   WriteLn('Usage:');
   WriteLn;
   WriteLn(' screen get');
   WriteLn(' screen set  <mode>');
+  WriteLn(' screen try  <mode>');
   WriteLn(' screen info <mode>');
   WriteLn(' screen list <horz> <vert> <cols> <rate>');
   WriteLn;
@@ -244,6 +305,23 @@ begin
       Halt(ErrInvalidParameter);
 
     WriteLn(ModeStr(Index));
+  end
+  else if Command = 'try' then
+  begin
+    if ParamCount < 2 then
+    begin
+      PrintUsage;
+      Halt(ErrInvalidParameter);
+    end;
+
+    Val(ParamStr(2), Mode, ErrPos);
+    if ErrPos <> 0 then
+    begin
+      WriteLn('Invalid mode: ', ParamStr(2));
+      Halt(ErrInvalidParameter);
+    end;
+
+    TryMode(Mode);
   end
   else if Command = 'list' then
   begin
