@@ -177,7 +177,8 @@ begin
   WriteLn('Usage:');
   WriteLn;
   WriteLn(' screen get');
-  WriteLn(' screen set <mode>');
+  WriteLn(' screen set  <mode>');
+  WriteLn(' screen info <mode>');
   WriteLn(' screen list <horz> <vert> <cols> <rate>');
   WriteLn;
   WriteLn('When listing modes, use * if you don''t');
@@ -225,6 +226,24 @@ begin
     end;
 
     SetGraphMode(Mode);
+  end
+  else if Command = 'info' then
+  begin
+    if ParamCount < 2 then
+    begin
+      PrintUsage;
+      Halt(ErrInvalidParameter);
+    end;
+
+    Val(ParamStr(2), Mode, ErrPos);
+    if ErrPos <> 0 then
+      Halt(ErrInvalidParameter);
+
+    Index := FindMode(Mode);
+    if Index = -1 then
+      Halt(ErrInvalidParameter);
+
+    WriteLn(ModeStr(Index));
   end
   else if Command = 'list' then
   begin
