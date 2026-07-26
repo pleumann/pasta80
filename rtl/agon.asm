@@ -14,6 +14,7 @@ sysvar_scrCols:     EQU 13h ; 1: Screen columns in characters
 sysvar_scrRows:     EQU 14h ; 1: Screen rows in characters
 sysvar_scrpixelIndex:   EQU 16h ; 1: Index of pixel data read from screen
 sysvar_vkeydown:    EQU 18h ; 1: Virtual key state from FabGL (0=up, 1=down)
+sysvar_scrMode:     EQU 27h ; 1: Screen mode
 
 
 
@@ -565,6 +566,36 @@ __setgraphmode:
             rst     10h
             ld      a,l
             rst     10h
+            ret
+
+;get current video mode
+;VDU 23, 0, &86: Fetch screen dimensions and mode info
+;sysvar_vpd_pflags:      EQU 04h ; 1: Flags to indicate completion of VDP commands
+;VDPP_FLAG_MODE:  EQU 00010000b (bit 4) - set once the mode info packet has arrived
+;sysvar_scrMode:         EQU 27h ; 1: Screen mode
+;Out: HL = current screen mode
+__getgraphmode:
+            push    ix
+            ld      a, 8        ;0x08: mos_sysvars
+            rst     08h         ;IX(U) now has sysvars
+            mklil
+            res     4,(IX+sysvar_vpd_pflags)    ; VDPP_FLAG_MODE
+
+            ld      a,23
+            rst     10h
+            xor     a
+            rst     10h
+            ld      a,086h
+            rst     10h
+__getgraphmode_1:
+            mklil
+            bit     4,(ix+sysvar_vpd_pflags)    ;test if mode info packet was received
+            jr      z,__getgraphmode_1          ;wait until mode info returned
+
+            mklil
+            ld      l,(ix+sysvar_scrMode)
+            ld      h,0
+            pop     ix
             ret
 
 __checkbreak:

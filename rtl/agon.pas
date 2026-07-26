@@ -89,6 +89,14 @@ procedure CursorOff; register;              external '__cursor_off';
 procedure SetGraphMode(I: Integer); register;        external '__setgraphmode';
 
 (**
+ * Returns the current Agon screen/graphics mode, as previously set via
+ * SetGraphMode (or the mode the system booted into). Queries the VDP
+ * directly instead of relying on any locally cached value.
+ * See available modes here https://agonplatform.github.io/agon-docs/vdp/Screen-Modes/
+ **)
+function GetGraphMode: Integer; register;             external '__getgraphmode';
+
+(**
  * Sets the GCOL graphics color (range depends on screen mode).
  *)
 procedure SetColor(I: Integer); register;      external '__graphfg';
