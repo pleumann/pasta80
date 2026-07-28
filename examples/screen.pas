@@ -178,7 +178,7 @@ procedure TryMode(Mode: Integer);
 const
   TryTimeout = 30; { seconds }
 var
-  PrevMode, Index, Ticks, Seconds: Integer;
+  PrevMode, Index, Ticks, Seconds, Width, Height: Integer;
   Keep, Done: Boolean;
   C: Char;
 begin
@@ -196,9 +196,23 @@ begin
   Done := False;
   Seconds := TryTimeout;
 
+  Width := Modes[Index].Width;
+  Height := Modes[Index].Height;
+
+  if Mode <> 7 then
+  begin
+    Plot(0, 0);
+    Draw(Width - 1, 0);
+    Draw(0, Height - 1);
+    Draw(-Width + 1, 0);
+    Draw(0, -Height + 1);
+  end;
+
   while (Seconds > 0) and not Done do
   begin
-    Write(#13, 'Keep this mode (y/n)? ', Seconds:2, 's remaining. ');
+    GotoXY(1 + (Width div 8 - 36) div 2, Height div 16);
+
+    Write('Keep this mode (y/n)? ', Seconds:2, 's remaining.');
 
     Ticks := 0;
     while (Ticks < 20) and (not KeyPressed) do
@@ -221,6 +235,8 @@ begin
 
     Dec(Seconds);
   end;
+
+  ClrScr;
 
   if not Keep then SetGraphMode(PrevMode);
 
