@@ -127,6 +127,38 @@ __int_shr1:
                 djnz __int_shr1
                 ret
 
+        ifdef   CPU_Z80N
+                define MUL_DE mul       d,e
+        endif
+        ifdef   CPU_EZ80
+                define MUL_DE db        $ed, $5c
+        endif
+
+        ifdef   MUL_DE
+;
+; 16 bit multiplication for Z80N/eZ80 (based on Ped's version)
+;
+; Entry:  HL (multiplicand), DE (multiplier)
+; Exit:   HL (product)
+; Uses:   AF, BC
+;
+__mul16:
+                ld      c,e
+                ld      e,l
+                MUL_DE
+                ld      a,e
+                ld      e,c
+                ld      d,h
+                MUL_DE
+                add     a,e
+                ld      e,c
+                ld      d,l
+                MUL_DE
+                add     a,d
+                ld      h,a
+                ld      l,e
+                ret
+        else
 ;
 ; Signed 16 bit multiplication (taken from Leventhal/Saville)
 ;
@@ -149,6 +181,7 @@ __mul16b:       add     hl,hl
                 ret     p
                 add     hl,bc
                 ret
+        endif
 
 ;
 ; Signed 16 bit division (taken from Leventhal/Saville)
