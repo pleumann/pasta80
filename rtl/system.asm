@@ -2354,7 +2354,7 @@ __movedn:
 
 
 __heapptr:
-        dw      0
+        dw      HEAP
 
 ; In: HL pointer address, DE size
 ; Out: -
@@ -2459,15 +2459,4 @@ __freemem:
         dec     hl
         ld      (__heapptr),hl
         ret
-
-__get_heap_start:
-                ld      hl, eof
-                ret
-
-__get_heap_bytes:
-                ld      hl, 57344
-                ld      de, eof
-                and     a
-                sbc     hl,de
-                ret
 

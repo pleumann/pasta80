@@ -85,20 +85,6 @@ begin
   MaxAvail := I;
 end;
 
-procedure InitHeap;
-var
-  EofMarker: Integer absolute 'eof';
-  HeapStart, HeapBytes: Integer;
-begin
-  HeapStart := Addr(EofMarker);
-  if (HeapStart >= 0) and (HeapStart < 24576) then HeapStart := 24576;
-  HeapBytes := 57343 - HeapStart;
-  HeapPtr := nil;
-
-  if HeapBytes > 0 then
-    FreeMem(Ptr(HeapStart), HeapBytes);
-end;
-
 (* -------------------------------------------------------------------------- *)
 (* --- Standard procedures -------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)

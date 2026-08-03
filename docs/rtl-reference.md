@@ -346,7 +346,6 @@ These identifiers are part of the runtime infrastructure. They may be visible in
 
 | Signature | Platform | Description |
 |-----------|----------|--------------|
-| `InitHeap` | [All] | Initialises the heap between the end of the program and the start of the stack area. Called automatically by the compiler. |
 | `CheckBreak` | [All] | Tests whether the user tried to interrupt the program and terminates i program if so. The actual key combination depends on the platform: Break+Space on ZX machine, Ctrl-C elsewhere. Inserted automatically by the compiler in appropriate places when `{$u+}` is active. |
 | `CheckStack` | [All] | Checks for stack overflow. Inserted automatically by the compiler at the start of every procedure/function when `{$k+}` is active. |
 | `BDosThrow` | [CPM] [ZXNext] [Agon] | Checks `LastError` and terminates the program with an error message if the value is non-zero. Inserted automatically by the compiler after file operations in `{$i+}` mode. |

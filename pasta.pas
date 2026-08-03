@@ -3003,9 +3003,11 @@ begin
   if (Binary = btAgon) and Overlays then
     Emit('ovl_name', 'db "' + ChangeExt(NameOnly(BinFile), '.ovr') + '",0', '');
 
+  Emit('HEAP', '= $', '');
+  EmitI('dw 0');           (* Initial free block: Next = nil *)
+  EmitI('dw STACK-HEAP');  (* Initial free block: Size = STACK - HEAP *)
   Emit('TEXT_END', '= $', '');
   Emit('STACK', '= $' + IntToHex(AddrLimit - StackSize, 4), '');
-  Emit('HEAP', '= TEXT_END', '');
   EmitI('if HEAP + 32767 < STACK');
   Emit('STACK', '= HEAP + 32767', '');
   EmitI('endif');
@@ -3019,7 +3021,7 @@ begin
   EmitI('LUA');
   EmitI('if sj.calc("__ERRORS__") ~= 0 then print() end');
 
-  EmitI('SegInfo("Program",sj.calc("TEXT"),sj.calc("$"),sj.calc("STACK-TEXT"), "")');
+  EmitI('SegInfo("Program",sj.calc("TEXT"),sj.calc("HEAP"),sj.calc("STACK-TEXT"), "")');
   EmitI('SegInfo("Heap",sj.calc("HEAP"),sj.calc("STACK"), 32767, "")');
   EmitI('SegInfo("Stack",sj.calc("STACK"),sj.calc("LIMIT"),65535, "")');
 
@@ -3054,7 +3056,7 @@ begin
   end;
 
   if Binary = btCPM then
-    EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
+    EmitI('savebin "' + BinFile + '",$0100,TEXT_END-$0100')
   else if Binary = btAgon then
   begin
     EmitI('savebin "' + BinFile + '",$0000,TEXT_END');
@@ -3064,12 +3066,12 @@ begin
   end
   else if Format = tfBinary then
   begin
-    EmitI('savebin "' + BinFile + '",$8000,HEAP-$8000');
+    EmitI('savebin "' + BinFile + '",$8000,TEXT_END-$8000');
     WriteZXOverlays(ChangeExt(BinFile, ''))
   end
   else if Format = tfPlus3Dos then
   begin
-    EmitI('save3dos "' + BinFile + '",$8000,HEAP-$8000,3,$8000');
+    EmitI('save3dos "' + BinFile + '",$8000,TEXT_END-$8000,3,$8000');
     WriteZXOverlays(ChangeExt(BinFile, ''))
   end
   else if Format = tfTape then
@@ -3086,7 +3088,7 @@ begin
       EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec48.bas"'));
 
     EmitI('savetap "' + BinFile2 + '",BASIC,"run.bas",$0080,$-$0080,0');
-    EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,HEAP-$8000');
+    EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,TEXT_END-$8000');
     WriteZXOverlays(BinFile2);
   end
   else if Format = tfRunDir then
@@ -3098,7 +3100,7 @@ begin
     {$i+}
 
     CopyFile(HomeDir + '/misc/specnext.bas', BinFile + '/run.bas');
-    EmitI('save3dos "' + BinFile + '/bin",$8000,HEAP-$8000,3,8000');
+    EmitI('save3dos "' + BinFile + '/bin",$8000,TEXT_END-$8000,3,8000');
     WriteZXOverlays(BinFile + '/');
   end
   else if Format = tfSnapshot then
@@ -3230,7 +3232,6 @@ begin
   begin
     Emit('main', '', '');
     EmitI('ld (display),sp');
-    EmitCall(LookupBuiltInOrFail('InitHeap'));
     if Overlays then
     begin
       if Binary = btZX128 then
@@ -8001,8 +8002,6 @@ begin
   EmitStrings();
   EmitC('');
   Emit('display', 'ds 16,0', 'Display');
-  EmitC('');
-  Emit('eof', '', 'End of file');
 
   CloseScope(False);
   CloseScope(False);
