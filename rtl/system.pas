@@ -85,6 +85,76 @@ begin
   MaxAvail := I;
 end;
 
+(* Merges all free blocks that happen to be adjacent in memory. To be called *)
+(* explicitly if the heap gets too fragmented after GetMem/FreeMem have been *)
+(* used a lot and GetMem(P) cannot be fulfilled although MemAvail > P. Note  *)
+(* this cannot guarantee that a block of the required size will be available *)
+(* afterwards. This depends on the actual heap structure. Should the heap.   *)
+(* consists of only free block, these will be merge into a single contiguous *)
+(* block of the full heap size.                                              *)
+procedure CompactHeap;
+const
+  SignBit = -32768; (* $8000; flips bit 15 so signed '<' sorts addresses as  *)
+                    (* if they were unsigned, even across the $8000 boundary *)
+                    (* where Addr() turns negative.                          *)
+var
+  P, Prev, Best, BestPrev, Sorted, Tail: PBlock;
+  PAddr, BestAddr: Integer;
+begin
+  (* Selection sort the free list by address, using the existing nodes *)
+  Sorted := nil;
+  Tail := nil;
+
+  while HeapPtr <> nil do
+  begin
+    Best := HeapPtr;
+    BestAddr := Addr(Best^) xor SignBit;
+    BestPrev := nil;
+    Prev := HeapPtr;
+    P := HeapPtr^.Next;
+
+    while P <> nil do
+    begin
+      PAddr := Addr(P^) xor SignBit;
+      if PAddr < BestAddr then
+      begin
+        Best := P;
+        BestAddr := PAddr;
+        BestPrev := Prev;
+      end;
+      Prev := P;
+      P := P^.Next;
+    end;
+
+    if BestPrev = nil then
+      HeapPtr := Best^.Next
+    else
+      BestPrev^.Next := Best^.Next;
+
+    Best^.Next := nil;
+    if Tail = nil then
+      Sorted := Best
+    else
+      Tail^.Next := Best;
+    Tail := Best;
+  end;
+
+  (* Now merge neighbours in a single forward pass *)
+  P := Sorted;
+  while (P <> nil) and (P^.Next <> nil) do
+  begin
+    if Addr(P^) + P^.Size = Addr(P^.Next^) then
+    begin
+      P^.Size := P^.Size + P^.Next^.Size;
+      P^.Next := P^.Next^.Next;
+    end
+    else
+      P := P^.Next;
+  end;
+
+  HeapPtr := Sorted;
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Standard procedures -------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)

@@ -88,6 +88,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `Move(var Source, Dest; Count: Integer)` | [All] | Copies `Count` bytes from `Source` to `Dest`. |
 | `GetMem(var P: Pointer; Size: Integer)` | [All] | Low-level heap allocation: reserves `Size` bytes and stores the address in `P`. |
 | `FreeMem(P: Pointer; Size: Integer)` | [All] | Low-level heap deallocation: returns `Size` bytes at address `P` to the free list. |
+| `CompactHeap` | [All] | Merges all free blocks that are adjacent in memory, undoing fragmentation caused by `GetMem`/`FreeMem`/`Dispose`. Not called automatically (to keep allocation/deallocation fast); call it explicitly when needed. |
 | `Randomize` | [All] | Seeds the random-number generator from the Z80 R register. |
 
 ### Input / Output

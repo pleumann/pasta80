@@ -3,6 +3,7 @@ program Heap;
 var
   P: Pointer;
   Org: Integer;
+  StartAvail, StartPtr: Integer;
 
 procedure DumpHeap(var Blocks, Total: Integer);
 var
@@ -179,6 +180,33 @@ begin
   Assert(MemAvail = Org);
 end;
 
+procedure TestCompact;
+var
+  Blocks, Total: Integer;
+begin
+  WriteLn('--- TestCompact ---');
+  WriteLn;
+
+  WriteLn('Before compaction:');
+  DumpHeap(Blocks, Total);
+
+  CompactHeap;
+
+  WriteLn;
+  WriteLn('After compaction:');
+  DumpHeap(Blocks, Total);
+
+  (* All previous tests clean up after themselves, so by now the heap should  *)
+  (* be fragmented into several free blocks that together still add up to    *)
+  (* the original size. After compaction they must merge back into the one   *)
+  (* single block we started out with, at the very same address.            *)
+  Assert(Blocks = 1);
+  Assert(Total = StartAvail);
+  Assert(MemAvail = StartAvail);
+  Assert(MaxAvail = StartAvail);
+  Assert(Ord(HeapPtr) = StartPtr);
+end;
+
 begin
   {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(3);
@@ -190,6 +218,9 @@ begin
 
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
   WriteLn;
+
+  StartAvail := MemAvail;
+  StartPtr := Ord(HeapPtr);
 
   TestSimple;
 
@@ -203,6 +234,12 @@ begin
   WriteLn;
 
   TestNewDispose;
+
+  WriteLn;
+  WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
+  WriteLn;
+
+  TestCompact;
 
   WriteLn;
   WriteLn('************************');
