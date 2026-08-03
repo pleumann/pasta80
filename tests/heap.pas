@@ -190,7 +190,7 @@ begin
   WriteLn('Before compaction:');
   DumpHeap(Blocks, Total);
 
-  CompactHeap;
+  DefragMem;
 
   WriteLn;
   WriteLn('After compaction:');

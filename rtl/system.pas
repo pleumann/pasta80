@@ -85,14 +85,14 @@ begin
   MaxAvail := I;
 end;
 
-(* Merges all free blocks that happen to be adjacent in memory. To be called *)
-(* explicitly if the heap gets too fragmented after GetMem/FreeMem have been *)
-(* used a lot and GetMem(P) cannot be fulfilled although MemAvail > P. Note  *)
-(* this cannot guarantee that a block of the required size will be available *)
-(* afterwards. This depends on the actual heap structure. Should the heap.   *)
-(* consists of only free block, these will be merge into a single contiguous *)
-(* block of the full heap size.                                              *)
-procedure CompactHeap;
+(* Merges all free heap blocks that happen to be adjacent in memory. To be   *)
+(* called if the heap gets too fragmented after GetMem/FreeMem/New/Dispose   *)
+(* have been used a lot and GetMem(P, Size) or New(P) cannot be fulfilled    *)
+(* although MemAvail > Size. Note this cannot guarantee that a block of the  *)
+(* required size will be available afterwards. This depends on the actual    *)
+(* heap content. Should the heap consist of only free blocks, these will be  *)
+(* merged into a single, contiguous block of the full heap size.             *)
+procedure DefragMem;
 const
   SignBit = -32768; (* $8000; flips bit 15 so signed '<' sorts addresses as  *)
                     (* if they were unsigned, even across the $8000 boundary *)
