@@ -5120,35 +5120,9 @@ begin
     Expect(toLParen);
     NextToken;
     V := ParseVariableRef;
-    if V = dtInteger then
+    if (V = dtInteger) or (V^.Kind = scPointerType) then
     begin
-      if Scanner.Token = toComma then
-      begin
-        NextToken;
-        TypeCheck(dtInteger, ParseExpression, tcExpr);
-        EmitI('pop bc');
-        EmitI('pop hl');
-        EmitI('call __inc16by');
-      end
-      else EmitInc(dtInteger);
-    end
-    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
-    begin
-      if Scanner.Token = toComma then
-      begin
-        NextToken;
-        TypeCheck(dtInteger, ParseExpression, tcExpr);
-        EmitI('pop bc');
-        EmitI('pop hl');
-        EmitI('ld a,(hl)');
-        EmitI('add a,c');
-        EmitI('ld (hl),a');
-      end
-      else EmitInc(V);
-    end
-    else if V^.Kind = scPointerType then
-    begin
-      if V = dtPointer then
+      if (V = dtInteger) or (V = dtPointer) then
         Size := 1
       else
         Size := V^.DataType^.Value;
@@ -5179,6 +5153,20 @@ begin
         else EmitInc(dtInteger);
       end;
     end
+    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
+    begin
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('ld a,(hl)');
+        EmitI('add a,c');
+        EmitI('ld (hl),a');
+      end
+      else EmitInc(V);
+    end
     else Error('Ordinal or pointer type expected');
 
     Expect(toRParen);
@@ -5190,35 +5178,9 @@ begin
     Expect(toLParen);
     NextToken;
     V := ParseVariableRef;
-    if V = dtInteger then
+    if (V = dtInteger) or (V^.Kind = scPointerType) then
     begin
-      if Scanner.Token = toComma then
-      begin
-        NextToken;
-        TypeCheck(dtInteger, ParseExpression, tcExpr);
-        EmitI('pop bc');
-        EmitI('pop hl');
-        EmitI('call __dec16by');
-      end
-      else EmitDec(V);
-    end
-    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
-    begin
-      if Scanner.Token = toComma then
-      begin
-        NextToken;
-        TypeCheck(dtInteger, ParseExpression, tcExpr);
-        EmitI('pop bc');
-        EmitI('pop hl');
-        EmitI('ld a,(hl)');
-        EmitI('sub a,c');
-        EmitI('ld (hl),a');
-      end
-      else EmitDec(V);
-    end
-    else if V^.Kind = scPointerType then
-    begin
-      if V = dtPointer then
+      if (V = dtInteger) or (V = dtPointer) then
         Size := 1
       else
         Size := V^.DataType^.Value;
@@ -5248,6 +5210,20 @@ begin
         end
         else EmitDec(dtInteger);
       end;
+    end
+    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
+    begin
+      if Scanner.Token = toComma then
+      begin
+        NextToken;
+        TypeCheck(dtInteger, ParseExpression, tcExpr);
+        EmitI('pop bc');
+        EmitI('pop hl');
+        EmitI('ld a,(hl)');
+        EmitI('sub a,c');
+        EmitI('ld (hl),a');
+      end
+      else EmitDec(V);
     end
     else Error('Ordinal or pointer type expected');
 
