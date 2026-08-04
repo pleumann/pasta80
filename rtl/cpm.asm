@@ -96,6 +96,12 @@ __readline1:
                 jr      c, __readline2
                 cp      127
                 jr      nc,__readline2
+                ld      b,a
+                ld      a,(__linelen)
+                ld      hl,__linemax
+                cp      (hl)
+                ld      a,b
+                jr      nc,__readline1  ; buffer full, ignore key
                 ld      hl,(__lineptr)
                 ld      (hl),a
                 inc     hl
@@ -107,6 +113,9 @@ __readline1:
 __readline2:
                 cp      127
                 jr      nz, __readline3
+                ld      a,(__linelen)
+                or      a
+                jr      z,__readline1   ; nothing to delete
                 ld      hl,(__lineptr)
                 dec     hl
                 ld      (__lineptr),hl
@@ -126,6 +135,8 @@ __readline3:
                 ld      (hl),0
                 ld      hl,__linebuf
                 ld      (__lineptr),hl
+                ld      a,__buflen_default
+                ld      (__linemax),a
                 call    __newline
                 ret
 

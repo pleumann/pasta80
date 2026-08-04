@@ -103,6 +103,12 @@ __readline2:    call    zx_readkey      ; Wait for a key to be pressed
                 jp      c,__readline3   ; Handle control characters
                 cp      127
                 jp      nc,__readline2  ; Non-ASCII, read another key
+                ld      b,a
+                ld      a,(__linelen)
+                ld      hl,__linemax
+                cp      (hl)
+                ld      a,b
+                jp      nc,__readline2  ; buffer full, ignore key
                 ld      hl,(__lineptr)
                 ld      (hl),a          ; Store character
                 inc     hl
@@ -113,6 +119,9 @@ __readline2:    call    zx_readkey      ; Wait for a key to be pressed
                 jp      __readline1     ; And repeat
 __readline3:    cp      12
                 jp      nz, __readline4
+                ld      a,(__linelen)
+                or      a
+                jp      z,__readline1   ; nothing to delete
                 ld      hl,(__lineptr)  ; Handle delete key
                 dec     hl
                 ld      (__lineptr),hl
@@ -131,6 +140,8 @@ __readline4:    cp      13
                 ld      (hl),0
                 ld      hl,__linebuf
                 ld      (__lineptr),hl
+                ld      a,__buflen_default
+                ld      (__linemax),a
                 ld      a,' '
                 rst     16
                 call    __newline

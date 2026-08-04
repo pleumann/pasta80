@@ -9,8 +9,10 @@ __exitcode      dw      0
 ; Some stuff shared between the routines
 ;
 
+__buflen_default equ    126
+
 __buffer        ds      32
-__linemax:      ds      1
+__linemax:      db      __buflen_default
 __linelen:      ds      1
 __linebuf:      ds      128
 ;

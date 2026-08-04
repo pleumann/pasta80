@@ -279,7 +279,9 @@ __keypressed_1
 
 __getline:
                 ld      hl,__linebuf
-                ld      bc,127
+                ld      a,(__linemax)
+                ld      c,a
+                ld      b,0
                 ld      e,9     ;clear buffer, disable history
                 ld      a,9     ;mos_editline
                 rst     08h
@@ -287,7 +289,8 @@ __getline:
                 ex      de,hl   ;de now has the line buffer
                 ld      hl,__linelen
                 ld      (hl),255    ;"-1" so we can inc below
-                ld      b,127   ;maximum line length in case for safety
+                ld      a,(__linemax)
+                ld      b,a     ;maximum line length in case for safety
 __getline_lp:
                 inc     (hl)    ;increment counter for characters
                 ld      a,(de)
@@ -298,6 +301,8 @@ __getline_lp:
 __getline_2:
                 xor     a
                 ld      (de),a      ;make it 0 terminated for consistency.
+                ld      a,__buflen_default
+                ld      (__linemax),a
                 call    __newline
                 ret
 
