@@ -57,6 +57,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
+| `BufLen: Byte` | [All] | Specifies the maximum input length of the next `Read[Ln]`. Defaults to 126 and resets to that value after reach input. |
 | `Mem[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the entire Z80 address space. |
 | `Port[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the Z80 I/O address space. |
 | `AssertPassed: Integer` | [All] | Counts the number of `Assert` calls that passed. |
