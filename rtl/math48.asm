@@ -5,34 +5,34 @@
 
 ;HOPTABEL
 
-        JP   FPADD
-        JP   FPSUB
-        JP   FPMUL
-        JP   FPDIV
-        JP   MOD
-        JP   PWR
-        JP   CMP
+;        JP   FPADD
+;        JP   FPSUB
+;        JP   FPMUL
+;        JP   FPDIV
+;        JP   MOD
+;        JP   PWR
+;        JP   CMP
 
-        JP   SQR
-        JP   LN
-        JP   EXP
-        JP   LOG
-        JP   SIN
-        JP   COS
-        JP   TAN
-        JP   ATN
-        JP   ACPI
-        JP   INT
-        JP   FRAC
+;        JP   SQR
+;        JP   LN
+;        JP   EXP
+;        JP   LOG
+;        JP   SIN
+;        JP   COS
+;        JP   TAN
+;        JP   ATN
+;        JP   ACPI
+;        JP   INT
+;        JP   FRAC
 
-        JP   EQUAL
-        JP   MUL10
-        JP   FIX
-        JP   FLOAT
+;        JP   EQUAL
+;        JP   MUL10
+;        JP   FIX
+;        JP   FLOAT
 
-        JP   FSTRS
-        JP   FSTRR
-        JP   CNVN
+;        JP   FSTRS
+;        JP   FSTRR
+;        JP   CNVN
 
 
 SIGN:   EQU  80H
