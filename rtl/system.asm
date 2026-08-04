@@ -898,21 +898,6 @@ __delete:
         call    __strdel
         ret
 
-__str_int:
-        ld      hl,2
-        add     hl,sp
-        ld      bc,(hl)
-        inc     hl
-        inc     hl
-        ld      de,(hl)
-        ld      hl,bc
-        push    hl
-        inc     hl
-        call    __itoa
-        pop     hl
-        ld      (hl),a
-        ret
-
 ;
 ; Pascal "Val" magic procedure. All arguments on the stack.
 ;
@@ -1318,16 +1303,6 @@ __flteq0:
         ld      de,0
         ret
 __flteq1:
-        ld      de,1
-        ret
-
-__fltneq:
-        call    CMP
-        jr      nz,__fltneq1
-__fltneq0:
-        ld      de,0
-        ret
-__fltneq1:
         ld      de,1
         ret
 
