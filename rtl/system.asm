@@ -1447,33 +1447,25 @@ __putf_fix_1:
 ; Set support
 ; ========================================================================
 
-;
-; Set membership test
-;
-; Entry: (SP+2) 32 bytes set, (SP+34) 1 byte element
-; Exit:  DE=1 if element in set, 0 otherwise
-; Uses:  AF, HL, DE
-;
-__setin_new:
-        ld      hl,34
-        ld      d,h
-        add     hl,sp       ; HL = sp+32
-        ld      e,(hl)
-        db      $ed,$94 ; pixelad
-        db      $ed,$95 ; setae
-        db      $ed,$24 ; mirror
-        db      $ed,$34,$00,$c0; add hl,-$4000+2
-        add     hl,sp       ; HL = sp+32+bit_offset
-        ld      e,d         ; DE = 0 when bit is clear
-        and     (hl)
-        ret     z
-        ld      e,1         ; DE = 1 when bit is set
-        ret
-
 ; Set index to offset
-; Entry E index
+; Entry A index
 ; Exit DE offset of byte (D always 0), A correct bit set
+; Uses:  HL (Z80N version only, but always restored)
 __setoff:
+        ifdef   CPU_Z80N
+        ; Fast version using Ped's PIXELAD/SETAE/MIRROR trick. HL is the
+        ; caller's set base address and must survive, hence the push/pop.
+        push    hl
+        ld      e,a
+        ld      d,0
+        db      $ed,$94     ; pixelad, HL = $4000 + (A >> 3)
+        db      $ed,$95     ; setae, A = MSB-first bit mask for A
+        db      $ed,$24     ; mirror, A = LSB-first bit mask for A
+        ld      e,l         ; E = A >> 3 (H stays $40, no carry into it)
+        pop     hl
+        ret
+        else
+        ; Ordinary version for any Z80 CPU.
         ld      e,a
         srl     e
         srl     e
@@ -1500,6 +1492,7 @@ __setoff2:
 __setoff3:
         ld      d,0
         ret
+        endif
 
 ;
 ; Set membership test
