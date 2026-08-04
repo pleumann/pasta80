@@ -107,7 +107,7 @@ procedure Border(Color: Integer); register;         external 'zx_border';
  * native personality, set the CPU Speed to 3.5 MHz first. Otherwise both
  * the frequency and the duration will be wrong.
  *)
-procedure Sound(Frequency, Duration: Integer);
+procedure SoundMs(Frequency, Duration: Integer);
 var
   Cycles: Real;
 
