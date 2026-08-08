@@ -9,9 +9,9 @@ program Farn;
 
 const
   {$ifdef SYS_AGON}
-    Width = 640;
-    Height = 480;
-    Cycles = 32767;
+    Width = 1024;
+    Height = 768;
+    Cycles = -1;  //65535
   {$else}
     Width = 256;
     Height = 176;
@@ -28,8 +28,13 @@ begin
   SetCpuSpeed(3);
   {$endif}
 
-  {$ifndef SYS_AGON}
-  Border(0);
+  {$ifdef SYS_AGON}
+    SetGraphMode(19);
+    // VDU 19, l, p, r, g, b: Define logical colour 
+    Write(#19,#2,#12,#0,#255,#0);
+    SetColor(2);
+  {$else}
+    Border(0);
   {$endif}
 
   TextBackground(Black);
@@ -46,7 +51,7 @@ begin
   OX := Width div 2 - 5;
   OY := Height - 1;
 
-  while T >= 0 do
+  while T <> 0 do
   begin
     R := Random;
 
@@ -87,4 +92,9 @@ begin
   Write('Barnsley Fern');
 
   C := ReadKey;
+
+  {$ifdef SYS_AGON}
+  SetGraphMode(0);
+  {$endif}
+
 end.
