@@ -11,7 +11,7 @@ const
   {$ifdef SYS_AGON}
     Width = 1024;
     Height = 768;
-    Cycles = -1;  //65535
+    Cycles = -1;  //65535 due to wrap-around
   {$else}
     Width = 256;
     Height = 176;
@@ -22,6 +22,25 @@ var
   X, Y, XN, YN, R, FX, FY: Real;
   T, U, PX, PY, OX, OY, V: Integer;
   C: Char;
+  {$ifdef SYS_AGON}
+  B: Boolean;  //double the number of points for Agon
+  {$endif}
+
+(**
+ * Queries a point at the given coordinates, returning the
+ * specific colour instead of true/false, using the Agon RTL
+ *)
+function ColPoint(X1, Y1: Integer): Integer; register;      external 'al_point';
+
+  procedure ColPlot(X2, Y2: Integer);
+  begin
+    (* Increases the colour value when the same point is plotted repeatedly *)
+    V := ColPoint(PX, PY);
+    if V < 3 then begin
+      SetColor(V+1);
+      Plot(PX, PY);
+    end;
+  end;
 
 begin
   {$ifdef SYS_ZXNEXT}
@@ -30,9 +49,23 @@ begin
 
   {$ifdef SYS_AGON}
     SetGraphMode(19);
-    // VDU 19, l, p, r, g, b: Define logical colour 
-    Write(#19,#2,#12,#0,#255,#0);
-    SetColor(2);
+(* this uses VDU 19, l, p, r, g, b: Define logical colour 
+ * below colours are set using the value in p,
+ * ignoring r,g,b\
+ *)
+
+(*
+ * The below colour scheme gives a more
+ * "spring" seasonal feel compared to the default
+ * below which is more "autumn/fall"
+ *    Write(#19,#1,#12,#0,#0,#0);
+ *    Write(#19,#2,#29,#0,#0,#0);
+ *    Write(#19,#3,#46,#0,#0,#0);
+ *)
+    Write(#19,#1,#12,#0,#0,#0);
+    Write(#19,#2,#60,#0,#0,#0);
+    Write(#19,#3,#57,#0,#0,#0);
+    SetColor(3);
   {$else}
     Border(0);
   {$endif}
@@ -81,12 +114,22 @@ begin
     PY := OY - Trunc(YN * FY);
 
     if (PX >= 0) and (PX < Width) and (PY >= 0) and (PY < Height) then
+  {$ifdef SYS_AGON}
+      ColPlot(PX, PY);
+  {$else}
       Plot(PX, PY);
+  {$endif}
 
     X := XN;
     Y := YN;
 
+  {$ifdef SYS_AGON}
+    B := NOT B; // this effectively counts between 0 and 1
+    if B then Dec(T); //so that this line countes every 2nd time only
+  {$else}
     Dec(T);
+  {$endif}
+
   end;
 
   Write('Barnsley Fern');
