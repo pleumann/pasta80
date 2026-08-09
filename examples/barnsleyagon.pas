@@ -3,36 +3,57 @@
  *)
 program Farn;
 
-{$ifdef SYS_CPM}
-  {$error Agon or ZX Spectrum 48K/128K/Next required.}
+{$ifndef SYS_AGON}
+  {$error Agon required.}
 {$endif}
 
 const
-  {$ifdef SYS_AGON}
     Width = 1024;
     Height = 768;
     Cycles = -1;  //65535 due to wrap-around
-  {$else}
-    Width = 256;
-    Height = 176;
-    Cycles = 8191;
-  {$endif}
 
 var
   X, Y, XN, YN, R, FX, FY: Real;
   T, U, PX, PY, OX, OY, V: Integer;
   C: Char;
+  B: Integer;  //multiplier for the number of points for Agon
+
+(**
+ * Queries a point at the given coordinates, returning the
+ * specific colour instead of true/false, using the Agon RTL
+ *)
+function ColPoint(X1, Y1: Integer): Integer; register;      external 'al_point';
+
+  procedure ColPlot(X2, Y2: Integer);
+  begin
+    (* Increases the colour value when the same point is plotted repeatedly *)
+    V := ColPoint(PX, PY);
+    if V < 3 then begin
+      SetColor(V+1);
+      Plot(PX, PY);
+    end;
+  end;
 
 begin
-  {$ifdef SYS_ZXNEXT}
-  SetCpuSpeed(3);
-  {$endif}
 
-  {$ifdef SYS_AGON}
     SetGraphMode(19);
-  {$else}
-    Border(0);
-  {$endif}
+(* this uses VDU 19, l, p, r, g, b: Define logical colour 
+ * below colours are set using the value in p,
+ * ignoring r,g,b\
+ *)
+
+(*
+ * The below colour scheme gives a more
+ * "spring" seasonal feel compared to the default
+ * below which is more "autumn/fall"
+ *    Write(#19,#1,#12,#0,#0,#0);
+ *    Write(#19,#2,#29,#0,#0,#0);
+ *    Write(#19,#3,#46,#0,#0,#0);
+ *)
+    Write(#19,#1,#12,#0,#0,#0);
+    Write(#19,#2,#60,#0,#0,#0);
+    Write(#19,#3,#57,#0,#0,#0);
+    SetColor(3);
 
   TextBackground(Black);
   TextColor(Green);
@@ -78,12 +99,13 @@ begin
     PY := OY - Trunc(YN * FY);
 
     if (PX >= 0) and (PX < Width) and (PY >= 0) and (PY < Height) then
-      Plot(PX, PY);
+      ColPlot(PX, PY);
 
     X := XN;
     Y := YN;
 
-    Dec(T);
+    B := (B+1) AND 3; // adjust bitmask to halve (1) or double (7) the number of cycles
+    if (B = 0) then Dec(T); //Dec(T) only executes when the inner loop B cycles
 
   end;
 
@@ -91,8 +113,6 @@ begin
 
   C := ReadKey;
 
-  {$ifdef SYS_AGON}
   SetGraphMode(0);
-  {$endif}
 
 end.
