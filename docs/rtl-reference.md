@@ -58,6 +58,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | Signature | Platform | Description |
 |-----------|----------|-------------|
 | `BufLen: Byte` | [All] | Specifies the maximum input length of the next `Read[Ln]`. Defaults to 126 and resets to that value after reach input. |
+| `ExitCode: Integer` | [All] | Sets the process exit code. Also set by `Halt(N)`. On Agon it becomes the process return code; on ZX machines it becomes the value of the `BC` register pair when returning to BASIC. |
 | `Mem[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the entire Z80 address space. |
 | `Port[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the Z80 I/O address space. |
 | `AssertPassed: Integer` | [All] | Counts the number of `Assert` calls that passed. |
@@ -79,8 +80,8 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `Halt` | [All*] | Terminates the program. Optional form: `Halt(ExitCode: Byte)`. |
 | `New(var P: Pointer)` | [All*] | Allocates heap memory for the type that `P` points to and stores the address in `P`. |
 | `Dispose(P: Pointer)` | [All*] | Frees the memory pointed to by `P` and returns it to the heap. |
-| `Inc(var V [; N: Integer])` | [All*] | Increments `V` by 1 or by `N`. Valid for `Integer`, `Byte`, `Char` and enumeration types. |
-| `Dec(var V [; N: Integer])` | [All*] | Decrements `V` by 1 or by `N`. Valid for `Integer`, `Byte`, `Char` and enumeration types. |
+| `Inc(var V [; N: Integer])` | [All*] | Increments `V` by 1 or by `N`. Valid for `Integer`, `Byte`, `Char`, enumeration and `Pointer` types; for pointers, the size of the pointed-to element is taken into account (like in C). |
+| `Dec(var V [; N: Integer])` | [All*] | Decrements `V` by 1 or by `N`. Valid for `Integer`, `Byte`, `Char`, enumeration and `Pointer` types; for pointers, the size of the pointed-to element is taken into account (like in C). |
 | `Val(S: String; var Scalar; var E: Integer)` | [All*] | Converts the string `S` to a number or enumeration value. `E` is 0 on success, otherwise the error position. |
 | `Str(N: Scalar; var S: String)` | [All*] | Converts `N` to a string and stores the result in `S`. Optional format specifiers: `Str(N:Width, S)` or `Str(N:Width:Decimals, S)`. |
 | `Include(var S: Set; E: Element)` | [All*] | Adds element `E` to set `S`. |
@@ -130,12 +131,14 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `CursorOn` | [CPM] [Agon] | Shows the cursor. |
 | `CursorOff` | [CPM] [Agon] | Hides the cursor. |
 | `ClrEol` | [CPM] [Agon] | Clears from the cursor to the end of the current line. |
-| `ClrEos` | [CPM] | Clears from the cursor to the end of the screen. |
-| `InsLine` | [CPM] | Inserts a blank line at the cursor position and scrolls everything below down. |
-| `DelLine` | [CPM] | Deletes the line at the cursor position and scrolls everything below up. |
+| `ClrEos` | [CPM] [Agon] | Clears from the cursor to the end of the screen. |
+| `InsLine` | [CPM] [Agon] | Inserts a blank line at the cursor position and scrolls everything below down. |
+| `DelLine` | [CPM] [Agon] | Deletes the line at the cursor position and scrolls everything below up. |
 | `HighVideo` | [CPM] [Agon] | Switches to high-intensity / reverse video. |
 | `LowVideo` | [CPM] [Agon] | Switches to low-intensity video. |
 | `NormVideo` | [CPM] [Agon] | Restores normal video intensity. |
+| `InverseOn` | [CPM] [Agon] | Activates inverse (reverse) video display. |
+| `InverseOff` | [CPM] [Agon] | Deactivates inverse video display. |
 | `Border(Color: Integer)` | [ZX48] | Sets the ZX Spectrum border colour (0..7) via the ROM routine. |
 | `SetGraphMode(Mode: Integer)` | [Agon] | Sets the graphics and text screen mode for Agon. |
 
@@ -295,6 +298,14 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `KeyPressed: Boolean` | [ZX48] [CPM] [Agon] | Returns `True` if a key has been pressed and `ReadKey` can be called without blocking. |
 | `ReadKey: Char` | [ZX48] [CPM] [Agon] | Reads a key press and returns the corresponding ASCII character. Waits for a key press if none is pending. |
 | `Frames: Real` | [ZX48] [Agon] | Returns the current value of the 24-bit frame counter. On the ZX Spectrum it runs at 50 Hz (multiply by 20 to get milliseconds). On the Agon at 60 Hz (multiply by 17 for an approximate millisecond value). |
+
+### Screen and Cursor
+
+| Signature | Platform | Description |
+|-----------|----------|-------------|
+| `WhereX: Integer` | [ZX48] [Agon] | Returns the current cursor column (0-based). |
+| `WhereY: Integer` | [ZX48] [Agon] | Returns the current cursor row (0-based). |
+| `GetGraphMode: Integer` | [Agon] | Returns the current graphics and text screen mode, as set by `SetGraphMode`. |
 
 ### Graphics Queries
 
