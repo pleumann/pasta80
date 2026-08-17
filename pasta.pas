@@ -3244,7 +3244,7 @@ begin
         EmitI('ld a,32');
         EmitI('call banksel');
       end
-      else if Binary = btAgon then
+      else if (Binary = btAgon) and (CurrentOverlay <> 0) then
       begin
         EmitI('call overload');
         EmitI('ld a,8');
