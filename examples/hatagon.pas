@@ -55,7 +55,7 @@ const
   ColorA: array[0..2] of Byte = (0, 255, 0);
   ColorE: array[0..2] of Byte = (0, 255, 255);
 
-procedure SetUpPalette();
+procedure SetUpPalette;
 var
   I: Byte;
 begin
@@ -106,7 +106,7 @@ begin
 
   SetGraphMode(21);
   Write(chr(23),chr(0),chr($f8),chr($10),chr($3),chr(0),chr(0)); //VDU 23, 0, &F8, &310; 0; - enable copper effects
-  SetUpPalette();
+  SetUpPalette;
   Pal := 0;
   SelectPalette(Pal);
 

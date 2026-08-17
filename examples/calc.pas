@@ -18,6 +18,10 @@
  *)
 program Calc;
 
+{$ifdef SYS_ZX}
+  {$error Agon or CP/M required.}
+{$endif}
+
 {$a-} { Needed because grammar is recursive }
 
 type

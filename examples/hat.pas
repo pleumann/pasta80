@@ -12,6 +12,10 @@
  *)
 program Hat;
 
+{$ifdef SYS_CPM}
+  {$error Agon or ZX Spectrum 48K/128K/Next required.}
+{$endif}
+
 const
   { Original values from Commodore PET ad }
   x0              = 320; // Screen res math originally targeted
