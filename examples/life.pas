@@ -103,8 +103,12 @@ end;
 begin
   CursorOff;
 
-  ClrScr;
+  {$ifdef SYS_ZX}
+  Border(Black);
+  {$endif}
+
   TextBackground(Black);
+  ClrScr;
   Randomize;
   Setup;
 
@@ -115,8 +119,8 @@ begin
     Inc(Cycle);
     TextColor(1 + Cycle mod 6);
     Paint;
-    TextBackground(7);
-    TextColor(0);
+    TextBackground(White);
+    TextColor(Black);
     GotoXY(Margin, 22);
 
     if ScreenWidth = 32 then
@@ -124,8 +128,8 @@ begin
     else
       Write(' Cycle: ', Cycle:5,'  Alive: ', Live:3, '  Press any key to exit. ':38);
 
-    TextBackground(0);
-    TextColor(7);
+    TextBackground(Black);
+    TextColor(White);
 
     Think;
   end;

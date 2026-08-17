@@ -124,12 +124,12 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `ClrScr` | [ZX48] [CPM] [Agon] | Clears the screen using the most recently set foreground and background attributes. |
-| `GotoXY(X, Y: Integer)` | [ZX48] [CPM] [Agon] | Moves the cursor to column `X` (0-based) and row `Y` (0-based). |
-| `TextColor(Color: Integer)` | [ZX48] [CPM] [Agon] | Sets the foreground colour (0..7). |
-| `TextBackground(Color: Integer)` | [ZX48] [CPM] [Agon] | Sets the background colour (0..7). |
-| `CursorOn` | [CPM] [Agon] | Shows the cursor. |
-| `CursorOff` | [CPM] [Agon] | Hides the cursor. |
+| `ClrScr` | [All] | Clears the screen using the most recently set foreground and background attributes. |
+| `GotoXY(X, Y: Integer)` | [All] | Moves the cursor to column `X` (1-based) and row `Y` (1-based). |
+| `TextColor(Color: Integer)` | [All] | Sets the foreground colour. Possible values depend on target and screen mode. Symbolic constants exist. |
+| `TextBackground(Color: Integer)` | [All] | Sets the background colour (0..7). Possible values depend on target and screen mode. Symbolic constants exist. |
+| `CursorOn` | [All] | Shows the cursor. No-op on ZX. |
+| `CursorOff` | [All] | Hides the cursor. No-op on ZX. |
 | `ClrEol` | [CPM] [Agon] | Clears from the cursor to the end of the current line. |
 | `ClrEos` | [CPM] [Agon] | Clears from the cursor to the end of the screen. |
 | `InsLine` | [CPM] [Agon] | Inserts a blank line at the cursor position and scrolls everything below down. |
@@ -139,7 +139,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `NormVideo` | [CPM] [Agon] | Restores normal video intensity. |
 | `InverseOn` | [CPM] [Agon] | Activates inverse (reverse) video display. |
 | `InverseOff` | [CPM] [Agon] | Deactivates inverse video display. |
-| `Border(Color: Integer)` | [ZX48] | Sets the ZX Spectrum border colour (0..7) via the ROM routine. |
+| `Border(Color: Integer)` | [ZX48] | Sets the border colour (0..7). |
 | `SetGraphMode(Mode: Integer)` | [Agon] | Sets the graphics and text screen mode for Agon. |
 
 ### Graphics
