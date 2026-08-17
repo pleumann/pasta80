@@ -76,6 +76,16 @@ function KeyPressed: Boolean; register;             external 'zx_testkey';
  *)
 function ReadKey: Char; register;                   external 'zx_readkey';
 
+(**
+ * Dummy declaration to ease portable code.
+ *)
+procedure CursorOn; register; inline ($c9);
+
+(**
+ * Dummy declaration to ease portable code.
+ *)
+procedure CursorOff; register; inline ($c9);
+
 (* --------------------------------------------------------------------- *)
 (* --- Misc. standard functions ---------------------------------------- *)
 (* --------------------------------------------------------------------- *)

@@ -10,7 +10,7 @@ const
 
 var
   Map: array[0..1] of array[0..19] of array[0..31] of Byte;
-  This, Next, Cycle, Live, Color: Integer;
+  This, Next, Cycle, Live, Color, Margin: Integer;
   Cell: string[2];
   C: Char;
 
@@ -20,7 +20,7 @@ var
 begin
   for Y := 0 to Height - 1 do
   begin
-    GotoXY(8, 1 + Y);
+    GotoXY(Margin, 1 + Y);
     for X := 0 to Width - 1 do
       if Map[This][Y][X] = 1 then
       begin
@@ -79,10 +79,12 @@ begin
   if ScreenWidth = 32 then
   begin
     Cell := ' ';
+    Margin := 1;
   end
   else
   begin
     Cell := '  ';
+    Margin := 8;
   end;
 
   Live := 0; This := 0; Next := 1;
@@ -102,6 +104,7 @@ begin
   CursorOff;
 
   ClrScr;
+  TextBackground(Black);
   Randomize;
   Setup;
 
@@ -114,8 +117,12 @@ begin
     Paint;
     TextBackground(7);
     TextColor(0);
-    GotoXY(8, 22);
-    Write(' Cycle:  ', Cycle:3,'  Alive: ', Live:3, '  Press any key to exit. ':40);
+    GotoXY(Margin, 22);
+
+    if ScreenWidth = 32 then
+      Write(' Cycle: ', Cycle:3, ' Alive: ', Live:3, ' Key=Exit ')
+    else
+      Write(' Cycle: ', Cycle:5,'  Alive: ', Live:3, '  Press any key to exit. ':38);
 
     TextBackground(0);
     TextColor(7);
