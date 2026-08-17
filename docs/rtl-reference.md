@@ -303,8 +303,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `WhereX: Integer` | [ZX48] [Agon] | Returns the current cursor column (0-based). |
-| `WhereY: Integer` | [ZX48] [Agon] | Returns the current cursor row (0-based). |
+| `WhereX: Integer` | [ZX48] [Agon] | Returns the current cursor column (1-based). |
+| `WhereY: Integer` | [ZX48] [Agon] | Returns the current cursor row (1-based). |
 | `GetGraphMode: Integer` | [Agon] | Returns the current graphics and text screen mode, as set by `SetGraphMode`. |
 
 ### Graphics Queries
