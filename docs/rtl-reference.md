@@ -23,16 +23,16 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `True` | `Boolean` | `1` | [All*] | Boolean value "true". |
 | `MaxInt` | `Integer` | `32767` | [All] | Largest representable `Integer` value. |
 | `MinInt` | `Integer` | `-32768` | [All] | Smallest representable `Integer` value. |
-| `Black` | `Integer` | Depends | [All] | Colour constant black. Value is `0` everywhere. |
+| `Black` | `Integer` | `0` | [All] | Colour constant black. |
 | `Blue` | `Integer` | Depends | [All] | Colour constant blue. CP/M and ZX: `1`; Agon: `4`. |
 | `Red` | `Integer` | Depends | [All] | Colour constant red. CP/M and ZX: `2`; Agon: `1`. |
 | `Magenta` | `Integer` | Depends | [All] | Colour constant magenta. CP/M and ZX: `3`; Agon: `5`. |
 | `Green` | `Integer` | Depends | [All] | Colour constant green. CP/M and ZX: `4`; Agon: `2`. |
 | `Cyan` | `Integer` | Depends | [All] | Colour constant cyan. CP/M and ZX: `5`; Agon: `6`. |
 | `Yellow` | `Integer` | Depends | [All] | Colour constant yellow. CP/M and ZX: `6`; Agon: `3`. |
-| `White` | `Integer` | Depends | [All] | Colour constant white. Value is `7` everywhere. |
-| `ScreenWidth` | `Integer` | Depends | [ZX48] [CPM] [Agon] | Default screen width in characters. ZX: `32`; CP/M and Agon: `80`. |
-| `ScreenHeight` | `Integer` | Depends | [ZX48] [CPM] [Agon] | Default screen height in characters. ZX: `22`; CP/M and Agon: `24`. |
+| `White` | `Integer` | `7` | [All] | Colour constant white. |
+| `ScreenWidth` | `Integer` | Depends | [All] | Default screen width in characters. ZX: `32`; CP/M and Agon: `80`. |
+| `ScreenHeight` | `Integer` | Depends | [All] | Default screen height in characters. ZX: `22`; CP/M and Agon: `24`. |
 | `LineBreak` | `String` | Depends | [ZX48] [CPM] [Agon] | Line-break convention. ZX: `#13`; CP/M and Agon: `#13#10`. |
 
 ---
