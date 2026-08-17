@@ -19,7 +19,22 @@ overload:
             mksil
             call    real_overload
             db      0x04
-            ret
+            ld      a,l
+            or      a
+            ret     z
+
+; Reports a failed overlay load and terminates the program.
+;
+overload_err:
+            ld      hl,overload_msg
+            ld      bc,0
+            ld      a,0
+            rst     0x18
+            mksis
+            jp      __done
+
+overload_msg:
+            db      'Overlay missing.',13,10,0
 
 real_overload:
             ldamb
@@ -62,7 +77,7 @@ banksel1:
             djnz    banksel1                ; Make UHL = A * 8192
 
             mklil
-            db 0xed, 0x07
+            db 0xed, 0x07                   ; ld bc,(hl)
 
             ld24    de,0x4e000
             mklis
