@@ -2526,18 +2526,22 @@ begin
     end;
 
     if StartsWith(Prev^.Instruction, 'db ') and StartsWith(Code^.Instruction, 'db ') then
-    begin
-      Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
-      RemoveCode;
-      Exit;
-    end;
+      // Ensure merged lines are String[255]-safe and readable.
+      if Length(Prev^.Instruction) + Length(Code^.Instruction) <= 80 then
+      begin
+        Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
+        RemoveCode;
+        Exit;
+      end;
 
     if StartsWith(Prev^.Instruction, 'dw ') and StartsWith(Code^.Instruction, 'dw ') then
-    begin
-      Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
-      RemoveCode;
-      Exit;
-    end;
+      // Ensure merged lines are String[255]-safe and readable.
+      if Length(Prev^.Instruction) + Length(Code^.Instruction) <= 80 then
+      begin
+        Prev^.Instruction := Prev^.Instruction + ',' + Copy(Code^.Instruction, 4, 255);
+        RemoveCode;
+        Exit;
+      end;
 
     if StartsWith(Prev^.Instruction, 'push ') and StartsWith(Code^.Instruction, 'pop ') then
     begin
