@@ -180,6 +180,87 @@ begin
   Assert(MemAvail = Org);
 end;
 
+type
+  PByte = ^Byte;
+  PSmall = ^TSmall;
+  TSmall = record
+    A, B: Byte;
+  end;
+
+(* Regression test for heap blocks smaller than a free list node. A node of *)
+(* TBlock needs 4 bytes (Next + Size); a request for less must be rounded  *)
+(* up, or __freemem would later write its header past the block's end. Size *)
+(* 0 must be a complete no-op (TP 3/5 compatible): pointer and heap stay    *)
+(* untouched. Size 4 exactly is included because it used to trip a boundary *)
+(* bug in __chksize, where a stale flag from the size comparison got reused *)
+(* as the "size is zero" signal and the allocation silently never happened. *)
+procedure TestSmallBlocks;
+var
+  Org, Before: Integer;
+  B1, B2: PByte;
+  S1, S2: PSmall;
+  P, Q, R: Pointer;
+begin
+  WriteLn('--- TestSmallBlocks ---');
+  WriteLn;
+
+  Org := MemAvail;
+
+  (* New/Dispose on a pointer to a one byte type. *)
+  New(B1);
+  New(B2);
+  B1^ := 11;
+  B2^ := 22;
+  Assert(Abs(Addr(B2^) - Addr(B1^)) >= 4);
+  Dispose(B1);
+  Assert(B2^ = 22);
+  Dispose(B2);
+  Assert(MemAvail = Org);
+
+  (* New/Dispose on a two byte record. *)
+  New(S1);
+  New(S2);
+  S1^.A := 1; S1^.B := 2;
+  S2^.A := 3; S2^.B := 4;
+  Assert(Abs(Addr(S2^) - Addr(S1^)) >= 4);
+  Dispose(S1);
+  Assert(S2^.A = 3);
+  Assert(S2^.B = 4);
+  Dispose(S2);
+  Assert(MemAvail = Org);
+
+  (* Explicit GetMem/FreeMem with sizes below the node size. *)
+  GetMem(P, 1);
+  GetMem(Q, 2);
+  GetMem(R, 3);
+  Assert(Ord(Q) - Ord(P) >= 4);
+  Assert(Ord(R) - Ord(Q) >= 4);
+  FreeMem(P, 1);
+  FreeMem(Q, 2);
+  FreeMem(R, 3);
+  Assert(MemAvail = Org);
+
+  (* Size 4 exactly: the __chksize boundary case. *)
+  Before := MemAvail;
+  GetMem(P, 4);
+  Assert(P <> nil);
+  Assert(MemAvail < Before);
+  FreeMem(P, 4);
+  Assert(MemAvail = Before);
+
+  (* Size 0 must be a complete no-op: pointer and heap stay untouched. *)
+  GetMem(P, 2);
+  Q := P;
+  Before := MemAvail;
+  GetMem(P, 0);
+  Assert(P = Q);
+  Assert(MemAvail = Before);
+  FreeMem(P, 0);
+  Assert(MemAvail = Before);
+  FreeMem(P, 2);
+  Assert(MemAvail = Org);
+end;
+
 procedure TestCompact;
 var
   Blocks, Total: Integer;
@@ -234,6 +315,12 @@ begin
   WriteLn;
 
   TestNewDispose;
+
+  WriteLn;
+  WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
+  WriteLn;
+
+  TestSmallBlocks;
 
   WriteLn;
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));

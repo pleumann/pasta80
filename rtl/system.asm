@@ -2326,9 +2326,29 @@ __movedn:
 __heapptr:
         dw      HEAP
 
+; Adjust DE to ensure all heap blocks will be at least 4 bytes in size in
+; order to be able to link them into the free list later. Exception are 0
+; bytes blocks which are simply ignored (like TP 3/5 did). ZF signals this.
+__chksize:
+        ld      a,d
+        or      a
+        ret     nz
+
+        or      e
+        ret     z
+
+        cp      4
+        jr      nc,__chksize_ok
+        ld      e,4
+__chksize_ok:
+        or      e
+        ret
+
 ; In: HL pointer address, DE size
 ; Out: -
 __getmem:
+        call    __chksize
+        ret     z
         push    ix
         push    hl
         call    __malloc
@@ -2416,6 +2436,8 @@ __malloc_error_message:
 ; In: HL pointer, DE size
 __freemem:
 ;        db      $dd,01,00,00
+        call    __chksize
+        ret     z
         ld      bc,(__heapptr)
         ld      (hl),c
         inc     hl
