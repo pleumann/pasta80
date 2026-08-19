@@ -3667,24 +3667,15 @@ begin
     toDivKW: Emit('', 'call __sdiv16', 'Div');
     toMod: begin Emit('', 'call __sdiv16', 'Mod'); EmitI('ex hl,de'); end;
     toAnd: begin
-             if DataType = dtInteger then
-             begin
-               EmitI('ld a,h'); EmitI('and d'); EmitI('ld h,a');
-             end;
+             EmitI('ld a,h'); EmitI('and d'); EmitI('ld h,a');
              EmitI('ld a,l'); EmitI('and e'); EmitI('ld l,a');
            end;
     toOr: begin
-             if DataType = dtInteger then
-             begin
-               EmitI('ld a,h'); EmitI('or d'); EmitI('ld h,a');
-             end;
+             EmitI('ld a,h'); EmitI('or d'); EmitI('ld h,a');
              EmitI('ld a,l'); EmitI('or e'); EmitI('ld l,a');
            end;
     toXor: begin
-             if DataType = dtInteger then
-             begin
-               EmitI('ld a,h'); EmitI('xor d'); EmitI('ld h,a');
-            end;
+             EmitI('ld a,h'); EmitI('xor d'); EmitI('ld h,a');
              EmitI('ld a,l'); EmitI('xor e'); EmitI('ld l,a');
            end;
     toShl: begin

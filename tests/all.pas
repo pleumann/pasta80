@@ -1,7 +1,7 @@
 program All;
 
 {$a+}
-{$m 3072}
+{$m 2048}
 
 const
   NumberOfTheBeast = 666;
@@ -498,6 +498,8 @@ begin
 end;
 
 overlay procedure TestBitOps;
+var
+  B1, B2, B3, B4: Byte;
 begin
   WriteLn('--- TestBitOps ---');
 
@@ -512,6 +514,13 @@ begin
   Assert(not 0 = -1);
   Assert(not 1 = -2);
   Assert(not -1 = 0);
+
+  // Regression test for issue #133: and/or/xor operators on Byte-typed
+  // expressions must combine the full 16 bit values, not skip the high byte.
+  B1 := 17; B2 := 17; B3 := 200; B4 := 200;
+  Assert((B1 * B2) and (B3 * B4) = 0);
+  Assert((B1 * B2) or (B3 * B4) = -25247);
+  Assert((B1 * B2) xor (B3 * B4) = -25247);
 end;
 
 overlay procedure TestVarGlobal;
