@@ -4708,7 +4708,7 @@ begin
   end
   else if (Func = FilePosFunc) or (Func = FileSizeFunc) or (Func = EolFunc) or (Func = EofFunc) or (Func = SeekEofFunc) or (Func = SeekEolnFunc) then
   begin
-    EmitI('push de');
+    EmitLiteral(0);
 
     T := ParseVariableRef;
     if T^.Kind <> scFileType then Error('File type expected');

@@ -501,6 +501,48 @@ begin
   Close(T);
 end;
 
+(**
+ * Regression test for a bug we had in Eof/Eoln/SeekEof/SeekEoln where a 
+ * random 16 bit value was put on the stack into the result slot. Functions
+ * returning a Boolean value only modify the lower 8 bits of that slot, so
+ * if someone cared to Ord() or otherwise cast the result there would have
+ * been garbage inside.
+ *)
+procedure TestTextBooleanResultBytes;
+var
+  T: Text;
+  S: String;
+begin
+  WriteLn('--- TestTextBooleanResultBytes ---');
+
+  Assign(T, 'BOO.TMP');
+  Rewrite(T);
+  WriteLn(T, 'ab');
+  Close(T);
+
+  Reset(T);
+
+  I := -1;
+  Assert(Ord(Eof(T)) = 0);
+  I := -1;
+  Assert(Ord(Eoln(T)) = 0);
+  I := -1;
+  Assert(Ord(SeekEof(T)) = 0);
+  I := -1;
+  Assert(Ord(SeekEoln(T)) = 0);
+
+  ReadLn(T, S);
+  Assert(S = 'ab');
+
+  I := -1;
+  Assert(Ord(Eof(T)) = 1);
+  I := -1;
+  Assert(Ord(SeekEof(T)) = 1);
+
+  Close(T);
+  Erase(T);
+end;
+
 { --- Typed 'file of' --- }
 
 overlay procedure TestTypedFiles;
@@ -644,6 +686,7 @@ begin
   TestTextSeekEof;
   TestTextEoln;
   TestTextEof;
+  TestTextBooleanResultBytes;
 
   TestTypedFiles;
 
