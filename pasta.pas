@@ -8020,6 +8020,13 @@ begin
   CurrentOverlay := 0;
   Banked := False;
   Muted := 0;
+
+  BDosFunc := nil;
+  BDosHLFunc := nil;
+  IfDefLevel := -1;
+  ScannerMuted := False;
+  CurrentBank := 0;
+  NextLabel := 0;  
 end;
 
 (**
