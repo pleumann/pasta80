@@ -6095,7 +6095,7 @@ begin
     Sym := SymbolTable;
     SymbolTable := SymbolTable^.Prev;
     // WriteLn('Drop ' , Sym^.Name);
-    FreeMem(Sym);
+    Dispose(Sym);
   end;
 end;
 
