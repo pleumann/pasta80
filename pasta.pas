@@ -1055,6 +1055,32 @@ const
   ToastrackBanks: array[0..9] of Byte = (0, 0, 1, 1, 3, 3, 4, 4, 6, 6);
 
 (**
+ * Disposes a single symbol table entry and rewires Sym to its predecessor
+ * (Sym^.Prev), so it can be used to walk and free a whole chain in a loop.
+ * Also frees any side chain the symbol exclusively owns but that is not
+ * reachable through the main symbol table list (record field lists, saved
+ * forward-declaration parameters), recursively applying the same logic.
+ *)
+procedure FreeAndNilSymbol(var Sym: PSymbol);
+var
+  Tmp: PSymbol;
+begin
+  Tmp := Sym^.Prev;
+
+  if Sym^.Kind = scRecordType then
+    while Sym^.DataType <> nil do
+      FreeAndNilSymbol(Sym^.DataType);
+
+  if (Sym^.Kind in [scProc, scFunc]) and (Sym^.SavedParams <> nil) then
+    while Sym^.SavedParams <> nil do
+      FreeAndNilSymbol(Sym^.SavedParams);
+
+  Dispose(Sym);
+
+  Sym := Tmp;
+end;
+
+(**
  * Opens a scope, which mainly adds a new scope marker at the front of the
  * symbol table. If AdjustLevel is true (which is the case for procedures and
  * functions, especially nested ones) level and variable offset are affected,
@@ -1092,7 +1118,6 @@ end;
  *)
 procedure CloseScope(AdjustLevel: Boolean);
 var
-  Sym: PSymbol;
   Kind: TSymbolClass;
 begin
   while SymbolTable <> CurrentScope do
@@ -1117,9 +1142,7 @@ begin
       end;
     end;
 
-    Sym := SymbolTable^.Prev;
-    Dispose(SymbolTable);
-    SymbolTable := Sym;
+    FreeAndNilSymbol(SymbolTable);
   end;
 
   CurrentScope := SymbolTable^.DataType;
@@ -1130,9 +1153,7 @@ begin
     Offset := SymbolTable^.Value;
   end;
 
-  Sym := SymbolTable^.Prev;
-  Dispose(SymbolTable);
-  SymbolTable := Sym;
+  FreeAndNilSymbol(SymbolTable);
 end;
 
 procedure Dependencies(Sym: PSymbol);
@@ -6061,7 +6082,7 @@ end;
  *)
 procedure ParseWith(ContTarget, BreakTarget: String);
 var
-  OldSymbols, Sym: PSymbol;
+  OldSymbols: PSymbol;
   Count, I: Integer;
 begin
   OldSymbols := SymbolTable;
@@ -6091,12 +6112,7 @@ begin
   for I := 1 to Count do EmitI('pop bc');
 
   while SymbolTable <> OldSymbols do
-  begin
-    Sym := SymbolTable;
-    SymbolTable := SymbolTable^.Prev;
-    // WriteLn('Drop ' , Sym^.Name);
-    Dispose(Sym);
-  end;
+    FreeAndNilSymbol(SymbolTable);
 end;
 
 (**
@@ -7440,6 +7456,7 @@ begin
       P^.Prev := SymbolTable;
       SymbolTable^.Next := P;
       SymbolTable := FwdSym^.SavedParams;
+      FwdSym^.SavedParams := nil;
     end;
 
     NextToken;
@@ -7982,17 +7999,11 @@ end;
  * Resets the compiler to its initial state, allowing for another compilation.
  *)
 procedure ResetCompiler;
-var
-  Sym: PSymbol;
 begin
   // Cannot use CloseScope because that might
   // trigger "unresolved forward" errors.
   while SymbolTable <> nil do
-  begin
-    Sym := SymbolTable^.Prev;
-    Dispose(SymbolTable);
-    SymbolTable := Sym;
-  end;
+    FreeAndNilSymbol(SymbolTable);
 
   C := #0;
 
@@ -8026,7 +8037,11 @@ begin
   IfDefLevel := -1;
   ScannerMuted := False;
   CurrentBank := 0;
-  NextLabel := 0;  
+  NextLabel := 0;
+
+  BinFile := '';
+  AsmFile := '';
+  ExitTarget := '';
 end;
 
 (**
@@ -8044,6 +8059,8 @@ begin
   Build := 1;
 
   ResetCompiler;
+
+  // WriteLn('[TotalAllocated=', GetHeapStatus.TotalAllocated, ']');
 
   AsmFile := ChangeExt(SrcFile, '.z80');
 
