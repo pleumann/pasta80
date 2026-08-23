@@ -2281,6 +2281,19 @@ end;
 (* --- Error handling ------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
+type
+  (**
+   * Raised by Error to unwind the parser back to the point where parsing was
+   * started, running normal Pascal stack unwinding (and hence finalization
+   * of local managed-type variables, mainly AnsiStrings in our case) along the
+   * way. We don't want to refine this any further (including error info, for
+   * instance) because ultimately we will not be using it as it is not a Turbo
+   * Pascal 3-5 feature. It's just a replacement for SetJmp/LongJmp, which,
+   * unfortunately, leak memory.
+   *)
+  ECompileError = class(TObject)
+  end;
+
 var
   (**
    * The file in which an error occurred.
@@ -2293,18 +2306,14 @@ var
   ErrorLine, ErrorColumn: Integer;
 
   (**
-   * The stored execution state to LongJmp to after an error.
-   *)
-  StoredState: Jmp_Buf;
-
-(**
-   * Whether we have assigned a stored state we can jump to.
+   * Whether a try/except block is currently in place to catch ECompileError,
+   * i.e. whether Error should raise it or just halt directly.
    *)
   HasStoredState: Boolean;
 
 (**
- * Reports an error and performs a LongJmp back to the point where parsing was
- * started.
+ * Reports an error and raises ECompileError to unwind back to the point
+ * where parsing was started.
  *)
 procedure Error(Message: String);
 var
@@ -2329,9 +2338,8 @@ begin
     ErrorColumn := 0;
   end;
 
-  // TODO Get rid of need for LongJmp by making "IDE" a separate program?
   if HasStoredState then
-    LongJmp(StoredState, 1)
+    raise ECompileError.Create
   else
   begin
     WriteLn();
@@ -8095,10 +8103,9 @@ begin
   else
     AddrLimit := $10000;
 
-  if SetJmp(StoredState) = 0 then
-  begin
-    HasStoredState := True;
+  HasStoredState := True;
 
+  try
     if FSize(SrcFile) = -1 then
       Error('File "' + PosixToNative(FRelative(SrcFile)) + '" not found');
 
@@ -8142,6 +8149,8 @@ begin
     WriteLn(' build finished (', Duration:0:3, 's).');
 
     Build := 0;
+  except
+    on E: ECompileError do ;
   end;
 
   if Result = 2 then
