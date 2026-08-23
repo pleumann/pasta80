@@ -196,11 +196,11 @@ var
 begin
   with T do
   begin
-    (* FIXME !!! *)
-    TextWriteChar(T, #26);
+    (* Pad rest of current sector with #26 to
+       make hex dumps look nicer. *)
+    FillChar(DMA[Offset], 128 - Offset, #26);
 
-    if Offset <> 0 then
-      BlockBlockWrite(FCB, DMA, 1, E);
+    BlockBlockWrite(FCB, DMA, 1, E);
 
     if LastError <> 0 then Exit;
 
@@ -262,10 +262,26 @@ procedure TextGotoEof(var T: TextRec);
 var
   E: Integer;
   C: Char;
+  Size: Integer;
 begin
   with T do
   begin
-    BlockSeek(FCB, BlockFileSize(FCB) - 1);
+    Size := BlockFileSize(FCB);
+
+    (* A brand-new or erased-to-empty file has zero sectors. BlockSeek(FCB,
+       Size - 1) would then seek to record -1, which BDOS interprets as the
+       64K-ish record 65535 and happily zero-fills the file up to that
+       point on the next write (observed: an 8 MB file of zero bytes from
+       a handful of appended characters). Treat this as "already at EOF,
+       nothing to rewind to" instead. *)
+    if Size = 0 then
+    begin
+      EndOfFile := True;
+      Offset := 0;
+      Exit;
+    end;
+
+    BlockSeek(FCB, Size - 1);
     BlockBlockRead(FCB, DMA, 1, E);
 
     if LastError <> 0 then Exit;
@@ -345,7 +361,18 @@ begin
 
     if LastError <> 0 then Exit;
 
-    BlockSeek(FCB, FCB.RL - 1);
+    (* TextGotoEof stops either (a) on a genuine #26 marker inside the last
+       buffered sector (EndOfFile still False; Offset may legitimately be 0
+       if the marker is the sector's first byte), in which case we must
+       rewind one record so the next write reuses that same sector, or
+       (b) because it ran out of sectors entirely with no marker found, e.g.
+       a file whose length is an exact multiple of 128 bytes and that was
+       not terminated with a #26 by this RTL (EndOfFile True, Offset 0). In
+       case (b) the last on-disk sector is fully valid data and must be left
+       alone; the next write has to start at a fresh record instead of
+       overwriting it. *)
+    if not EndOfFile then
+      BlockSeek(FCB, FCB.RL - 1);
 
     Readable := False;
     Writable := True;
