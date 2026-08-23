@@ -8013,6 +8013,9 @@ begin
   while SymbolTable <> nil do
     FreeAndNilSymbol(SymbolTable);
 
+  while Code <> nil do
+    RemoveCode;
+
   C := #0;
 
   ErrorLine := 0;
@@ -8028,8 +8031,6 @@ begin
   ClearDefines;
 
   Source := nil;
-
-  Code := nil;
 
   AbsCode := True;
   CheckBreak := False;
