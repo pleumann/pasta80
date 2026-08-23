@@ -234,7 +234,8 @@ begin
 
     if R.BC < 128 then
     begin
-      FillChar(R.HL, 128 - R.BC, #26);
+      // HL has advanced to the byte following the data just read.
+      FillChar(Ptr(R.HL)^, 128 - R.BC, #26);
       Exit;
     end;
   end;

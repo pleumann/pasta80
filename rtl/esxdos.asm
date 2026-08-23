@@ -31,7 +31,7 @@ esx_call_num:   db      $00
                 di
                 ld      (esx_saved_sp),sp   ; This might be redundant
                 ld      sp,(esx_call_args)
-                push    ix                  ; Not actually used in results
+                push    hl                  ; This is always the real HL
                 push    de
                 push    bc
                 push    af
