@@ -21,7 +21,7 @@ program ZXSum;
 
 {$ifndef SYS_ZX48}
   {$ifndef SYS_ZX128}
-    {$error This program only works on classic Spectrums.}
+    {$error ZX Spectrum 48K/128K required.}
   {$endif}
 {$endif}
 

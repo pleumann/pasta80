@@ -8,7 +8,7 @@
 program Mandelbrot;
 
 {$ifdef SYS_CPM}
-  {$error This program cannot be compiled for CP/M.}
+  {$error Agon or ZX Spectrum 48K/128K/Next required.}
 {$endif}
 
 var

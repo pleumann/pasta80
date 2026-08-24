@@ -1,7 +1,7 @@
 program Screen;
 
 {$ifndef SYS_AGON}
-  {$error This program is for Agon only.}
+  {$error Agon required.}
 {$endif}
 
 const
