@@ -8077,7 +8077,8 @@ begin
   AsmFile := ChangeExt(SrcFile, '.z80');
 
   if Binary = btCPM then
-    BinFile := ChangeExt(SrcFile, '.com')
+    // Shorten to 8.3 for CP/M. SrcFile is absolute, so this is safe.
+    BinFile := ParentDir(SrcFile) + '/' + Copy(NameOnly(ChangeExt(SrcFile, '')), 1, 8) + '.com'
   else if Format in [tfBinary, tfPlus3Dos, tfMOSlet] then
     BinFile := ChangeExt(SrcFile, '.bin')
   else if Format = tfRunDir then
