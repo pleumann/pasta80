@@ -260,8 +260,11 @@ function ChangeExt(FileName, NewExt: String): String;
 var
   I: Integer;
 begin
-  I := Pos('.', FileName);
-  if I = 0 then
+  I := Length(FileName);
+  while (I > 0) and (FileName[I] <> '.') and (FileName[I] <> '/') do
+    I := I - 1;
+
+  if (I = 0) or (FileName[I] = '/') then
     ChangeExt := FileName + NewExt
   else
     ChangeExt := Copy(FileName, 1, I - 1) + NewExt;
