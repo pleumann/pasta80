@@ -1530,7 +1530,9 @@ ROU6:   INC  HL         ;Tallet var 9999...
 OUTM:   LD   A,(IY+0)   ;Er tallet 0?
         OR   A
         JR   NZ,OM1     ;Nej => OM1
-        LD   B,A        ;Positivt fortegn
+; Prevent loss of minus sign if rounded value is zero
+; because that's how Turbo Pascal 3 and later operate.
+;       LD   B,A        ;Positivt fortegn
         LD   C,A        ;Tiexp = 0
 
 OM1:    BIT  0,D        ;Exponentielt?

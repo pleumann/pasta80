@@ -3163,6 +3163,10 @@ begin
   Str(3.14159:0:2, S);  Assert(S = '3.14');
   Str(3.14159:8:2, S);  Assert(S = '    3.14');
 
+  { Regression test for #142: A negative Real that rounds to a
+    displayed zero must keep its sign (Turbo Pascal 3+ behavior). }
+  Str(-0.00004:8:3, S); Assert(S = '  -0.000');
+
   { Enum }
   for C := Red to Blue do
   begin
