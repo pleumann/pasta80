@@ -3647,6 +3647,8 @@ begin
     toEq, toNeq: EmitI('call __flteq');
     toLt, toGeq: EmitI('call __fltlt');
     toGt, toLeq: EmitI('call __fltleq');
+  else
+    Error(TokenStr[Op] + ' not allowed for Real');
   end;
 
   if Op in [toAdd, toSub, toMul, toDiv, toMod] then
