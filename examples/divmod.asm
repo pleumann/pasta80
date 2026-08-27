@@ -6,8 +6,8 @@
 ;
 __divmod:
                 ex      de,hl           ; HL = Dividend, DE = Divisor
-                push    bc              ; save @Quotient (__sdiv16 clobbers BC)
-                call    __sdiv16        ; HL = quotient, DE = remainder
+                push    bc              ; save @Quotient (__sdiv16c clobbers BC)
+                call    __sdiv16c       ; HL = quotient, DE = remainder; aborts on Divisor = 0
                 pop     bc
                 ld      a,l
                 ld      (bc),a

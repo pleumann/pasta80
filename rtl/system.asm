@@ -272,6 +272,21 @@ __squot:        ds      1
 __srem:         ds      1
 __count:        ds      1
 
+; Checked entry point for __sdiv16, used for the "div"/"mod" operators.
+; __sdiv16 itself stays untouched (kept as in the original library, for
+; historical reasons) -- it already signals division by zero via Carry on
+; return, this just acts on it instead of leaving that to the caller.
+__sdiv16c:      call    __sdiv16
+                ret     nc
+
+__div_by_zero:
+                ld      hl,__div_by_zero_msg
+                call    __puts
+                jp      __done
+
+__div_by_zero_msg:
+                db 16,"Division by zero"
+
 ;
 ; Multiplication by 10
 ;
@@ -1249,6 +1264,75 @@ __dec16by:      ld      e,(hl)
 
                 include "math48.asm"
 
+; Checked wrappers around the four math48 binary operations. Same calling
+; convention as the underlying routine, but each of these aborts with an
+; error instead of signaling the error condition in the carry flag.
+; Wrapping instead of checking carry at every call site keeps the cost to
+; one call c,__matherr" per routine total, rather than 3 extra bytes at
+; every single floating point operation in the generated program.
+__fpadd:        call    FPADD
+                ret     nc
+                jr      __matherr
+
+__fpsub:        call    FPSUB
+                ret     nc
+                jr      __matherr
+
+__fpmul:        call    FPMUL
+                ret     nc
+                jr      __matherr
+
+__fpdiv:        call    FPDIV
+                ret     nc
+                jp      z,__div_by_zero
+                jr      __matherr
+
+; TAN computes SIN(X)/COS(X) internally via a plain FPDIV, and nothing in
+; between there and TAN's own return touches the flags -- so this has the
+; exact same Carry/Carry+Zero split as __fpdiv above: Cos(X) = 0 exactly
+; (X at a singularity) signals Division by zero, X merely close to one
+; signals a Real overflow instead.
+__tan:          call    TAN
+                ret     nc
+                jp      z,__div_by_zero
+
+__matherr:      ld      hl,__matherr_message
+                call    __puts
+                jp      __done
+__matherr_message:
+                db      13,"Real overflow"
+
+; Same idea, but for math48 functions that flag an out-of-domain argument
+; (Sqrt of a negative number, Ln/Log of a non-positive number) rather than
+; an overflow -- SQR and LN already set carry for exactly these cases, LOG
+; already passes LN's carry through via "ret c".
+__sqrt:         call    SQR
+                ret     nc
+                jr      __fpinvalid
+
+__ln:           call    LN
+                ret     nc
+                jr      __fpinvalid
+
+__log:          call    LOG
+                ret     nc
+                jr      __fpinvalid
+
+; Trunc: FIX (math48.asm) already carries a clean Carry flag on every
+; return path -- the EX AF,AF' right before its final "positive" return
+; restores the flags saved before the shift loop, so Carry is only ever
+; set on genuine EXP>15 overflow. TP5 reports this as "Invalid floating
+; point operation" too (same as Sqrt/Ln/Log's domain errors), so this
+; reuses __fpinvalid rather than getting its own message.
+__intfix:       call    FIX
+                ret     nc
+
+__fpinvalid:    ld      hl,__fpinvalid_message
+                call    __puts
+                jp      __done
+__fpinvalid_message:
+                db      32,"Invalid floating point operation"
+
                 macro constfp xx,yy,zz
                         ld      hl,xx
                         ld      de,yy
@@ -1340,11 +1424,11 @@ __fltrnd:
         exx
         bit     7,b
         jr      nz,__fltrnd_neg
-        call    FPADD
-        jp      FIX
+        call    __fpadd
+        jp      __intfix
 __fltrnd_neg:
-        call    FPSUB
-        jp      FIX
+        call    __fpsub
+        jp      __intfix
 
 __atof:
         push    ix

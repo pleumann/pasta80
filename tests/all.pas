@@ -2731,6 +2731,9 @@ begin
   Assert(Trunc(Pi) = 3);
   Assert(Trunc(-Pi) = -3);
 
+  Assert(Round(3.7) = 4);
+  Assert(Round(-3.7) = -4);
+
   X := 0.0;
   Y := 0;
   Assert(X = Y);

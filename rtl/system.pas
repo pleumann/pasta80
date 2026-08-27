@@ -203,12 +203,12 @@ function Cos(R: Real): Real; register;    external 'COS';
 function Exp(R: Real): Real; register;    external 'EXP';
 function Frac(R: Real): Real; register;   external 'FRAC';
 function Int(R: Real): Real; register;    external 'INT';
-function Ln(R: Real): Real; register;     external 'LN';
-function Log(R: Real): Real; register;    external 'LOG';
+function Ln(R: Real): Real; register;     external '__ln';
+function Log(R: Real): Real; register;    external '__log';
 function Sin(R: Real): Real; register;    external 'SIN';
 function Sqr(R: Real): Real; register;    external '__fltpwr2';
-function Sqrt(R: Real): Real; register;   external 'SQR';
-function Tan(R: Real): Real; register;    external 'TAN';
+function Sqrt(R: Real): Real; register;   external '__sqrt';
+function Tan(R: Real): Real; register;    external '__tan';
 
 function Pi: Real; register;              external 'ACPI';
 
@@ -244,7 +244,7 @@ function MinReal: Real; register; inline
 (* Built-in: function Ord(Ordinal): Integer;      *)
 
 function Round(R: Real): Integer; register; external '__fltrnd';
-function Trunc(R: Real): Integer; register; external 'FIX';
+function Trunc(R: Real): Integer; register; external '__intfix';
 
 function Chr(B: Byte): Char; register; inline
 (

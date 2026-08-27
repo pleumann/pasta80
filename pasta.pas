@@ -3638,10 +3638,10 @@ begin
   Invert := (Op = toNeq) or (Op = toGt) or (Op = toGeq);
 
   case Op of
-    toAdd: EmitI('call FPADD');
-    toSub: EmitI('call FPSUB');
-    toMul: EmitI('call FPMUL');
-    toDiv: EmitI('call FPDIV');
+    toAdd: EmitI('call __fpadd');
+    toSub: EmitI('call __fpsub');
+    toMul: EmitI('call __fpmul');
+    toDiv: EmitI('call __fpdiv');
     toMod: EmitI('call MOD');
 
     toEq, toNeq: EmitI('call __flteq');
@@ -3698,8 +3698,8 @@ begin
              EmitI('sbc hl,de');
            end;
     toMul: Emit('', 'call __mul16', 'Mul');
-    toDivKW: Emit('', 'call __sdiv16', 'Div');
-    toMod: begin Emit('', 'call __sdiv16', 'Mod'); EmitI('ex hl,de'); end;
+    toDivKW: Emit('', 'call __sdiv16c', 'Div');
+    toMod: begin Emit('', 'call __sdiv16c', 'Mod'); EmitI('ex hl,de'); end;
     toAnd: begin
              EmitI('ld a,h'); EmitI('and d'); EmitI('ld h,a');
              EmitI('ld a,l'); EmitI('and e'); EmitI('ld l,a');
