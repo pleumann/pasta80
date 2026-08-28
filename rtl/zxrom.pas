@@ -95,8 +95,9 @@ procedure CursorOff; register; inline ($c9);
  * Waits for the given interval in milliseconds. Note that, since the
  * maskable 50 Hz interrupt is being used as a basis, the actual interval
  * is a multiple of 20 ms plus/minus "a bit", depending on at which point
- * in the interrupt cycle the procedure is invoked. If interrupts are
- * disabled, calling this procedure will hang the machine.
+ * in the interrupt cycle the procedure is invoked. Duration is taken as
+ * unsigned, i.e. the maximum delay is around 20 minutes. If interrupts
+ * are disabled, calling this procedure will hang the machine.
  *)
 procedure Delay(Duration: Integer); register;       external 'zx_delay';
 
