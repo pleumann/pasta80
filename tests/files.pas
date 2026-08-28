@@ -477,6 +477,17 @@ begin
   Assert(Eoln(T));
 
   Close(T);
+
+  { Eoln must also be True on an empty file, even though there's
+    no CR to find -- Eof already is True there, Eoln has to agree . }
+  Assign(T, 'TXT.TMP');
+  Rewrite(T);
+  Close(T);
+
+  Reset(T);
+  Assert(Eof(T));
+  Assert(Eoln(T));
+  Close(T);
 end;
 
 procedure TestTextEof;

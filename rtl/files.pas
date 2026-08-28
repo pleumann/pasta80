@@ -245,7 +245,7 @@ end;
 function TextEoln(var T: TextRec): Boolean;
 begin
   with T do
-    TextEoln := DMA[Offset] = #13;
+    TextEoln := (DMA[Offset] = #13) or EndOfFile or (DMA[Offset] = #26);
 end;
 
 function TextEof(var T: TextRec): Boolean;
