@@ -127,7 +127,7 @@ var
 
 begin
   Cycles := 3500000.0 / (2 * Frequency);
-  RomBeep(Trunc(Cycles / 4 - 30.125), Trunc(Duration * Frequency));
+  RomBeep(Trunc(Cycles / 4 - 30.125), Trunc(Duration / 1000 * Frequency));
 end;
 
 (**
