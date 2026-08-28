@@ -32,7 +32,6 @@ nxt_setreg:     ld      bc,$243B
 ; Out:  -
 ;
 banksel:
-        ld      a,c
         nextreg $57,a
         ret
 
