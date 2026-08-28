@@ -73,6 +73,7 @@ function KeyPressed: Boolean; register;             external 'zx_testkey';
  * Reads a key press and returns the corresponding ASCII character. Does
  * echo the character to the screen. Waits for a key press, if necessary,
  * so use KeyPressed first if you don't want your program to be delayed.
+ * Requires interrupts to be enabled, so the normal ROM routine can work.
  *)
 function ReadKey: Char; register;                   external 'zx_readkey';
 

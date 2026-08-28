@@ -296,7 +296,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | Signature | Platform | Description |
 |-----------|----------|-------------|
 | `KeyPressed: Boolean` | [ZX48] [CPM] [Agon] | Returns `True` if a key has been pressed and `ReadKey` can be called without blocking. |
-| `ReadKey: Char` | [ZX48] [CPM] [Agon] | Reads a key press and returns the corresponding ASCII character. Waits for a key press if none is pending. |
+| `ReadKey: Char` | [ZX48] [CPM] [Agon] | Reads a key press and returns the corresponding ASCII character. Waits for a key press if none is pending. On the ZX Spectrum, requires interrupts to be enabled. |
 | `Frames: Real` | [ZX48] [Agon] | Returns the current value of the 24-bit frame counter. On the ZX Spectrum it runs at 50 Hz (multiply by 20 to get milliseconds). On the Agon at 60 Hz (multiply by 17 for an approximate millisecond value). |
 
 ### Screen and Cursor
