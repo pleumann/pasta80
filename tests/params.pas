@@ -1,5 +1,9 @@
 program Params;
 
+{$ifdef SYS_ZX}
+  {$error Agon or CP/M required.}
+{$endif}
+
 var
   I, J: Integer;
 
