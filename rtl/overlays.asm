@@ -24,6 +24,7 @@
 globalsp:       ds      2                       ; Saved global stack pointer
 localsp:        dw      mystack + 64            ; Pointer inside local stack
 curpage:        db      0                       ; Currently active overlay
+depth:          db      17                      ; Nesting levels left plus one, 17..1
 mystack:        ds      64                      ; Local stack with 16 entries
 
 ; Performs a "far" call into an overlay. Switches overlays as needed and
@@ -33,7 +34,6 @@ mystack:        ds      64                      ; Local stack with 16 entries
 ; numbers.
 ;
 ; TODO Find a good solution for initial case
-; TODO Add a check for overflow of the local stack
 ; TODO Optimize "outer" case and skip bank restore
 ;
 ; In:   A (overlay), HL (callee address)
@@ -45,6 +45,13 @@ farcall:        ld      c,a
                 jr      nz,farcall1
                 jp      (hl)                    ; Fast lane, use callee's ret
 farcall1:       di
+
+                ld      b,a                     ; A holds curpage, needed below -- save
+                ld      a,(depth)               ; it in B (free here, faster than
+                dec     a                       ; push/pop) around the depth check
+                jp      z,__ovlerr              ; No nesting levels left
+                ld      (depth),a
+                ld      a,b                     ; Restore curpage
 
                 pop     de                      ; Fetch our return address
                 ld      (globalsp),sp           ; Save the global SP
@@ -65,6 +72,10 @@ farcall1:       di
                 jp      (hl)
 farcall2:       di
 
+                ld      hl,depth                ; HL is free here (not yet loaded with
+                inc     (hl)                    ; the return address), no need to
+                                                ; protect A like in farcall1
+
                 ld      (globalsp),sp           ; Save the global SP
                 ld      sp,(localsp)            ; Activate our local stack
                 ;dec     sp                     ; Save a byte?
@@ -79,3 +90,10 @@ farcall2:       di
                 ei
 
                 jp      (hl)                    ; Return to caller
+
+__ovlerr:
+        ld      hl,__ovlerr_message
+        call    __puts
+        jp      __done
+__ovlerr_message:
+        db      29,"Too many nested overlay calls"
