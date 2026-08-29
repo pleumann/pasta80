@@ -24,16 +24,20 @@
 globalsp:       ds      2                       ; Saved global stack pointer
 localsp:        dw      mystack + 64            ; Pointer inside local stack
 curpage:        db      0                       ; Currently active overlay
-depth:          db      17                      ; Nesting levels left plus one, 17..1
 mystack:        ds      64                      ; Local stack with 16 entries
+
+; localsp already encodes the nesting depth, so there is no separate counter.
+; Its 16 possible values only span 64 bytes, which means the low byte alone
+; identifies them unambiguously -- and "ld a,(localsp)" reads exactly that.
+
+stack_bot:      equ     low mystack             ; Local stack full
+stack_top:      equ     low (mystack + 64)      ; Not nested at all
 
 ; Performs a "far" call into an overlay. Switches overlays as needed and
 ; restores old memory configuration afterwards. There's a fast track: If no
 ; switching is needed we simply jump into the actual callee, making it a near
 ; call. There is no forced correlation between overlay numbers and RAM page
 ; numbers.
-;
-; TODO Find a good solution for initial case
 ;
 ; In:   A (overlay), HL (callee address)
 ; Out:  -
@@ -46,11 +50,12 @@ farcall:        ld      c,a
 farcall1:       di
 
                 ld      b,a                     ; A holds curpage, needed below -- save
-                ld      a,(depth)               ; it in B (free here, faster than
-                dec     a                       ; push/pop) around the depth check
-                jp      z,__ovlerr              ; No nesting levels left
-                ld      (depth),a
-                ld      a,b                     ; Restore curpage
+                ld      a,(localsp)             ; it in B (free here, faster than
+                cp      stack_bot               ; push/pop) around the two checks
+                jr      z,__ovlerr              ; No nesting levels left
+                cp      stack_top               ; Was this the outermost call? Remember
+                ld      a,b                     ; via Z (LD doesn't touch flags, so it
+                                                ; rides along to the push af below)
 
                 pop     de                      ; Fetch our return address
                 ld      (globalsp),sp           ; Save the global SP
@@ -71,23 +76,18 @@ farcall1:       di
                 jp      (hl)
 farcall2:       di
 
-                ld      hl,depth                ; HL is free here (not yet loaded with
-                inc     (hl)                    ; the return address), no need to
-                ld      b,(hl)                  ; protect A like in farcall1; stash the
-                                                ; new depth in B, checked after the pops
-
                 ld      (globalsp),sp           ; Save the global SP
                 ld      sp,(localsp)            ; Activate our local stack
                 ;dec     sp                     ; Save a byte?
-                pop     af                      ; Fetch the old bank
+                pop     af                      ; Fetch the old bank -- Z tells us
+                                                ; whether this was the outermost call,
+                                                ; set back in farcall1 and carried here
+                                                ; unharmed (LD/POP don't touch flags)
                 pop     hl                      ; Fetch our return address
                 ld      (localsp),sp            ; Save local SP
                 ld      sp,(globalsp)           ; Activate global stack
 
-                ld      c,a                     ; Stash old bank (B holds depth)
-                ld      a,b
-                cp      17
-                jr      z,farcall2_skip         ; Back to the outermost level: whatever
+                jr      z,farcall3              ; Back to the outermost level: whatever
                                                 ; is currently banked in is only ever
                                                 ; read by other overlay code, never by
                                                 ; the non-overlay caller we're returning
@@ -95,10 +95,9 @@ farcall2:       di
                                                 ; alone instead of switching back just
                                                 ; to (maybe) switch away again next call
 
-                ld      a,c
                 ld      (curpage),a
                 call    banksel                 ; Change bank
-farcall2_skip:
+farcall3:
                 ei
 
                 jp      (hl)                    ; Return to caller
