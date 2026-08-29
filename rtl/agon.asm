@@ -434,6 +434,55 @@ __wherey:
                 inc     l
                 ret
 
+; Requests the mode info packet from the VDP and waits for it to arrive.
+; VDU 23, 0, &86: Fetch screen dimensions and mode info
+; VDPP_FLAG_MODE: bit 4 of sysvar_vpd_pflags, set once the packet has arrived
+;
+; The VDP only refreshes sysvar_scrCols/scrRows/scrMode on request, so
+; anything reading them has to ask first -- after a mode change they still
+; hold the *previous* mode's values until this runs.
+;
+; Out: IX = sysvars. Preserves nothing else.
+;
+__get_mode_info:
+                ld      a, 8        ;0x08: mos_sysvars
+                rst     08h         ;IX(U) now has sysvars
+                mklil
+                res     4,(IX+sysvar_vpd_pflags)    ; VDPP_FLAG_MODE
+
+                ld      a,23
+                rst     10h
+                xor     a
+                rst     10h
+                ld      a,086h
+                rst     10h
+__get_mode_info_1:
+                mklil
+                bit     4,(ix+sysvar_vpd_pflags)    ;test if mode info packet was received
+                jr      z,__get_mode_info_1         ;wait until mode info returned
+                ret
+
+; Screen dimensions in characters. These are counts, not 0-based indices
+; like the cursor position, so there is no "inc l" as in __wherex/__wherey.
+
+__scrwidth:
+                push    ix
+                call    __get_mode_info
+                mklil
+                ld      l, (IX + sysvar_scrCols)
+                ld      h,0
+                pop     ix
+                ret
+
+__scrheight:
+                push    ix
+                call    __get_mode_info
+                mklil
+                ld      l, (IX + sysvar_scrRows)
+                ld      h,0
+                pop     ix
+                ret
+
 ; Sets a viewport from the current cursor to the end of the screen.
 __set_viewport:
                 call    __get_cursor
@@ -567,37 +616,33 @@ __cur_off_str:
 
 ;set video mode
 ;see for details https://agonplatform.github.io/agon-docs/vdp/Screen-Modes/
+;set video mode
+;VDU 22, n: Change screen mode
+;
+;The VDP processes this asynchronously, so we wait for a mode info packet
+;before returning. Without that, a caller reading ScreenWidth/ScreenHeight
+;right afterwards can be served by the packet the VDP emits on its own for
+;the mode change -- which may still describe the *previous* mode, giving a
+;mismatched pair (old width, new height).
+;
+;In: L = mode
+;
 __setgraphmode:
+            push    ix
             ld      a,22
             rst     10h
             ld      a,l
             rst     10h
+            call    __get_mode_info     ; wait for the change to complete
+            pop     ix
             ret
 
 ;get current video mode
-;VDU 23, 0, &86: Fetch screen dimensions and mode info
-;sysvar_vpd_pflags:      EQU 04h ; 1: Flags to indicate completion of VDP commands
-;VDPP_FLAG_MODE:  EQU 00010000b (bit 4) - set once the mode info packet has arrived
 ;sysvar_scrMode:         EQU 27h ; 1: Screen mode
 ;Out: HL = current screen mode
 __getgraphmode:
             push    ix
-            ld      a, 8        ;0x08: mos_sysvars
-            rst     08h         ;IX(U) now has sysvars
-            mklil
-            res     4,(IX+sysvar_vpd_pflags)    ; VDPP_FLAG_MODE
-
-            ld      a,23
-            rst     10h
-            xor     a
-            rst     10h
-            ld      a,086h
-            rst     10h
-__getgraphmode_1:
-            mklil
-            bit     4,(ix+sysvar_vpd_pflags)    ;test if mode info packet was received
-            jr      z,__getgraphmode_1          ;wait until mode info returned
-
+            call    __get_mode_info
             mklil
             ld      l,(ix+sysvar_scrMode)
             ld      h,0

@@ -14,19 +14,23 @@
 
 const
   (**
-   * Defines the default with of the Agon mode 0 screen in characters.
-   *)
-  ScreenWidth = 80;
-
-  (**
-   * Defines the default height of the Agon mode 0 screen in characters.
-   *)
-  ScreenHeight = 60;
-
-  (**
    * Defines the line break convention used by CP/M.
    *)
   LineBreak = #13#10;
+
+(**
+ * Returns the width of the screen in characters. Unlike on the other
+ * platforms this is queried from the VDP rather than fixed, so it follows
+ * the current screen mode (80 in the default mode 0).
+ *)
+function ScreenWidth: Integer; register;    external '__scrwidth';
+
+(**
+ * Returns the height of the screen in characters. Unlike on the other
+ * platforms this is queried from the VDP rather than fixed, so it follows
+ * the current screen mode (60 in the default mode 0).
+ *)
+function ScreenHeight: Integer; register;   external '__scrheight';
 
 procedure ConOut(C: Char); register;        external '__conout';
 

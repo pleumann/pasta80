@@ -88,7 +88,7 @@ const
 
 (**
  * Formats the mode at the given index of the Modes table into a readable
- * string, e.g. "Mode  21:  512x384,  16 colors, 60 Hz".
+ * string, e.g. "Mode  21:  512 x 384 x 16 @ 60".
  *)
 function ModeStr(Index: Integer): String;
 var
@@ -208,11 +208,13 @@ begin
     Draw(0, -Height + 1);
   end;
 
+  GotoXY(1 + (ScreenWidth - 38) div 2, ScreenHeight div 2 - 1);
+  Write(ModeStr(Index), ' (', ScreenWidth:2, ',', ScreenHeight:2, ')');
+
   while (Seconds > 0) and not Done do
   begin
-    GotoXY(1 + (Width div 8 - 36) div 2, Height div 16);
-
-    Write('Keep this mode (y/n)? ', Seconds:2, 's remaining.');
+    GotoXY(1 + (ScreenWidth - 38) div 2, ScreenHeight div 2 + 1);
+    Write('Keep this mode (y/n)? ', Seconds:2, 's remaining. ');
 
     Ticks := 0;
     while (Ticks < 20) and (not KeyPressed) do

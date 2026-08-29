@@ -10,17 +10,25 @@
 (* --- VT52 terminal support ------------------------------------------- *)
 (* --------------------------------------------------------------------- *)
 
+(**
+ * Returns the width of the CP/M screen in characters.
+ *)
+function ScreenWidth: Integer; register; inline
+(
+  $21 / >80 / (* ld   hl,80   *)
+  $c9         (* ret          *)
+);
+
+(**
+ * Returns the height of the CP/M screen in characters.
+ *)
+function ScreenHeight: Integer; register; inline
+(
+  $21 / >24 / (* ld   hl,24   *)
+  $c9         (* ret          *)
+);
+
 const
-  (**
-   * Defines the default with of the CP/M screen in characters.
-   *)
-  ScreenWidth = 80;
-
-  (**
-   * Defines the default height of the CP/M screen in characters.
-   *)
-  ScreenHeight = 24;
-
   (**
    * Defines the line break convention used by CP/M.
    *)

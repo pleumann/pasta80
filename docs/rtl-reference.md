@@ -31,8 +31,6 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `Cyan` | `Integer` | Depends | [All] | Colour constant cyan. CP/M and ZX: `5`; Agon: `6`. |
 | `Yellow` | `Integer` | Depends | [All] | Colour constant yellow. CP/M and ZX: `6`; Agon: `3`. |
 | `White` | `Integer` | `7` | [All] | Colour constant white. |
-| `ScreenWidth` | `Integer` | Depends | [All] | Default screen width in characters. ZX: `32`; CP/M and Agon: `80`. |
-| `ScreenHeight` | `Integer` | Depends | [All] | Default screen height in characters. ZX: `22`; CP/M and Agon: `24`. |
 | `LineBreak` | `String` | Depends | [ZX48] [CPM] [Agon] | Line-break convention. ZX: `#13`; CP/M and Agon: `#13#10`. |
 
 ---
@@ -303,6 +301,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
+| `ScreenWidth: Integer` | [All] | Returns the screen width in characters. ZX: `32`; CP/M: `80`. On Agon the value is queried from the VDP and follows the current screen mode (`80` in the default mode 0). |
+| `ScreenHeight: Integer` | [All] | Returns the screen height in characters. ZX: `22` — the ROM reserves the bottom two of the 24 physical rows for input and error messages; CP/M: `24`. On Agon the value is queried from the VDP and follows the current screen mode (`60` in the default mode 0). |
 | `WhereX: Integer` | [ZX48] [Agon] | Returns the current cursor column (1-based). |
 | `WhereY: Integer` | [ZX48] [Agon] | Returns the current cursor row (1-based). |
 | `GetGraphMode: Integer` | [Agon] | Returns the current graphics and text screen mode, as set by `SetGraphMode`. |

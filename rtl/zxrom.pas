@@ -10,19 +10,29 @@
 
 const
   (**
-   * Defines the default with of the Spectrum screen in characters.
-   *)
-  ScreenWidth  = 32;
-
-  (**
-   * Defines the default height of the Spectrum screen in characters.
-   *)
-  ScreenHeight = 22;
-
-  (**
    * Defines the line break convention used by the Spectrum.
    *)
   LineBreak = #13;
+
+(**
+ * Returns the width of the Spectrum screen in characters.
+ *)
+function ScreenWidth: Integer; register; inline
+(
+  $21 / >32 / (* ld   hl,32   *)
+  $c9         (* ret          *)
+);
+
+(**
+ * Returns the height of the Spectrum screen in characters. Note that this
+ * is 22, not 24: the ROM reserves the bottom two rows for input and error
+ * messages, so they are not available for regular output.
+ *)
+function ScreenHeight: Integer; register; inline
+(
+  $21 / >22 / (* ld   hl,22   *)
+  $c9         (* ret          *)
+);
 
 (**
  * Clears the screen. Uses the most recently defined text color and
