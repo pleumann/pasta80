@@ -34,7 +34,6 @@ mystack:        ds      64                      ; Local stack with 16 entries
 ; numbers.
 ;
 ; TODO Find a good solution for initial case
-; TODO Optimize "outer" case and skip bank restore
 ;
 ; In:   A (overlay), HL (callee address)
 ; Out:  -
@@ -74,7 +73,8 @@ farcall2:       di
 
                 ld      hl,depth                ; HL is free here (not yet loaded with
                 inc     (hl)                    ; the return address), no need to
-                                                ; protect A like in farcall1
+                ld      b,(hl)                  ; protect A like in farcall1; stash the
+                                                ; new depth in B, checked after the pops
 
                 ld      (globalsp),sp           ; Save the global SP
                 ld      sp,(localsp)            ; Activate our local stack
@@ -84,9 +84,21 @@ farcall2:       di
                 ld      (localsp),sp            ; Save local SP
                 ld      sp,(globalsp)           ; Activate global stack
 
+                ld      c,a                     ; Stash old bank (B holds depth)
+                ld      a,b
+                cp      17
+                jr      z,farcall2_skip         ; Back to the outermost level: whatever
+                                                ; is currently banked in is only ever
+                                                ; read by other overlay code, never by
+                                                ; the non-overlay caller we're returning
+                                                ; to here, so leave curpage/hardware
+                                                ; alone instead of switching back just
+                                                ; to (maybe) switch away again next call
+
+                ld      a,c
                 ld      (curpage),a
                 call    banksel                 ; Change bank
-
+farcall2_skip:
                 ei
 
                 jp      (hl)                    ; Return to caller
