@@ -1450,11 +1450,14 @@ begin
   dtString := CreateSymbol(scStringType, 'String');
   dtString^.Value := 256;
 
+  (* Placeholder sizes. The real ones depend on the platform's
+     FileControlBlock and are only known once the RTL has been parsed;
+     ParseProgram patches these from FileRec/TextRec at that point. *)
   dtFile := CreateSymbol(scFileType, 'File');
-  dtFile^.Value := 256; (* FIXME *)
+  dtFile^.Value := 256;
 
   dtText := CreateSymbol(scFileType, 'Text');
-  dtText^.Value := 256; (* FIXME *)
+  dtText^.Value := 256;
 
   dtReal := CreateSymbol(scType, 'Real');
   dtReal^.Value := 6;
@@ -7071,7 +7074,9 @@ begin
       DataType := CreateSymbol(scFileType, '');
       NextToken;
       DataType^.DataType := ParseTypeDef;
-      DataType^.Value := 256;
+      (* Same FileRec layout as an untyped file: the component size and
+         count are fields inside it, not extra storage. *)
+      DataType^.Value := dtFile^.Value;
     end
     else DataType := dtFile;
   end
@@ -7965,6 +7970,8 @@ end;
  * program code starts).
  *)
 procedure ParseProgram;
+var
+  Sym: PSymbol;
 begin
   OpenScope(False);
   RegisterAllBuiltIns;
@@ -7997,6 +8004,14 @@ begin
   end;
 
   LastBuiltIn := SymbolTable;
+
+  Sym := Lookup('FileRec', LastBuiltIn, nil);
+  if Sym <> nil then
+    LookupBuiltInOrFail('File')^.Value := Sym^.Value;
+
+  Sym := Lookup('TextRec', LastBuiltIn, nil);
+  if Sym <> nil then
+    LookupBuiltInOrFail('Text')^.Value := Sym^.Value;
 
   OpenScope(False);
   if Scanner.Token = toProgram then
