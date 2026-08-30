@@ -3485,6 +3485,19 @@ begin
 end;
 
 (**
+ * Return assembly that emits a given number of zero bytes. Works around
+ * an sjasmplus bug that lets "db 1,0" truncate the program counter to
+ * 16 bits when no other directive does.
+ *)
+function ZeroFill(Count: Integer): String;
+begin
+  if Count = 1 then
+    ZeroFill := 'db 0'
+  else
+    ZeroFill := 'ds ' + IntToStr(Count) + ',0';
+end;
+
+(**
  * Emits code that grows the stack by the given number of bytes.
  *)
 procedure EmitSpace(Bytes: Integer);
@@ -6664,7 +6677,7 @@ begin
         if Sym^.Value < Offset then Error('Invalid offset');
         if Sym^.Value > Offset then
         begin
-          EmitI('ds ' + IntToStr(Sym^.Value - Offset) + ',0');
+          EmitI(ZeroFill(Sym^.Value - Offset));
           Offset := Sym^.Value;
         end;
 
@@ -6685,7 +6698,7 @@ begin
     end;
 
     if Offset < DataType^.Value then
-      EmitI('ds ' + IntToStr(DataType^.Value - Offset) + ',0');
+      EmitI(ZeroFill(DataType^.Value - Offset));
 
     Expect(toRParen);
     NextToken;
@@ -6710,7 +6723,7 @@ begin
   begin
     S := ParseStringLiteral;
     Emit('', 'db ' + EncodeAsmStr(S), '');
-    Emit('', 'ds ' + IntToStr(DataType^.Value - Length(S) - 1) + ',0', '');
+    Emit('', ZeroFill(DataType^.Value - Length(S) - 1), '');
   end
   else if DataType^.Kind = scSetType then
   begin
@@ -7354,7 +7367,7 @@ begin
       else if Old^.Level = 0 then
       begin
         Old^.Tag := GetLabel('global');
-        Emit(Old^.Tag, 'ds ' + IntToStr(Old^.DataType^.Value) + ',0', 'Global ' + Old^.Name);
+        Emit(Old^.Tag, ZeroFill(Old^.DataType^.Value), 'Global ' + Old^.Name);
       end;
     end;
 
