@@ -303,8 +303,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 |-----------|----------|-------------|
 | `ScreenWidth: Integer` | [All] | Returns the screen width in characters. ZX: `32`; CP/M: `80`. On Agon the value is queried from the VDP and follows the current screen mode (`80` in the default mode 0). |
 | `ScreenHeight: Integer` | [All] | Returns the screen height in characters. ZX: `22` — the ROM reserves the bottom two of the 24 physical rows for input and error messages; CP/M: `24`. On Agon the value is queried from the VDP and follows the current screen mode (`60` in the default mode 0). |
-| `WhereX: Integer` | [ZX48] [Agon] | Returns the current cursor column (1-based). |
-| `WhereY: Integer` | [ZX48] [Agon] | Returns the current cursor row (1-based). |
+| `WhereX: Integer` | [ZX48] [Agon] | Returns the current cursor column (1-based). Note: On the Spectrum Next this currently only works in layer 0. |
+| `WhereY: Integer` | [ZX48] [Agon] | Returns the current cursor row (1-based). Note: On the Spectrum Next this currently only works in layer 0. |
 | `GetGraphMode: Integer` | [Agon] | Returns the current graphics and text screen mode, as set by `SetGraphMode`. |
 
 ### Graphics Queries
