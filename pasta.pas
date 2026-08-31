@@ -6726,7 +6726,8 @@ begin
   begin
     S := ParseStringLiteral;
     Emit('', 'db ' + EncodeAsmStr(S), '');
-    Emit('', ZeroFill(DataType^.Value - Length(S) - 1), '');
+    if Length(S) < DataType^.Value - 1 then
+      Emit('', ZeroFill(DataType^.Value - Length(S) - 1), '');
   end
   else if DataType^.Kind = scSetType then
   begin
