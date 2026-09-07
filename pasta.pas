@@ -4998,7 +4998,10 @@ begin
           T := ParseVariableRef;
 
           if T^.Kind = scStringType then
-            EmitCall(LookupBuiltInOrFail('TextReadStr'))
+          begin
+            EmitLiteral(T^.Value - 1);  (* Declared capacity of S *)
+            EmitCall(LookupBuiltInOrFail('TextReadStr'));
+          end
           else if T = dtChar then
             EmitCall(LookupBuiltInOrFail('TextReadChar'))
           else if T = dtInteger then

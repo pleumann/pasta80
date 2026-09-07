@@ -554,6 +554,54 @@ begin
   Erase(T);
 end;
 
+(**
+ * Regression test for ReadLn(T, S) writing past the declared capacity of
+ * S. TextReadStr had a hardcoded limit of 255 characters and was never
+ * told the target's actual size.
+ *)
+procedure TestTextReadLnBounds;
+var
+  T: Text;
+  Guard1: Integer;
+  Target: String[10];
+  Guard2: Integer;
+  Guard3: array[0..9] of Byte;
+  I: Integer;
+  Line: String;
+begin
+  WriteLn('--- TestTextReadLnBounds ---');
+
+  Assign(T, 'RLB.TMP');
+  Rewrite(T);
+  WriteLn(T, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  WriteLn(T, 'second');
+  Close(T);
+
+  Guard1 := 1111;
+  Guard2 := 2222;
+  for I := 0 to 9 do Guard3[I] := 77;
+
+  Reset(T);
+  ReadLn(T, Target);
+
+  Assert(Length(Target) = 10);
+  Assert(Target = '0123456789');
+
+  { Nothing beyond the string may have been touched. }
+  Assert(Guard1 = 1111);
+  Assert(Guard2 = 2222);
+  for I := 0 to 9 do Assert(Guard3[I] = 77);
+
+  { The rest of the long line must still have been skipped, not left
+    behind for the next ReadLn to pick up. }
+  ReadLn(T, Line);
+  Assert(Line = 'second');
+  Assert(Eof(T));
+
+  Close(T);
+  Erase(T);
+end;
+
 { --- Typed 'file of' --- }
 
 overlay procedure TestTypedFiles;
@@ -698,6 +746,7 @@ begin
   TestTextEoln;
   TestTextEof;
   TestTextBooleanResultBytes;
+  TestTextReadLnBounds;
 
   TestTypedFiles;
 

@@ -88,14 +88,14 @@ begin
   end;
 end;
 
-procedure TextReadStr(var T: TextRec; var S: String);
+procedure TextReadStr(var T: TextRec; var S: String; Max: Byte);
 var
   C: Char;
   I: Byte;
 begin
   I := 0;
 
-  while I < 255 do
+  while True do
   begin
     TextReadChar(T, C);
     if LastError <> 0 then Exit;
@@ -108,8 +108,13 @@ begin
     end;
     if C = #26 then Break;
 
-    Inc(I);
-    (* if C >= ' ' then *) S[I] := C;
+    (* ReadLn always consumes the whole physical line, even past the
+       point where S runs out of room -- only stop storing, not reading. *)
+    if I < Max then
+    begin
+      Inc(I);
+      S[I] := C;
+    end;
   end;
 
   S[0] := Char(I);
