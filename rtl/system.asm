@@ -1946,6 +1946,16 @@ __strc:
                 ld      (hl),e
                 ret
 
+__strc_fmt:
+                push    de
+                ld      b,a
+                push    bc
+                call    __strc
+                pop     de
+                pop     hl
+                call    __ralign
+                ret
+
 __strs:
                 ld      hl,2
                 add     hl,sp
@@ -1956,6 +1966,26 @@ __strs:
                 ld      sp,hl
                 push    de
                 ret
+
+; Unlike __strn/__strc, __strs takes its source off the stack, so it cannot
+; be wrapped the way __strn_fmt wraps __strn -- anything pushed around the
+; call would shift the SP+2 the source is found at. Instead pad the source
+; in place first and then hand the (now padded) string to __strs unchanged:
+; the source is always a full 256 byte stack copy, so the room is there.
+;
+; In: DE (destination), C (width), A (capacity)
+;
+__strs_fmt:
+                ld      hl,2
+                add     hl,sp           ; Source, absolute from here on
+                push    af              ; __ralign clobbers both A (capacity,
+                push    de              ; which __movestr still needs) and DE
+                ld      d,a             ; (the destination)
+                ld      e,c             ; D = capacity, E = width
+                call    __ralign
+                pop     de
+                pop     af              ; Stack balanced again, so __strs
+                jp      __strs          ; still finds the source at SP+2
 
 ;
 ; Convert floating point to string, format 0 (default)

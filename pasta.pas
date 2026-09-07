@@ -3904,14 +3904,16 @@ begin
   else if DataType = dtChar then
   begin
     EmitI('pop de');
+    EmitI('pop bc');
     EmitI('pop hl');
-    EmitI('call __strc');
+    EmitI('call __strc_fmt');
   end
   else if DataType^.Kind = scStringType then
   begin
     EmitI('pop de');
+    EmitI('pop bc');  (* C = width, used by __strs_fmt *)
     { String on stack }
-    EmitI('call __strs');
+    EmitI('call __strs_fmt');
   end
   else if DataType = dtReal then
   begin
