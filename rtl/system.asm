@@ -2373,7 +2373,7 @@ __atoe2:        ld      d,0
                 ret
 
 __checkstack:
-                ld      hl,57344
+                ld      hl,STACK
                 and     a
                 sbc     hl,sp
                 ret     c
