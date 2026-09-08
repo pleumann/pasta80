@@ -983,6 +983,7 @@ __val_exit:
         add     hl,sp
         ld      sp,hl
         push    de
+        neg
         ret
 
 ;
@@ -1023,7 +1024,11 @@ __val_check_last:
         pop     de
         ld      a,(hl)
         cp      '.'                     ; Trailing dot is valid (e.g. "100.")
-        ret     z                       ; ZF=1: OK
+        jr      z,__val_check_ok        ; ZF=1: OK -- via __val_check_ok, so
+                                        ; that A ends up 0 here too. Returning
+                                        ; straight from here would leave A='.',
+                                        ; which the two-argument Val turns into
+                                        ; Carry and thus a bogus format error.
         sub     '0'
         cp      10                      ; ZF=0,CF=1 if digit; ZF=0,CF=0 if not
         jr      c,__val_check_ok        ; CF=1: digit -> OK
@@ -1069,12 +1074,36 @@ __val_float:
 ; pushed by the caller after the standard string/val-addr/err-addr triple.
 ;
 ; Stack on entry (top → deep):  ret_addr | Tab | addr_of_Err | addr_of_V | string(256)
-; After the three instructions:  ret_addr | addr_of_Err | addr_of_V | string(256), DE=Tab
-; That is exactly the layout __val_enum expects with DE = table.
 ;
-__tryval_enum:  pop     bc              ; BC = return address
+; Two things have to be sorted out here that the compiler-emitted call to
+; __val_enum does not run into:
+;
+; Val is a magic procedure, emitted without any caller-side cleanup because
+; __val_init and __val_exit consume the arguments themselves. TryValEnum is
+; an ordinary Pascal external, so the compiler follows the call with an
+; "add sp,262" of its own. Returning straight out of __val_exit would free
+; the same frame twice and leave SP 262 bytes too high. That went unnoticed
+; for a long time because the procedure epilogue overwrites SP right away --
+; but any statement placed after the call runs on the broken stack first.
+;
+; And Pascal cannot see the Carry that __val_exit sets for a failed
+; conversion, so the throwing check happens here rather than in files.pas.
+;
+__tryval_enum:  pop     hl              ; Return address into the caller
+                ld      (__tve_ret),hl
                 pop     de              ; DE = Tab (enum literal table)
-                push    bc              ; restore return address
+                ld      hl,__tve_done
+                push    hl              ; __val_enum returns here, not to Pascal
+                jr      __val_enum      ; Layout is now what __val_enum expects
+
+__tve_done:     jp      c,__val_error   ; Carry from __val_exit's neg
+                ld      hl,-262         ; Hand the frame back to the caller,
+                add     hl,sp           ; which is about to clean it up itself
+                ld      sp,hl
+                ld      hl,(__tve_ret)
+                jp      (hl)
+
+__tve_ret:      dw      0
 
 ; string on stack, de=table (first byte = count), a contains code if found, 255 if not
 __val_enum:     ld      (__val_atab),de ; Save table address before __val_init clobbers DE
@@ -1093,6 +1122,12 @@ __val_enum:     ld      (__val_atab),de ; Save table address before __val_init c
 __val_enum1:    ld      a,1             ; Error always at position 1 (no partial match possible)
                 jp      __val_set_err   ; Store error and exit (jp, not call - stack must be clean)
 
+__val_dummy:    dw      0
+
+__val_error:    ld      hl,__val_err_msg
+                call    __puts
+                jp      __done
+__val_err_msg:  db      12,"Format error"
 ;
 ; String length. Arguments and result on stack.
 ;
@@ -1837,24 +1872,42 @@ __word2:        ld      (__lineptr),hl
                 ld      (__buffer),a
                 ret
 
+; __word has already put the real word length into (__buffer); pass that to
+; __atoi instead of a fixed digit cap, so B (remaining characters) means the
+; same here as it does in __val_int: anything left over is invalid input.
+; Both failure exits go to __val_error, the same place the two-argument Val
+; ends up, so console and Val agree on what a format error is.
 __getn:         push    hl
                 call    __blanks
                 call    __word
+                ld      a,(__buffer)
+                and     a
+                jp      z,__val_error   ; Nothing typed, as for Val('')
                 ld      hl,__buffer + 1
-                ld      a,6
                 call    __atoi
                 pop     hl
+                ld      a,b
+                and     a
+                jp      nz,__val_error  ; Trailing garbage, as for Val('12xyz')
                 ld      (hl),de
                 ret
 
+; Goes through __atof rather than calling CNVN directly, for the same reason
+; __getn goes through __atoi with the real length: __atof already wraps CNVN
+; and works out how many characters were left unconsumed, which is exactly
+; the check __val_float makes. It also handles IX and the register set, so
+; the push ix / pop ix / exx dance here is no longer needed.
 __getr:         push    hl
-                push    ix
                 call    __blanks
                 call    __word
-                ld      ix,__buffer + 1
-                call    CNVN
-                pop     ix
-                exx
+                ld      a,(__buffer)
+                and     a
+                jp      z,__val_error   ; Nothing typed, as for Val('')
+                ld      hl,__buffer + 1
+                call    __atof
+                ld      a,b
+                and     a
+                jp      nz,__val_error  ; Trailing garbage, as for Val('1.5x')
                 pop     hl
                 call    __storefp
                 ret
@@ -1870,7 +1923,7 @@ __gete:         push    hl
                 pop     hl
                 ld      a,d
                 and     a
-                ret     nz
+                jp      nz,__val_error  ; Was a silent no-op before
                 ld      (hl),e
                 ret
 

@@ -5317,11 +5317,19 @@ begin
     T := ParseVariableRef;
     if (T <> dtInteger) and (T <> dtReal) and (T^.Kind <> scEnumType) then Error('Numeric variable expected');
 
-    Expect(toComma);
-    NextToken;
+    if Scanner.Token = toComma then
+    begin
+      NextToken;
 
-    U := ParseVariableRef;
-    if U <> dtInteger then Error('Integer variable expected');
+      U := ParseVariableRef;
+      if U <> dtInteger then Error('Integer variable expected');
+    end
+    else
+    begin
+      EmitI('ld hl,__val_dummy');
+      EmitI('push hl');
+      U := nil;
+    end;
 
     if T = dtInteger then
       EmitI('call __val_int')
@@ -5332,6 +5340,9 @@ begin
     end
     else
       EmitI('call __val_float');
+
+    if U = nil then
+      EmitI('jp c,__val_error');
 
     Expect(toRParen);
     NextToken;

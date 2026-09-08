@@ -149,7 +149,7 @@ var
 begin
   TextReadWord(T, S);
   if LastError <> 0 then Exit;
-  Val(S, I, E);
+  Val(S, I);
 end;
 
 procedure TextReadFloat(var T: TextRec; var R: Real);
@@ -159,7 +159,7 @@ var
 begin
   TextReadWord(T, S);
   if LastError <> 0 then Exit;
-  Val(S, R, E);
+  Val(S, R);
 end;
 
 (* Pascal-callable entry point for __val_enum (see rtl/system.asm: __tryval_enum).
