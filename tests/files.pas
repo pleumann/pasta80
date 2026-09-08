@@ -297,6 +297,38 @@ begin
   Erase(F);
 end;
 
+(* Write(F, X:W) for Char and String goes through the same EmitStr1 -- and
+   thus the same __strc_fmt/__strs_fmt -- that Str(X:W, S) uses. Both were
+   broken by the same bug, so both are fixed by the same change, but only
+   the Str side ever had coverage. This closes that gap. *)
+procedure TestTextWriteFormatted;
+var
+  T: Text;
+  Line: String;
+  Ch: Char;
+  Txt: String;
+begin
+  WriteLn('--- TestTextWriteFormatted ---');
+
+  Ch := 'X';
+  Txt := 'Hi';
+
+  Assign(T, 'FMT.TMP');
+  Rewrite(T);
+  Write(T, Ch:5, '|', Txt:5, '|', Ch, '|', Txt, '|');
+  WriteLn(T);
+  Close(T);
+
+  Reset(T);
+  ReadLn(T, Line);
+  Close(T);
+
+  WriteLn('[', Line, ']');
+  Assert(Line = '    X|   Hi|X|Hi|');
+
+  Erase(T);
+end;
+
 procedure TestTextWithIntegers;
 var
   I1, I2, I3: Integer;
@@ -738,6 +770,7 @@ begin
   TestUntypedFiles;
 
   TestTextWithStrings;
+  TestTextWriteFormatted;
   TestTextWithIntegers;
   TestTextWithReals;
   TestTextWithEnums;

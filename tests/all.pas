@@ -3126,8 +3126,11 @@ overlay procedure TestStr;
 var
   S: String[31];
   C: Color;
+  Src: String;
 begin
   WriteLn('--- TestStr ---');
+
+  Src := 'Hi';
 
   { Integer }
   Str(0, S);        Assert(S = '0');
@@ -3145,6 +3148,23 @@ begin
   { Char }
   Str('A', S);      Assert(S = 'A');
   Str('Z', S);      Assert(S = 'Z');
+
+  { Char with width }
+  Str('A':0, S);    Assert(S = 'A');
+  Str('A':1, S);    Assert(S = 'A');
+  Str('A':5, S);    Assert(S = '    A');
+
+  { String }
+  Str(Src, S);      Assert(S = 'Hi');
+  Str('Hi', S);     Assert(S = 'Hi');
+
+  { String with width. A width below the length must not truncate, and one
+    above the destination's capacity must clamp to it. }
+  Str(Src:0, S);    Assert(S = 'Hi');
+  Str(Src:1, S);    Assert(S = 'Hi');
+  Str(Src:5, S);    Assert(S = '   Hi');
+  Str('Hi':5, S);   Assert(S = '   Hi');
+  Str(Src:40, S);   Assert(Length(S) = 31);
 
   { Real - default format }
   Str(0.0, S);      Assert(S = ' 0.000000000E+00');
