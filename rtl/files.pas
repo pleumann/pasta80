@@ -120,11 +120,26 @@ begin
   S[0] := Char(I);
 end;
 
-procedure TextReadWord(var T: TextRec; var S: String);
+(* The console readers in rtl/system.asm and these share one representation:
+   a length-prefixed word of at most 31 characters in __buffer. Filling that
+   here, rather than building a 256 byte string on the stack and handing it to
+   Val, means both sides run the very same conversion pieces -- and none of
+   Val's stack-argument machinery is involved. An Integer, a Real and an
+   identifier all fit comfortably in 31 characters; anything longer cannot be
+   a valid one of those anyway, so truncating can only ever yield the error
+   that is the right answer regardless. *)
+var
+  WordBuf: String[31] absolute '__buffer';
+
+procedure BufToInt(var I: Integer);              register; external '__buf_int';
+procedure BufToReal(var R);                      register; external '__buf_real';
+procedure BufToEnum(var E; Tab: Pointer);        register; external '__buf_enum';
+
+procedure TextReadWord(var T: TextRec);
 var
   C: Char;
 begin
-  S := '';
+  WordBuf := '';
 
   { Skip leading whitespace (spaces, CR, LF), but stop at EOF marker }
   while (T.DMA[T.Offset] <= ' ') and (T.DMA[T.Offset] <> #26) do
@@ -133,49 +148,39 @@ begin
     if LastError <> 0 then Exit;
   end;
 
-  { Read word characters; peek at current byte without consuming the delimiter }
-  while (Length(S) < 255) and (T.DMA[T.Offset] > ' ') do
+  { Read word characters; peek at current byte without consuming the delimiter.
+    30, not 31, so there is always room for the terminator below. }
+  while (Length(WordBuf) < 30) and (T.DMA[T.Offset] > ' ') do
   begin
     TextReadChar(T, C);
     if LastError <> 0 then Exit;
-    S := S + C;
+    WordBuf := WordBuf + C;
   end;
+
+  (* No terminator needed here: __conv_prep writes one before handing the
+     string to a converter. It matters -- CNVN scans until it sees a non-digit
+     rather than counting -- but it is that one routine's job now. *)
 end;
 
 procedure TextReadInt(var T: TextRec; var I: Integer);
-var
-  S: String;
-  E: Integer;
 begin
-  TextReadWord(T, S);
+  TextReadWord(T);
   if LastError <> 0 then Exit;
-  Val(S, I);
+  BufToInt(I);
 end;
 
 procedure TextReadFloat(var T: TextRec; var R: Real);
-var
-  S: String;
-  E: Integer;
 begin
-  TextReadWord(T, S);
+  TextReadWord(T);
   if LastError <> 0 then Exit;
-  Val(S, R);
+  BufToReal(R);
 end;
 
-(* Pascal-callable entry point for __val_enum (see rtl/system.asm: __tryval_enum).
-   Pops Tab from the stack into DE, then falls through to __val_enum.
-   Parameters: S (string), V (target byte, var), Err (error code, var), Tab (enum table). *)
-procedure TryValEnum(S: String; var V: Byte; var Err: Integer; Tab: Pointer);
-  external '__tryval_enum';
-
 procedure TextReadEnum(var T: TextRec; var E: Byte; Tab: Pointer);
-var
-  S: String;
-  Err: Integer;
 begin
-  TextReadWord(T, S);
+  TextReadWord(T);
   if LastError <> 0 then Exit;
-  TryValEnum(S, E, Err, Tab);
+  BufToEnum(E, Tab);
 end;
 
 procedure TextWriteChar(var T: TextRec; C: Char);

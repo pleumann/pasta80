@@ -927,9 +927,13 @@ __val_aerr:     dw      0
 __val_atab:     dw      0
 
 ;
-; __val_init: pop and save arguments, null-terminate string, return to caller.
+; __val_init: pop and save arguments, return to caller.
 ; Pops: ret-addr, err-addr, val-addr (both from Pascal call).
-; Jumps to __val_exit (skipping actual conversion) if string is empty.
+;
+; Terminating the string and rejecting an empty one both used to happen here
+; as well. They now live in __conv_prep, which every caller goes through
+; anyway -- one place instead of three, and the contract sits where the
+; converters actually rely on it rather than being implicit in each caller.
 ;
 __val_init:
         pop     bc
@@ -946,21 +950,6 @@ __val_init:
         add     hl,sp
         ld      (__val_astr),hl
         push    de
-        ld      a,(hl)          ; A = string length
-        inc     hl              ; HL = first character
-
-        ld      d,0
-        ld      e,a
-        add     hl,de
-        ld      (hl),0          ; Place null terminator after last character
-        and     a
-        sbc     hl,de           ; Restore HL = first character
-
-        and     a
-        jr      nz,__val_not_empty      ; Non-empty string -> normal processing
-        ld      a,1                     ; Empty string -> Error position = 1
-        jr      __val_set_err           ; Store error and exit (no call, stack must be clean)
-__val_not_empty:
         push    bc
         ret
 
@@ -986,124 +975,26 @@ __val_exit:
         neg
         ret
 
-;
-; __val_err_pos: called when __atoi/__atof returned B > 0 (unprocessed chars).
-; Computes error position as (string_length - B + 1) and stores it.
-;
-__val_err_pos:
-        ld      hl,(__val_astr)
-        ld      a,(hl)
-        sub     b
-        inc     a
-        jr    __val_set_err
 
 ;
-; __val_err_nplus1: called when B = 0 but the last char was not a valid
-; terminator. Computes error position as (string_length + 1) and stores it.
+; Val's own entry points: __val_init sorts out the stack arguments, then the
+; work is the same shared conversion the readers use. A non-zero result is an
+; error position, which __val_set_err writes into the caller's error variable
+; (and __val_exit turns into Carry for the two-argument form).
 ;
-__val_err_nplus1:
-        ld      hl,(__val_astr)
-        ld      a,(hl)
-        inc     a
-        jr      __val_set_err
+__val_int:      call    __val_init
+                ld      hl,(__val_astr)
+                ld      de,(__val_aval)
+                call    __conv_int
+                jr      c,__val_set_err
+                jr      __val_exit
 
-;
-; __val_check_last: validate the last character of the string after a
-; successful conversion (B = 0). Valid terminators are digits '0'..'9'
-; and '.', which is a legal trailing character for floating-point numbers
-; and harmless for integers (__atoi always stops before '.', so B > 0
-; would have been set in that case and this routine would never be reached).
-; Returns with ZF=1 on success, ZF=0 on failure. Clobbers AF, HL.
-;
-__val_check_last:
-        ld      hl,(__val_astr)         ; HL = address of length byte
-        push    de
-        ld      d,0
-        ld      e,(hl)                  ; E = string length n
-        add     hl,de                   ; HL = address of last character
-        pop     de
-        ld      a,(hl)
-        cp      '.'                     ; Trailing dot is valid (e.g. "100.")
-        jr      z,__val_check_ok        ; ZF=1: OK -- via __val_check_ok, so
-                                        ; that A ends up 0 here too. Returning
-                                        ; straight from here would leave A='.',
-                                        ; which the two-argument Val turns into
-                                        ; Carry and thus a bogus format error.
-        sub     '0'
-        cp      10                      ; ZF=0,CF=1 if digit; ZF=0,CF=0 if not
-        jr      c,__val_check_ok        ; CF=1: digit -> OK
-        or      1                       ; ZF=0: failure
-        ret
-__val_check_ok:
-        xor     a                       ; ZF=1: OK
-        ret
-
-;
-; __val_int: Val() for Integer. Calls __atoi, then validates result.
-;
-__val_int:
-        call    __val_init
-        call    __atoi          ; DE = result, B = remaining chars (0 if all consumed)
-        ld      a,b
-        and     a
-        jr      nz,__val_err_pos        ; B > 0: error at position len-B+1
-        call    __val_check_last
-        jr      nz,__val_err_nplus1     ; ZF=0: last char not valid -> error at len+1
-        ld      hl,(__val_aval)
-        ld      (hl),de
-        jr      __val_exit
-
-;
-; __val_float: Val() for Real. Calls __atof, then validates result.
-;
-__val_float:
-        call    __val_init
-        call    __atof          ; B = remaining chars (0 if all consumed)
-        ld      a,b
-        and     a
-        jr      nz,__val_err_pos        ; B > 0: error at position len-B+1
-        call    __val_check_last
-        jr      nz,__val_err_nplus1     ; ZF=0: last char not valid -> error at len+1
-        ld      hl,(__val_aval)
-        call    __storefp
-        jr      __val_exit
-
-; Pascal-callable wrapper around __val_enum for use by TextReadEnum in files.pas.
-; Normal __val_enum is called by the compiler with DE=table already set.
-; Here the table address arrives as the top-most stack parameter (Tab: Pointer),
-; pushed by the caller after the standard string/val-addr/err-addr triple.
-;
-; Stack on entry (top → deep):  ret_addr | Tab | addr_of_Err | addr_of_V | string(256)
-;
-; Two things have to be sorted out here that the compiler-emitted call to
-; __val_enum does not run into:
-;
-; Val is a magic procedure, emitted without any caller-side cleanup because
-; __val_init and __val_exit consume the arguments themselves. TryValEnum is
-; an ordinary Pascal external, so the compiler follows the call with an
-; "add sp,262" of its own. Returning straight out of __val_exit would free
-; the same frame twice and leave SP 262 bytes too high. That went unnoticed
-; for a long time because the procedure epilogue overwrites SP right away --
-; but any statement placed after the call runs on the broken stack first.
-;
-; And Pascal cannot see the Carry that __val_exit sets for a failed
-; conversion, so the throwing check happens here rather than in files.pas.
-;
-__tryval_enum:  pop     hl              ; Return address into the caller
-                ld      (__tve_ret),hl
-                pop     de              ; DE = Tab (enum literal table)
-                ld      hl,__tve_done
-                push    hl              ; __val_enum returns here, not to Pascal
-                jr      __val_enum      ; Layout is now what __val_enum expects
-
-__tve_done:     jp      c,__val_error   ; Carry from __val_exit's neg
-                ld      hl,-262         ; Hand the frame back to the caller,
-                add     hl,sp           ; which is about to clean it up itself
-                ld      sp,hl
-                ld      hl,(__tve_ret)
-                jp      (hl)
-
-__tve_ret:      dw      0
+__val_float:    call    __val_init
+                ld      hl,(__val_astr)
+                ld      de,(__val_aval)
+                call    __conv_real
+                jr      c,__val_set_err
+                jr      __val_exit
 
 ; string on stack, de=table (first byte = count), a contains code if found, 255 if not
 __val_enum:     ld      (__val_atab),de ; Save table address before __val_init clobbers DE
@@ -1877,54 +1768,174 @@ __word2:        ld      (__lineptr),hl
 ; same here as it does in __val_int: anything left over is invalid input.
 ; Both failure exits go to __val_error, the same place the two-argument Val
 ; ends up, so console and Val agree on what a format error is.
-__getn:         push    hl
-                call    __blanks
+; Reading a value happens in three pieces: fetch a length-prefixed string,
+; convert it, store the result. The console readers fetch into __buffer via
+; __word, the text-file readers in rtl/files.pas fill the same buffer, and
+; Val brings its own string -- but from __conv_* downwards it is all one path.
+;
+; __conv_int / __conv_real / __conv_enum
+;   In:  HL = length-prefixed string, DE = destination, BC = enum table
+;   Out: A = 0, CF = 0 on success, destination written;
+;        A = error position, CF = 1 otherwise, destination left alone.
+;
+; __buf_* are the entry points for the two readers, which have the string in
+; __buffer and pass the destination in HL (and the table in DE), so they only
+; have to shuffle registers before dropping into the shared core.
+;
+__getn:         push    hl              ; __word clobbers HL, so the
+                call    __blanks        ; destination has to be parked
                 call    __word
-                ld      a,(__buffer)
-                and     a
-                jp      z,__val_error   ; Nothing typed, as for Val('')
-                ld      hl,__buffer + 1
-                call    __atoi
                 pop     hl
-                ld      a,b
-                and     a
-                jp      nz,__val_error  ; Trailing garbage, as for Val('12xyz')
-                ld      (hl),de
-                ret
+__buf_int:      ex      de,hl           ; DE = destination
+                ld      hl,__buffer
+                call    __conv_int
+                ret     nc
+                jp      __val_error
 
-; Goes through __atof rather than calling CNVN directly, for the same reason
-; __getn goes through __atoi with the real length: __atof already wraps CNVN
-; and works out how many characters were left unconsumed, which is exactly
-; the check __val_float makes. It also handles IX and the register set, so
-; the push ix / pop ix / exx dance here is no longer needed.
 __getr:         push    hl
                 call    __blanks
                 call    __word
-                ld      a,(__buffer)
-                and     a
-                jp      z,__val_error   ; Nothing typed, as for Val('')
-                ld      hl,__buffer + 1
-                call    __atof
-                ld      a,b
-                and     a
-                jp      nz,__val_error  ; Trailing garbage, as for Val('1.5x')
                 pop     hl
-                call    __storefp
-                ret
+__buf_real:     ex      de,hl
+                ld      hl,__buffer
+                call    __conv_real
+                ret     nc
+                jp      __val_error
 
-; hl address, de table (first byte = count)
 __gete:         push    hl
                 push    de
                 call    __blanks
                 call    __word
-                ld      hl,__buffer
                 pop     de
-                call    __atoe
                 pop     hl
+__buf_enum:     ld      b,d             ; BC = table
+                ld      c,e
+                ex      de,hl           ; DE = destination
+                ld      hl,__buffer
+                call    __conv_enum
+                ret     nc
+                jp      __val_error
+
+;
+; Shared prologue: reject an empty string and anything longer than 31
+; characters, then terminate the string for CNVN's benefit -- it scans for a
+; non-digit rather than counting, so it needs the byte behind the text. The
+; 31 limit is what makes writing that byte safe without asking who owns the
+; memory: __word never produces more than 30, and Val's argument is a 256
+; byte stack copy. No Integer, Real or identifier needs more room anyway.
+;
+; Out: ZF=1 and A=0 to carry on, otherwise A = error position.
+;
+__conv_prep:    ld      a,(hl)
+                and     a
+                jr      z,__conv_empty
+                cp      32
+                jr      nc,__conv_long
+                push    hl
+                push    bc
+                ld      c,a
+                ld      b,0
+                inc     hl
+                add     hl,bc
+                ld      (hl),0
+                pop     bc
+                pop     hl
+                xor     a
+                ret
+__conv_empty:   ld      a,1             ; Nothing to convert
+                and     a               ; ld a,n leaves the flags alone, and
+                ret                     ; the caller branches on ZF
+__conv_long:    ld      a,32            ; First position beyond what we take
+                and     a
+                ret
+
+; Turns "characters left over" into an error position, or 0 if none are.
+; In: B = unconsumed count, HL = string.  Out: A, ZF, CF as for __conv_*.
+__conv_left:    ld      a,b
+                and     a
+                ret     z
+                ld      a,(hl)          ; length
+                sub     b
+                inc     a               ; position of the first bad character
+                ret
+
+; The last character has to be a digit or a dot. Neither converter catches
+; this on its own: __atoi happily consumes a lone '-' and reports everything
+; used up, and CNVN would accept a trailing 'E'. "100." stays legal.
+; In: HL = string.  Out: ZF=1 to carry on, else A = position just past it.
+;
+__conv_last:    push    hl
+                push    de              ; DE is the destination, keep it
+                ld      a,(hl)
+                ld      e,a
+                ld      d,0
+                add     hl,de
+                ld      a,(hl)
+                pop     de
+                pop     hl
+                cp      '.'
+                jr      z,__conv_last1
+                sub     '0'
+                cp      10
+                jr      c,__conv_last1
+                ld      a,(hl)
+                inc     a
+                and     a               ; ZF=0, A = length + 1
+                ret
+__conv_last1:   xor     a
+                ret
+
+__conv_int:     call    __conv_prep
+                jr      nz,__conv_fail
+                push    de              ; destination
+                ld      a,(hl)
+                push    hl
+                inc     hl
+                call    __atoi
+                pop     hl              ; HL = string
+                call    __conv_left     ; leftover characters win: they give
+                jr      nz,__conv_int1  ; the exact position of the first bad
+                call    __conv_last     ; one, so only ask about the last
+__conv_int1:    pop     hl              ; character when nothing is left
+                jr      nz,__conv_fail
+                ld      (hl),de
+                ret                     ; A = 0, CF = 0
+
+__conv_real:    call    __conv_prep
+                jr      nz,__conv_fail
+                push    de
+                ld      a,(hl)
+                push    hl
+                inc     hl
+                call    __atof          ; leaves the alternate register set
+                pop     hl
+                call    __conv_left
+                jr      nz,__conv_real1
+                call    __conv_last
+__conv_real1:   pop     hl
+                jr      nz,__conv_realbad
+                call    __storefp       ; switches the set back
+                xor     a
+                ret
+__conv_realbad: exx                     ; __storefp would have done this, but
+                jr      __conv_fail     ; we are bailing out before it
+
+__conv_enum:    call    __conv_prep
+                jr      nz,__conv_fail
+                push    de
+                push    bc
+                pop     de              ; DE = table, HL = string
+                call    __atoe
+                pop     hl              ; HL = destination
                 ld      a,d
                 and     a
-                jp      nz,__val_error  ; Was a silent no-op before
+                jr      nz,__conv_notfound
                 ld      (hl),e
+                xor     a
+                ret
+__conv_notfound:
+                ld      a,1
+__conv_fail:    scf
                 ret
 
 __getc:         push    hl
