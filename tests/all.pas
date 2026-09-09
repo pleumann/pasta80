@@ -3209,6 +3209,11 @@ overlay procedure TestVal;
   type
     TColor = (Red, Yellow, Green, None);
 
+  var
+    I: Integer;
+    R: Real;
+    C: TColor;
+
   procedure ValInt(S: String; ExpectVal, ExpectErr: Integer);
   var
     V, E: Integer;
@@ -3268,6 +3273,12 @@ begin
   ValInt('-', -1234, 2);
   ValInt('+', -1234, 2);
 
+  { Anything past 31 characters is rejected outright: no number, Real or
+    identifier needs more, and the limit is what lets the converters write
+    a terminator behind the text without asking who owns the memory. The
+    reported position is the first one beyond what is accepted. }
+  ValInt('1111111111111111111111111111111111111111', -1234, 32);
+
   ValReal('100', 100.0, 0);
   ValReal('+100', 100.0, 0);
   ValReal('-100', -100.0, 0);
@@ -3309,6 +3320,21 @@ begin
   ValEnum('blue', None, 1);
   ValEnum('Reddish', None, 1);
   ValEnum('', None, 1);
+
+  { The two-argument form has no error variable and stops the program on bad
+    input, so only the succeeding side can be checked here -- the other one
+    is tests/errors/valfmt.pas. }
+  I := -1234;
+  Val('123', I);
+  Assert(I = 123);
+
+  R := -1234.0;
+  Val('2.5', R);
+  Assert((R > 2.4) and (R < 2.6));
+
+  C := None;
+  Val('Green', C);
+  Assert(C = Green);
 end;
 
 (**

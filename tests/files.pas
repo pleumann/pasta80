@@ -338,14 +338,22 @@ procedure TestTextReadIOResult;
 var
   T: Text;
   I: Integer;
+  R: Real;
+  C: Color;
   E: Integer;
+  B: Boolean;
 begin
   WriteLn('--- TestTextReadIOResult ---');
 
   Assign(T, 'IOR.TMP');
   Rewrite(T);
-  WriteLn(T, 'abc');
+  WriteLn(T, 'abc');           { not an Integer }
   WriteLn(T, '42');
+  WriteLn(T, 'xyz');           { not a Real    }
+  WriteLn(T, '2.5');
+  WriteLn(T, 'nope');          { not a Color   }
+  WriteLn(T, 'Blue');
+  WriteLn(T, '');              { nothing at all }
   Close(T);
 
   Reset(T);
@@ -355,18 +363,64 @@ begin
   Read(T, I);
   E := IOResult;
   {$i+}
-  Assert(E <> 0);       { the bad word was reported }
-  Assert(I = -1);       { and the target was left untouched }
-
-  ReadLn(T);            { skip what is left of the bad line }
+  Assert(E <> 0);              { reported }
+  Assert(I = -1);              { and the target left alone }
+  ReadLn(T);
 
   I := -1;
   {$i-}
   ReadLn(T, I);
   E := IOResult;
   {$i+}
-  Assert(E = 0);        { a good number reports nothing }
+  Assert(E = 0);               { a good one reports nothing }
   Assert(I = 42);
+
+  R := -1.0;
+  {$i-}
+  Read(T, R);
+  E := IOResult;
+  {$i+}
+  Assert(E <> 0);
+  B := (R > -1.1) and (R < -0.9);
+  Assert(B);
+  ReadLn(T);
+
+  R := -1.0;
+  {$i-}
+  ReadLn(T, R);
+  E := IOResult;
+  {$i+}
+  Assert(E = 0);
+  B := (R > 2.4) and (R < 2.6);
+  Assert(B);
+
+  C := Red;
+  {$i-}
+  Read(T, C);
+  E := IOResult;
+  {$i+}
+  Assert(E <> 0);
+  Assert(C = Red);
+  ReadLn(T);
+
+  C := Red;
+  {$i-}
+  ReadLn(T, C);
+  E := IOResult;
+  {$i+}
+  Assert(E = 0);
+  Assert(C = Blue);
+
+  (* Reading nothing at all is an error here, where TP 3.0 would quietly
+     leave the variable as it was. Deliberate, and the reason a data file
+     with a trailing blank line now stops a read loop -- see B9. *)
+  I := -1;
+  {$i-}
+  ReadLn(T, I);
+  E := IOResult;
+  {$i+}
+  Assert(E <> 0);
+  Assert(I = -1);
 
   Close(T);
   Erase(T);
