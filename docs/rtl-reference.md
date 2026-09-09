@@ -80,7 +80,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `Dispose(P: Pointer)` | [All*] | Frees the memory pointed to by `P` and returns it to the heap. |
 | `Inc(var V [; N: Integer])` | [All*] | Increments `V` by 1 or by `N`. Valid for `Integer`, `Byte`, `Char`, enumeration and `Pointer` types; for pointers, the size of the pointed-to element is taken into account (like in C). |
 | `Dec(var V [; N: Integer])` | [All*] | Decrements `V` by 1 or by `N`. Valid for `Integer`, `Byte`, `Char`, enumeration and `Pointer` types; for pointers, the size of the pointed-to element is taken into account (like in C). |
-| `Val(S: String; var Scalar; var E: Integer)` | [All*] | Converts the string `S` to a number or enumeration value. `E` is 0 on success, otherwise the error position. |
+| `Val(S: String; var Scalar [; var E: Integer])` | [All*] | Converts the string `S` to a number or enumeration value. `E` is 0 on success, otherwise the error position. Note that E is an optional parameter. When omitted, any value of S that cannot be converted to the target data type will terminate the program. |
 | `Str(N: Scalar; var S: String)` | [All*] | Converts `N` to a string and stores the result in `S`. Optional format specifiers: `Str(N:Width, S)` or `Str(N:Width:Decimals, S)`. |
 | `Include(var S: Set; E: Element)` | [All*] | Adds element `E` to set `S`. |
 | `Exclude(var S: Set; E: Element)` | [All*] | Removes element `E` from set `S`. |
