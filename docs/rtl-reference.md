@@ -100,6 +100,12 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `Write(...)` | [All*] | Writes values to the console or to an open file. Supports format specifiers: `Write(Value:Width)` and `Write(Value:Width:Decimals)`. |
 | `WriteLn(...)` | [All*] | Like `Write`, but appends a line break afterwards. |
 
+Note that `Read` and `ReadLn` will trigger I/O errors if the textual
+input cannot be converted to the desired data type (i.e. "xyz" for an
+`Integer` variable). This is also the case for empty lines, which would
+simply be ignored and leave the variable untouched in Turbo Pascal 3.
+Use the {$i} compiler directive to handle these error cases gracefully.
+
 ### File Operations
 
 Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file of`, or a `Text` file.
