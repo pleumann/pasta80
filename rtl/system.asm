@@ -12,6 +12,7 @@ __exitcode      dw      0
 __buflen_default equ    126
 
 __buffer        ds      32
+__lasterror:    db      0               ; Pascal side: LastError in system.pas
 __linemax:      db      __buflen_default
 __linelen:      ds      1
 __linebuf:      ds      128
@@ -1766,8 +1767,8 @@ __word2:        ld      (__lineptr),hl
 ; __word has already put the real word length into (__buffer); pass that to
 ; __atoi instead of a fixed digit cap, so B (remaining characters) means the
 ; same here as it does in __val_int: anything left over is invalid input.
-; Both failure exits go to __val_error, the same place the two-argument Val
-; ends up, so console and Val agree on what a format error is.
+; Both failure exits go through __buf_fail, which records the problem in
+; LastError -- see there for why Read reports and Val throws.
 ; Reading a value happens in three pieces: fetch a length-prefixed string,
 ; convert it, store the result. The console readers fetch into __buffer via
 ; __word, the text-file readers in rtl/files.pas fill the same buffer, and
@@ -1790,7 +1791,7 @@ __buf_int:      ex      de,hl           ; DE = destination
                 ld      hl,__buffer
                 call    __conv_int
                 ret     nc
-                jp      __val_error
+                jr      __buf_fail
 
 __getr:         push    hl
                 call    __blanks
@@ -1800,7 +1801,7 @@ __buf_real:     ex      de,hl
                 ld      hl,__buffer
                 call    __conv_real
                 ret     nc
-                jp      __val_error
+                jr      __buf_fail
 
 __gete:         push    hl
                 push    de
@@ -1814,7 +1815,17 @@ __buf_enum:     ld      b,d             ; BC = table
                 ld      hl,__buffer
                 call    __conv_enum
                 ret     nc
-                jp      __val_error
+                jr      __buf_fail
+
+; A bad number from Read is an I/O error, not an unconditional abort: it goes
+; into LastError so that {$i-} can catch it via IOResult, exactly like a disk
+; error. Under {$i+} the compiler follows every Read with a BDosThrow, which
+; is where the program actually stops. 255 is outside the ranges BDOS, esxDOS
+; and MOS use for their own codes.
+;
+__buf_fail:     ld      a,255
+                ld      (__lasterror),a
+                ret
 
 ;
 ; Shared prologue: reject an empty string and anything longer than 31

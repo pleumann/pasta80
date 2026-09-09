@@ -1683,6 +1683,11 @@ end;
  * conditional compilation, compiler switches, and things like includes.
  * New directives should be added here.
  *)
+(* Defined much further down, but needed by the {$i+} switch below. Going
+   through EmitCall rather than emitting the call by hand matters: it is what
+   registers the dependency that keeps BDosThrow alive under --dep. *)
+procedure EmitCall(Sym: PSymbol); forward;
+
 procedure HandleDirective(C: String);
 var
   S, T: String;
@@ -1722,7 +1727,18 @@ var
 
       case C of
         'a': AbsCode    := B;
-        'i': IOMode     := B;
+        'i': begin
+               (* Switching checks back on has to look at whatever the
+                  unchecked section left behind, the way TP 3.0 does: an
+                  error that was never picked up with IOResult still stops
+                  the program. Checking here rather than after every Write
+                  costs three bytes per directive instead of three per call
+                  site, and there is nothing to find unless the state
+                  actually changes. *)
+               if B and not IOMode then
+                 EmitCall(LookupBuiltInOrFail('BDosThrow'));
+               IOMode := B;
+             end;
         'k': StackMode  := B;
         'u': CheckBreak := B;
       else
@@ -5016,6 +5032,12 @@ begin
           end
           else
             Error('Unreadable type');
+
+          (* A malformed number is reported through LastError like any other
+             I/O error, so it needs the same {$i+} check every other file
+             operation gets. This also picks up genuine read errors, which
+             used to sit in LastError unnoticed until the next operation. *)
+          if IOMode then EmitCall(LookupBuiltInOrFail('BDosThrow'));
         end;
 
         if (Proc = ReadLnProc) and (T^.Kind <> scStringType) then
@@ -5049,12 +5071,14 @@ begin
 
         EmitI('pop hl');
         EmitReadConsole(T);
+        if IOMode then EmitCall(LookupBuiltInOrFail('BDosThrow'));
         while Scanner.Token = toComma do
         begin
           NextToken;
           T := ParseVariableRef();
           EmitI('pop hl');
           EmitReadConsole(T);
+          if IOMode then EmitCall(LookupBuiltInOrFail('BDosThrow'));
         end;
       end;
 

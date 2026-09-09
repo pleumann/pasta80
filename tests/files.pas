@@ -329,6 +329,49 @@ begin
   Erase(T);
 end;
 
+(* A malformed number is an I/O error like any other, so the i-minus
+   directive has to be able to catch it through IOResult rather than the
+   program stopping. Checked against TP 3.0 (OPEN-ITEMS-EN.md B9). The
+   i-plus half cannot live in a suite because it terminates, and is covered
+   by tests/errors/numfmt.pas instead. *)
+procedure TestTextReadIOResult;
+var
+  T: Text;
+  I: Integer;
+  E: Integer;
+begin
+  WriteLn('--- TestTextReadIOResult ---');
+
+  Assign(T, 'IOR.TMP');
+  Rewrite(T);
+  WriteLn(T, 'abc');
+  WriteLn(T, '42');
+  Close(T);
+
+  Reset(T);
+
+  I := -1;
+  {$i-}
+  Read(T, I);
+  E := IOResult;
+  {$i+}
+  Assert(E <> 0);       { the bad word was reported }
+  Assert(I = -1);       { and the target was left untouched }
+
+  ReadLn(T);            { skip what is left of the bad line }
+
+  I := -1;
+  {$i-}
+  ReadLn(T, I);
+  E := IOResult;
+  {$i+}
+  Assert(E = 0);        { a good number reports nothing }
+  Assert(I = 42);
+
+  Close(T);
+  Erase(T);
+end;
+
 procedure TestTextWithIntegers;
 var
   I1, I2, I3: Integer;
@@ -771,6 +814,7 @@ begin
 
   TestTextWithStrings;
   TestTextWriteFormatted;
+  TestTextReadIOResult;
   TestTextWithIntegers;
   TestTextWithReals;
   TestTextWithEnums;
