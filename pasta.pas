@@ -1445,6 +1445,19 @@ begin
 end;
 
 (**
+ * Tells whether the given type is an ordinal one, that is, whether its values
+ * can be counted and thus incremented or decremented. Note that callers
+ * interested in how wide such a value is must look at its Value (size), not at
+ * the type itself: a subrange carries dtInteger as its base type but may well
+ * occupy a single byte.
+ *)
+function IsOrdinal(DataType: PSymbol): Boolean;
+begin
+  IsOrdinal := (DataType = dtInteger) or (DataType = dtByte) or (DataType = dtChar)
+            or (DataType^.Kind = scEnumType) or (DataType^.Kind = scSubrangeType);
+end;
+
+(**
  * Registers all symbols that must be baked into the compiler and cannot be
  * defined by means of Pascal source code.
  *)
@@ -3848,7 +3861,7 @@ procedure EmitInc(DataType: PSymbol);
 begin
   EmitI('pop hl');
 
-  if DataType = dtInteger then
+  if DataType^.Value = 2 then
     EmitI('call __inc16')
   else
     EmitI('inc (hl)');
@@ -3862,7 +3875,7 @@ procedure EmitDec(DataType: PSymbol);
 begin
   EmitI('pop hl');
 
-  if DataType = dtInteger then
+  if DataType^.Value = 2 then
     EmitI('call __dec16')
   else
     EmitI('dec (hl)');
@@ -5272,12 +5285,12 @@ begin
     Expect(toLParen);
     NextToken;
     V := ParseVariableRef;
-    if (V = dtInteger) or (V^.Kind = scPointerType) then
+    if (V^.Kind = scPointerType) or (IsOrdinal(V) and (V^.Value = 2)) then
     begin
-      if (V = dtInteger) or (V = dtPointer) then
-        Size := 1
+      if (V^.Kind = scPointerType) and (V <> dtPointer) then
+        Size := V^.DataType^.Value
       else
-        Size := V^.DataType^.Value;
+        Size := 1;
 
       if Scanner.Token = toComma then
       begin
@@ -5305,7 +5318,7 @@ begin
         else EmitInc(dtInteger);
       end;
     end
-    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
+    else if IsOrdinal(V) then
     begin
       if Scanner.Token = toComma then
       begin
@@ -5330,12 +5343,12 @@ begin
     Expect(toLParen);
     NextToken;
     V := ParseVariableRef;
-    if (V = dtInteger) or (V^.Kind = scPointerType) then
+    if (V^.Kind = scPointerType) or (IsOrdinal(V) and (V^.Value = 2)) then
     begin
-      if (V = dtInteger) or (V = dtPointer) then
-        Size := 1
+      if (V^.Kind = scPointerType) and (V <> dtPointer) then
+        Size := V^.DataType^.Value
       else
-        Size := V^.DataType^.Value;
+        Size := 1;
 
       if Scanner.Token = toComma then
       begin
@@ -5363,7 +5376,7 @@ begin
         else EmitDec(dtInteger);
       end;
     end
-    else if (V = dtByte) or (V = dtChar) or (V^.Kind = scEnumType) then
+    else if IsOrdinal(V) then
     begin
       if Scanner.Token = toComma then
       begin
@@ -5973,6 +5986,11 @@ begin
     Op := Scanner.Token;
     NextToken;
     T := ParseFactor();
+
+    (* Like the binary operators, compute anything integral in 16 bit. Turbo
+       Pascal 3 does the same: not B for a Byte B = 1 yields -2, not 254. *)
+    if T^.Kind = scSubrangeType then T := T^.DataType;
+    if T = dtByte then T := dtInteger;
 
     if T = dtChar then Error('not only applicable to Integer, Byte, Real or Boolean');
     case Op of
