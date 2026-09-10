@@ -1422,6 +1422,28 @@ begin
   RegisterMagic := Sym;
 end;
 
+function TypeName(Symbol: PSymbol): String;
+begin
+  Result := Symbol^.Name;
+
+  if Result = '' then
+  begin
+    case Symbol^.Kind of
+      scAliasType:    Result := ' alias';
+      scArrayType:    Result := ' array';
+      scEnumType:     Result := ' enum';
+      scFileType:     Result := ' file';
+      scPointerType:  Result := ' pointer';
+      scRecordType:   Result := ' record';
+      scSetType:      Result := ' set';
+      scStringType:   Result := ' string';
+      scSubrangeType: Result := ' subrange';
+    end;
+
+    Result := 'anonymous' + Result + ' type';
+  end
+end;
+
 (**
  * Registers all symbols that must be baked into the compiler and cannot be
  * defined by means of Pascal source code.
@@ -3815,7 +3837,7 @@ begin
 
     EmitI('pushfp');
   end
-  else Error('Invalid type ' + DataType^.Name);
+  else Error('Invalid type ' + TypeName(DataType));
 end;
 
 (**
@@ -3900,7 +3922,7 @@ begin
     EmitI('ld hl,' + DataType^.Tag);
     EmitI('call __stre');
   end
-  else Error('Unprintable type: ' + DataType^.Name);
+  else Error('Unprintable type: ' + TypeName(DataType));
 end;
 
 (**
@@ -3953,7 +3975,7 @@ begin
     EmitI('ld hl,' + DataType^.Tag);
     EmitI('call __stre_fmt');
   end
-  else Error('Unprintable type: ' + DataType^.Name);
+  else Error('Unprintable type: ' + TypeName(DataType));
 end;
 
 (**
@@ -3973,7 +3995,7 @@ begin
     EmitI('popfp');
     EmitI('call __strf_fix');
   end
-  else Error('Unprintable type: ' + DataType^.Name);
+  else Error('Unprintable type: ' + TypeName(DataType));
 end;
 
 (**
@@ -4026,7 +4048,7 @@ begin
     EmitI('ld de,' + DataType^.Tag);
     EmitI('call __pute');
   end
-  else Error('Unprintable type: ' + DataType^.Name);
+  else Error('Unprintable type: ' + TypeName(DataType));
 end;
 
 (**
@@ -4071,7 +4093,7 @@ begin
     EmitI('ld de,' + DataType^.Tag);
     EmitI('call __pute_fmt');
   end
-  else Error('Unprintable type: ' + DataType^.Name);
+  else Error('Unprintable type: ' + TypeName(DataType));
 end;
 
 (**
@@ -4082,7 +4104,7 @@ end;
  *)
 procedure EmitWrite2(DataType: PSymbol);
 begin
-  if DataType <> dtReal then Error('Unprintable type for format 2: ' + DataType^.Name);
+  if DataType <> dtReal then Error('Unprintable type for format 2: ' + TypeName(DataType));
 
   EmitI('pop bc');
   EmitI('pop de');
@@ -4243,7 +4265,7 @@ begin
     end;
   end;
 
-  Error('Type error, expected ' + Left^.Name + ', got ' + Right^.Name);
+  Error('Type error, expected ' + TypeName(Left) + ', got ' + TypeName(Right));
 end;
 
 (* -------------------------------------------------------------------------- *)
@@ -5951,6 +5973,7 @@ begin
     Op := Scanner.Token;
     NextToken;
     T := ParseFactor();
+
     if T = dtChar then Error('not only applicable to Integer, Byte, Real or Boolean');
     case Op of
       toAdd: begin (* Nop *) end;
