@@ -2308,6 +2308,8 @@ begin
   Assert(SizeOf(GlobalIntArray) = 200);
 end;
 
+const Dummy4 = 0;
+
 overlay procedure TestStrings;
 type
   TStr255 = string[255];
