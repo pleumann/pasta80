@@ -417,10 +417,29 @@ procedure BlockRename(var F: FileControlBlock; S: String); //Untested
 var
   G: FileControlBlock;
   R: Registers;
+  H, Ignored: Integer;
 begin
   if LastError <> 0 then Exit;
 
   BlockAssign(G, S);
+
+  (* MOS renames onto an existing file without complaining, silently
+     replacing it; CP/M's BDOS refuses, and so does a rename onto the
+     file's own current name. Checked here by opening the target read-only
+     and closing it again, which is the cheapest existence test MOS offers.
+     8 is FatFS' FR_EXIST, matching the numbering MOS reports elsewhere
+     (a missing source comes back as 4, FR_NO_FILE). *)
+  R.HL := Addr(G.FileName);
+  R.BC := $01;                      (* FA_READ, must already exist *)
+  H := MOSAPI($0A, R);              (* 0x0A: mos_fopen *)
+  if H <> 0 then
+  begin
+    R.C := H;
+    Ignored := MOSAPI($0b, R);      (* 0x0B: mos_fclose *)
+    LastError := 8;
+    Exit;
+  end;
+
 //  R.A := Ord('*');
   R.HL := Addr(F.FileName);
   R.DE := Addr(G.FileName);
@@ -472,7 +491,14 @@ begin
     // 0x01 FA_READ Open file for reading
     // 0x02  FA_WRITE  Open file for writing. Combine with FA_READ for read/write access
     // 0x10 FA_OPEN_ALWAYS  Open file if it exists, create it if it doesn't
-    R.BC := $01+$02+$10;  // Open Always seems to be broken on the emulator
+    //
+    // FA_OPEN_ALWAYS used to be added here as well. On MOS 2.x/3.x that
+    // makes every write land at the end of the file no matter where the
+    // file pointer was left, which broke Seek-then-write and Append alike
+    // (reads positioned correctly all along, which is what gave it away).
+    // Dropping it also matches Turbo Pascal, where Reset on a file that
+    // does not exist is an error rather than a silent create.
+    R.BC := $01+$02;  // FA_READ or FA_WRITE, file must already exist
     F.Handle := MOSAPI($0A, R); //mos_fopen:   EQU 0Ah
     F.RL := 0;
     if F.Handle = 0 then

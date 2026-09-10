@@ -96,11 +96,10 @@ var
 begin
   WriteLn('--- TestFileRename ---');
 
-  Assign(DummyFile, 'NEW.TMP');
   {$i-}
+  Assign(DummyFile, 'NEW.TMP');
   Erase(DummyFile);
   I := IOREsult;
-  {$i+}
 
   Assign(DummyFile, 'OLD.TMP');
 
@@ -110,25 +109,28 @@ begin
   Close(DummyFile);
 
   { Verify original file exists }
+  Assert(IOResult = 0);
   Assert(FileExists('OLD.TMP'));
 
   { Rename file }
   Rename(DummyFile, 'NEW.TMP');
 
   { Verify old name no longer exists }
+  Assert(IOResult = 0);
   Assert(not FileExists('OLD.TMP'));
 
   { Verify new name exists }
+  Assert(IOResult = 0);
   Assert(FileExists('NEW.TMP'));
 
   { Clean up }
   Assign(DummyFile, 'NEW.TMP');
   Erase(DummyFile);
+  Assert(IOResult = 0);
 
   { Old file does not exist }
 
   Assign(DummyFile, 'OLD.TMP');
-  {$i-}
   Rename(DummyFile, 'NEW.TMP');
   Assert(IOResult <> 0);
 
@@ -143,11 +145,12 @@ begin
   Rewrite(DummyFile);
   BlockWrite(DummyFile, Buffer, 1, Actual);
   Close(DummyFile);
+  Assert(IOResult = 0);
 
-  {$i-}
+  Assign(DummyFile, 'OLD.TMP');
   Rename(DummyFile, 'NEW.TMP');
   Assert(IOResult <> 0);
-  {$i-}
+  {$i+}
 end;
 
 { --- Raw files --- }
