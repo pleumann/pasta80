@@ -17,4 +17,9 @@ begin
     WriteLn('Param #', J, ': ', ParamStr(J));
 
   WriteLn;
+
+  WriteLn('Param #0: ', ParamStr(0));
+  WriteLn('Param #', I + 1, ': ', ParamStr(I + 1));
+
+  WriteLn;
 end.

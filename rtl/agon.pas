@@ -280,7 +280,7 @@ var
 begin
   Tmp[0] := #255; //preset the length to maximum
 
-  if I <= ParamCount then
+  if (I > 0) and (I <= ParamCount) then
     begin
       for J := 1 to 255 do
       begin
