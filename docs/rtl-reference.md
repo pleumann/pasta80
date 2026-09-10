@@ -196,8 +196,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Delete(var S: String; Start, Count: Integer)` | [All] | Deletes `Count` characters from string `S` starting at position `Start` (1-based). |
-| `Insert(S: String; var T: String; Start: Integer)` | [All] | Inserts string `S` into string `T` at position `Start`. |
+| `Delete(var S: String; Start, Count: Integer)` | [All*] | Deletes `Count` characters from string `S` starting at position `Start` (1-based). |
+| `Insert(S: String; var T: String; Start: Integer)` | [All*] | Inserts string `S` into string `T` at position `Start`. |
 
 ### Agon OS Interface
 
