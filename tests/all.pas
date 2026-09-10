@@ -3084,11 +3084,12 @@ begin
   Assert(Low(SubRange4)  = 10);
   Assert(High(SubRange4) = 20);
 
-  (* SizeOf() -- subrange over Integer values, so 2 bytes each *)
-  Assert(SizeOf(V1) = SizeOf(Integer));
-  Assert(SizeOf(V2) = SizeOf(Integer));
-  Assert(SizeOf(V3) = SizeOf(Integer));
-  Assert(SizeOf(V4) = SizeOf(Integer));
+  (* SizeOf() -- bounds of 10..20 fit into a byte, so one byte each. The base
+     type is Integer, but the storage is what SizeOf reports (issue #157). *)
+  Assert(SizeOf(V1) = 1);
+  Assert(SizeOf(V2) = 1);
+  Assert(SizeOf(V3) = 1);
+  Assert(SizeOf(V4) = 1);
 
   (* Variable assignment and arithmetic *)
   V1 := 10;

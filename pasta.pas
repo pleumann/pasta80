@@ -4690,9 +4690,8 @@ begin
 
     if Release then UnmuteEmitter;
 
-    if Sym^.Kind = scSubrangeType then Sym := Sym^.DataType;
-
-    if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType, scFileType] then
+    if Sym^.Kind in [scType, scArrayType, scRecordType, scEnumType, scStringType,
+                     scFileType, scSubrangeType] then
       EmitLiteral(Sym^.Value)
     else
       Error('Cannot apply SizeOf to ' + Sym^.Name);
@@ -6196,9 +6195,12 @@ begin
   Expect(toBecomes);
   NextToken;
 
-  T := TypeCheck(T, ParseExpression, tcAssign);
+  (* Check against the target type, but store with it, not with whatever the
+     check returns: TypeCheck reduces a subrange to its base type, and storing
+     with that would write two bytes into a one byte variable. *)
+  TypeCheck(T, ParseExpression, tcAssign);
 
-  EmitStore(T); (* T? *)
+  EmitStore(T);
 end;
 
 procedure ParseStatement(ContTarget, BreakTarget: String); forward;
@@ -7310,14 +7312,24 @@ begin
 
       DataType^.High := Sym^.Value;
 
-      if Sym^.Value < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+      (* A negative lower bound needs the full 16 bit: loading a byte sized
+         variable zero-extends, which would turn -100 into 156. *)
+      if (DataType^.Low >= 0) and (DataType^.High < 256) then
+        DataType^.Value := 1
+      else
+        DataType^.Value := 2;
     end
     else
     begin
       Expect(toNumber);
       DataType^.High := Scanner.NumValue;
 
-      if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+      (* A negative lower bound needs the full 16 bit: loading a byte sized
+         variable zero-extends, which would turn -100 into 156. *)
+      if (DataType^.Low >= 0) and (DataType^.High < 256) then
+        DataType^.Value := 1
+      else
+        DataType^.Value := 2;
     end;
 
     NextToken;
@@ -7367,14 +7379,24 @@ begin
 
         DataType^.High := Sym^.Value;
 
-        if Sym^.Value < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+        (* A negative lower bound needs the full 16 bit: loading a byte sized
+           variable zero-extends, which would turn -100 into 156. *)
+        if (DataType^.Low >= 0) and (DataType^.High < 256) then
+          DataType^.Value := 1
+        else
+          DataType^.Value := 2;
       end
       else
       begin
         Expect(toNumber);
         DataType^.High := Scanner.NumValue;
 
-        if Scanner.NumValue < 256 then DataType^.Value := 1 else DataType^.Value := 2;
+        (* A negative lower bound needs the full 16 bit: loading a byte sized
+           variable zero-extends, which would turn -100 into 156. *)
+        if (DataType^.Low >= 0) and (DataType^.High < 256) then
+          DataType^.Value := 1
+        else
+          DataType^.Value := 2;
       end;
 
       NextToken;
