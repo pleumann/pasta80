@@ -11,8 +11,8 @@
 (* Built-in: procedure Val(S: String; var Scalar; var E: Integer); *)
 (* Built-in: procedure Str(N: Scalar; var S: String);              *)
 
-procedure Delete(var S: String; Start, Count: Integer);     external '__delete';
-procedure Insert(S: String; var T: String; Start: Integer); external '__insert';
+(* Built-in: procedure Delete(var S: String; Start, Count: Integer);   *)
+(* Built-in: procedure Insert(S: String; var T: String; Start: Integer); *)
 
 (* Built-in: function Concat(S: String, ...): String;              *)
 

@@ -64,14 +64,12 @@ var
   C: Char;
 
   BeforeA: Integer;
-  A: TIntArray100;
+  GlobalIntArray: TIntArray100;
   AfterA: Integer;
 
   AA: array[0..9] of array[0..9] of Integer;
 
   CA: array[0..2] of Color;
-
-  GlobalIntArray: TIntArray100;
 
 (* Overlay 0 *)
 
@@ -655,27 +653,27 @@ begin
   BeforeA := 32767;
 
   for I := 0 to 99 do
-    A[I] := I * I;
+    GlobalIntArray[I] := I * I;
 
   AfterA := 32767;
 
   Assert(BeforeA = 32767);
 
   for I := 0 to 99 do
-    Assert(A[I] = I * I);
+    Assert(GlobalIntArray[I] = I * I);
 
   Assert(AfterA = 32767);
 
-  B := A;
+  B := GlobalIntArray;
 
   for I := 0 to 99 do
-    Assert(B[I] = A[I]);
+    Assert(B[I] = GlobalIntArray[I]);
 
   for I := 0 to 99 do
     B[I] := B[I] + 1;
 
   for I := 0 to 99 do
-    Assert(B[I] = A[I] + 1);
+    Assert(B[I] = GlobalIntArray[I] + 1);
 
   (* Ugly alternative syntax works, too (although not perfectly) *)
   B(. 42 .) := 1000;
@@ -2321,7 +2319,9 @@ type
 
 var
   MyStr255: TStr255;
+  Canary1: Integer;
   MyStr15: TStr15;
+  Canary2: Integer;
   MyStr0: TStr0;
   S, T: String;
   I, N: Integer;
@@ -2561,6 +2561,27 @@ begin
 
   Delete(S, 12, 5);
   Assert(S = 'ZX Spectrum');
+
+  (* Ensure Delete does never move bytes beyond the string's capacity
+     down in memory. *)
+  MyStr15 := 'ZX Spectrum';
+  Canary1 := 12345;
+  Canary2 := 23456;
+  Delete(MyStr15, 3, 255);
+  Assert(MyStr15 = 'ZX');
+  Assert(Canary1 = 12345);
+  Assert(Canary2 = 23456);
+
+  (* Insert must never push the destination past its declared capacity.
+     What exactly gets truncated is deliberately left open here -- these
+     only pin down that nothing is written beyond the variable. *)
+  MyStr15 := 'ZX Spectrum';
+  Canary1 := 12345;
+  Canary2 := 23456;
+  Insert('Sinclair', MyStr15, 1);
+  Assert(Length(MyStr15) = 15);
+  Assert(Canary1 = 12345);
+  Assert(Canary2 = 23456);
 
   Assert('Spectru' + 'm' = 'Spectrum');
   Assert('S' + 'pectrum' = 'Spectrum');

@@ -1047,7 +1047,8 @@ var
   FileSizeFunc, EolFunc, EofFunc, AbsFunc, AddrFunc, DisposeProc, EvenFunc,
   HighFunc, LowFunc, NewProc, OddFunc, OrdFunc, PredFunc, FillProc, IncProc,
   DecProc, ConcatFunc, ValProc, IncludeProc, ExcludeProc, PtrFunc, SizeFunc,
-  SuccFunc, BDosFunc, BDosHLFunc, DebugProc, RandomFunc: PSymbol;
+  SuccFunc, BDosFunc, BDosHLFunc, DebugProc, RandomFunc,
+  InsertProc, DeleteProc: PSymbol;
 
   SmartLink: Boolean; (* TODO Move elsewhere *)
 
@@ -1519,6 +1520,9 @@ begin
 
   IncludeProc := RegisterMagic(scProc, 'Include');
   ExcludeProc := RegisterMagic(scProc, 'Exclude');
+
+  InsertProc := RegisterMagic(scProc, 'Insert');
+  DeleteProc := RegisterMagic(scProc, 'Delete');
 
   FillProc := RegisterMagic(scProc, 'FillChar');
 
@@ -4989,6 +4993,58 @@ begin
       EmitI('call __setinclude')
     else
       EmitI('call __setexclude');
+  end
+  else if Proc = InsertProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+
+    (* TypeCheck also accepts (and promotes) single characters. *)
+    TypeCheck(dtString, ParseExpression, tcAssign);
+
+    Expect(toComma);
+    NextToken;
+
+    V := ParseVariableRef;
+    if V^.Kind <> scStringType then Error('String variable expected');
+
+    Expect(toComma);
+    NextToken;
+
+    TypeCheck(dtInteger, ParseExpression, tcAssign);
+
+    Expect(toRParen);
+    NextToken;
+
+    (* Pass capacity in the variable that ultimately needs to carry it. *)
+    Emit('', 'ld b,' + IntToStr(V^.Value - 1), 'Capacity');
+    EmitI('call __insert');
+    EmitClear(260);                 (* 256 source + 2 dest + 2 start *)
+  end
+  else if Proc = DeleteProc then
+  begin
+    NextToken;
+    Expect(toLParen);
+    NextToken;
+
+    V := ParseVariableRef;
+    if V^.Kind <> scStringType then Error('String variable expected');
+
+    Expect(toComma);
+    NextToken;
+
+    TypeCheck(dtInteger, ParseExpression, tcAssign);
+
+    Expect(toComma);
+    NextToken;
+
+    TypeCheck(dtInteger, ParseExpression, tcAssign);
+
+    Expect(toRParen);
+    NextToken;
+
+    EmitI('call __delete');          (* Cleans up its own arguments *)
   end
   else if (Proc = ReadProc) or (Proc = ReadLnProc) then
   begin

@@ -866,6 +866,22 @@ __pos:
         ld      (hl),0
         ret
 
+; String routine wrappers
+;
+; Checked for a bad Start: TP 3.0 aborts on Copy/Insert/Delete with a zero
+; index (Error 11), TP 5.0 instead silently clamps or misbehaves depending
+; on the routine. __strcpy/__strins/__strdel each already signal Start=0
+; via carry internally, but that same flag doubles as "result was clamped"
+; further down in those routines, which is not an error -- so it cannot be
+; checked generically after the call. Testing Start in the wrappers instead
+; targets exactly the bad values and leaves the historical routines alone.
+
+; Copy is an ordinary function that receives all its arguments via the stack.
+;
+; Start is an Integer, so it arrives as two bytes while the routines below
+; only ever look at the low one. Passing the high byte through __idxchk as
+; well is what keeps Copy(S, 300, 3) from quietly meaning Copy(S, 44, 3),
+; and Insert(T, S, -1) from meaning Insert(T, S, 255).
 __copy:
         ld      hl,2
         add     hl,sp
@@ -874,6 +890,8 @@ __copy:
         inc     hl
         ld      c,(hl)
         inc     hl
+        ld      a,(hl)
+        call    __idxchk
         inc     hl
         ld      de,hl
         inc     d
@@ -881,11 +899,19 @@ __copy:
         call    __strcpy
         ret
 
+; Insert is a magic procedure (see ParseBuiltInProcedure). The destination's
+; declared capacity is a compile-time constant and arrives in B rather than
+; on the stack.
+;
+; In:    B = capacity of the destination
+; Stack: return address, start, dest address, source string.
 __insert:
         ld      hl,2
         add     hl,sp
         ld      c,(hl)
         inc     hl
+        ld      a,(hl)
+        call    __idxchk
         inc     hl
         ld      a,(hl)
         inc     hl
@@ -893,26 +919,44 @@ __insert:
         ld      h,(hl)
         ld      l,a
         inc     de
+        jp      __strins
 
-        ld      b,255
-        call    __strins
-        ret
-
+; Delete is a magic procedure (see ParseBuiltInProcedure) and cleans up its
+; own arguments, so the call site emits none. Popping them is both shorter
+; and simpler than reaching past the return address with an index: "ex
+; (sp),hl" swaps the return address in for the last one, leaving the stack
+; ready for the tail call into __strdel.
+;
+; Stack on entry: return address, count, start, string address.
 __delete:
-        ld      hl,2
-        add     hl,sp
-        ld      b,(hl)
-        inc     hl
-        inc     hl
-        ld      c,(hl)
-        inc     hl
-        inc     hl
-        ld      a,(hl)
-        inc     hl
-        ld      h,(hl)
-        ld      l,a
-        call    __strdel
-        ret
+        pop     hl
+        pop     bc                      ; Count in C
+        pop     de                      ; Start in DE
+        ex      (sp),hl                 ; HL = string, return address back
+        ld      b,c
+        ld      c,e
+        ld      a,d
+        call    __idxchk
+        jp      __strdel
+
+; String index checking subroutine.
+;
+; In:  A = high byte of Start, C = its low byte. Returns with both intact
+; if Start is a valid string index, aborts the program if it is not. Only
+; 1..255 can address a character, so anything with a high byte set is out,
+; and so is zero -- which covers negative values too, they show up here as
+; $FFxx and would otherwise pass for 255 and below.
+__idxchk:
+        or      a
+        jp      nz,__idxerr
+        or      c
+        ret     nz
+__idxerr:
+        ld      hl,__idxerr_message
+        call    __puts
+        jp      __done
+__idxerr_message:
+        db      20,"Invalid string index"
 
 ;
 ; Pascal "Val" magic procedure. All arguments on the stack.
