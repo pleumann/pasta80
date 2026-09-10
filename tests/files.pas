@@ -61,7 +61,7 @@ end;
 
 { --- General tests --- }
 
-procedure TestFileErase;
+overlay procedure TestFileErase;
 var
   TestFile: Text;
 begin
@@ -90,7 +90,7 @@ begin
   {$i+}
 end;
 
-procedure TestFileRename;
+overlay procedure TestFileRename;
 var
   DummyFile: File;
 begin
@@ -168,13 +168,29 @@ begin
   Assign(RawFile, 'RAW.TMP');
   Rewrite(RawFile);
 
+  { CP/M has no file size of its own: BDOS 35 fills in the record count when
+    the file is opened and never again, so the RTL mirrors it in the FCB and
+    grows it by hand on every write that reaches past the end (the
+    "if F.RL > F.SL" in BlockBlockWrite, rtl/cpm.pas).
+
+    That hand-kept count is only observable while the file is still open --
+    every other FileSize below is preceded by a Close/Reset and therefore
+    reads the size back from the directory, which would look right even if
+    the bookkeeping were broken. So it gets checked here, before anything
+    is closed. }
+  Assert(FileSize(RawFile) = 0);
+
   { Write 10 blocks with characters '0'..'9' }
+  Idx := 0;
   for Ch := '0' to '9' do
   begin
     WriteLn(Ch);
     FillChar(Buffer, 128, Ch);
     BlockWrite(RawFile, Buffer, 1, Actual);
     Assert(Actual = 1);
+
+    Inc(Idx);
+    Assert(FileSize(RawFile) = Idx);
   end;
 
   { Give the OS a chance to update the file size }
@@ -203,12 +219,20 @@ begin
   Assert(Actual = 1);
   Assert(FilePos(RawFile) = 6);
 
+  { The other half of the same bookkeeping: writing *inside* the file must
+    not grow it. Both blocks above landed at 4 and 5, well short of the end. }
+  Assert(FileSize(RawFile) = 10);
+
   { Seek to end and write 2 blocks of 'Z' }
   Seek(RawFile, FileSize(RawFile));
   FillChar(Buffer, 256, 'Z');
   BlockWrite(RawFile, Buffer, 2, Actual);
   Assert(Actual = 2);
   Assert(FilePos(RawFile) = 12);
+
+  { Grown past the end this time, and still open, so this is the mirrored
+    count again -- the Close/Reset below re-checks the same 12 the slow way. }
+  Assert(FileSize(RawFile) = 12);
 
   { Give the OS a chance to update the file size }
   Close(RawFile);
@@ -304,7 +328,7 @@ end;
    thus the same __strc_fmt/__strs_fmt -- that Str(X:W, S) uses. Both were
    broken by the same bug, so both are fixed by the same change, but only
    the Str side ever had coverage. This closes that gap. *)
-procedure TestTextWriteFormatted;
+overlay procedure TestTextWriteFormatted;
 var
   T: Text;
   Line: String;
@@ -337,7 +361,7 @@ end;
    program stopping. Checked against TP 3.0 (OPEN-ITEMS-EN.md B9). The
    i-plus half cannot live in a suite because it terminates, and is covered
    by tests/errors/numfmt.pas instead. *)
-procedure TestTextReadIOResult;
+overlay procedure TestTextReadIOResult;
 var
   T: Text;
   I: Integer;
@@ -429,7 +453,7 @@ begin
   Erase(T);
 end;
 
-procedure TestTextWithIntegers;
+overlay procedure TestTextWithIntegers;
 var
   I1, I2, I3: Integer;
 begin
@@ -455,7 +479,7 @@ begin
   Erase(F);
 end;
 
-procedure TestTextWithReals;
+overlay procedure TestTextWithReals;
 var
   R1, R2, R3: Real;
   B1, B2: Boolean;
@@ -484,7 +508,7 @@ begin
   Erase(F);
 end;
 
-procedure TestTextWithEnums;
+overlay procedure TestTextWithEnums;
 var
   C1, C2, C3, C4: Color;
 begin
@@ -546,7 +570,7 @@ begin
   Erase(F);
 end;
 
-procedure TestTextSeekEof;
+overlay procedure TestTextSeekEof;
 var
   I1, I2: Integer;
   B1, B2, B3: Boolean;
@@ -586,7 +610,7 @@ begin
   Erase(F);
 end;
 
-procedure TestTextEoln;
+overlay procedure TestTextEoln;
 var
   T: Text;
   C: Char;
@@ -622,7 +646,7 @@ begin
   Close(T);
 end;
 
-procedure TestTextEof;
+overlay procedure TestTextEof;
 var
   T: Text;
   S: String;
@@ -651,7 +675,7 @@ end;
  * if someone cared to Ord() or otherwise cast the result there would have
  * been garbage inside.
  *)
-procedure TestTextBooleanResultBytes;
+overlay procedure TestTextBooleanResultBytes;
 var
   T: Text;
   S: String;
@@ -691,7 +715,7 @@ end;
  * S. TextReadStr had a hardcoded limit of 255 characters and was never
  * told the target's actual size.
  *)
-procedure TestTextReadLnBounds;
+overlay procedure TestTextReadLnBounds;
 var
   T: Text;
   Guard1: Integer;
@@ -831,7 +855,7 @@ end;
 
 { --- $i directive and IOResult --- }
 
-procedure TestIOResult;
+overlay procedure TestIOResult;
 var
   T: Text;
   I: Integer;
