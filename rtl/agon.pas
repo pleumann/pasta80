@@ -412,6 +412,17 @@ end;
 
   HL(U): Address of source filepath string (zero terminated)
   DE(U): Address of destination filepath string (zero terminated)
+
+  Returns:
+
+  A: Status code (0 on success, 4 = FR_NO_FILE for a missing source).
+     Established by testing -- the MOS documentation this block was taken
+     from lists no return value, so do not take the presence of a status
+     here as the rule for other calls (see mos_fread/mos_fwrite below,
+     where A carries nothing usable at all).
+
+     Note it does *not* report a collision: MOS renames onto an existing
+     target silently, which BlockRename below has to check for itself.
 *)
 procedure BlockRename(var F: FileControlBlock; S: String); //Untested
 var
@@ -654,10 +665,13 @@ end;
   Returns:
 
   DEU: Number of bytes read
+  A:   Nothing. *Not* a status code -- never assign it to LastError. End of
+       file shows up as DEU below the requested count, zero included.
  *)
 procedure BlockBlockRead(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
 var
   R: Registers;
+  Ignored: Integer;
 begin
   if LastError <> 0 then Exit;
 
@@ -671,8 +685,11 @@ begin
 
 //useful    WriteLn('Reading ',R.DE,' bytes from file handle ',R.C);
 
-    LastError := MOSAPI($1a, R);
-    if (LastError <> 0) or (R.DE = 0) then Exit;
+    (* A carries no status for mos_fread -- see the comment in
+       BlockBlockWrite below. Only DE is defined, and a short read is end
+       of file rather than an error. *)
+    Ignored := MOSAPI($1a, R);
+    if R.DE = 0 then Exit;
 
     Inc(F.RL);
     Inc(Actual);
@@ -699,10 +716,21 @@ end;
   HLU: Pointer to a buffer that contains the data to write
   DEU: Number of bytes to write out
   Preserves: HL(U), BC(U)
+
+  Returns:
+
+  DEU: Number of bytes written
+  A:   Nothing. *Not* a status code -- never assign it to LastError. This
+       was the cause of "I/O error 75": A comes back as 75 on a real SD
+       card after a perfectly good 128 byte write (measured as A=75 with
+       DEU=128), while the emulator's directory-backed card happens to
+       leave it at 0. A failed write shows up as DEU below the requested
+       count.
  *)
 procedure BlockBlockWrite(var F: FileControlBlock; var Buffer; Count: Integer; var Actual: Integer);
 var
   R: Registers;
+  Ignored: Integer;
 begin
   if LastError <> 0 then Exit;
 
@@ -716,9 +744,21 @@ begin
     R.C := F.Handle;
     R.DE := 128;
 
-    LastError := MOSAPI($1b, R);
-    if (LastError <> 0) or (R.DE = 0) then Exit;
-//    WriteLn('Last Error = ',LastError);
+    (* A carries no status for mos_fwrite: the API defines only DE, the
+       number of bytes actually written (the comment block above lists no
+       return value at all, and mos_fread documents DE alone). Taking A
+       for a status made every write on a real SD card report "I/O error
+       75" even though the data reached the disk intact -- measured as
+       A=75 with DE=128. It stayed hidden because the emulator's
+       directory-backed card happens to leave A at 0; only a real card,
+       or --sdcard-img, exposes it. *)
+    Ignored := MOSAPI($1b, R);
+    if R.DE < 128 then
+    begin
+      LastError := 1;   (* short write -- disk full or a genuine failure *)
+      Exit;
+    end;
+
     Inc(F.RL);
     Inc(R.HL, 128);
     Inc(Actual);
