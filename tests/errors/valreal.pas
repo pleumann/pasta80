@@ -6,7 +6,7 @@ program ValReal;
    suppressed (OPEN-ITEMS-EN.md B9).
 
    The target is a Real, so this goes through __conv_real. The three-argument form is
-   exercised in tests/all.pas instead, where it reports through E and the
+   exercised in tests/core.pas instead, where it reports through E and the
    program carries on.
 
    Expected output:

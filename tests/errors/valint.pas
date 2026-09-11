@@ -6,7 +6,7 @@ program ValInt;
    suppressed (OPEN-ITEMS-EN.md B9).
 
    The target is an Integer, so this goes through __conv_int. The three-argument form is
-   exercised in tests/all.pas instead, where it reports through E and the
+   exercised in tests/core.pas instead, where it reports through E and the
    program carries on.
 
    Expected output:

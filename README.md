@@ -31,14 +31,8 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * The three kinds of disk files, that is untyped (`file`), typed (`file of`) and `Text`.
 * A dynamic heap of up to 32767 bytes with `GetMem`, `FreeMem`, `New` and `Dispose`.
 * Inline assembly (via opcodes, not via mnemonics, so [this page](https://clrhome.org/table/) might be handy).
-* Overlays (in memory, Spectrum 128K and Next only, see below).
-* Some compiler directives:
-  * `$i <file>` for including Pascal source files (including nesting and cycle detection)
-  * `$l <file>` for including an assembly file (aka "linking" a library)
-  * `$a(+/-)`   for enabling or disabling absolute mode (default is on, disable for recursion)
-  * `$i(+/-)`   for enabling or disabling IO checking (when off, check `IOResult` after calls)
-  * `$k(+/-)`   for enabling or disabling stack overflow checking
-  * `$u(+/-)`   for enabling or disabling Ctrl-C checking
+* Overlays (in memory, Spectrum 128K/Next and Agon only, see below).
+* Some compiler directives including a preprocessor (see below).
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
@@ -62,8 +56,8 @@ Since that covers most of the functionality of Turbo Pascal 3 you might ask what
 * `Mark`/`Release` are not currently supported.
 * The standard files `Input`, `Output`, `Kbd`, `Con` and `Lst` are not supported.
 * `Chain` and `Execute` are not supported.
-* Add-on libraries from the PC version of Turbo Pascal 3.0 are not yet supported (although there are a few graphics primitives for the ZX targets).
-* The new instructions of the [Z80N](https://wiki.specnext.dev/Extended_Z80_instruction_set) inside the ZX Spectrum Next and the [eZ80](https://en.wikipedia.org/wiki/Zilog_eZ80) inside the Agon are not yet being leveraged.
+* Add-on libraries from the PC version of Turbo Pascal 3.0 are not yet supported (although there are a few graphics primitives for the Agon and ZX targets).
+* The new instructions of the [Z80N](https://wiki.specnext.dev/Extended_Z80_instruction_set) inside the ZX Spectrum Next and the [eZ80](https://en.wikipedia.org/wiki/Zilog_eZ80) inside the Agon are only being leveraged in a few places, not at scale.
 * No separate compilation. Everything is compiled from source, always.
 * Binary size is quite large compared to the original.
 
@@ -74,7 +68,7 @@ The runtime library, being partially written in Pascal itself, gets quite large 
 The compiler is itself written in Pascal. You can compile it with [Free Pascal](https://www.freepascal.org) (I use version 3.2.2). Just run
 
 ```bash
-$ fpc pasta
+$ fpc pasta80
 ```
 
 The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of various other external tools. The compiler tries to detect these external tools automatically (from your system's `PATH`), but sometimes it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `misc` that you can adapt).
@@ -91,17 +85,15 @@ You can check your whole setup by calling the compiler with `--config`. It will 
 
 ## Using the compiler
 
-To run the compiler just invoke the executable with the name of a Pascal source file to translate.
+To run the compiler just invoke the executable with the desired target and the name of a Pascal source file to translate. The `.pas` suffix of the source file is optional.
 
 ### CP/M target
 
-The default target is CP/M. There is an optional parameter that enables some simple peephole optimizations and another one that uses dependency analysis to eliminate unused Pascal procedures and functions:
+The `--cpm` parameter compiles for CP/M. It's also the implicit default target, so the following two are synonymous:
 
 ```bash
-$ pasta hello.pas             # Compiles hello.pas to hello.com
-$ pasta hello                 # Source file .pas suffix is optional
-$ pasta --opt hello.pas       # Enables peephole optimizations
-$ pasta --opt --dep hello.pas # The same plus dependency analysis
+$ pasta80 --cpm hello.pas     # Compiles hello.pas to hello.com
+$ pasta80 hello.pas           # Does exactly the same
 ```
 
 You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend the excellent [tnylpo](https://gitlab.com/gbrein/tnylpo). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
@@ -121,9 +113,9 @@ $ tnylpo -soy,4,0 -t @ hello  # Color full-screen, wait when finished
 To generate binaries for the ZX Spectrum 48K, 128K and Next targets, use the `--zx48`, `--zx128` and `--zxnext` parameters, respectively.
 
 ```bash
-$ pasta --zx48 hello.pas      # Compiles for ZX Spectrum 48K
-$ pasta --zx128 hello.pas     # Compiles for ZX Spectrum 128K
-$ pasta --zxnext hello.pas    # Compiles for ZX Spectrum Next
+$ pasta80 --zx48 hello.pas    # Compiles for ZX Spectrum 48K
+$ pasta80 --zx128 hello.pas   # Compiles for ZX Spectrum 128K
+$ pasta80 --zxnext hello.pas  # Compiles for ZX Spectrum Next
 ```
 
 The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000.
@@ -133,8 +125,8 @@ The main difference between the three (currently) is that the ZX Spectrum Next t
 The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program (plus a +3DOS header when compiling for the Spectrum Next). In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
 
 ```bash
-$ pasta --zx48 --sna examples/hello.pas   # .sna file
-$ pasta --zx48 --tap examples/jacques.pas # .tap file with BASIC loader
+$ pasta80 --zx48 --sna examples/hello.pas   # .sna file
+$ pasta80 --zx48 --tap examples/jacques.pas # .tap file with BASIC loader
 ```
 
 Being self-contained, snapshots and tapes are a convenient way to distribute your programs and to launch them an emulator, such as Fuse:
@@ -151,7 +143,7 @@ $ open -a Fuse examples/jacques.tap       # Launch .tap file in FUSE (on Mac)
 When compiling for the Next, another useful format is a runnable directory. It contains exactly the same files that would also be in the .tap file, including a BASIC loader named `run.bas`.
 
 ```bash
-$ pasta --zxnext --run examples/pq.pas    # Results in directory named pq.run
+$ pasta80 --zxnext --run examples/pq.pas    # Results in directory named pq.run
 ```
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
@@ -234,7 +226,7 @@ ideally combine this with the `--tap` parameter, as the tape loaders for 128K
 and Next are fully overlay-aware.
 
 ```bash
-$ pasta --zx128 --tap --opt --dep --ovr tests/all.pas # Test suite as 128K tape
+$ pasta80 --zx128 --tap --ovr tests/core.pas # Test suite as 128K tape
 ```
 The compiler prints a report of which overlays go into which RAM banks or pages.
 ```
@@ -375,9 +367,21 @@ conditional compilation. Notice how conditional blocks can be nested.
 {$endif}
 ```
 
+## Optimization
+
+The compiler automatically uses simple Z80 peephole optimizations. It also applies dependency analysis to eliminate unused Pascal procedures and functions from both the runtime library and your code. Should you, for any reason, want to disable these optimizations, the following will do it:
+
+```bash
+$ pasta80 --no-opt hello.pas          # Disables peephole optimizations
+$ pasta80 --no-dep hello.pas          # Disables dependency analysis
+$ pasta80 --no-opt --no-dep hello.pas # Disables both
+```
+
+Note this makes your programs both larger and slower, so it's not recommended unless you are debugging a problem that looks like it could be caused by either of the two optimizations and you want to compare the assembly outputs.
+
 ## Examples and tests
 
-There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `all.pas` needs to be compiled with `--opt --dep` because of its size. Otherwise it won't fit into 64K. The Spectrum 128K and Next targets can (only) handle it using overlays, the Spectrum 48K target can't. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
+There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `core.pas` needs to be compiled with optimizations because of its size. Otherwise it won't fit into 64K. The Spectrum 128K and Next targets can (only) handle it using overlays, the Spectrum 48K target can't. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
 
 I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
 
@@ -386,7 +390,7 @@ I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/a
 As a fun little gimmick the compiler can be started like this
 
 ```bash
-$ pasta --ide
+$ pasta80 --ide
 ```
 
 to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0.

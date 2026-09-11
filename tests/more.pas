@@ -1,7 +1,7 @@
 program More;
 
-(* Additional regression tests that currently do not fit into all.pas. The
-   CP/M build of all.pas sits about 70 bytes below the ceiling, and CP/M has
+(* Additional regression tests that currently do not fit into core.pas. The
+   CP/M build of core.pas sits about 70 bytes below the ceiling, and CP/M has
    no overlays to fall back on, so these cases live here until there is room
    again -- through overlays loaded from disk, code generator improvements or
    smart linking of system.asm.

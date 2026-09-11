@@ -27,7 +27,7 @@ for dir in $DIRS; do
 
         case " $SKIP " in *" $name "*) continue;; esac
 
-        if out=$(pasta $FLAGS "$src" 2>&1); then
+        if out=$(pasta80 $FLAGS "$src" 2>&1); then
             built=$((built + 1))
         else
             failed=$((failed + 1))

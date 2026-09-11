@@ -1050,7 +1050,7 @@ var
   SuccFunc, BDosFunc, BDosHLFunc, DebugProc, RandomFunc,
   InsertProc, DeleteProc: PSymbol;
 
-  SmartLink: Boolean; (* TODO Move elsewhere *)
+  SmartLink: Boolean = True; (* TODO Move elsewhere *)
 
 const
   Banked: Boolean = False;
@@ -2447,7 +2447,7 @@ var
    *
    * TODO Move this into a central place together with other compiler switches.
    *)
-  Optimize: Boolean;
+  Optimize: Boolean = True;
 
   (**
    * Contains the current jump target for the Exit statement.
@@ -8885,28 +8885,29 @@ begin
     Copyright(False);
 
     WriteLn('Usage:');
-    WriteLn('  pasta { <option> } <input>');
+    WriteLn('  pasta80 { <option> } <input>');
     WriteLn;
     WriteLn('Options:');
-    WriteLn('  --cpm          Sets target to CP/M (default)');
-    WriteLn('  --zx48         Sets target to ZX Spectrum 48K');
-    WriteLn('  --zx128        Sets target to ZX Spectrum 128K');
-    WriteLn('  --zxnext       Sets target to ZX Spectrum Next');
-    WriteLn('  --agon         Sets target to Agon Light/Console8');
+    WriteLn('  --cpm          sets target to CP/M (default)');
+    WriteLn('  --zx48         sets target to ZX Spectrum 48K');
+    WriteLn('  --zx128        sets target to ZX Spectrum 128K');
+    WriteLn('  --zxnext       sets target to ZX Spectrum Next');
+    WriteLn('  --agon         sets target to Agon Light/Console8');
     WriteLn;
-    WriteLn('  --bin          Generates raw binary file (default)');
-    WriteLn('  --3dos         Generates binary with +3DOS header');
-    WriteLn('  --tap          Generates .tap file with loader');
-    WriteLn('  --sna          Generates .sna snapshot file');
-    WriteLn('  --run          Generates .run runnable directory');
-    WriteLn('  --mos          Generates Agon MOSlet');
+    WriteLn('  --bin          generates raw binary file (default)');
+    WriteLn('  --3dos         generates binary with +3DOS header');
+    WriteLn('  --tap          generates .tap file with loader');
+    WriteLn('  --sna          generates .sna snapshot file');
+    WriteLn('  --run          generates .run runnable directory');
+    WriteLn('  --mos          generates Agon MOSlet');
     WriteLn;
-    WriteLn('  --dep          enable dependency analysis');
-    WriteLn('  --opt          enable peephole optimizations');
-    WriteLn('  --ovr          enable banked-switched overlays');
+    WriteLn('  --ovr          enables bank-switched overlays');
     WriteLn;
-    WriteLn('  --release      disable assertions and breakpoints');
-    WriteLn('  --keepint      keep intermediate files (like .asm)');
+    WriteLn('  --release      ignores assertions and breakpoints');
+    WriteLn('  --keepint      keeps intermediate files (like .asm)');
+    WriteLn;
+    WriteLn('  --[no-]opt     controls peephole optimizations (on by default)');
+    WriteLn('  --[no-]dep     controls dependency analysis (on by default)');
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --config       shows (and checks) the configuration');
@@ -8945,10 +8946,10 @@ begin
       Format := tfTape
     else if SrcFile = '--sna' then
       Format := tfSnapshot
-    else if SrcFile = '--opt' then
-      Optimize := True
-    else if SrcFile = '--dep' then
-      SmartLink := True
+    else if (SrcFile = '--opt') or (SrcFile = '--no-opt') then
+      Optimize := SrcFile = '--opt'
+    else if (SrcFile = '--dep') or (SrcFile = '--no-dep') then
+      SmartLink := SrcFile = '--dep'
     else if SrcFile = '--release' then
       Release := True
     else if SrcFile = '--keepint' then

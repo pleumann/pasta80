@@ -9,7 +9,7 @@ program HaltTest;
    and that is a different mechanism on every target -- see the note the
    program prints for the one it was built for. Halt(N) and "ExitCode := N;
    Halt" are the same thing; the compiler stores both in __exitcode and jumps
-   to __done ([pasta.pas] HaltProc).
+   to __done ([pasta80.pas] HaltProc).
 
    This is not an error case, so it stays here rather than in tests/errors:
    nothing goes wrong, the program just stops early on purpose. Run it by
