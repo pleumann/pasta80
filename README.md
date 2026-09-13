@@ -36,7 +36,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 
 The compiler also has some features that were borrowed from or inspired by later versions of Turbo Pascal:
 
-  * Functions that can be called as procedures (i.e. ignorable results). 
+  * Functions that can be called as procedures (i.e. ignorable results).
   * Conditional compilation via compiler directives (aka a preprocessor).
   * C-style `//` one-line comments in addition to `{..}` and `(*..*)`.
   * Binary literals (using a `%` prefix).
@@ -382,6 +382,8 @@ Note this makes your programs both larger and slower, so it's not recommended un
 ## Examples and tests
 
 There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `core.pas` needs to be compiled with optimizations because of its size. Otherwise it won't fit into 64K. The Spectrum 128K and Next targets can (only) handle it using overlays, the Spectrum 48K target can't. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
+
+If you want to see the full output of the tests on the console instead of inside an emulator, compile them with `--printer`, which redirects everything from the screen to the printer (LST device on CP/M, "P" channel on Spectrum, and VDU 2 on Agon). Most emulators have a means of showing the printer output on the console or writing it to a file. This also works for your own programs.
 
 I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
 

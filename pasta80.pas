@@ -557,6 +557,7 @@ var
   Overlays: Boolean = False;
   Release: Boolean = False;
   KeepInt: Boolean = False;
+  UsePrinter: Boolean = False;
 
 var
   HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -2388,7 +2389,7 @@ begin
     for I := 1 to TokenColumn - 1 do Write(' ');
     WriteLn('^');
     WriteLn('*** Error at ', PosixToNative(FRelative(Source^.Name)), '(', TokenLine, ',', TokenColumn, '): ', Message);
-    ErrorFile := Source^.Name;    
+    ErrorFile := Source^.Name;
     ErrorLine := TokenLine;
     ErrorColumn := TokenColumn;
   end
@@ -3001,6 +3002,7 @@ begin
     btAgon:   begin
                 SetDefine('CPU_EZ80', True);
                 SetDefine('SYS_AGON', True);
+                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('defdevice AGON,$2000,136');
                 EmitI('device AGON');
               end;
@@ -3008,6 +3010,7 @@ begin
     btCPM:    begin
                 SetDefine('CPU_Z80', True);
                 SetDefine('SYS_CPM', True);
+                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device NOSLOT64K');
               end;
 
@@ -3015,6 +3018,7 @@ begin
                 SetDefine('CPU_Z80', True);
                 SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZX48', True);
+                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
@@ -3022,6 +3026,7 @@ begin
                 SetDefine('CPU_Z80', True);
                 SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZX128', True);
+                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
@@ -3029,6 +3034,7 @@ begin
                 SetDefine('CPU_Z80N', True);
                 SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZXNEXT', True);
+                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device ZXSPECTRUMNEXT');
               end;
   end;
@@ -8433,7 +8439,7 @@ begin
   case Binary of
     btAgon:   SupportsFormat := Format in [tfBinary, tfMosLet];
     btCPM:    SupportsFormat := Format = tfBinary;
-    btZX, 
+    btZX,
     btZX128:  SupportsFormat := Format in [tfBinary, tfPlus3Dos, tfTape, tfSnapshot];
     btZXN:    SupportsFormat := Format in [tfBinary, tfPlus3Dos, tfTape, tfRunDir];
   end;
@@ -8629,7 +8635,7 @@ begin
         Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + HomeDir + '/misc/autoexec.bas /nextzxos/autoexec.bas');
         Execute(MonkeyCmd, 'put ' + ImagePath + ' lastrun.txt /pasta80/lastrun.txt');
 
-        Args := '-zxnext -r -nextrom -mouse';
+        Args := '-zxnext -r -nextrom -mouse -printer';
 
         if IsRetinaDisplay then
           Args := Args + ' -w4'
@@ -8905,6 +8911,7 @@ begin
     WriteLn;
     WriteLn('  --release      ignores assertions and breakpoints');
     WriteLn('  --keepint      keeps intermediate files (like .asm)');
+    WriteLn('  --printer      redirects screen output to printer');
     WriteLn;
     WriteLn('  --[no-]opt     controls peephole optimizations (on by default)');
     WriteLn('  --[no-]dep     controls dependency analysis (on by default)');
@@ -8954,6 +8961,8 @@ begin
       Release := True
     else if SrcFile = '--keepint' then
       KeepInt := True
+    else if SrcFile = '--printer' then
+      UsePrinter := True
     else if SrcFile = '--ide' then
       Ide := True
     else

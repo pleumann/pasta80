@@ -19,8 +19,12 @@ __init:         di
                 ld      sp,LIMIT        ; We use our own stack
                 ei
 
+        ifdef   PRINTER
+                ld      a,3
+        else
                 ld      a,2
-                call    0x1601          ; Open channel #2
+        endif
+                call    0x1601          ; Open default channel
 
                 call    main            ; Call user program
 
