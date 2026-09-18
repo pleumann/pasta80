@@ -559,6 +559,12 @@ var
   KeepInt: Boolean = False;
   UsePrinter: Boolean = False;
 
+  (**
+   * The BASIC loader to put in front of the code on the ZX targets, set by
+   * --loader. Empty means the stock one from misc/ that fits the target.
+   *)
+  LoaderFile: String = '';
+
 var
   HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
   MonkeyCmd, CSpectCmd, ImagePath, FabAgonDir: String;
@@ -3052,6 +3058,24 @@ begin
 end;
 
 (**
+ * Returns the BASIC loader that goes in front of the code on the ZX targets:
+ * the one given with --loader, or else the stock one matching the target.
+ * Only the tape and runnable-directory formats carry a loader at all; the
+ * others never ask.
+ *)
+function LoaderPath: String;
+begin
+  if LoaderFile <> '' then
+    LoaderPath := LoaderFile
+  else if Binary = btZXN then
+    LoaderPath := HomeDir + '/misc/specnext.bas'
+  else if Binary = btZX128 then
+    LoaderPath := HomeDir + '/misc/spec128.bas'
+  else
+    LoaderPath := HomeDir + '/misc/spec48.bas';
+end;
+
+(**
  * Emits the file footer.
  *)
 procedure EmitFooter(BinFile: String);
@@ -3180,12 +3204,7 @@ begin
 
     EmitI('org 0');
 
-    if Binary = btZXN then
-      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/specnext.bas"'))
-    else if Binary = btZX128 then
-      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec128.bas"'))
-    else
-      EmitI('incbin "' + PosixToNative(HomeDir + '/misc/spec48.bas"'));
+    EmitI('incbin "' + PosixToNative(LoaderPath) + '"');
 
     EmitI('savetap "' + BinFile2 + '",BASIC,"run.bas",$0080,$-$0080,0');
     EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,TEXT_END-$8000');
@@ -3199,7 +3218,7 @@ begin
     CleanDir(BinFile);
     {$i+}
 
-    CopyFile(HomeDir + '/misc/specnext.bas', BinFile + '/run.bas');
+    CopyFile(LoaderPath, BinFile + '/run.bas');
     EmitI('save3dos "' + BinFile + '/bin",$8000,TEXT_END-$8000,3,8000');
     WriteZXOverlays(BinFile + '/');
   end
@@ -8908,6 +8927,7 @@ begin
     WriteLn('  --mos          generates Agon MOSlet');
     WriteLn;
     WriteLn('  --ovr          enables bank-switched overlays');
+    WriteLn('  --loader <fn>  uses <fn> as BASIC loader (ZX, .tap and .run)');
     WriteLn;
     WriteLn('  --release      ignores assertions and breakpoints');
     WriteLn('  --keepint      keeps intermediate files (like .asm)');
@@ -8963,6 +8983,18 @@ begin
       KeepInt := True
     else if SrcFile = '--printer' then
       UsePrinter := True
+    else if SrcFile = '--loader' then
+    begin
+      I := I + 1;
+
+      if (ParamStr(I) = '') or (Copy(ParamStr(I), 1, 2) = '--') then
+        Error('Missing file name after --loader');
+
+      if FSize(LoaderFile) = -1 then
+        Error('Loader "' + PosixToNative(FRelative(LoaderFile)) + '" not found');
+
+      LoaderFile := FAbsolute(NativeToPosix(ParamStr(I)));
+    end
     else if SrcFile = '--ide' then
       Ide := True
     else
@@ -8988,6 +9020,15 @@ begin
 
   if Overlays and not SupportsOverlays(Binary, Format) then
     Error('Overlays not supported by ' + BinaryStr[Binary] + ' [' + FormatStr[Format] + '].');
+
+  if LoaderFile <> '' then
+  begin
+    if not (Binary in [btZX, btZX128, btZXN]) then
+      Error('Loader not supported by ' + BinaryStr[Binary] + '.');
+
+    if not (Format in [tfTape, tfRunDir]) then
+      Error('Loader not used for ' + FormatStr[Format] + '.');
+  end;
 
   if Ide then
   begin

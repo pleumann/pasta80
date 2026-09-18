@@ -148,6 +148,8 @@ $ pasta80 --zxnext --run examples/pq.pas    # Results in directory named pq.run
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
 
+Should you ever want to write your own BASIC loader (for either `--tap` or `--dir`) because the provided ones are not fancy enough, use the `--loader` parameter.
+
 ### Agon Light/Console8 target
 
 To generate a MOS binary for the Agon target(s), use the `--agon` parameter.
