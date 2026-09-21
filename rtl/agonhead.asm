@@ -134,11 +134,9 @@ __init:
 ;			POP		IX			; IX: argv - don't need to preserve it now.
 
 		ifdef	PRINTER
-			LD		A, 2			; VDU 2: printer on, output goes to DBGSerial
-			RST		10h
-			LD		A, 21			; VDU 21: stop VDU processing, so the screen
-			RST		10h			;         stays quiet. Must come *after* VDU 2,
-								;         which the VDP ignores once disabled.
+			LD		A, 2			; VDU 2: printer on, output goes to DBGSerial.
+			RST		10h			;        Keeping the screen quiet is __putc's
+								;        job, see VDU 1 over there.
 		endif
 
 			CALL		main			; Start user code
@@ -152,10 +150,8 @@ __init:
 ;
 __done:
 		ifdef	PRINTER
-			LD		A, 3			; VDU 3: printer off. Reaches the VDP even with
-			RST		10h			;        VDU processing disabled, unlike VDU 2.
-			LD		A, 6			; VDU 6: re-enable VDU processing, or MOS would
-			RST		10h			;        keep talking to the printer after we exit.
+			LD		A, 3			; VDU 3: printer off, or MOS would keep talking
+			RST		10h			;        to the printer after we exit.
 		endif
 
 			ld		hl,(__exitcode)

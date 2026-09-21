@@ -8,7 +8,7 @@ sysvar_vpd_pflags:  EQU 04h ; 1: Flags to indicate completion of VDP commands
 sysvar_keyascii:    EQU 05h ; 1: ASCII keycode, or 0 if no key is pressed
 sysvar_cursorX:     EQU 07h ; 1: Cursor X position
 sysvar_cursorY:     EQU 08h ; 1: Cursor Y position
-sysvar_audioChannel:    EQU 0Dh ; 1: Audio channel 
+sysvar_audioChannel:    EQU 0Dh ; 1: Audio channel
 sysvar_audioSuccess:    EQU 0Eh ; 1: Audio channel note queued (0 = no, 1 = yes)
 sysvar_scrCols:     EQU 13h ; 1: Screen columns in characters
 sysvar_scrRows:     EQU 14h ; 1: Screen rows in characters
@@ -181,7 +181,26 @@ __getargvchar:
 ; Out:   -
 ; Uses:   -
 ; equivalent to rst 10h
+;
+; With PRINTER every single character is wrapped into a "VDU 1, char", which
+; the VDP passes to the printer stream and to nowhere else, so the screen
+; stays untouched. Silencing the screen with a VDU 21 instead would be a lot
+; cheaper, but it also makes the VDP drop every VDU command that follows --
+; the audio ones included -- and worse, while commands are disabled the VDP
+; still scans every byte for a 1 or a 6 and acts on it. Any command payload
+; can contain those: Sound(262) sends 262 as $01 $06 and thereby switches
+; command processing back on behind our back.
+;
+        ifdef   PRINTER
+__putc:         push    af
+                ld      a,1             ; VDU 1: send the next character to the
+                rst     10h             ;        printer, but not to the screen
+                pop     af
+                rst     10h
+                ret
+        else
 __putc:         equ     10h
+        endif
 
 ;
 ; Print string to screen
@@ -190,6 +209,22 @@ __putc:         equ     10h
 ; Exit:   -
 ; Uses:   AF,BC
 ;
+        ifdef   PRINTER
+__puts:         ld      a,(hl)          ; One character at a time, because each
+                or      a               ; of them needs its own VDU 1
+                ret     z
+                ld      b,a
+                inc     hl
+__puts_loop:    ld      a,(hl)
+                inc     hl
+                push    hl
+                push    bc
+                call    __putc
+                pop     bc
+                pop     hl
+                djnz    __puts_loop
+                ret
+        else
 __puts:         ld      bc,0
                 ld      a,(hl)
                 or      a
@@ -197,6 +232,31 @@ __puts:         ld      bc,0
                 inc     hl
                 ld      c,a
                 rst     18h
+                ret
+        endif
+
+;
+; Sends a length-prefixed byte sequence to the VDP verbatim, for VDU command
+; sequences. These must not go through __puts: with PRINTER that one wraps
+; every byte into a VDU 1, so the whole sequence would be handed to the
+; printer instead of being executed.
+;
+; Entry:  HL (string address)
+; Exit:   -
+; Uses:   AF,BC
+;
+__putsraw:      ld      a,(hl)
+                or      a
+                ret     z
+                ld      b,a
+__putsraw_loop: inc     hl
+                ld      a,(hl)
+                push    hl
+                push    bc
+                rst     10h
+                pop     bc
+                pop     hl
+                djnz    __putsraw_loop
                 ret
 
 ;
@@ -208,9 +268,9 @@ __puts:         ld      bc,0
 ;
 __newline:
                 ld      a,13
-                rst     10h
+                call    __putc
                 ld      a,10
-                rst     10h
+                call    __putc
                 ret
 
 ; Blocking, and do not echo character.
@@ -402,7 +462,7 @@ __get_cursor:
                 rst     $08
                 ; Clear cursor position flag
                 mklil
-                res     0, (IX + $04) 
+                res     0, (IX + $04)
                 ; Request cursor position
                 ld      a, 23
                 rst     $10
@@ -548,7 +608,7 @@ __insdel:
                 rst     $10
                 ret
 
-            
+
 ;Clear screen and reset text colour + tracking
 __clrscr:
               ld    a,15
@@ -601,16 +661,16 @@ __clreos:
             rst     10h
             jp      __reset_viewport
 
-__cursor_on: 
+__cursor_on:
             ld hl,__cur_on_str
-            jp  __puts
+            jp  __putsraw
 __cur_on_str:
             db 3,23,1,1   ;VDU 23, 1, n: Cursor control
 
 
 __cursor_off:
             ld hl,__cur_off_str
-            jp  __puts
+            jp  __putsraw
 __cur_off_str:
             db 3,23,1,0   ;VDU 23, 1, n: Cursor control
 
@@ -670,7 +730,7 @@ __checkbreak:
 ; VDPP_FLAG_AUDIO:  EQU     00001000b - doesn't work
 ; sysvar_audioChannel:    EQU 0Dh ; 1: Audio channel
 ; sysvar_audioSuccess:   EQU 0Eh ; 1: Audio channel note queued (0 = no, 1 = yes)
-; bit 1 is still playing. 
+; bit 1 is still playing.
 
 ;Command 1: Status
 ; VDU 23, 0, &85, channel, 1 - let's assume we are uninterrupted and this will turn up eventually when it's finished.
@@ -843,7 +903,7 @@ __sysver_time_lo:
     ;ld hl,(IX+0) ->  LD HL,(IX+d) 0/1 5/6 DD, 27, dd
     db      0ddh, 027h, 00
             pop ix
-            ret   
+            ret
 __sysver_time_hi:
             push    ix
             ld  a, 8        ;0x08: mos_sysvars
@@ -1028,14 +1088,14 @@ al_point_1:
 ; Command 10: Reset Channel
 ; VDU 23, 0, &85, channel, 10
 ; This is equivalent to disabling and then enabling the channel.
-; 
+;
 ;Command 4: Set waveform
 ;VDU 23, 0, &85, channel, 4, waveformOrSample, [bufferId;]
 
 al_initagonhw:
               ld hl,__agon_init_hw_str
-              jp    __puts
+              jp    __putsraw
 __agon_init_hw_str: db 19,23,0,0c0h,0,23,16,1,254   ;VDU 23, 1, n: Cursor control
                                                   ;VDU 23, 16, setting, mask: Define cursor movement behaviour
                 db 23, 0, 85h, _audiochannel, 10    ;VDU 23, 0, &85, channel, 10: Reset Channel
-                db 23, 0, 85h, _audiochannel, 4, 3  ;VDU 23, 0, &85, channel, 4, waveformOrSample: Set waveform (sine wave) 
+                db 23, 0, 85h, _audiochannel, 4, 3  ;VDU 23, 0, &85, channel, 4, waveformOrSample: Set waveform (sine wave)
