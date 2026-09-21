@@ -339,7 +339,7 @@ The following table shows the supported directives:
 | `{$endif}` | Finishes a conditional block (mandatory). |
 | `{$error <msg>}` | Terminates the compilation with an error message. |
 
-Some symbols are predefined to reflect the compiler itself or the current target platform:
+Some symbols are predefined to reflect the compiler itself, the current target platform, or compiler options:
 
 | Directive | Defined |
 | :-------- | :------ |
@@ -353,6 +353,9 @@ Some symbols are predefined to reflect the compiler itself or the current target
 | `SYS_ZX48` | For the ZX Spectrum 48K target |
 | `SYS_ZX128`| For the ZX Spectrum 128K target |
 | `SYS_ZXNEXT`| For the ZX Spectrum Next target |
+| `OPT_OVERLAYS`| Reflects `--ovr` switch usage |
+| `OPT_PRINTER`| Reflects `--printer` switch usage |
+| `OPT_RELEASE`| Reflects `--release` switch usage |
 
 As a simple example, the following code prints the CPU type using
 conditional compilation. Notice how conditional blocks can be nested.

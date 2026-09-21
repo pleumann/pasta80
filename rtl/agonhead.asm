@@ -133,7 +133,7 @@ __init:
 ;			mklil
 ;			POP		IX			; IX: argv - don't need to preserve it now.
 
-		ifdef	PRINTER
+		ifdef	OPT_PRINTER
 			LD		A, 2			; VDU 2: printer on, output goes to DBGSerial.
 			RST		10h			;        Keeping the screen quiet is __putc's
 								;        job, see VDU 1 over there.
@@ -149,7 +149,7 @@ __init:
 ;
 ;
 __done:
-		ifdef	PRINTER
+		ifdef	OPT_PRINTER
 			LD		A, 3			; VDU 3: printer off, or MOS would keep talking
 			RST		10h			;        to the printer after we exit.
 		endif

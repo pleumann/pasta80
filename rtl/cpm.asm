@@ -7,7 +7,7 @@
 ;
 __putc:
                 ld      e,a
-        ifdef   PRINTER
+        ifdef   OPT_PRINTER
                 ld      c,5             ; LST: instead of the console
         else
                 ld      c,2

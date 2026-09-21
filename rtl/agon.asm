@@ -182,7 +182,7 @@ __getargvchar:
 ; Uses:   -
 ; equivalent to rst 10h
 ;
-; With PRINTER every single character is wrapped into a "VDU 1, char", which
+; With OPT_PRINTER every single character is wrapped into a "VDU 1, char", which
 ; the VDP passes to the printer stream and to nowhere else, so the screen
 ; stays untouched. Silencing the screen with a VDU 21 instead would be a lot
 ; cheaper, but it also makes the VDP drop every VDU command that follows --
@@ -191,7 +191,7 @@ __getargvchar:
 ; can contain those: Sound(262) sends 262 as $01 $06 and thereby switches
 ; command processing back on behind our back.
 ;
-        ifdef   PRINTER
+        ifdef   OPT_PRINTER
 __putc:         push    af
                 ld      a,1             ; VDU 1: send the next character to the
                 rst     10h             ;        printer, but not to the screen
@@ -209,7 +209,7 @@ __putc:         equ     10h
 ; Exit:   -
 ; Uses:   AF,BC
 ;
-        ifdef   PRINTER
+        ifdef   OPT_PRINTER
 __puts:         ld      a,(hl)          ; One character at a time, because each
                 or      a               ; of them needs its own VDU 1
                 ret     z
@@ -237,7 +237,7 @@ __puts:         ld      bc,0
 
 ;
 ; Sends a length-prefixed byte sequence to the VDP verbatim, for VDU command
-; sequences. These must not go through __puts: with PRINTER that one wraps
+; sequences. These must not go through __puts: with OPT_PRINTER that one wraps
 ; every byte into a VDU 1, so the whole sequence would be handed to the
 ; printer instead of being executed.
 ;

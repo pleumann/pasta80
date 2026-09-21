@@ -19,7 +19,7 @@ __init:         di
                 ld      sp,LIMIT        ; We use our own stack
                 ei
 
-        ifdef   PRINTER
+        ifdef   OPT_PRINTER
                 ld      a,3
         else
                 ld      a,2

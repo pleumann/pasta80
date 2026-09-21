@@ -3008,7 +3008,6 @@ begin
     btAgon:   begin
                 SetDefine('CPU_EZ80', True);
                 SetDefine('SYS_AGON', True);
-                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('defdevice AGON,$2000,136');
                 EmitI('device AGON');
               end;
@@ -3016,7 +3015,6 @@ begin
     btCPM:    begin
                 SetDefine('CPU_Z80', True);
                 SetDefine('SYS_CPM', True);
-                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device NOSLOT64K');
               end;
 
@@ -3024,7 +3022,6 @@ begin
                 SetDefine('CPU_Z80', True);
                 SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZX48', True);
-                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device ZXSPECTRUM48, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
@@ -3032,7 +3029,6 @@ begin
                 SetDefine('CPU_Z80', True);
                 SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZX128', True);
-                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device ZXSPECTRUM128, $' + IntToHex(AddrOrigin - 1, 4));
               end;
 
@@ -3040,10 +3036,19 @@ begin
                 SetDefine('CPU_Z80N', True);
                 SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZXNEXT', True);
-                if UsePrinter then SetDefine('PRINTER', True);
                 EmitI('device ZXSPECTRUMNEXT');
               end;
   end;
+
+  (* Defines that mirror a command line switch carry an OPT_ prefix. User code
+   * sets defines through the same namespace (see the $define directive), and
+   * the RTL reacts to these in its own $ifdefs, so a plain name like PRINTER
+   * would silently change what the RTL does the moment someone happens to use
+   * it for their own purposes. *)
+
+  if Overlays then SetDefine('OPT_OVERLAYS', True);
+  if UsePrinter then SetDefine('OPT_PRINTER', True);
+  if Release then SetDefine('OPT_RELEASE', True);
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
   Emit('TEXT', 'jp __init', '');
