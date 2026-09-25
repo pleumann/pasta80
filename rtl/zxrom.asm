@@ -19,6 +19,20 @@ __init:         di
                 ld      sp,LIMIT        ; We use our own stack
                 ei
 
+; Reset a few things in case we want to restart a program via USR
+; several times. All variables and heap stay untouched and survive
+; such a restart
+;
+                xor     a
+                ld      (__lasterror),a ; Reset last error
+        ifdef   OPT_OVERLAYS
+                ld      hl,mystack + 64 ; Reset overlay stack
+                ld      (localsp),hl
+
+                ld      a,$ff
+                ld      (curpage),a     ; Reset current overlay number
+        endif
+
         ifdef   OPT_PRINTER
                 ld      a,3
         else
