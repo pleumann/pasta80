@@ -18,7 +18,7 @@ begin
     WriteLn('* ', Ord(P), ': Next=', Ord(P^.Next), ' Size=', P^.Size);
     Inc(Blocks);
     Inc(Total, P^.Size);
-    P := P^.Next; 
+    P := P^.Next;
   end;
   WriteLn(Blocks, ' blocks, ', Total, ' bytes total');
 end;
@@ -32,11 +32,11 @@ begin
   WriteLn;
 
   Org := MemAvail;
-  
+
   DumpHeap(Blocks, Total);
   Assert(Blocks = 1);
   Assert(Total = MemAvail);
-  
+
   WriteLn;
   WriteLn('Allocating two blocks...');
   GetMem(P, 256);
@@ -165,16 +165,16 @@ begin
     'Aren''t 3 lives enough to last'),
     'Why did Monty die so fast?');
 
-  WriteLn;  
+  WriteLn;
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
-  WriteLn;  
+  WriteLn;
 
   Assert(MemAvail < Org);
 
   Print(TheFullMonty);
   Clear(TheFullMonty);
 
-  WriteLn;  
+  WriteLn;
   WriteLn('MemAvail: ', MemAvail, ' MaxAvail: ', MaxAvail, ' HeapPtr: ', Ord(HeapPtr));
 
   Assert(MemAvail = Org);
@@ -292,7 +292,7 @@ begin
   {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(3);
   {$endif}
-  
+
   WriteLn;
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
@@ -334,4 +334,5 @@ begin
   WriteLn('Failed assertions: ', AssertFailed);
   WriteLn('************************');
   WriteLn;
+
 end.

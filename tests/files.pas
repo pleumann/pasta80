@@ -669,7 +669,7 @@ begin
 end;
 
 (**
- * Regression test for a bug we had in Eof/Eoln/SeekEof/SeekEoln where a 
+ * Regression test for a bug we had in Eof/Eoln/SeekEof/SeekEoln where a
  * random 16 bit value was put on the stack into the result slot. Functions
  * returning a Boolean value only modify the lower 8 bits of that slot, so
  * if someone cared to Ord() or otherwise cast the result there would have
@@ -883,7 +883,7 @@ begin
   {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(3);
   {$endif}
-  
+
   WriteLn;
   WriteLn('*** PASTA/80 Test Suite ***');
   WriteLn;
@@ -916,4 +916,5 @@ begin
   WriteLn('Failed assertions: ', AssertFailed);
   WriteLn('************************');
   WriteLn;
+
 end.
