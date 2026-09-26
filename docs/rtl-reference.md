@@ -10,7 +10,7 @@ This reference describes all constants, types, variables, procedures and functio
 |-----|----------|
 | **[All]** | Included on every target platform. |
 | **[CPM]** | CP/M |
-| **[ZX48]** | ZX Spectrum 48K, and 128K, and Next |
+| **[ZX48]** | ZX Spectrum 48K, 128K and Next |
 | **[ZX128]** | ZX Spectrum 128K only |
 | **[ZXNext]** | ZX Spectrum Next only |
 | **[Agon]** | Agon / Console8 |
@@ -35,7 +35,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `Cyan` | `Integer` | Depends | [All] | Colour constant cyan. CP/M and ZX: `5`; Agon: `6`. |
 | `Yellow` | `Integer` | Depends | [All] | Colour constant yellow. CP/M and ZX: `6`; Agon: `3`. |
 | `White` | `Integer` | `7` | [All] | Colour constant white. |
-| `LineBreak` | `String` | Depends | [ZX48] [CPM] [Agon] | Line-break convention. ZX: `#13`; CP/M and Agon: `#13#10`. |
+| `LineBreak` | `String` | Depends | [All] | Line-break convention. ZX: `#13`; CP/M and Agon: `#13#10`. |
 
 ---
 
@@ -59,7 +59,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `BufLen: Byte` | [All] | Specifies the maximum input length of the next `Read[Ln]`. Defaults to 126 and resets to that value after reach input. |
+| `BufLen: Byte` | [All] | Specifies the maximum input length of the next `Read[Ln]`. Defaults to 126 and resets to that value after each input. |
 | `ExitCode: Integer` | [All] | Sets the process exit code. Also set by `Halt(N)`. On Agon it becomes the process return code; on ZX machines it becomes the value of the `BC` register pair when returning to BASIC. |
 | `Mem[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the entire Z80 address space. |
 | `Port[I: Integer]: Byte` | [All*] | Byte-addressable read/write access to the Z80 I/O address space. |
@@ -74,7 +74,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Assert(B: Boolean)` | [All*] | Evaluates `B`. If the assertion fails, the source file and line number are printed and the program is terminated. In release mode the code is removed entirely. |
+| `Assert(B: Boolean)` | [All*] | Evaluates `B`. If the assertion fails, the source file and line number are printed and `AssertFailed` is incremented; otherwise `AssertPassed` is incremented. The program continues in either case. In release mode the code is removed entirely. |
 | `Debug` | [All*] | Sets a debugger breakpoint (platform-specific encoding). Optional form: `Debug(B: Boolean)` sets the breakpoint only when `B` is true. In release mode these are removed entirely. |
 | `Break` | [All*] | Exits the innermost `for`, `while` or `repeat` loop. |
 | `Continue` | [All*] | Jumps to the next iteration of the innermost loop. |
@@ -194,7 +194,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | Signature | Platform | Description |
 |-----------|----------|-------------|
 | `EsxDos(I: Integer; var R: Registers): Byte` | [ZXNext] | Executes esxDOS call number `I`. Arguments and return values are passed via the `Registers` structure. |
-| `MosApi(I: Integer; var R: Registers): Byte` | [Agon] | Executes MOS API call number `I`. |
+| `MOSAPI(I: Integer; var R: Registers): Byte` | [Agon] | Executes MOS API call number `I`. |
 
 ### String Operations
 
@@ -207,7 +207,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Exec(Command, Params: String)` | [Agon] | TP4+ procedure to execute the command `Command` using the `Params` as parameters. Parameters may be empty/blank. Result is returned in `DosExitCode`. Will only work with built-in MOS commands and MOSlets - i.e. excutables that run from `0x0b0000`. Other bin files will crash or not return. No checking is performed for load location as this needs to be done manually. |
+| `Exec(Command, Params: String)` | [Agon] | TP4+ procedure to execute the command `Command` using the `Params` as parameters. Parameters may be empty/blank. Result is returned in `DosExitCode`. Will only work with built-in MOS commands and MOSlets - i.e. executables that run from `0x0b0000`. Other bin files will crash or not return. No checking is performed for load location as this needs to be done manually. |
 
 ---
 
@@ -295,9 +295,9 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `Eoln(var F: Text): Boolean` | [All*] | Returns `True` if the current character is the end-of-line marker. |
 | `SeekEof(var F: Text): Boolean` | [All*] | Skips spaces and line breaks and returns `True` if end of file follows. |
 | `SeekEoln(var F: Text): Boolean` | [All*] | Skips spaces and tabs and returns `True` if end of line or end of file follows. |
-| `FilePos(var F): Integer` | [All*] | Returns the current file position (record index, 0-based). `F` must by either typed or untyped. |
-| `FileSize(var F: File): Integer` | [All*] | Returns the total number of records in the file. `F` must by either typed or untyped. |
-| `IOResult: Byte` | [CPM] [ZXNext] [Agon] | Returns `LastError` and resets it to `0` so that further file operations can proceed. |
+| `FilePos(var F): Integer` | [All*] | Returns the current file position (record index, 0-based). `F` must be either typed or untyped. |
+| `FileSize(var F: File): Integer` | [All*] | Returns the total number of records in the file. `F` must be either typed or untyped. |
+| `IOResult: Byte` | [All] | Returns `LastError` and resets it to `0` so that further file operations can proceed. |
 
 ### Keyboard and Timing
 
@@ -336,8 +336,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Bdos(Func: Integer [; Param: Integer]): Byte` | [CPM] [Agon] | Executes a BDOS/MOS system call and returns the result in register A as a `Byte`. If `Param` is omitted, 0 is passed. |
-| `BdosHL(Func: Integer [; Param: Integer]): Integer` | [CPM] [Agon] | Like `Bdos`, but returns the full HL register value as an `Integer`. |
+| `Bdos(Func: Integer [; Param: Integer]): Byte` | [CPM*] [Agon*] | Executes a BDOS/MOS system call and returns the result in register A as a `Byte`. If `Param` is omitted, 0 is passed. |
+| `BdosHL(Func: Integer [; Param: Integer]): Integer` | [CPM*] [Agon*] | Like `Bdos`, but returns the full HL register value as an `Integer`. |
 | `ParamCount: Byte` | [CPM] [Agon] | Returns the number of command-line parameters. |
 | `ParamStr(I: Byte): String` | [CPM] [Agon] | Returns the `I`-th command-line parameter, or an empty string if `I` is out of range. |
 
@@ -353,8 +353,8 @@ These identifiers are part of the run-time infrastructure. They may be visible i
 | `TBlock = record Next: PBlock; Size: Integer end` | [All] | Entry in the heap free list. `Next` points to the next block; `Size` gives its size in bytes. |
 | `Registers` | [ZXNext] [Agon] | Helper type for passing Z80 registers to esxDOS / MOS calls. Variant with byte fields (`F, A, C, B, E, D, L, H`) and integer fields (`AF, BC, DE, HL`). |
 | `FileControlBlock` | [CPM] [ZXNext] [Agon] | Internal file control block. CP/M: drive number, filename, extension and CP/M-internal fields. Next/Agon: handle, null-terminated filename and record position. |
-| `TextRec` | [File] | Internal representation of a text file. Contains a `FileControlBlock`, status flags and a 128-byte sector buffer. |
-| `FileRec` | [File] | Internal representation of a typed file. Contains a `FileControlBlock`, component size and count, and a 128-byte sector buffer. |
+| `TextRec` | [CPM] [ZXNext] [Agon] | Internal representation of a text file. Contains a `FileControlBlock`, status flags and a 128-byte sector buffer. |
+| `FileRec` | [CPM] [ZXNext] [Agon] | Internal representation of a typed file. Contains a `FileControlBlock`, component size and count, and a 128-byte sector buffer. |
 
 ### Variables
 
@@ -363,7 +363,7 @@ These identifiers are part of the run-time infrastructure. They may be visible i
 | `DosError: Byte` | [Agon] | Compatibility placeholder for `Exec()` procedure. Currently holds `0`. |
 | `DosExitCode: Byte` | [Agon] | Returns the value passed back from the most recent `Exec()` procedure. `0` means success. |
 | `HeapPtr: PBlock` | [All] | Points to the first block of the heap free list; `nil` when the heap is empty. |
-| `LastError: Byte` | [CPM] [ZXNext] [Agon] | Last file-system error code; `0` means no error. Most file operations are skipped while this value is non-zero. |
+| `LastError: Byte` | [All] | Last I/O error code; `0` means no error. Set by file operations and also when `Read` cannot convert its input, which is why it exists on targets without file support as well. Most file operations are skipped while this value is non-zero. |
 | `RandSeed1: Integer` | [All] | First 16-bit half of the random-number generator seed. |
 | `RandSeed2: Integer` | [All] | Second 16-bit half of the random-number generator seed. |
 
@@ -371,15 +371,21 @@ These identifiers are part of the run-time infrastructure. They may be visible i
 
 | Signature | Platform | Description |
 |-----------|----------|--------------|
-| `CheckBreak` | [All] | Tests whether the user tried to interrupt the program and terminates i program if so. The actual key combination depends on the platform: Break+Space on ZX machine, Ctrl-C elsewhere. Inserted automatically by the compiler in appropriate places when `{$u+}` is active. |
+| `CheckBreak` | [All] | Tests whether the user tried to interrupt the program and terminates the program if so. The actual key combination depends on the platform: Break+Space on ZX machines, Ctrl-C elsewhere. Inserted automatically by the compiler in appropriate places when `{$u+}` is active. |
 | `CheckStack` | [All] | Checks for stack overflow. Inserted automatically by the compiler at the start of every procedure/function when `{$k+}` is active. |
-| `BDosThrow` | [CPM] [ZXNext] [Agon] | Checks `LastError` and terminates the program with an error message if the value is non-zero. Inserted automatically by the compiler after file operations in `{$i+}` mode. |
+| `BDosThrow` | [All] | Checks `LastError` and terminates the program with an error message if the value is non-zero. Inserted automatically by the compiler after file operations in `{$i+}` mode. |
 | `BDosCatch(Func: Byte; Param: Integer)` | [CPM] | Executes a BDOS call and stores a non-zero return value in `LastError`. |
 | `ConOut(C: Char)` | [CPM] [Agon] | Sends character `C` directly to the console driver (BDOS call 2 / VDP). |
 | `MOSAPISeek(var R: Registers): Byte` | [Agon] | Specialised variant of the MOS API call for seek operations. |
+| `MOSAPIOSCLI(I: Integer): Byte` | [Agon] | Passes a command line to MOS for execution. Used by `Exec`, which stores the result in `DosExitCode`. |
 
 ### Functions
 
 | Signature | Platform | Description |
 |-----------|----------|--------------|
 | `MOSAPILength(var R: Registers): Integer` | [Agon] | Returns the length of a file opened via MOS. |
+| `ParamChar(Param, Bytenum: Byte): Char` | [Agon] | Returns a single character of a command-line parameter. `ParamStr` assembles its result from these. |
+| `sysvar_time_lo: Integer` | [Agon] | Low half of the MOS system time variable. `Frames` combines both halves. |
+| `sysvar_time_hi: Integer` | [Agon] | High half of the MOS system time variable. |
+| `RandomInt(Range: Integer): Integer` | [All] | Implementation behind `Random(Range)`. |
+| `RandomReal: Real` | [All] | Implementation behind `Random`. |

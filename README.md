@@ -41,7 +41,7 @@ The compiler also has some features that were borrowed from or inspired by later
   * `Break` and `Continue` for loop control.
   * An optional parameter for `Exit` in functions that assigns the result (like `Exit(42)`).
   * Querying the keyboard via `KeyPressed` and `ReadKey`.
-  * Color support via `TextColor` and `TextBackground` with constants for the 8 Spectrum Next colors.
+  * Color support via `TextColor` and `TextBackground` with constants for the 8 basic ZX Spectrum colors (available on all targets).
   * `Inc` and `Dec` for more efficient increasing and decreasing of variables.
   * `Include` and `Exclude` for more efficient handling of sets.
   * Enumeration types can be used in `Read[Ln]`, `Write[Ln]`, `Val` and `Str`.
@@ -116,11 +116,11 @@ $ pasta80 --zx128 hello.pas   # Compiles for ZX Spectrum 128K
 $ pasta80 --zxnext hello.pas  # Compiles for ZX Spectrum Next
 ```
 
-The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In both cases the binaries are expected to be run from address 0x8000.
+The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In all three cases the binaries are expected to be run from address 0x8000.
 
 #### Tapes, snapshots and runnable directories
 
-The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program (plus a +3DOS header when compiling for the Spectrum Next). In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
+The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program. Use `--3dos` if you want a +3DOS header in front of it. In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
 
 ```bash
 $ pasta80 --zx48 --sna examples/hello.pas   # .sna file
@@ -146,7 +146,7 @@ $ pasta80 --zxnext --run examples/pq.pas    # Results in directory named pq.run
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
 
-Should you ever want to write your own BASIC loader (for either `--tap` or `--dir`) because the provided ones are not fancy enough, use the `--loader` parameter.
+Should you ever want to write your own BASIC loader (for either `--tap` or `--run`) because the provided ones are not fancy enough, use the `--loader` parameter.
 
 ### Agon Light/Console8 target
 
@@ -165,7 +165,7 @@ PASTA/80 nor sjasmplus directly support the flat 24 bit address space yet. You
 can, however, extend this via RAM-based overlays (see below), allowing a single
 program to be up to 440K in size.
 
-PASTA/80 also supports the MOSlet format for smaller programs that can be run
+PASTA/80 also supports the MOSlet format (`--mos`) for smaller programs that can be run
 from 0xB0000 without overwriting a larger main (or BASIC) program running from
 0x40000. MOSlets cannot exceed 32K size and are not allowed to use overlays.
 
@@ -380,15 +380,34 @@ $ pasta80 --no-dep hello.pas          # Disables dependency analysis
 $ pasta80 --no-opt --no-dep hello.pas # Disables both
 ```
 
-Note this makes your programs both larger and slower, so it's not recommended unless you are debugging a problem that looks like it could be caused by either of the two optimizations and you want to compare the assembly outputs.
+Note this makes your programs both larger and slower, so it's not recommended unless you are debugging a problem that looks like it could be caused by either of the two optimizations and you want to compare the assembly outputs. Add `--keepint` to keep the intermediate files (the generated `.z80` source and the `.lst` listing), which are deleted after a successful compilation otherwise.
 
 ## Examples and tests
 
 There is a folder containing `examples` and a folder containing `tests` for the compiler. The main test suite `core.pas` needs to be compiled with optimizations because of its size. Otherwise it won't fit into 64K. The Spectrum 128K and Next targets can (only) handle it using overlays, the Spectrum 48K target can't. Both the examples and the tests should give you a pretty good overview of what the compiler can do.
 
-If you want to see the full output of the tests on the console instead of inside an emulator, compile them with `--printer`, which redirects everything from the screen to the printer (LST device on CP/M, "P" channel on Spectrum, and VDU 2 on Agon). Most emulators have a means of showing the printer output on the console or writing it to a file. This also works for your own programs.
+If you want to see the full output of the tests on the console instead of inside an emulator, compile them with `--printer`, which redirects everything from the screen to the printer (LST device on CP/M, "P" channel on Spectrum, and VDU 1 on Agon). Most emulators have a means of showing the printer output on the console or writing it to a file. This also works for your own programs.
 
-I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
+The compiler is using that mechanism in its self-testing. To run the full test suite and generate a comprehensive report, start PASTA/80 with the parameter `--tests` and (optionally) a target platform parameter:
+
+```bash
+$ pasta80 --tests           # Runs all tests for CP/M
+$ pasta80 --tests --agon    # Runs all tests for Agon
+$ pasta80 --tests --zx128   # Runs all tests for the Spectrum 128K
+$ pasta80 --tests --zxnext  # Runs all tests for the Spectrum Next
+```
+
+This requires the emulators to support capturing printer output, which is not yet the case in every official release:
+
+* **Fab Agon Emulator** needs the `--printer-file` option, which hasn't made it into an official release yet (see this [issue](https://github.com/tomm/fab-agon-emulator/issues/87)). Until it does, use [this fork](https://github.com/pleumann/fab-agon-emulator).
+* **CSpect** needs a printer plugin. Copy `misc/Printer.dll` into CSpect's plugin folder; a [pull request](https://github.com/mikedailly/CSpectPlugins/pull/10) to add it to the official plugins is pending.
+* **Fuse** works out of the box. Version 1.9.2 or newer is recommended.
+
+Assuming everything works correctly you should see a report like the following in the end:
+
+| CP/M Tests | Agon Tests |
+| :-------: | :----: |
+| ![Screenshot](docs/images/report1.png) | ![Screenshot](docs/images/report2.png) |
 
 ## Minimalistic IDE
 
@@ -454,6 +473,8 @@ The final two screenshots show two applications compiled for the Agon target and
 | [Tale of Ancient Land](https://gitlab.com/delysio/adventure) | Mandelbrot Set |
 | :--------: | :--------: |
 | ![Screenshot](docs/images/adventure.png) | ![Screenshot](docs/images/mandelbrot.png) |
+
+I also solved all puzzles of [Advent of Code 2022](https://github.com/pleumann/aoc22) with an earlier version of the compiler and made [YouTube videos](https://youtube.com/playlist?list=PLcjDDXgGeSQ6E3NLeSOH0Tn7UorYBgUOH&si=SAoOqUbi70c4ezgi) of the solutions running on the ZX Spectrum Next, in CP/M mode.
 
 # License
 

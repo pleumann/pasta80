@@ -9199,7 +9199,7 @@ begin
     WriteLn('  --loader <fn>  uses <fn> as BASIC loader (ZX, .tap and .run)');
     WriteLn;
     WriteLn('  --release      ignores assertions and breakpoints');
-    WriteLn('  --keepint      keeps intermediate files (like .asm)');
+    WriteLn('  --keepint      keeps intermediate assembly files');
     WriteLn('  --printer      redirects screen output to printer');
     WriteLn;
     WriteLn('  --[no-]opt     controls peephole optimizations (on by default)');
