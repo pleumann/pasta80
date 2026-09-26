@@ -335,4 +335,11 @@ begin
   WriteLn('************************');
   WriteLn;
 
+  {$ifdef SYS_AGON}
+    inline($3e / $00 / $d3 / $00);
+  {$endif}
+  {$ifdef SYS_ZXNEXT}
+    QuitEmulator;
+  {$endif}
+
 end.

@@ -440,7 +440,7 @@ begin
     Exec('/bin/sh', '-c "mono ' + Path + ' ' + Args + '"')
   {$ifdef darwin}
   else if EndsWith(Path, '.app') then
-    Exec('/bin/sh', '-c "open -a ' + Path + ' --args ' + Args + '"')
+    Exec('/bin/sh', '-c "open -W -a ' + Path + ' --args ' + Args + '"')
   {$endif}
   else
     Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');

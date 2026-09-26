@@ -1,0 +1,5 @@
+del
+breakpoint port write 0x1f
+commands 1
+quit
+end

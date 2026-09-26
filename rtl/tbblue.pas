@@ -47,4 +47,8 @@ procedure SetMemPage(Slot, Page: Byte);
 begin
 end;
 
+procedure QuitEmulator; register; inline (
+  $dd / $00 / $c9
+);
+
 {$l tbblue.asm}
