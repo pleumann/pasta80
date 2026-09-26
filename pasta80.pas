@@ -390,7 +390,7 @@ function IsRetinaDisplay: Boolean;
 var
   S: String;
 begin
-  RunCommand('/bin/sh', ['-c', 'system_profiler SPDisplaysDataType | grep Retina'], S);
+  RunCommand('/bin/sh', ['-c', 'system_profiler SPDisplaysDataType | grep -E ''Retina|UHD|4K'''], S);
   IsRetinaDisplay := Length(TrimStr(S)) <> 0;
 end;
 {$else}
