@@ -1,6 +1,8 @@
+<p align="center">Compiler Manual | <a href="docs/rtl-reference.md">Library Reference</a></p>
+
 ![Logo](docs/images/logo.png)
 
-# PASTA/80
+# PASTA/80 Compiler Manual
 
 PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) cross compiler targeting the [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) microprocessor. It generates code for these classic and modern machines:
 
@@ -11,10 +13,6 @@ PASTA/80 is a simple [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_
 * [Agon Light/Console8](https://agonplatform.github.io/agon-docs)
 
 The compiler follows the single-pass recursive-descent approach championed by [Niklaus Wirth](https://de.wikipedia.org/wiki/Niklaus_Wirth), inventor of Pascal, in his books and lectures. It doesn't have an explicit syntax tree, but instead generates code on the fly during parsing. As a result, the compiler might not always generate the most efficient code possible (it definitely cannot compete with LLVM and doesn't try to), but it's very fast.
-
-## Runtime Library
-
-See [rtl-reference.md](docs/rtl-reference.md)
 
 ## Supported language elements
 
@@ -61,7 +59,7 @@ Since that covers most of the functionality of Turbo Pascal 3 you might ask what
 * No separate compilation. Everything is compiled from source, always.
 * Binary size is quite large compared to the original.
 
-The runtime library, being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optimizer, is not generating super-efficient Z80 code).
+The [run-time library](docs/rtl-reference.md), being partially written in Pascal itself, gets quite large when compiled. I hope to bring this down again by reimplementing more of it in Z80 assembly (or improve the code generator, which, although it has a peephole optimizer, is not generating super-efficient Z80 code).
 
 ## Building and setting up the compiler
 
@@ -374,7 +372,7 @@ conditional compilation. Notice how conditional blocks can be nested.
 
 ## Optimization
 
-The compiler automatically uses simple Z80 peephole optimizations. It also applies dependency analysis to eliminate unused Pascal procedures and functions from both the runtime library and your code. Should you, for any reason, want to disable these optimizations, the following will do it:
+The compiler automatically uses simple Z80 peephole optimizations. It also applies dependency analysis to eliminate unused Pascal procedures and functions from both the run-time library and your code. Should you, for any reason, want to disable these optimizations, the following will do it:
 
 ```bash
 $ pasta80 --no-opt hello.pas          # Disables peephole optimizations
@@ -466,7 +464,7 @@ Copyright (c) 2020-2026 by Jörg Pleumann
 The PASTA/80 compiler is free software: you can redistribute it and/or modify
 it under the terms of the **GNU General Public License (GPL)** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-* The runtime library (folder `rtl`) comes with a **linking exception** that makes sure the GPL does not transfer to binaries created using PASTA/80.
+* The run-time library (folder `rtl`) comes with a **linking exception** that makes sure the GPL does not transfer to binaries created using PASTA/80.
 
 * The examples (folder `examples`) are considered **public domain** or whatever comes closest to that in your jurisdiction.
 

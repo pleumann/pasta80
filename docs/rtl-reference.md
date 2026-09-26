@@ -1,4 +1,8 @@
-# PASTA/80 Run-Time Library Reference
+<p align="center"><a href="../README.md">Compiler Manual</a> | Library Reference</p>
+
+![Logo](images/logo.png)
+
+# PASTA/80 Library Reference
 
 This reference describes all constants, types, variables, procedures and functions of the PASTA/80 run-time library. Platform-specific symbols carry the appropriate tag:
 
@@ -339,7 +343,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 ## Internal
 
-These identifiers are part of the runtime infrastructure. They may be visible in user code but are not intended for direct use.
+These identifiers are part of the run-time infrastructure. They may be visible in user code but are not intended for direct use.
 
 ### Types
 
