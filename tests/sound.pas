@@ -20,8 +20,31 @@ begin
 end;
 
 begin
+  Delay(1000);
+
   PlayAndWait(262, 500);
+  Assert(True);
   PlayAndWait(330, 500);
+  Assert(True);
   PlayAndWait(392, 500);
+  Assert(True);
   PlayAndWait(523, 1000);
+  Assert(True);
+
+  WriteLn;
+  WriteLn('************************');
+  WriteLn('Passed assertions: ', AssertPassed);
+  WriteLn('Failed assertions: ', AssertFailed);
+  WriteLn('************************');
+  WriteLn;
+
+  Delay(1000);
+
+  {$ifdef SYS_AGON}
+    inline($3e / $00 / $d3 / $00);
+  {$endif}
+  {$ifdef SYS_ZXNEXT}
+    QuitEmulator;
+  {$endif}
+
 end.
