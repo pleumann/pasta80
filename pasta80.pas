@@ -440,7 +440,7 @@ begin
     Exec('/bin/sh', '-c "mono ' + Path + ' ' + Args + '"')
   {$ifdef darwin}
   else if EndsWith(Path, '.app') then
-    Exec('/bin/sh', '-c "open -W -a ' + Path + ' --args ' + Args + '"')
+    Exec('/bin/sh', '-c "open -n -W -a ' + Path + ' --args ' + Args + '"')
   {$endif}
   else
     Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
@@ -514,7 +514,7 @@ begin
   Assign(T, FileName);
   {$i-}
   Rewrite(T);
-  Write(T, S);
+  WriteLn(T, S);
   Close(T);
   {$i+}
 
@@ -564,6 +564,13 @@ var
    * --loader. Empty means the stock one from misc/ that fits the target.
    *)
   LoaderFile: String = '';
+
+  (**
+   * The command line arguments to be applied when starting the program,
+   * for platforms that support it. Currently only used internally during
+   * self-testing.
+   *)
+   StartParams: String = '';
 
 var
   HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
@@ -8576,7 +8583,7 @@ end;
  * Runs a compiles program by invoking a suitable emulator for the current
  * target platform.
  *)
-procedure DoRun(Debug, Shift: Boolean);
+procedure DoRun(Debug, Shift: Boolean; Log: String);
 const
   NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
 var
@@ -8587,13 +8594,23 @@ begin
     if Binary = btCPM then
     begin
       if Shift then
-      begin
-        if AltEditor then Write(#27'[40m');
-        Execute(TnylpoCmd, '-soy -t @ ' + BinFile);
-        if AltEditor then Write(#27'[0m');
-      end
+        Args := '-soy -t @'
       else
-        Execute(TnylpoCmd, BinFile)
+        Args := '';
+
+      if Log <> '' then
+      begin
+        StrToFile('printer file = "' + PosixToNative(Log) + '"', 'tnylpo.conf');
+        Args := Args + ' -f tnylpo.conf';
+      end;
+
+      Args := Args + ' ' + BinFile;
+      if StartParams <> '' then
+        Args := Args + ' ' + StartParams;
+
+      if AltEditor then Write(#27'[40m');
+      Execute(TnylpoCmd, Args);
+      if AltEditor then Write(#27'[0m');
     end
     else if Binary = btAgon then
     begin
@@ -8603,16 +8620,23 @@ begin
       if Overlays then
         CopyFile(ChangeExt(BinFile, '.ovr'), 'sdcard/' + NameOnly(ChangeExt(BinFile, '.ovr')));
 
-      if Format = tfMosLet then
+      if LoaderFile <> '' then
+        CopyFile(LoaderFile, 'sdcard/autoexec.txt')
+      else if Format = tfMosLet then
         StrToFile('load ' + NameOnly(BinFile) + ' 0xb0000'#13#10'run 0xb0000', 'sdcard/autoexec.txt')
+      else if StartParams <> '' then
+      begin
+        StrToFile(NameOnly(BinFile) + ' ' + StartParams, 'sdcard/autoexec.txt')
+      end
       else
-        StrToFile(NameOnly(BinFile), 'sdcard/autoexec.txt');
+        StrToFile(NameOnly(BinFile) + #13#10'emulator_exit_success', 'sdcard/autoexec.txt');
 
       Args := '';
 
       if Debug then Args := Args + ' -d';
 
-      WriteLn(Args);
+      if Log <> '' then Args := Args + ' --printer-file ' + Log;
+
       Execute('./fab-agon-emulator', Args);
       ChDir(S);
     end
@@ -8626,7 +8650,7 @@ begin
         Args := Args + '--machine 128';
 
       if Debug then
-        Args := Args + ' --debugger-command ''' + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
+        Args := Args + ' --debugger-command ''' + StrFromFile(HomeDir + '/misc/quitfuse.brk') + ''''// + #10 + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
       else
         Args := Args + ' --debugger-command ''del''';
 
@@ -8639,6 +8663,8 @@ begin
         WriteLn('Tape or snapshot needed for Fuse.');
         Exit;
       end;
+
+      if Log <> '' then Args := Args + ' --textfile ' + Log;
 
       Execute(FuseCmd, Args);
     end
@@ -8659,7 +8685,9 @@ begin
         Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + HomeDir + '/misc/autoexec.bas /nextzxos/autoexec.bas');
         Execute(MonkeyCmd, 'put ' + ImagePath + ' lastrun.txt /pasta80/lastrun.txt');
 
-        Args := '-zxnext -r -nextrom -mouse -printer';
+        Args := '-zxnext -r -nextrom -exit -mouse -printer';
+
+        if Log <> '' then Args := Args + '=' + Log;
 
         if IsRetinaDisplay then
           Args := Args + ' -w4'
@@ -8889,8 +8917,8 @@ begin
         'w': DoWorkFile;
         'e': DoEdit(False);
         'c', 'C': DoCompile(C = 'C');
-        'r', 'R': DoRun(False, C = 'R');
-        'd', 'D': DoRun(True, C = 'D');
+        'r', 'R': DoRun(False, C = 'R', '');
+        'd', 'D': DoRun(True, C = 'D', '');
         's': DoShell;
         'f': DoFiles;
         'o', 'O': begin DoOptions; Break; end;
@@ -8902,12 +8930,248 @@ begin
 end;
 
 (**
+ * Runs the compiler's test suite for the chosen target. Requires emulator
+ * and potentially other tools and images to be in place.
+ *)
+procedure SelfTest;
+const
+  (**
+   * The name of our test suites (all under tests/*.pas).
+   *)
+  TestSuites: array[0..6] of String = (
+    'core', 'heap', 'files', 'more', 'params', 'sound', 'errors'
+  );
+
+  (**
+   * Which test suites do we need to run for which platform(s)?
+   *)
+  MandatoryFor: array[0..6] of set of TBinaryType = (
+    [btAgon, btCPM, btZX128, btZXN],
+    [btAgon, btCPM, btZX128, btZXN],
+    [btAgon, btCPM,          btZXN],
+    [btAgon, btCPM, btZX128, btZXN],
+    [btAgon, btCPM                ],
+    [btAgon,        btZX128, btZXN],
+    [btAgon, btCPM, btZX128, btZXN]
+  );
+
+  (**
+   * Whether a certain test needs overlays on a Spectrum.
+   *)
+  NeedsOverlays: array[0..6] of Boolean = (
+    True, False, True, False, False, False, True
+  );
+
+  (**
+   * The output format to use for each target platform.
+   *)
+  FormatUsed: array[btCPM .. btAgon] of TTargetFormat = (
+    tfBinary, tfTape, tfTape, tfTape, tfBinary
+  );
+
+  (**
+   * Command line args. Only needed by params.pas. Multiple spaces intended.
+   *)
+  CmdLineArgs: array[0..6] of String = (
+    '', '', '', '', 'TIC TAC     TOE', '', ''
+  );
+
+  (**
+   * The loader to use for the errors.pas test suite per platform.
+   *)
+  LoaderUsed: array[btCPM .. btAgon] of String = (
+    '', '', 'errors128.bas', 'errorsnext.bas', 'agonerrs.txt'
+  );
+
+  (**
+   * The total number of expected tests per platform. Adjust for new tests.
+   *)
+  TotalTests: array[btCPM .. btAgon] of Integer = (
+    1846, 0, 1686, 1844, 1850
+  );
+
+var
+  I, J, PassCount, FailCount, PassTotal, FailTotal: Integer;
+  S, Log: String;
+  StartTime: Int64;
+  Duration: Real;
+
+  (**
+   * Scans the log file of a normal test suite. Searches for passed and
+   * failed assertions.
+   *)
+  procedure ScanNormal(FileName: String; var PassCount, FailCount: Integer);
+  var
+    T: Text;
+    S: String;
+    E: Integer;
+  begin
+    Assign(T, FileName);
+    Reset(T);
+
+    while not Eof(T) do
+    begin
+      ReadLn(T, S);
+
+      if StartsWith(S, 'Passed assertions: ') then
+        Val(TrimStr(Copy(S, 20, 255)), PassCount, E)
+      else if StartsWith(S, 'Failed assertions: ') then
+        Val(TrimStr(Copy(S, 20, 255)), FailCount, E);
+    end;
+    Close(T);
+  end;
+
+  (**
+   * Scans the log file or the errors test suite. Searches for expecations
+   * and the line immediately following them.
+   *)
+  procedure ScanErrors(FileName: String; var PassCount, FailCount: Integer);
+  var
+    T: Text;
+    S, E: String;
+    B: Boolean;
+  begin
+    Assign(T, FileName);
+    Reset(T);
+
+    B := False;
+
+    while not Eof(T) do
+    begin
+      ReadLn(T, S);
+
+      if B then
+      begin
+        if S = E then
+          Inc(PassCount)
+        else
+          Inc(FailCount);
+
+        B := False;
+      end
+      else if StartsWith(S, 'Expected output:') then
+      begin
+        B := True;
+        E := TrimStr(Copy(S, 17, 255));
+      end;
+    end;
+    Close(T);
+
+    if B then Inc(FailCount);
+  end;
+
+begin
+  StartTime := GetMSCount;
+
+  UsePrinter := True;
+
+  for I := Low(TestSuites) to High(TestSuites) do
+  begin
+    if Binary in MandatoryFor[I] then
+    begin
+      SrcFile := FAbsolute('tests/' + TestSuites[I] + '.pas');
+      Log := FAbsolute('tests/' + TestSuites[I]) + '.log';
+      Overlays := NeedsOverlays[I] and (Binary in [btZX128, btZXN]);
+      Format := FormatUsed[Binary];
+      if (TestSuites[I] = 'errors') and (LoaderUsed[Binary] <> '') then
+        LoaderFile := HomeDir + '/misc/' + LoaderUsed[Binary]
+      else
+        LoaderFile := '';
+
+      StartParams := CmdLineArgs[I];
+
+      if Build <> 0 then
+        Error('Build of ' + TestSuites[I] + ' failed for ' + BinaryStr[Binary]);
+
+      DeleteFile(Log);
+      WriteLn;
+      WriteLn('Running...');
+
+      if (TestSuites[I] = 'errors') and (Binary = btCPM) then
+        for J := 1 to 33 do
+        begin
+          StartParams := IntToStr(J);
+          DoRun(False, False, Log);
+        end
+      else
+        DoRun(False, False, Log);
+
+      if FSize(Log) <= 0 then
+        Error('No output from ' + TestSuites[I] + ' on ' + BinaryStr[Binary]);
+
+      WriteLn;
+    end;
+  end;
+
+  WriteLn('======================================');
+  WriteLn('Results of PASTA/80 version ', Version, ' tests');
+  WriteLn('======================================');
+
+  WriteLn;
+  S := {$I %FPCTARGETOS%} + ' (' + {$I %FPCTARGETCPU%} + ') ---> ' + BinaryStr[Binary];
+  WriteLn('':(38 - Length(S)) div 2, S);
+
+  PassTotal := 0;
+  FailTotal := 0;
+
+  WriteLn;
+  WriteLn('Tests':8, 'Passed':10, 'Failed':10, 'Total':10);
+  WriteLn('--------  --------  --------  --------');
+  for I := Low(TestSuites) to High(TestSuites) do
+  begin
+    if Binary in MandatoryFor[I] then
+    begin
+      Log := FAbsolute('tests/' + TestSuites[I]) + '.log';
+      PassCount := 0;
+      FailCount := 0;
+      if TestSuites[I] = 'errors' then
+        ScanErrors(Log, PassCount, FailCount)
+      else
+        ScanNormal(Log, PassCount, FailCount);
+
+      if PassCount + FailCount = 0 then
+        WriteLn(TestSuites[I]:8, '???':10, '???':10, '???':10)
+      else
+        WriteLn(TestSuites[I]:8, PassCount:10, FailCount:10, PassCount + FailCount:10);
+
+      Inc(PassTotal, PassCount);
+      Inc(FailTotal, FailCount);
+    end
+    else
+      WriteLn(TestSuites[I]:8, 'n/a':10, 'n/a':10, 'n/a':10);
+  end;
+
+  WriteLn('--------  --------  --------  --------');
+  WriteLn('Total':8, PassTotal:10, FailTotal:10, PassTotal + FailTotal:10);
+  WriteLn;
+
+  if PassTotal + FailTotal <> TotalTests[Binary] then
+  begin
+    WriteLn('Wrong number of tests (', TotalTests[Binary], ' expected)!');
+    WriteLn;
+    FailTotal := 9999;
+  end;
+
+  Duration := (GetMSCount - StartTime) / 1000.0;
+
+  Write('':14);
+  if FailTotal = 0 then
+    WriteLn(#27'[1;30;42m   PASS   '#27'[0m')
+  else
+    WriteLn(#27'[1;37;41m   FAIL   '#27'[0m');
+  WriteLn;
+
+  WriteLn('Tests finished (', Duration:0:3, 's).');
+  WriteLn;
+end;
+
+(**
  * Process command-line parameters and, ultimately, either start a build or
  * enter interactive mode.
  *)
 procedure Parameters;
 var
-  Ide: Boolean;
+  Ide, Tests: Boolean;
   I: Integer;
 begin
   if ParamCount = 0 then
@@ -8944,11 +9208,13 @@ begin
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --config       shows (and checks) the configuration');
     WriteLn('  --version      shows just the version number');
+    WriteLn('  --tests        runs the compiler''s test suite (for a target)');
     WriteLn;
     Halt(1);
   end;
 
   Ide := False;
+  Tests := False;
 
   I := 1;
   SrcFile := ParamStr(I);
@@ -9002,6 +9268,8 @@ begin
     end
     else if SrcFile = '--ide' then
       Ide := True
+    else if SrcFile = '--tests' then
+      Tests := True
     else
       Error('Invalid option: ' + SrcFile);
 
@@ -9011,7 +9279,7 @@ begin
 
   if SrcFile = '' then
   begin
-    if not Ide then Error('No input file');
+    if not Ide and not Tests then Error('No input file');
   end
   else
   begin
@@ -9035,11 +9303,16 @@ begin
       Error('Loader not used for ' + FormatStr[Format] + '.');
   end;
 
+  if Tests and (Binary = btZX) then
+    Error('Tests too large for 48K Spectrum. Please use 128K instead.');
+
   if Ide then
   begin
     if SrcFile <> '' then WorkFile := SrcFile;
     Interactive;
   end
+  else if Tests then
+    SelfTest
   else
   begin
     Copyright(False);
