@@ -400,7 +400,7 @@ $ pasta80 --tests --zxnext  # Runs all tests for the Spectrum Next
 This requires the emulators to support capturing printer output, which is not yet the case in every official release:
 
 * **Fab Agon Emulator** needs the `--printer-file` option, which hasn't made it into an official release yet (see this [issue](https://github.com/tomm/fab-agon-emulator/issues/87)). Until it does, use [this fork](https://github.com/pleumann/fab-agon-emulator).
-* **CSpect** needs a printer plugin. Copy `misc/Printer.dll` into CSpect's plugin folder; a [pull request](https://github.com/mikedailly/CSpectPlugins/pull/10) to add it to the official plugins is pending.
+* **CSpect** needs a printer plugin. Copy `misc/Printer.dll` into CSpect's folder (next to CSpect.exe); a [pull request](https://github.com/mikedailly/CSpectPlugins/pull/10) to add it to the official plugins is pending.
 * **Fuse** works out of the box. Version 1.9.2 or newer is recommended.
 
 Assuming everything works correctly you should see a report like the following in the end:
