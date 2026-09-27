@@ -3737,4 +3737,7 @@ begin
   {$ifdef SYS_ZXNEXT}
     QuitEmulator;
   {$endif}
+  {$ifdef SYS_ZX128}
+    inline($3e / $00 / $d3 / $1f);
+  {$endif}
 end.

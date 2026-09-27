@@ -1005,7 +1005,7 @@ begin
     QuitEmulator;
   {$endif}
 
-  {$ifdef FUSE}
+  {$ifdef SYS_ZX128}
     inline($3e / $00 / $d3 / $1f);
   {$endif}
 end;
