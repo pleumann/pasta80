@@ -405,9 +405,9 @@ This requires the emulators to support capturing printer output, which is not ye
 
 Assuming everything works correctly you should see a report like the following in the end:
 
-| CP/M Tests | Agon Tests |
-| :-------: | :----: |
-| ![Screenshot](docs/images/report1.png) | ![Screenshot](docs/images/report2.png) |
+| CP/M | Spectrum 128K | Spectrum Next | Agon |
+| :---: | :---: | :---: | :---: |
+| ![Screenshot](docs/images/report1.png) | ![Screenshot](docs/images/report2.png) |  ![Screenshot](docs/images/report3.png) | ![Screenshot](docs/images/report4.png) |
 
 ## Minimalistic IDE
 
