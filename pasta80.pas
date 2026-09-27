@@ -8650,9 +8650,9 @@ begin
         Args := Args + '--machine 128';
 
       if Debug then
-        Args := Args + ' --debugger-command ''' + StrFromFile(HomeDir + '/misc/quitfuse.brk') + ''''// + #10 + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
+        Args := Args + ' --debugger-command ''' + StrFromFile(HomeDir + '/misc/fuse.brk') + #10 + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
       else
-        Args := Args + ' --debugger-command ''del''';
+        Args := Args + ' --debugger-command ''' + StrFromFile(HomeDir + '/misc/fuse.brk') + '''';
 
       if Format = tfTape then
         Args := Args + ' --tape ' + BinFile
