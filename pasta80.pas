@@ -7,7 +7,7 @@ program Pasta;
 {$mode delphi}
 
 uses
-  {$ifdef darwin} BaseUnix, {$endif} Keyboard, Dos, Math, Process;
+  {$ifdef darwin} BaseUnix, {$endif} SysUtils, Keyboard, Dos, Math, Process;
 
 const
   Version = '0.99';
@@ -428,6 +428,39 @@ begin
   {$else}
   Result := NativeToPosix(GetEnv('HOME'));
   {$endif}
+end;
+
+var
+  LastExitCode: Integer = 0;
+
+(**
+ * Replacement for Dos.Exec based on ExecuteProcess, since Dos.Exec cuts the
+ * command line off after 255 characters, which is too short for Fuse. Splits
+ * the command line into arguments the same way. Like the original, it sets
+ * DosError, and DosExitCode below returns the program's exit code. Note that
+ * ExecuteProcess also raises EOSError if the program exits with 127, which is
+ * what the shell returns for a command it cannot find.
+ *
+ * To go back to Dos.Exec (e.g. without SysUtils), just remove this procedure,
+ * DosExitCode and LastExitCode.
+ *)
+procedure Exec(const Path, ComLine: String);
+begin
+  DosError := 0;
+  LastExitCode := 0;
+  try
+    LastExitCode := ExecuteProcess(Path, ComLine);
+  except
+    on EOSError do DosError := 2;
+  end;
+end;
+
+(**
+ * Replaces Dos.DosExitCode to go with Exec above.
+ *)
+function DosExitCode: Integer;
+begin
+  DosExitCode := LastExitCode;
 end;
 
 (**
