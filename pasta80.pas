@@ -8987,7 +8987,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1846, 0, 1686, 1844, 1850
+    1859, 0, 1686, 1857, 1863
   );
 
 var

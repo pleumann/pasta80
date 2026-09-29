@@ -907,6 +907,43 @@ begin
 end;
 
 (* -------------------------------------------------------------------------- *)
+(* --- Cleanup -------------------------------------------------------------- *)
+(* -------------------------------------------------------------------------- *)
+
+(* The five reading cases each leave their scratch file behind. They cannot
+   do otherwise: the error they exist to provoke kills the program on the
+   Read, several statements before any Erase could run, and that abort is
+   the whole point of them.
+
+   So the sweep tidies up at the end instead. The call that finds no case
+   left is the only one that reaches ordinary code and comes back from it,
+   which makes it the one place this can happen at all.
+
+   i-minus throughout, and IOResult read every time round: after a full
+   sweep all five are there, but a single case run by hand leaves one file
+   and four failures behind, and an uncollected one would stop the program
+   at the i-plus below. *)
+{$ifndef NOFILES}
+overlay procedure Cleanup;
+const
+  Leftover: array[1..5] of String[11] = (
+    'RDINT.TMP', 'RDREAL.TMP', 'RDENUM.TMP', 'RDEMPTY.TMP', 'IOPEND.TMP');
+var
+  F: File;
+  I, E: Integer;
+begin
+  {$i-}
+  for I := 1 to 5 do
+  begin
+    Assign(F, Leftover[I]);
+    Erase(F);
+    E := IOResult;
+  end;
+  {$i+}
+end;
+{$endif}
+
+(* -------------------------------------------------------------------------- *)
 (* --- Dispatch ------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 
@@ -1053,6 +1090,10 @@ begin
     Run
   else
   begin
+    {$ifndef NOFILES}
+      Cleanup;
+    {$endif}
+
     WriteLn;
     {$ifdef OPT_PRINTER}
       WriteLn('No case ', TestNo, ' -- all ', CaseCount, ' have run.');

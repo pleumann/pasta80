@@ -150,7 +150,23 @@ begin
   Assign(DummyFile, 'OLD.TMP');
   Rename(DummyFile, 'NEW.TMP');
   Assert(IOResult <> 0);
+
+  { Both are still on disk at this point -- OLD.TMP because the rename just
+    above was supposed to fail, NEW.TMP because its existing is what made it
+    fail. Everything else in this file erases what it created; these two were
+    the exception, and the test left them behind in whatever directory it
+    happened to run in. }
+  Assign(DummyFile, 'OLD.TMP');
+  Erase(DummyFile);
+  Assert(IOResult = 0);
+
+  Assign(DummyFile, 'NEW.TMP');
+  Erase(DummyFile);
+  Assert(IOResult = 0);
   {$i+}
+
+  Assert(not FileExists('OLD.TMP'));
+  Assert(not FileExists('NEW.TMP'));
 end;
 
 { --- Raw files --- }
@@ -772,6 +788,19 @@ begin
   Assign(BinFile, 'BIN.TMP');
   Rewrite(BinFile);
 
+  { For a typed file the size is the number of *components*, not the number
+    of 128-byte records the thing occupies on disk. Nothing on CP/M knows
+    that count, so the RTL keeps it itself: CompCount in the FileRec, bumped
+    by FileWrite and written into the file header on Close.
+
+    ComputerRec is 16 bytes, so all five below plus the 4-byte header come to
+    84 bytes -- a single CP/M record. A size measured the way the OS measures
+    would say 1 here; FileSize has to say 5. That is the whole point of the
+    counter, and it is only observable while the file is still open: the
+    FileSize further down is preceded by a Close/Reset and reads the count
+    back from the header, which looks right even if the bookkeeping is not. }
+  Assert(FileSize(BinFile) = 0);
+
   { Write 5 computer records }
   with ComputerRecVar do
   begin
@@ -780,6 +809,7 @@ begin
     Cool := True;
   end;
   Write(BinFile, ComputerRecVar);
+  Assert(FileSize(BinFile) = 1);
 
   with ComputerRecVar do
   begin
@@ -788,6 +818,7 @@ begin
     Cool := False;
   end;
   Write(BinFile, ComputerRecVar);
+  Assert(FileSize(BinFile) = 2);
 
   with ComputerRecVar do
   begin
@@ -796,6 +827,7 @@ begin
     Cool := True;
   end;
   Write(BinFile, ComputerRecVar);
+  Assert(FileSize(BinFile) = 3);
 
   with ComputerRecVar do
   begin
@@ -804,6 +836,7 @@ begin
     Cool := False;
   end;
   Write(BinFile, ComputerRecVar);
+  Assert(FileSize(BinFile) = 4);
 
   with ComputerRecVar do
   begin
@@ -812,6 +845,7 @@ begin
     Cool := True;
   end;
   Write(BinFile, ComputerRecVar);
+  Assert(FileSize(BinFile) = 5);
 
   Close(BinFile);
 
@@ -848,6 +882,29 @@ begin
     LastCool := ComputerRecVar.Cool;
   end;
   Assert(RecCount = FS);
+
+  { The counter only grows at the end -- FileWrite bumps it on
+    "if CompIndex = CompCount" -- so overwriting a component in the middle
+    has to leave the size alone. Note this file came from Reset, so the count
+    being tested was loaded from the header rather than counted up from zero
+    the way it was above. }
+  Seek(BinFile, 2);
+  Write(BinFile, ComputerRecVar);
+  Assert(FileSize(BinFile) = 5);
+
+  { Writing past the end does grow it, still with nothing closed in between.
+    No FilePos check here on purpose: it is the only use of FilePos on a
+    typed file in this program, and pulling FileFilePos in costs 66 resident
+    bytes -- a fifth of the heap that is left on the Next -- to say something
+    FileSize has already said. }
+  Seek(BinFile, FileSize(BinFile));
+  Write(BinFile, ComputerRecVar);
+  Assert(FileSize(BinFile) = 6);
+
+  { ...and Close has to carry that into the header }
+  Close(BinFile);
+  Reset(BinFile);
+  Assert(FileSize(BinFile) = 6);
 
   Close(BinFile);
   Erase(BinFile);
