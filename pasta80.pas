@@ -9121,7 +9121,7 @@ begin
       WriteLn('Running...');
 
       if (TestSuites[I] = 'errors') and (Binary = btCPM) then
-        for J := 1 to 33 do
+        for J := 1 to 34 do
         begin
           StartParams := IntToStr(J);
           DoRun(False, False, Log);
