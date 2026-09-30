@@ -6738,8 +6738,20 @@ begin
     Sym := LookupGlobalOrFail(Scanner.StrValue);
     if Sym^.Kind <> scVar then Error('Identifier "' + Scanner.StrValue + '" not a var.');
 
+    (* Like Turbo Pascal 3, we compute the number of iterations up front, in
+       16 bit and from the untruncated start value. The loop then counts down
+       to zero, while the loop variable follows along and may wrap around if
+       it is only a byte wide. *)
+
     EmitAddress(Sym);
     NextToken; Expect(toBecomes); NextToken; TypeCheck(Sym^.DataType, ParseExpression, tcAssign);
+
+    Emit('', 'pop de', 'Keep untruncated start value');
+    Emit('', 'pop hl', '');
+    Emit('', 'push de', '');
+    Emit('', 'push hl', '');
+    Emit('', 'push de', '');
+
     EmitStore(Sym^.DataType);
 
     if Scanner.Token = toTo then
@@ -6755,20 +6767,25 @@ begin
     Tag3 := GetLabel('forbreak');
     Tag4 := GetLabel('fornext');
 
-    Emit('', 'pop de','Dup and pre-check limit');
-    if Sym^.DataType^.Value = 1 then
-      Emit('', 'ld d,0', 'Truncate limit like loop var');
-    Emit('', 'push de','');
-    Emit('', 'push de', '');
+    (* Flipping the sign bits turns the signed comparison into an unsigned one
+       without changing the difference. Neither inc hl nor push touch the
+       carry, and a count of 0 after the inc means 65536 iterations. *)
+
+    Emit('', 'pop de', 'Compute iteration count');
+    Emit('', 'pop hl', '');
+    if Delta = 1 then Emit('', 'ex de,hl', '');
+    Emit('', 'ld a,h', '');
+    Emit('', 'xor $80', '');
+    Emit('', 'ld h,a', '');
+    Emit('', 'ld a,d', '');
+    Emit('', 'xor $80', '');
+    Emit('', 'ld d,a', '');
+    Emit('', 'sbc hl,de', '');
+    Emit('', 'inc hl', '');
+    Emit('', 'push hl', '');
+    Emit('', 'jp c,' + Tag3, '');
 
     Offset := Offset - 2;
-
-    EmitAddress(Sym);
-    EmitLoad(Sym^.DataType);
-
-    if Delta = 1 then EmitRelOp(toGeq) else EmitRelOp(toLeq); (* Operands swapped! *)
-
-    EmitJumpIf(False, Tag3);
 
     Emit(Tag, '', '');
 
@@ -6777,23 +6794,19 @@ begin
 
     Emit(Tag4, '', '');
 
-    Emit('', 'pop de','Dup and check limit');
-    Emit('', 'push de','');
-    Emit('', 'push de', '');
-
-    EmitAddress(Sym);
-    EmitLoad(Sym^.DataType);
-
-    if Delta = 1 then EmitRelOp(toGt) else EmitRelOp(toLt); (* Operands swapped! *)
-
-    EmitJumpIf(False, Tag3);
+    Emit('', 'pop hl', 'Count down and check');
+    Emit('', 'dec hl', '');
+    Emit('', 'push hl', '');
+    Emit('', 'ld a,h', '');
+    Emit('', 'or l', '');
+    Emit('', 'jp z,' + Tag3, '');
 
     EmitAddress(Sym);
     if Delta = 1 then EmitInc(Sym^.DataType) else EmitDec(Sym^.DataType);
 
     EmitJump(Tag);
 
-    Emit(Tag3, 'pop de', 'Cleanup limit'); (* Cleanup loop variable *)
+    Emit(Tag3, 'pop de', 'Cleanup count'); (* Cleanup loop variable *)
 
     Offset := Offset + 2;
   end
@@ -9022,7 +9035,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1861, 0, 1688, 1859, 1865
+    1868, 0, 1695, 1866, 1872
   );
 
 var

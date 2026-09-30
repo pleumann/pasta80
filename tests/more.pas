@@ -152,16 +152,17 @@ begin
   Assert(Guard2 = 2222);
 end;
 
-(* A for loop over a Byte variable used to keep the final value in 16 bit,
-   while the loop variable is truncated to a byte. With a final value outside
-   0..255 the exit condition could never be met and the loop ran forever. The
-   final value is now truncated like the loop variable. Issue #162.
-
-   This is a stopgap: Turbo Pascal 3 computes the number of iterations up
-   front in 16 bit, so it runs the first loop five times (3, 2, 1, 0, 255)
-   and the second one 51 times. Switching to that scheme would change the
-   expected values below. *)
+(* A for loop over a Byte variable used to compare the byte sized loop
+   variable against the 16 bit final value in every step. With a final value
+   outside 0..255 the exit condition could never be met and the loop ran
+   forever. Issue #162. Like Turbo Pascal 3, the loop now computes the number
+   of iterations up front, in 16 bit and from the untruncated start value, and
+   lets the loop variable wrap around. The expected values were checked on a
+   real TP3. Issue #163. *)
 procedure TestForByteLimit;
+var
+  Count: Byte;
+  Last, Iterations: Integer;
 begin
   WriteLn('--- TestForByteLimit ---');
 
@@ -169,13 +170,38 @@ begin
   W := 0;
   for B := 3 downto I do
     W := W + 1;
-  Assert(W = 0);
+  Assert(W = 5);
+  Assert(B = 255);
 
   I := 300;
   W := 0;
   for B := 250 to I do
     W := W + 1;
+  Assert(W = 51);
+  Assert(B = 44);
+
+  W := 0;
+  for B := 0 to 260 do
+    W := W + 1;
+  Assert(W = 261);
+
+  Count := 0;
+  W := 0;
+  for B := Count - 1 downto 0 do
+    W := W + 1;
   Assert(W = 0);
+
+  (* 65536 iterations, one more than fits into the 16 bit count. *)
+  Iterations := 0;
+  Last := 0;
+  for I := -32768 to 32767 do
+  begin
+    Iterations := Iterations + 1;
+    Last := I;
+  end;
+  Assert(Iterations = 0);
+  Assert(Last = 32767);
+  Assert(I = 32767);
 end;
 
 begin
