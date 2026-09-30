@@ -6756,6 +6756,8 @@ begin
     Tag4 := GetLabel('fornext');
 
     Emit('', 'pop de','Dup and pre-check limit');
+    if Sym^.DataType^.Value = 1 then
+      Emit('', 'ld d,0', 'Truncate limit like loop var');
     Emit('', 'push de','');
     Emit('', 'push de', '');
 
@@ -9020,7 +9022,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1859, 0, 1686, 1857, 1863
+    1861, 0, 1688, 1859, 1865
   );
 
 var

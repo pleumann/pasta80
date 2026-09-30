@@ -152,6 +152,32 @@ begin
   Assert(Guard2 = 2222);
 end;
 
+(* A for loop over a Byte variable used to keep the final value in 16 bit,
+   while the loop variable is truncated to a byte. With a final value outside
+   0..255 the exit condition could never be met and the loop ran forever. The
+   final value is now truncated like the loop variable. Issue #162.
+
+   This is a stopgap: Turbo Pascal 3 computes the number of iterations up
+   front in 16 bit, so it runs the first loop five times (3, 2, 1, 0, 255)
+   and the second one 51 times. Switching to that scheme would change the
+   expected values below. *)
+procedure TestForByteLimit;
+begin
+  WriteLn('--- TestForByteLimit ---');
+
+  I := -1;
+  W := 0;
+  for B := 3 downto I do
+    W := W + 1;
+  Assert(W = 0);
+
+  I := 300;
+  W := 0;
+  for B := 250 to I do
+    W := W + 1;
+  Assert(W = 0);
+end;
+
 begin
   TestUnaryOnSubranges;
   TestIncDecOnSubranges;
@@ -159,6 +185,7 @@ begin
   TestSizeOfSubranges;
   TestNegativeSubrange;
   TestStoreWidth;
+  TestForByteLimit;
 
   WriteLn;
   WriteLn('************************');
