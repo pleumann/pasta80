@@ -94,7 +94,7 @@ $ pasta80 --cpm hello.pas     # Compiles hello.pas to hello.com
 $ pasta80 hello.pas           # Does exactly the same
 ```
 
-You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend the excellent [tnylpo](https://gitlab.com/gbrein/tnylpo). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
+You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend the excellent [tnylpo](https://gitlab.com/gbrein/tnylpo) (for which I provide binaries [here](https://github.com/pleumann/tnylpo/releases)). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
 
 ```bash
 $ tnylpo hello                # Run in line-mode
@@ -432,7 +432,11 @@ You can also run it in a shell within Visual Studio Code, in which case it would
 The following external tools are supported for running compiled programs on the host machine:
 
 * [tnylpo](https://gitlab.com/gbrein/tnylpo) for CP/M programs (press \<R\> for line mode, \<Shift-R\> for full-screen mode).
+  * Some distros and package managers provide tnylpo.
+  * If yours doesn't or the version is outdated, try one of the binaries I provide [here](https://github.com/pleumann/tnylpo/releases).
+  * I also provide a Windows binary there.
 * [Fuse](https://fuse-emulator.sourceforge.net) for programs targeting the ZX Spectrum 48K and 128K machines.
+  * For MacOS you can use [this fork](https://github.com/fmeunier/fuse-for-macos).
 * [CSpect](https://mdf200.itch.io/cspect) for ZX Spectrum Next programs.
   * Please have [hdfmonkey](https://github.com/gasman/hdfmonkey) ready for manipulating the SD card image.
   * If you're on MacOS or Linux, you also need `mono` because CSpect is a .NET application.
