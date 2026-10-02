@@ -7910,6 +7910,7 @@ begin
   EmitI('slot 3');
   EmitI('page ' + IntToStr(CurrentBank));
   EmitI('org ' + T);
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
 
   Banked := True;
 
@@ -7923,7 +7924,6 @@ begin
     ParseProcFunc(Sym);
   end;
 
-  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
   Emit('OVR_' + S + '_START', 'equ ' + T, '');
   Emit('OVR_' + S + '_END', 'equ $', '');
 
@@ -7954,6 +7954,7 @@ begin
   EmitI('slot 7');
   EmitI('page ' + IntToStr(CurrentBank));
   EmitI('org ' + T);
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
 
   Banked := True;
 
@@ -7969,7 +7970,6 @@ begin
 
   //EmitI('display "Page:", $$');
 
-  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
   Emit('OVR_' + S + '_START', 'equ ' + T, '');
   Emit('OVR_' + S + '_END', 'equ $', '');
 
@@ -7999,6 +7999,7 @@ begin
   EmitI('slot 7');
   EmitI('page ' + IntToStr(CurrentBank));
   EmitI('org ' + T);
+  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
 //  EmitI('ld24 hl, $' + IntToHex($40000 + CurrentBank * 8192, 5));
 //  EmitI('ld24 de, $4e000');
   EmitI('dw OVR_' + S + '_END-OVR_' + S + '_START');
@@ -8018,7 +8019,6 @@ begin
 
   //EmitI('display "Page:", $$');
 
-  Emit('OVR_' + S + '_PAGE', 'equ $$', '');
   Emit('OVR_' + S + '_START', 'equ ' + T, '');
   Emit('OVR_' + S + '_END', 'equ $', '');
 
