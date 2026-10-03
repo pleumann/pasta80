@@ -46,6 +46,13 @@ farcall:        ld      c,a
                 ld      a,(curpage)             ; See if we need to switch bank
                 cp      c
                 jr      nz,farcall1
+                ld      a,(localsp)             ; Same overlay. Called from the outermost
+                cp      stack_top               ; level (= non-overlay code)? Then we must
+                ld      a,c                     ; track the call nevertheless, otherwise
+                jr      z,farcall1              ; overlay code would run at the outermost
+                                                ; level and its own far calls would not
+                                                ; switch back to it (see farcall2). The
+                                                ; bank switch itself is skipped, though.
                 jp      (hl)                    ; Fast lane, use callee's ret
 farcall1:       di
 
@@ -66,8 +73,9 @@ farcall1:       di
                 ld      (localsp),sp            ; Save local SP
                 ld      sp,(globalsp)           ; Activate global stack
                 ld      a,c
-                ld      (curpage),a
-                call    banksel                 ; Change bank
+                cp      b                       ; Already the right one (outermost call
+                ld      (curpage),a             ; from above)? Then nothing to switch.
+                call    nz,banksel              ; Change bank
 
                 ei
 

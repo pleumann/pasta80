@@ -8986,28 +8986,31 @@ const
   (**
    * The name of our test suites (all under tests/*.pas).
    *)
-  TestSuites: array[0..6] of String = (
-    'core', 'heap', 'files', 'more', 'params', 'sound', 'errors'
+  TestSuites: array[0..7] of String = (
+    'core', 'heap', 'files', 'more', 'params', 'sound', 'overlays', 'errors'
   );
 
   (**
    * Which test suites do we need to run for which platform(s)?
    *)
-  MandatoryFor: array[0..6] of set of TBinaryType = (
+  MandatoryFor: array[0..7] of set of TBinaryType = (
     [btAgon, btCPM, btZX128, btZXN],
     [btAgon, btCPM, btZX128, btZXN],
     [btAgon, btCPM,          btZXN],
     [btAgon, btCPM, btZX128, btZXN],
     [btAgon, btCPM                ],
     [btAgon,        btZX128, btZXN],
+    [btAgon, btCPM, btZX128, btZXN],
     [btAgon, btCPM, btZX128, btZXN]
   );
 
   (**
-   * Whether a certain test needs overlays on a Spectrum.
+   * Whether a certain test needs overlays on a Spectrum. The overlays test
+   * suite also uses them on the Agon (see below). On CP/M there are none,
+   * so overlays.pas runs as an ordinary program there.
    *)
-  NeedsOverlays: array[0..6] of Boolean = (
-    True, False, True, False, False, False, True
+  NeedsOverlays: array[0..7] of Boolean = (
+    True, False, True, False, False, False, True, True
   );
 
   (**
@@ -9020,8 +9023,8 @@ const
   (**
    * Command line args. Only needed by params.pas. Multiple spaces intended.
    *)
-  CmdLineArgs: array[0..6] of String = (
-    '', '', '', '', 'TIC TAC     TOE', '', ''
+  CmdLineArgs: array[0..7] of String = (
+    '', '', '', '', 'TIC TAC     TOE', '', '', ''
   );
 
   (**
@@ -9035,7 +9038,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1868, 0, 1695, 1866, 1872
+    1900, 0, 1727, 1898, 1904
   );
 
 var
@@ -9119,7 +9122,8 @@ begin
     begin
       SrcFile := FAbsolute('tests/' + TestSuites[I] + '.pas');
       Log := FAbsolute('tests/' + TestSuites[I]) + '.log';
-      Overlays := NeedsOverlays[I] and (Binary in [btZX128, btZXN]);
+      Overlays := NeedsOverlays[I] and ((Binary in [btZX128, btZXN])
+        or ((TestSuites[I] = 'overlays') and (Binary = btAgon)));
       Format := FormatUsed[Binary];
       if (TestSuites[I] = 'errors') and (LoaderUsed[Binary] <> '') then
         LoaderFile := HomeDir + '/misc/' + LoaderUsed[Binary]
