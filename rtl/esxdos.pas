@@ -156,7 +156,8 @@ begin
   R.HL := Addr(B);
 
   LastError := EsxDos($a1, R);
-  BlockFileSize := (B[7] or (B[8] shl 8)) div 128;
+  (* Size is 32 bits in B[7..10], blocks are 128 bytes (files up to 4 MB) *)
+  BlockFileSize := (B[7] shr 7) or (B[8] shl 1) or (B[9] shl 9);
 end;
 
 function BlockEof(var F: FileControlBlock): Boolean;
@@ -175,8 +176,8 @@ begin
   F.RL := I;
 
   R.A := F.Handle;
-  R.BC := 0; (*I shr 9;*)
-  R.DE := I * 128; (*shl 7;*)
+  R.BC := I shr 9;  (* Byte offset I * 128 as 32 bits in BC:DE *)
+  R.DE := I shl 7;
   R.HL := 0;
 
   LastError := EsxDos($9f, R);

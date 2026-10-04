@@ -910,6 +910,159 @@ begin
   Erase(BinFile);
 end;
 
+{ --- Files beyond 32K and 64K (issue #165) --- }
+
+(**
+ * Byte offsets inside a file used to be 16 bit on the Next: BlockFileSize
+ * went negative from 32K on, and BlockSeek dropped the upper half of the
+ * offset, so a seek past 64K landed at the start of the file again. Every
+ * file kind sits on top of those two, so each one gets a file that is
+ * larger than 64K here, and each one is checked on both sides of 32K and
+ * past 64K. Loop results are collected in a Boolean so that the number of
+ * assertions stays the same no matter how many records there are.
+ *)
+overlay procedure TestLargeFiles;
+const
+  Blocks = 600;                         { 76800 bytes }
+  Comps = 4500;                         { 4 + 4500 * 16 = 72004 bytes }
+  Lines = 520;                          { 520 * 132 = 68640 bytes and up }
+var
+  Idx, Tag: Integer;
+  Ok: Boolean;
+begin
+  WriteLn('--- TestLargeFiles ---');
+
+  { Untyped: every block carries its own number in the first two bytes }
+  Assign(RawFile, 'BIG.TMP');
+  Rewrite(RawFile);
+  FillChar(Buffer, 128, '.');
+  for Idx := 0 to Blocks - 1 do
+  begin
+    Buffer[0] := Chr(Lo(Idx));
+    Buffer[1] := Chr(Hi(Idx));
+    BlockWrite(RawFile, Buffer, 1, Actual);
+  end;
+  Assert(FileSize(RawFile) = Blocks);
+  Close(RawFile);
+
+  Reset(RawFile);
+  Assert(FileSize(RawFile) = Blocks);  { from the OS this time }
+
+  Ok := True;
+  for Idx := 0 to 5 do
+  begin
+    Tag := Idx * 110 + 7;               { 7, 117, ..., 557 }
+    Seek(RawFile, Tag);
+    BlockRead(RawFile, Buffer, 1, Actual);
+    Ok := Ok and (Actual = 1) and (Ord(Buffer[0]) + 256 * Ord(Buffer[1]) = Tag)
+      and (FilePos(RawFile) = Tag + 1);
+  end;
+  Assert(Ok);
+
+  { Overwrite a block past 64K, then check its neighbors are untouched }
+  Seek(RawFile, 520);
+  Buffer[0] := 'X';
+  Buffer[1] := 'Y';
+  BlockWrite(RawFile, Buffer, 1, Actual);
+
+  Seek(RawFile, 519);
+  BlockRead(RawFile, Buffer, 2, Actual);
+  Assert(Actual = 2);
+  Assert((Ord(Buffer[0]) + 256 * Ord(Buffer[1]) = 519)
+    and (Buffer[128] = 'X') and (Buffer[129] = 'Y'));
+
+  Seek(RawFile, Blocks - 1);
+  BlockRead(RawFile, Buffer, 1, Actual);
+  Assert(Eof(RawFile));
+  Assert(FileSize(RawFile) = Blocks);  { overwriting did not grow it }
+
+  { The first block must have survived all of that }
+  Seek(RawFile, 0);
+  BlockRead(RawFile, Buffer, 1, Actual);
+  Assert((Buffer[0] = #0) and (Buffer[1] = #0));
+
+  Close(RawFile);
+  Erase(RawFile);
+
+  { Typed: 16 byte components straddle block boundaries every now and then }
+  Assign(BinFile, 'BIG.TMP');
+  Rewrite(BinFile);
+  ComputerRecVar.Name := 'Big';
+  ComputerRecVar.Cool := True;
+  for Idx := 0 to Comps - 1 do
+  begin
+    ComputerRecVar.Year := Idx;
+    Write(BinFile, ComputerRecVar);
+  end;
+  Close(BinFile);
+
+  Reset(BinFile);
+  Assert(FileSize(BinFile) = Comps);
+
+  Ok := True;
+  for Idx := 0 to 5 do
+  begin
+    Tag := Idx * 850 + 3;               { 3, 853, ..., 4253 }
+    Seek(BinFile, Tag);
+    Read(BinFile, ComputerRecVar);
+    Ok := Ok and (ComputerRecVar.Year = Tag);
+  end;
+  Assert(Ok);
+
+  { Overwrite components past 64K; FileFlush has to find its block again }
+  ComputerRecVar.Year := -1;
+  Seek(BinFile, 4200);
+  Write(BinFile, ComputerRecVar);
+  Seek(BinFile, Comps - 1);
+  Write(BinFile, ComputerRecVar);
+  Close(BinFile);
+
+  Reset(BinFile);
+  Assert(FileSize(BinFile) = Comps);
+  Seek(BinFile, 4199);
+  Read(BinFile, ComputerRecVar);
+  Tag := ComputerRecVar.Year;
+  Read(BinFile, ComputerRecVar);
+  Assert((Tag = 4199) and (ComputerRecVar.Year = -1));
+  Read(BinFile, ComputerRecVar);
+  Assert(ComputerRecVar.Year = 4201);
+  Seek(BinFile, Comps - 1);
+  Read(BinFile, ComputerRecVar);
+  Assert(ComputerRecVar.Year = -1);
+  Assert(Eof(BinFile));
+  Close(BinFile);
+  Erase(BinFile);
+
+  { Text: Append seeks to the last block via BlockFileSize }
+  FillChar(S, 129, '-');
+  S[0] := #128;
+  Assign(F, 'BIG.TMP');
+  Rewrite(F);
+  for Idx := 1 to Lines do
+    WriteLn(F, S);
+  Close(F);
+
+  Append(F);
+  WriteLn(F, 'The End');
+  Close(F);
+
+  Reset(F);
+  Idx := 0;
+  Ok := True;
+  while not Eof(F) do
+  begin
+    ReadLn(F, S);
+    Inc(Idx);
+    if Idx <= Lines then Ok := Ok and (Length(S) = 128);
+  end;
+  Close(F);
+  Assert(Ok);
+  Assert(Idx = Lines + 1);
+  Assert(S = 'The End');
+
+  Erase(F);
+end;
+
 { --- $i directive and IOResult --- }
 
 overlay procedure TestIOResult;
@@ -964,6 +1117,8 @@ begin
   TestTextReadLnBounds;
 
   TestTypedFiles;
+
+  TestLargeFiles;
 
   TestIOResult;
 
