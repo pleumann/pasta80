@@ -3235,12 +3235,12 @@ begin
   end
   else if Format = tfBinary then
   begin
-    EmitI('savebin "' + BinFile + '",$8000,TEXT_END-$8000');
+    EmitI('savebin "' + BinFile + '",TEXT,TEXT_END-TEXT');
     WriteZXOverlays(ChangeExt(BinFile, ''))
   end
   else if Format = tfPlus3Dos then
   begin
-    EmitI('save3dos "' + BinFile + '",$8000,TEXT_END-$8000,3,$8000');
+    EmitI('save3dos "' + BinFile + '",TEXT,TEXT_END-TEXT,3,TEXT');
     WriteZXOverlays(ChangeExt(BinFile, ''))
   end
   else if Format = tfTape then
@@ -3252,7 +3252,7 @@ begin
     EmitI('incbin "' + PosixToNative(LoaderPath) + '"');
 
     EmitI('savetap "' + BinFile2 + '",BASIC,"run.bas",$0080,$-$0080,0');
-    EmitI('savetap "' + BinFile2 + '",CODE,"bin",$8000,TEXT_END-$8000');
+    EmitI('savetap "' + BinFile2 + '",CODE,"bin",TEXT,TEXT_END-TEXT');
     WriteZXOverlays(BinFile2);
   end
   else if Format = tfRunDir then
@@ -3264,11 +3264,11 @@ begin
     {$i+}
 
     CopyFile(LoaderPath, BinFile + '/run.bas');
-    EmitI('save3dos "' + BinFile + '/bin",$8000,TEXT_END-$8000,3,8000');
+    EmitI('save3dos "' + BinFile + '/bin",TEXT,TEXT_END-TEXT,3,TEXT');
     WriteZXOverlays(BinFile + '/');
   end
   else if Format = tfSnapshot then
-    EmitI('savesna "' + BinFile + '",$8000');
+    EmitI('savesna "' + BinFile + '",TEXT');
 
   if (Binary in [btZX, btZX128]) and not Release then
       EmitI('.BPLIST "' + ChangeExt(BinFile, '.brk') + '" fuse');
