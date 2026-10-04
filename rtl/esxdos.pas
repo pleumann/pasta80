@@ -149,6 +149,7 @@ function BlockFileSize(var F: FileControlBlock): Integer;
 var
   R: Registers;
   B: array[0..10] of Byte;
+  N: Integer;
 begin
   if LastError <> 0 then Exit;
 
@@ -157,7 +158,10 @@ begin
 
   LastError := EsxDos($a1, R);
   (* Size is 32 bits in B[7..10], blocks are 128 bytes (files up to 4 MB) *)
-  BlockFileSize := (B[7] shr 7) or (B[8] shl 1) or (B[9] shl 9);
+  N := (B[7] shr 7) or (B[8] shl 1) or (B[9] shl 9);
+  (* A short last block still counts, just like BlockBlockRead hands it out *)
+  if B[7] and $7f <> 0 then Inc(N);
+  BlockFileSize := N;
 end;
 
 function BlockEof(var F: FileControlBlock): Boolean;

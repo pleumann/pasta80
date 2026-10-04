@@ -279,6 +279,60 @@ begin
   Assert(not FileExists('RAW.TMP'));
 end;
 
+{$ifndef SYS_CPM}
+(**
+ * A file whose length is not a multiple of 128 bytes. The RTL never writes
+ * one (CP/M semantics), but on the Next and the Agon it can come from
+ * anywhere else, so it is made here by appending 100 bytes through the OS,
+ * bypassing the RTL. BlockRead hands out the short last block as a whole
+ * record padded with ^Z, so FileSize and Eof have to count it, too. The
+ * loop has a guard because a broken Eof could otherwise spin forever.
+ *)
+overlay procedure TestOddFileSize;
+var
+  FCB: FileControlBlock absolute RawFile;
+  R: Registers;
+  Idx: Integer;
+  Ignored: Byte;
+begin
+  WriteLn('--- TestOddFileSize ---');
+
+  Assign(RawFile, 'ODD.TMP');
+  Rewrite(RawFile);
+  FillChar(Buffer, 128, 'A');
+  BlockWrite(RawFile, Buffer, 1, Actual);
+
+  FillChar(Buffer, 100, 'B');
+  R.HL := Addr(Buffer);
+  {$ifdef SYS_ZXNEXT}
+  R.A := FCB.Handle;
+  R.BC := 100;
+  Ignored := EsxDos($9e, R);            { F_WRITE }
+  {$endif}
+  {$ifdef SYS_AGON}
+  R.C := FCB.Handle;
+  R.DE := 100;
+  Ignored := MOSAPI($1b, R);            { mos_fwrite }
+  {$endif}
+  Close(RawFile);
+
+  Reset(RawFile);
+  Assert(FileSize(RawFile) = 2);
+
+  Idx := 0;
+  while not Eof(RawFile) and (Idx < 5) do
+  begin
+    BlockRead(RawFile, Buffer, 1, Actual);
+    Inc(Idx);
+  end;
+  Assert(Idx = 2);
+  Assert((Buffer[99] = 'B') and (Buffer[100] = #26) and (Buffer[127] = #26));
+
+  Close(RawFile);
+  Erase(RawFile);
+end;
+{$endif}
+
 { --- Text --- }
 
 overlay procedure TestTextWithStrings;
@@ -1102,6 +1156,9 @@ begin
   TestFileRename;
 
   TestUntypedFiles;
+  {$ifndef SYS_CPM}
+  TestOddFileSize;
+  {$endif}
 
   TestTextWithStrings;
   TestTextWriteFormatted;

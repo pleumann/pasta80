@@ -131,6 +131,7 @@ mos_file_length:
     mklil
 ;    ld      hl,(hl) ;lower 2 bytes
     ldhl_hl_
+    ld      e,l     ;keep the low 7 bits for rounding up below
     ld      b,7
 mos_file_len_divlp:
     or      a
@@ -138,6 +139,10 @@ mos_file_len_divlp:
     rr      h
     rr      l
     djnz    mos_file_len_divlp
+    ld      a,e     ;a short last block still counts as a whole record,
+    and     07fh    ;just like BlockBlockRead hands it out
+    ret     z
+    inc     hl
     ret
 
 
