@@ -207,7 +207,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Exec(Command, Params: String)` | [Agon] | TP4+ procedure to execute the command `Command` using the `Params` as parameters. Parameters may be empty/blank. Result is returned in `DosExitCode`. Will only work with built-in MOS commands and MOSlets - i.e. executables that run from `0x0b0000`. Other bin files will crash or not return. No checking is performed for load location as this needs to be done manually. |
+| `Exec(Command, Params: String)` | [Agon] | TP4+ procedure to execute the command `Command` using the `Params` as parameters. Parameters may be empty/blank. Result is returned in `DosExitCode`. Will only work with built-in MOS commands and MOSlets - i.e. executables that run from `$B0000`. Other bin files will crash or not return. No checking is performed for load location as this needs to be done manually. |
 
 ---
 

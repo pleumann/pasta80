@@ -116,7 +116,7 @@ $ pasta80 --zx128 hello.pas   # Compiles for ZX Spectrum 128K
 $ pasta80 --zxnext hello.pas  # Compiles for ZX Spectrum Next
 ```
 
-The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In all three cases the binaries are expected to be run from address 0x8000.
+The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In all three cases the binaries are expected to be run from address $8000 (by default, see below).
 
 #### Tapes, snapshots and runnable directories
 
@@ -146,7 +146,21 @@ $ pasta80 --zxnext --run examples/pq.pas    # Results in directory named pq.run
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
 
-Should you ever want to write your own BASIC loader (for either `--tap` or `--run`) because the provided ones are not fancy enough, use the `--loader` parameter.
+Should you ever want to write your own BASIC loader (for either `--tap` or `--run`) because the provided ones are not fancy enough, use the `--loader` parameter. The file you provide there is expected to contain a BASIC program with a valid +3DOS header.
+
+#### Setting your own start address
+
+By default, programs on the Spectrum targets start at address $8000. If you need more space (for instance, on the 128K with overlays, where only $8000-$BFFF is resident), use `--start` to move the start address down to $6000 or anywhere above it. Keep in mind that code below $8000 lives in contended memory and runs a bit slower.
+
+The address can be given in decimal or hex, e.g. `--start 24576`, `--start 0x6000` or `--start '$6000'` (the quotes keep the shell from expanding `$6000`).
+
+```bash
+$ pasta80 --zx48 --tap --start 24576 examples/hello.pas
+```
+
+For `--tap` and `--run`, the compiler then adjusts the loader accordingly: It expects the first line to start with `CLEAR nnnnn` (the start address minus one) and replaces that number. Everything else in the loader should be derived from RAMTOP (`PEEK 23730+256*PEEK 23731`), as the provided loaders do.
+
+If you use your own loader that doesn't follow this convention, you get a warning and the loader is used as it is.
 
 ### Agon Light/Console8 target
 
@@ -160,14 +174,14 @@ integrated into mini IDE and supports emulation and debugging (see below).
 
 Note that the Agon's eZ80 processor extends the Z80 address space out to 24 bit.
 The code generated for the Agon target (currently) uses a 64K block of memory in
-classic Z80 mode (usually running from physical address 0x40000) because neither
+classic Z80 mode (usually running from physical address $40000) because neither
 PASTA/80 nor sjasmplus directly support the flat 24 bit address space yet. You
 can, however, extend this via RAM-based overlays (see below), allowing a single
 program to be up to 440K in size.
 
 PASTA/80 also supports the MOSlet format (`--mos`) for smaller programs that can be run
-from 0xB0000 without overwriting a larger main (or BASIC) program running from
-0x40000. MOSlets cannot exceed 32K size and are not allowed to use overlays.
+from $B0000 without overwriting a larger main (or BASIC) program running from
+$40000. MOSlets cannot exceed 32K size and are not allowed to use overlays.
 
 Note that MOS version 3 or newer is generally recommended, as some functions
 expect it. Some graphics primitives require VDP 2.16 or newer to work.
@@ -218,7 +232,7 @@ calls" whenever necessary.
   page (ZX Spectrum Next) will be reserved for overlays. The overlays use RAM
   bank/page switching.
 - For the Agon, a single, sparse overlay file is generated and loaded to
-  physical address 0x50000. Overlays are copied to the physical address range
+  physical address $50000. Overlays are copied to the physical address range
   $4E000-$4FFFF as needed (the upper 8K of the 64K area for non-ADL programs).
 
 To enable overlays, use the `--ovr` command line parameter. For the ZX targets,

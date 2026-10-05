@@ -555,6 +555,104 @@ begin
     WriteLn('Warning: Cannot write ''', FileName, '. Assuming empty.');
 end;
 
+(**
+ * Checks whether the given buffer starts with a +3DOS header that describes
+ * a BASIC program.
+ *)
+function IsBasicHeader(const Buffer: array of Byte; Count: Integer): Boolean;
+const
+  Signature = 'PLUS3DOS';
+var
+  I: Integer;
+begin
+  IsBasicHeader := (Count >= 128) and (Buffer[15] = 0);
+  for I := 0 to 7 do
+    if Buffer[I] <> Ord(Signature[I + 1]) then IsBasicHeader := False;
+end;
+
+(**
+ * Checks whether the given file is a BASIC program with +3DOS header, which
+ * is what the ZX loaders need to be.
+ *)
+function IsBasicLoader(const FileName: String): Boolean;
+var
+  F: File;
+  Buffer: array[0..127] of Byte;
+  Count: Integer;
+begin
+  IsBasicLoader := False;
+
+  {$i-}
+  Assign(F, FileName);
+  Reset(F, 1);
+  if IOResult <> 0 then Exit;
+
+  BlockRead(F, Buffer, SizeOf(Buffer), Count);
+  IsBasicLoader := (IOResult = 0) and IsBasicHeader(Buffer, Count);
+
+  Close(F);
+  IOResult;
+  {$i+}
+end;
+
+(**
+ * Adjusts the CLEAR statement that opens a BASIC loader in +3DOS format to the
+ * given RAMTOP. Everything else in the loader is supposed to be derived from
+ * RAMTOP at runtime. A loader that doesn't follow this convention is left
+ * alone (with a warning). Returns False only for actual I/O errors.
+ *)
+function PatchLoader(const FileName: String; RamTop: Integer): Boolean;
+var
+  F: File;
+  Buffer: array[0..143] of Byte;
+  Count, I: Integer;
+  S: String;
+  Ok: Boolean;
+begin
+  PatchLoader := False;
+
+  {$i-}
+  Assign(F, FileName);
+  Reset(F, 1);
+  if IOResult <> 0 then Exit;
+
+  BlockRead(F, Buffer, SizeOf(Buffer), Count);
+  if IOResult <> 0 then
+  begin
+    Close(F);
+    IOResult;
+    Exit;
+  end;
+
+  (* Expected: +3DOS header, BASIC program, first line "CLEAR nnnnn" with the
+   * number in small integer form, and a RAMTOP that also has five digits. *)
+  Ok := (Count = SizeOf(Buffer)) and IsBasicHeader(Buffer, Count)
+    and (Buffer[132] = $FD) and (Buffer[138] = $0E)
+    and (Buffer[139] = 0) and (Buffer[140] = 0)
+    and (RamTop >= 10000) and (RamTop <= 65535);
+
+  for I := 133 to 137 do
+    Ok := Ok and (Chr(Buffer[I]) in ['0'..'9']);
+
+  if Ok then
+  begin
+    S := IntToStr(RamTop);
+    for I := 1 to 5 do Buffer[132 + I] := Ord(S[I]);
+    Buffer[141] := RamTop and $FF;
+    Buffer[142] := RamTop shr 8;
+    Buffer[143] := 0;
+
+    Seek(F, 133);
+    BlockWrite(F, Buffer[133], 11);
+  end
+  else
+    WriteLn('Warning: Unable to patch loader');
+
+  Close(F);
+  PatchLoader := IOResult = 0;
+  {$i+}
+end;
+
 (* -------------------------------------------------------------------------- *)
 (* --- Config handling ------------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
@@ -597,6 +695,12 @@ var
    * --loader. Empty means the stock one from misc/ that fits the target.
    *)
   LoaderFile: String = '';
+
+  (**
+   * The start address of the code on the ZX targets, set by --start. Zero means
+   * the default of $8000.
+   *)
+  CustomOrigin: Integer = 0;
 
   (**
    * The command line arguments to be applied when starting the program,
@@ -3126,7 +3230,7 @@ end;
  *)
 procedure EmitFooter(BinFile: String);
 var
-  BinFile2: String;
+  BinFile2, Loader: String;
   I, Is128K: Integer;
 
   (**
@@ -3250,7 +3354,17 @@ begin
 
     EmitI('org 0');
 
-    EmitI('incbin "' + PosixToNative(LoaderPath) + '"');
+    Loader := LoaderPath;
+
+    if CustomOrigin <> 0 then
+    begin
+      Loader := ChangeExt(AsmFile, '.ldr');
+      if not CopyFile(LoaderPath, Loader)
+        or not PatchLoader(Loader, AddrOrigin - 1) then
+          Error('Cannot prepare loader');
+    end;
+
+    EmitI('incbin "' + PosixToNative(Loader) + '"');
 
     EmitI('savetap "' + BinFile2 + '",BASIC,"run.bas",$0080,$-$0080,0');
     EmitI('savetap "' + BinFile2 + '",CODE,"bin",TEXT,TEXT_END-TEXT');
@@ -3265,6 +3379,9 @@ begin
     {$i+}
 
     CopyFile(LoaderPath, BinFile + '/run.bas');
+    if (CustomOrigin <> 0)
+      and not PatchLoader(BinFile + '/run.bas', AddrOrigin - 1) then
+        Error('Cannot prepare loader');
     EmitI('save3dos "' + BinFile + '/bin",TEXT,TEXT_END-TEXT,3,TEXT');
     WriteZXOverlays(BinFile + '/');
   end
@@ -8368,6 +8485,8 @@ begin
     AddrOrigin := $0100
   else if Binary = btAgon then
     AddrOrigin := $0000
+  else if CustomOrigin <> 0 then
+    AddrOrigin := CustomOrigin
   else
     AddrOrigin := $8000;
 
@@ -8444,6 +8563,7 @@ begin
   begin
     DeleteFile(AsmFile);
     DeleteFile(ChangeExt(AsmFile, '.lst'));
+    DeleteFile(ChangeExt(AsmFile, '.ldr'));
   end;
 
   HasStoredState := False;
@@ -9039,7 +9159,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1918, 0, 1727, 1919, 1925
+    1921, 0, 1730, 1922, 1928
   );
 
 var
@@ -9225,7 +9345,7 @@ end;
 procedure Parameters;
 var
   Ide, Tests: Boolean;
-  I: Integer;
+  I, Code: Integer;
 begin
   if ParamCount = 0 then
   begin
@@ -9250,6 +9370,7 @@ begin
     WriteLn;
     WriteLn('  --ovr          enables bank-switched overlays');
     WriteLn('  --loader <fn>  uses <fn> as BASIC loader (ZX, .tap and .run)');
+    WriteLn('  --start <addr> sets start address (ZX, default $8000)');
     WriteLn;
     WriteLn('  --release      ignores assertions and breakpoints');
     WriteLn('  --keepint      keeps intermediate assembly files');
@@ -9314,10 +9435,21 @@ begin
       if (ParamStr(I) = '') or (Copy(ParamStr(I), 1, 2) = '--') then
         Error('Missing file name after --loader');
 
+      LoaderFile := FAbsolute(NativeToPosix(ParamStr(I)));
+
       if FSize(LoaderFile) = -1 then
         Error('Loader "' + PosixToNative(FRelative(LoaderFile)) + '" not found');
+    end
+    else if SrcFile = '--start' then
+    begin
+      I := I + 1;
 
-      LoaderFile := FAbsolute(NativeToPosix(ParamStr(I)));
+      Val(ParamStr(I), CustomOrigin, Code);
+      if (ParamStr(I) = '') or (Code <> 0) then
+        Error('Missing or invalid address after --start');
+
+      if (CustomOrigin < $6000) or (CustomOrigin > $FFFF) then
+        Error('Address after --start must be between $6000 and $FFFF');
     end
     else if SrcFile = '--ide' then
       Ide := True
@@ -9354,7 +9486,13 @@ begin
 
     if not (Format in [tfTape, tfRunDir]) then
       Error('Loader not used for ' + FormatStr[Format] + '.');
+
+    if not IsBasicLoader(LoaderFile) then
+      Error('Loader must be a BASIC program with +3DOS header.');
   end;
+
+  if (CustomOrigin <> 0) and not (Binary in [btZX, btZX128, btZXN]) then
+    Error('Start address not supported by ' + BinaryStr[Binary] + '.');
 
   if Tests and (Binary = btZX) then
     Error('Tests too large for 48K Spectrum. Please use 128K instead.');
