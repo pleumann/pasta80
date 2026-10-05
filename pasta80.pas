@@ -2294,6 +2294,7 @@ begin
               else if C = '*' then          // Alternative notation for comments
               begin
                 C := GetChar;
+                StrValue := '(*' + C;
                 repeat
                   while C <> '*' do
                   begin

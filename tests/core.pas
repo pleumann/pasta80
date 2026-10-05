@@ -88,6 +88,10 @@ begin
   Assert(I = 2);
   (* This is a nasty one ) * ) I := 3; *)
   Assert(I = 2);
+  (*) I := 3; (* This is no less nasty. *)
+  Assert(I = 2);
+  (*x) I := 3; (* And don't get me started on this one. *)
+  Assert(I = 2);
   (* Nested (* comments don't work either. I := 4; *)
   Assert(I = 2);
   (**) I := I + 1; (* *) I := I + 1; (***)
@@ -3462,6 +3466,7 @@ end;
 
 overlay procedure TestDirectives;
 var
+  B: Boolean;
   I: Integer;
 begin
   WriteLn('--- TestDirectives ---');
@@ -3556,6 +3561,16 @@ begin
     Inc(I);
   {$endif}
   Assert(I = 10);
+
+  // Check alternative syntax
+  (*$define gabbahey*)
+
+  (*$ifdef gabbahey*)
+    B := True;
+  (*$else*)
+    B := False;
+  (*$endif*)
+  Assert(B);
 
   // Check PASTA/80 compiler
   {$ifdef pasta}
