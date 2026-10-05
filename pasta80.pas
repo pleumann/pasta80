@@ -7496,13 +7496,13 @@ begin
     Expect(toRParen);
     NextToken;
   end
-  else if Scanner.Token = toNumber then
+  else if (Scanner.Token = toNumber) or (Scanner.Token = toSub) then
   begin
     DataType := CreateSymbol(scSubrangeType, '');
     DataType^.DataType := dtInteger;
 
-    DataType^.Low := Scanner.NumValue;
-    NextToken;
+    ParseScalar(I);
+    DataType^.Low := I;
     Expect(toRange);
     NextToken;
 
@@ -7521,11 +7521,15 @@ begin
         DataType^.Value := 1
       else
         DataType^.Value := 2;
+
+      NextToken;
     end
     else
     begin
-      Expect(toNumber);
-      DataType^.High := Scanner.NumValue;
+      if not ((Scanner.Token = toNumber) or (Scanner.Token = toSub)) then
+        Expect(toNumber);
+      ParseScalar(I);
+      DataType^.High := I;
 
       (* A negative lower bound needs the full 16 bit: loading a byte sized
          variable zero-extends, which would turn -100 into 156. *)
@@ -7534,8 +7538,6 @@ begin
       else
         DataType^.Value := 2;
     end;
-
-    NextToken;
   end
   else if Scanner.Token = toString then
   begin
@@ -9159,7 +9161,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1921, 0, 1730, 1922, 1928
+    1925, 0, 1734, 1926, 1932
   );
 
 var

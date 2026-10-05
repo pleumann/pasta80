@@ -134,6 +134,26 @@ begin
   Assert(I = 100);
 end;
 
+(* Negative literals as bounds, e.g. ARRAY[-1..2], used to be rejected with
+   "Expected Identifier, but got -". *)
+procedure TestNegativeLiteralBounds;
+var
+  A: array[-1..2] of Integer;
+  N: -5 .. -1;
+begin
+  WriteLn('--- TestNegativeLiteralBounds ---');
+
+  A[-1] := 7;
+  A[2] := 9;
+  Assert(A[-1] = 7);
+  Assert(A[2] = 9);
+  Assert(SizeOf(A) = 8);
+
+  N := -5;
+  I := N;
+  Assert(I = -5);
+end;
+
 (* Assigning to a byte sized subrange used to write two bytes and clobber
    whatever followed the variable, because the assignment stored with the type
    TypeCheck returns -- the reduced base type -- instead of the type of the
@@ -210,6 +230,7 @@ begin
   TestNotOnByte;
   TestSizeOfSubranges;
   TestNegativeSubrange;
+  TestNegativeLiteralBounds;
   TestStoreWidth;
   TestForByteLimit;
 
