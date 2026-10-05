@@ -7951,6 +7951,9 @@ begin
       else if Scanner.Token = toForward then
       begin
         NewSym^.IsForward := True;
+        (* Callers before the body need to know where it will live. *)
+        NewSym^.Banked := Banked;
+        NewSym^.BankNo := CurrentBank;
         NextToken;
       end
       else
@@ -7998,6 +8001,8 @@ begin
     end
     else
     begin
+      if (FwdSym <> nil) and ((NewSym^.Banked <> Banked) or (Banked and (NewSym^.BankNo <> CurrentBank))) then
+        Error('Forward declaration and body must be in the same overlay');
       NewSym^.Banked := Banked;
       NewSym^.BankNo := CurrentBank;
       //if Banked then WriteLn('Proc/Func ', NewSym^.Name, ' is in bank ', CurrentBank);
@@ -8285,7 +8290,13 @@ procedure ParseBlock(Sym: PSymbol);
 var
   PrevBlock: PSymbol;
 begin
-  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then EmitI('if __USE' + Sym^.Tag);
+  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then
+  begin
+    EmitI('if __USE' + Sym^.Tag);
+    (* Calls from nested procedures count as calls from this block. *)
+    PrevBlock := CurrentBlock;
+    CurrentBlock := Sym;
+  end;
 
   ParseDeclarations(Sym);
 
@@ -8303,18 +8314,7 @@ begin
   Expect(toBegin);
   NextToken;
 
-  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then
-  begin
-  PrevBlock := CurrentBlock;
-  CurrentBlock := Sym;
-  end;
-
   ParseStatementList('', '');
-
-  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then
-  begin
-  CurrentBlock := PrevBlock;
-  end;
 
   //if Sym <> nil then
     //WriteLn('Leaving level ', Sym^.Level , ' block ', Sym^.Name)
@@ -8326,7 +8326,11 @@ begin
 
   EmitEpilogue(Sym);
 
-  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then EmitI('endif');
+  if SmartLink and (Sym <> nil) and (Sym^.Level = 0) then
+  begin
+    CurrentBlock := PrevBlock;
+    EmitI('endif');
+  end;
 end;
 
 (**
