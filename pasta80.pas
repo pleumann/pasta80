@@ -4345,6 +4345,40 @@ type
   TTypeCheck = (tcExact, tcAssign, tcExpr);
 
 (**
+ * Reduces an ordinal type to the type it is compatible with: aliases and
+ * subranges to their base type, and Byte to Integer.
+ *)
+function OrdinalBase(T: PSymbol): PSymbol;
+begin
+  while T^.Kind in [scAliasType, scSubrangeType] do T := T^.DataType;
+  if T = dtByte then T := dtInteger;
+  OrdinalBase := T;
+end;
+
+(**
+ * Checks that T is a scalar (ordinal) type and returns it unchanged.
+ *)
+function CheckScalar(T: PSymbol): PSymbol;
+begin
+  if not (T^.Kind in [scType, scEnumType, scSubrangeType, scAliasType])
+    or (OrdinalBase(T) = dtReal) or (OrdinalBase(T) = dtUnknown) then
+      Error('Scalar expected');
+  CheckScalar := T;
+end;
+
+(**
+ * Checks that the scalar type T is compatible with the element type Elem
+ * (of a set, or of a case selector) and returns T unchanged. A nil on either
+ * side, as produced by the empty set, is compatible with everything.
+ *)
+function CheckElement(Elem, T: PSymbol): PSymbol;
+begin
+  if (Elem <> nil) and (T <> nil) and (OrdinalBase(Elem) <> OrdinalBase(T)) then
+    Error('Incompatible types');
+  CheckElement := T;
+end;
+
+(**
  * Performs assignment type check. Might promote either type to the other
  * depending on the kind of check.
  *)
@@ -4359,6 +4393,14 @@ begin
   if Left = Right then
   begin
     TypeCheck := Left;
+    Exit;
+  end;
+
+  (* The empty set has no element type and is compatible with every set. *)
+  if (Left^.Kind = scSetType) and (Right^.Kind = scSetType) then
+  begin
+    CheckElement(Left^.DataType, Right^.DataType);
+    if Left^.DataType = nil then TypeCheck := Right else TypeCheck := Left;
     Exit;
   end;
 
@@ -4425,15 +4467,6 @@ begin
         EmitI('ld a,' + IntToStr(Left^.Value - 1));
         EmitI('call __strclamp');
       end;
-      TypeCheck := Left;
-      Exit;
-    end;
-
-    if (Left^.Kind = scSetType) and (Right^.Kind = scSetType) then
-    begin
-(*      if (Right^.DataType <> nil) and (Left^.DataType <> Right^.DataType) then
-        Error('Sets not compatible'); *)
-
       TypeCheck := Left;
       Exit;
     end;
@@ -4888,12 +4921,13 @@ begin
   end
   else if Func = OrdFunc then
   begin
-    ParseExpression; // TODO TypeCheck for Scalar needed
+    T := ParseExpression;
+    if T^.Kind <> scPointerType then CheckScalar(T);
     ParseBuiltInFunction := dtInteger;
   end
   else if Func = OddFunc then
   begin
-    ParseExpression; // TODO TypeCheck for Scalar needed
+    CheckScalar(ParseExpression);
     Emit('', 'pop hl', 'Odd');
     EmitI('ld a,l');
     EmitI('and 1');
@@ -4904,7 +4938,7 @@ begin
   end
   else if Func = EvenFunc then
   begin
-    ParseExpression; // TODO TypeCheck for Scalar needed
+    CheckScalar(ParseExpression);
     Emit('', 'pop hl', 'Even');
     EmitI('ld a,l');
     EmitI('and 1');
@@ -4916,7 +4950,7 @@ begin
   end
   else if Func = PredFunc then
   begin
-    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
+    ParseBuiltInFunction := CheckScalar(ParseExpression);
     // This should probably go elsewhere.
     EmitI('pop de');
     EmitI('dec de');
@@ -4924,7 +4958,7 @@ begin
   end
   else if Func = SuccFunc then
   begin
-    ParseBuiltInFunction := ParseExpression; // TODO TypeCheck for Scalar needed
+    ParseBuiltInFunction := CheckScalar(ParseExpression);
     // This should probably go elsewhere.
     EmitI('pop de');
     EmitI('inc de');
@@ -5202,8 +5236,7 @@ begin
     Expect(toComma);
     NextToken;
 
-    T := ParseExpression;
-(*    if T <> V^.DataType^.DataType then Error('Does not match set type'); *)
+    CheckElement(V^.DataType, CheckScalar(ParseExpression));
 
     Expect(toRParen);
     NextToken;
@@ -5705,13 +5738,12 @@ begin
     NextToken;
 
     T := ParseExpression;
-    if T <> dtInteger then Error('Integer expr expected');
+    if OrdinalBase(T) <> dtInteger then Error('Integer expr expected');
 
     Expect(toComma);
     NextToken;
 
-    T := ParseExpression;
-    if not ((T = dtInteger) or (T = dtByte) or (T = dtChar) or (T = dtBoolean) or (T^.Kind <> scEnumType)) then Error('Ordinal expr expected');
+    CheckScalar(ParseExpression);
 
     Expect(toRParen);
     NextToken;
@@ -5757,7 +5789,7 @@ begin
     begin
       Expect(toComma);
       NextToken;
-      ParseExpression;  { New filename }
+      if ParseExpression^.Kind <> scStringType then Error('String expected');
     end;
 
     Expect(toRParen);
@@ -5785,7 +5817,7 @@ begin
     Expect(toComma);
     NextToken;
 
-    ParseExpression; // ^.DataType <> dtByte and dtInteger then Error('Integer expected');
+    if OrdinalBase(ParseExpression) <> dtInteger then Error('Integer expected');
 
     Expect(toRParen);
     NextToken;
@@ -5879,8 +5911,7 @@ begin
 
     if (CoSym^.Kind <> scConst) then
       Error('Not a constant');
-    if not (AType.Kind in [scType, scEnumType, scSubrangeType]) then
-      Error('Invalid type');
+    CheckScalar(AType);
   end
   else Error('Invalid type');
 
@@ -5936,10 +5967,7 @@ begin
   AType := nil;
   while Scanner.Token <> toRBrack do
   begin
-    BType := ParseScalarRange(First, Last);
-
-    if (AType <> nil) and (AType <> BType) then
-      Error('Incompatible types');
+    BType := CheckElement(AType, ParseScalarRange(First, Last));
     if (First < 0) or (First > 255) or (Last < 0) or (Last > 255) then
       Error('Value out of range');
     if (Last < First) then
@@ -5973,7 +6001,7 @@ end;
  *)
 function ParseSet: PSymbol;
 var
-  Sym, AType, BType, CType: PSymbol;
+  Sym, AType, BType: PSymbol;
 begin
   EmitI('call __set_empty');
   EmitI('ex de,hl');
@@ -5983,10 +6011,7 @@ begin
   AType := nil;
   while Scanner.Token <> toRBrack do
   begin
-    BType := ParseExpression;
-
-    if (AType <> nil) and (AType <> BType) then
-      Error('Incompatible types');
+    BType := CheckElement(AType, CheckScalar(ParseExpression));
     //if (First < 0) or (First > 255) or (Last < 0) or (Last > 255) then
     //  Error('Value out of range');
     //if (Last < First) then
@@ -5995,10 +6020,7 @@ begin
     if Scanner.Token = toRange then
     begin
       NextToken;
-      CType := ParseExpression;
-
-      if (AType <> nil) and (AType <> CType) or (BType <> CType) then
-        Error('Incompatible types');
+      CheckElement(BType, CheckScalar(ParseExpression));
 
       EmitI('pop bc');
       EmitI('pop de');
@@ -6106,7 +6128,7 @@ begin
       NextToken;
       Expect(toLParen);
       NextToken;
-      ParseExpression();
+      CheckScalar(ParseExpression());
       Expect(toRParen);
       NextToken;
 
@@ -6234,7 +6256,7 @@ begin
     begin
       Op := Scanner.Token;
       NextToken;
-      T := ParseFactor; (* TypeCheck(T, , tcExpr); *)
+      T := TypeCheck(T, ParseFactor, tcExpr);
       EmitSetOp(Op);
     end;
 
@@ -6294,12 +6316,10 @@ begin
     begin
       Op := Scanner.Token;
       NextToken;
-      T := ParseTerm; (* TypeCheck(T, , tcExpr); *)
+      T := TypeCheck(T, ParseTerm, tcExpr);
       EmitSetOp(Op);
     end;
 
-
-(* TODO Error case? *)
 
   (* WriteLn('Type of SimpleExpression is ', T); *)
 
@@ -6318,13 +6338,12 @@ begin
   T := ParseSimpleExpression;
   if Scanner.Token = toIn then
   begin
-    if not (T^.Kind in [scType, scEnumType, scSubrangeType]) then Error('Scalar needed');
-    (* if T^.Value <> 1 then Error('8 bit needed'); *) (* FIXME!!! *)
+    CheckScalar(T);
 
     NextToken;
     U := ParseExpression;
     if U^.Kind <> scSetType then Error('Set needed');
-    (* if U^.DataType <> T then Error('Incompatible');    *) (* FIXME!!! *)
+    CheckElement(U^.DataType, T);
 
     EmitSetOp(toIn);
 
@@ -6338,7 +6357,7 @@ begin
 
     U := ParseExpression;
     if U^.Kind <> scSetType then Error('Set needed');
-    // if U^.DataType <> T^.DataType then Error('Incompatible');  // FIXME!!!
+    CheckElement(T^.DataType, U^.DataType);
 
     EmitSetOp(Op);
 
@@ -6595,8 +6614,7 @@ procedure ParseCaseLabel(T: PSymbol; OfTarget: String);
 var
   Low, High: Integer;
 begin
-  ParseScalarRange(Low, High);
-  // TODO: type check against case variable
+  CheckElement(T, ParseScalarRange(Low, High));
 
   if High = Low then
   begin
@@ -6625,7 +6643,7 @@ begin
   EndTarget := GetLabel('end');
 
   NextToken;
-  T := ParseExpression;
+  T := CheckScalar(ParseExpression);
 
   EmitI('pop de');
 
@@ -7076,7 +7094,7 @@ begin
     Expect(toLBrack);
     NextToken;
 
-    ParseSetConstant; (* FIXME: Type check!!! *)
+    CheckElement(DataType^.DataType, ParseSetConstant^.DataType);
 
     Expect(toRBrack);
     NextToken;
@@ -7249,7 +7267,7 @@ end;
 procedure ParseRecord(RecSym: PSymbol);
 var
   Sym, CaseType: PSymbol;
-  FixedSize, VariantSize: Integer;
+  FixedSize, VariantSize, Dummy: Integer;
   Ident: String;
 begin
   while Scanner.Token = toIdent do
@@ -7295,13 +7313,13 @@ begin
     Expect(toOf);
     NextToken;
 
-    while Scanner.Token in [toIdent, toNumber] do
+    while Scanner.Token in [toSub, toIdent, toNumber, toString, toCaret] do
     begin
-      NextToken; (* Type check? *)
+      CheckElement(CaseType, ParseScalar(Dummy));
       while Scanner.Token = toComma do
       begin
         NextToken;
-        NextToken; (* Type check? *)
+        CheckElement(CaseType, ParseScalar(Dummy));
       end;
 
       Expect(toColon);
