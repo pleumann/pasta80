@@ -21,7 +21,7 @@ The supported Pascal dialect is an almost exact clone of the original [Turbo Pas
 * All the basic data types (`Boolean`, `Byte`, `Char`, `Integer`, `Pointer`, `Real` and `String`).
 * `array of`, `record`, `set of`, enumerations, subranges and pointers as a way of building new data types.
 * The decision-making elements `if..then..else` and `case..of`.
-* The loop elements `for..do`, `while..do` and `repeat..until`.
+* The loop elements `for..do`, `while..do` and `repeat..until`. `for` works like in early Turbo Pascal, that is, the number of iterations is calculated once when the loop starts, and you should not mess with the loop variable.
 * The `with..do` notation for "opening" records.
 * `procedure` and `function` including value and `var` parameters and nesting.
 * The standard procedures for screen input and output (i.e. `ReadLn`, `WriteLn` etc.).
