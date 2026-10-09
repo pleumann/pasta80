@@ -71,9 +71,7 @@ var
 
   CA: array[0..2] of Color;
 
-(* Overlay 0 *)
-
-overlay procedure TestComment;
+procedure TestComment;
 var
   I: Integer;
 begin
@@ -117,6 +115,8 @@ begin
 
   Assert(I = 2);
 end;
+
+(* Overlay 0 *)
 
 overlay procedure TestConstHelp(Expected: Integer);
 const
