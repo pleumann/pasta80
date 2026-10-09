@@ -1030,7 +1030,8 @@ function GetLabel(Prefix: String): String; forward;
 type
   (**
    * A linked list of string constants used in the program. No duplicates. The
-   * strings are written at the end of parsing.
+   * strings are written at the end of parsing each overlay and at the end of
+   * the main program.
    *
    * TODO Make this a hash table in case we want to run on 8 bit.
    * TODO Add something similar for Real constants and maybe for set constants.
@@ -1057,38 +1058,23 @@ function AddString(S: String): String;
 var
   Temp: PStringLiteral;
 begin
-  if Strings = nil then
+  Temp := Strings;
+  while Temp <> nil do
   begin
-    New(Strings);
-    Strings^.Tag := GetLabel('string');
-    Strings^.Value := S;
-    Strings^.Next := nil;
-    AddString := Strings^.Tag;
-  end
-  else
-  begin
-    Temp := Strings;
-    while Temp <> nil do
+    if Temp^.Value = S then
     begin
-      if Temp^.Value = S then
-      begin
-        AddString := Temp^.Tag;
-        Exit;
-      end;
-
-      if Temp^.Next = nil then
-      begin
-        New(Temp^.Next);
-        Temp^.Next^.Tag := GetLabel('string');
-        Temp^.Next^.Value := S;
-        Temp^.Next^.Next := nil;
-        AddString := Temp^.Next^.Tag;
-        Exit;
-      end;
-
-      Temp := Temp^.Next;
+      AddString := Temp^.Tag;
+      Exit;
     end;
+    Temp := Temp^.Next;
   end;
+
+  New(Temp);
+  Temp^.Tag := GetLabel('string');
+  Temp^.Value := S;
+  Temp^.Next := Strings;
+  Strings := Temp;
+  AddString := Strings^.Tag;
 end;
 
 procedure ClearStrings;
@@ -3457,20 +3443,22 @@ begin
 end;
 
 (**
- * Emits all strings collected in the string list as db items. Called once after
- * the whole program code has been processed.
+ * Emits all strings collected in the string list as db items, disposing them on
+ * the way. Stops at the given entry, which may be nil to emit the whole list.
+ * Called once after each overlay (with the value of the list pointer immediately
+ * before the overlay) and once at the end of the whole program (with nil).
  *)
-procedure EmitStrings();
+procedure EmitStrings(Stop: PStringLiteral);
 var
   Temp: PStringLiteral;
 begin
-  Temp := Strings;
-
-  while Temp <> nil do
+  while Strings <> Stop do
   begin
     EmitC('');
-    Emit(Temp^.Tag, 'db ' + EncodeAsmStr(Temp^.Value), '');
-    Temp := Temp^.Next;
+    Emit(Strings^.Tag, 'db ' + EncodeAsmStr(Strings^.Value), '');
+    Temp := Strings^.Next;
+    Dispose(Strings);
+    Strings := Temp;
   end;
 end;
 
@@ -8040,6 +8028,7 @@ procedure ParseOverlay(Sym: PSymbol);
 var
   S, T: String;
   Start: Integer;
+  OldStrings: PStringLiteral;
 begin
   if CurrentOverlay = 10 then Error('Too many overlays');
 
@@ -8056,6 +8045,7 @@ begin
   Emit('OVR_' + S + '_PAGE', 'equ $$', '');
 
   Banked := True;
+  OldStrings := Strings;
 
   while Scanner.Token = toOverlay do
   begin
@@ -8066,6 +8056,8 @@ begin
 
     ParseProcFunc(Sym);
   end;
+
+  EmitStrings(OldStrings);
 
   Emit('OVR_' + S + '_START', 'equ ' + T, '');
   Emit('OVR_' + S + '_END', 'equ $', '');
@@ -8092,6 +8084,7 @@ procedure ParseNextOverlay(Sym: PSymbol);
 var
   S, T: String;
   Start: Integer;
+  OldStrings: PStringLiteral;
 begin
   if CurrentOverlay = 64 then Error('Too many overlays');
 
@@ -8109,6 +8102,7 @@ begin
   Emit('OVR_' + S + '_PAGE', 'equ $$', '');
 
   Banked := True;
+  OldStrings := Strings;
 
   while Scanner.Token = toOverlay do
   begin
@@ -8119,6 +8113,8 @@ begin
 
     ParseProcFunc(Sym);
   end;
+
+  EmitStrings(OldStrings);
 
   //EmitI('display "Page:", $$');
 
@@ -8138,6 +8134,7 @@ procedure ParseAgonOverlay(Sym: PSymbol);
 var
   S, T: String;
   Start: Integer;
+  OldStrings: PStringLiteral;
 begin
   if CurrentOverlay = 48 then Error('Too many overlays');
 
@@ -8158,6 +8155,7 @@ begin
   EmitI('db 0');
 
   Banked := True;
+  OldStrings := Strings;
 
   while Scanner.Token = toOverlay do
   begin
@@ -8168,6 +8166,8 @@ begin
 
     ParseProcFunc(Sym);
   end;
+
+  EmitStrings(OldStrings);
 
   //EmitI('display "Page:", $$');
 
@@ -8424,7 +8424,7 @@ begin
   EmitC('');
   Emit('globals', 'ds ' + IntToStr(Offset), 'Globals');
 *)
-  EmitStrings();
+  EmitStrings(nil);
   EmitC('');
   Emit('display', 'ds 16,0', 'Display');
 
