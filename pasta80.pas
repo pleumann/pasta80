@@ -7166,6 +7166,7 @@ begin
 
       Sym^.DataType := Sym2^.DataType;
       Sym^.Value := Sym2^.Value;
+      Sym^.Tag := Sym2^.Tag;
     end
     else
     begin
@@ -9192,7 +9193,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1925, 0, 1734, 1926, 1932
+    1929, 0, 1738, 1930, 1936
   );
 
 var

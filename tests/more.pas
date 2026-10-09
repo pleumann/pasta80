@@ -224,6 +224,22 @@ begin
   Assert(I = 32767);
 end;
 
+(* A String or Real constant declared as an alias of another constant used to
+   fail to compile, because the alias did not get the tag (the address of the
+   value) of the original constant. Issue #172. *)
+procedure TestConstAliases;
+const
+  A = 'Hello';  B = A;
+  R = 3.5;      T = R;
+begin
+  WriteLn('--- TestConstAliases ---');
+
+  Assert(B = 'Hello');
+  Assert(Length(B) = 5);
+  Assert(T = 3.5);
+  Assert(T = R);
+end;
+
 begin
   TestUnaryOnSubranges;
   TestIncDecOnSubranges;
@@ -233,6 +249,7 @@ begin
   TestNegativeLiteralBounds;
   TestStoreWidth;
   TestForByteLimit;
+  TestConstAliases;
 
   WriteLn;
   WriteLn('************************');
