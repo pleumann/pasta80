@@ -8070,6 +8070,15 @@ begin
   Emit('OVR_' + S + '_START', 'equ ' + T, '');
   Emit('OVR_' + S + '_END', 'equ $', '');
 
+  if not Odd(CurrentOverlay) then
+  begin
+    EmitI('if $ > 0xe000');
+    EmitI('LUA');
+    EmitI('sj.error("Write outside overlay memory at: 57344")');
+    EmitI('ENDLUA');
+    EmitI('endif');
+  end;
+
   EmitI('slot 3');
   EmitI('page 0');
   EmitI('org OLD_ORG_' + S);
