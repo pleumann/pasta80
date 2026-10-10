@@ -240,6 +240,34 @@ begin
   Assert(T = R);
 end;
 
+(* Include directive including some edge cases that used to fail (#173). *)
+procedure TestIncludeDirective;
+var
+  I: Integer;
+begin
+  WriteLn('--- TestIncludeDirective ---');
+
+  I := 0;
+  {$I more.inc}
+  Assert(I = 1);
+  {$i more.inc}
+  Assert(I = 2);
+
+  // An include directive followed by more text on the same line used to break,
+  // because the scanner read the next character before opening the include.
+  // A comment swallowed the whole include file, anything else was glued to its
+  // first token.
+
+  {$I more.inc}{ comment right after the include }
+  Assert(I = 3);
+  {$I more.inc}(* comment right after the include *)
+  Assert(I = 4);
+  (*$I more.inc*){ comment right after the include }
+  Assert(I = 5);
+  {$I more.inc}I := I + 4;
+  Assert(I = 10);
+end;
+
 begin
   TestUnaryOnSubranges;
   TestIncDecOnSubranges;
@@ -250,6 +278,7 @@ begin
   TestStoreWidth;
   TestForByteLimit;
   TestConstAliases;
+  TestIncludeDirective;
 
   WriteLn;
   WriteLn('************************');

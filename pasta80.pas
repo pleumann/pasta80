@@ -2315,12 +2315,16 @@ begin
             C := GetChar;
             StrValue := StrValue + C;
           until C = '}';
-          C := GetChar;
 
+          // Handle directives before reading the next character, so that an
+          // include is already open when we do (the character must come from
+          // the included file, not from the rest of the current line).
           StrValue := Copy(StrValue, 2, Length(StrValue) - 2);
           Token := toComment;
           if (StrValue <> '') and (StrValue[1] = '$') then
             HandleDirective(StrValue);
+
+          C := GetChar;
         end
         else
         begin
@@ -2394,12 +2398,14 @@ begin
                   C := GetChar;
                   StrValue := StrValue + C;
                 until C = ')';
-                C := GetChar;
 
+                // See above: Directives first, then the next character.
                 StrValue := Copy(StrValue, 3, Length(StrValue) - 4);
                 Token := toComment;
                 if (StrValue <> '') and (StrValue[1] = '$') then
                   HandleDirective(StrValue);
+
+                C := GetChar;
               end;
 
             toColon:
@@ -9193,7 +9199,7 @@ const
    * The total number of expected tests per platform. Adjust for new tests.
    *)
   TotalTests: array[btCPM .. btAgon] of Integer = (
-    1929, 0, 1738, 1930, 1936
+    1935, 0, 1744, 1936, 1942
   );
 
 var
