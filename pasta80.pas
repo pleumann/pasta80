@@ -186,6 +186,12 @@ begin
 
   FRExp(Number, Mantissa, Exponent);
 
+  if Exponent < -127 then
+  begin
+    Result := '$0000,$0000,$0000';
+    Exit;
+  end;
+
   Bytes[0] := Exponent + 128;
 
   for I := 5 downto 1 do
@@ -203,6 +209,47 @@ begin
   EncodeReal := '0x' + IntToHex(Bytes[1], 2) + IntToHex(Bytes[0], 2) + ',' +
                 '0x' + IntToHex(Bytes[3], 2) + IntToHex(Bytes[2], 2) + ',' +
                 '0x' + IntToHex(Bytes[5], 2) + IntToHex(Bytes[4], 2);
+end;
+
+(**
+ * Checks whether the given floating-point literal is one the Real type and
+ * the run-time conversion (Val, Read) accept. The rules are those of CNVN
+ * in math48, so that a literal and the same text passed to Val agree: the
+ * exponent has to be in -38..37, there may be no more than 38 decimals, and
+ * the value has to stay below 2^127 (about 1.7E+38). A value too small to
+ * represent is not an error, it becomes zero.
+ *
+ * CNVN scales the digits by the power of ten with a single FPMUL, which
+ * reports an overflow as soon as the two binary exponents add up to more
+ * than 127, even where the normalized product would still fit. This is why
+ * 15E37 is fine and 16E37 is not, in TP3 as well, and why the same test is
+ * made here.
+ *)
+function RealInRange(S: String): Boolean;
+var
+  Number, Mantissa: Extended;
+  P, Dot, Exponent, Code, E1, E2: Integer;
+begin
+  P := Pos('E', UpperStr(S));
+  if P = 0 then P := Length(S) + 1;
+
+  Dot := Pos('.', S);
+  if (Dot <> 0) and (P - Dot - 1 > 38) then Exit(False);
+
+  Val(Copy(S, 1, P - 1), Number, Code);
+  if (Code <> 0) or (Number >= 1.7014118346046923E38) then Exit(False);
+
+  if P > Length(S) then Exit(True);
+
+  if Length(S) - P > 4 then Exit(False);
+  Val(Copy(S, P + 1, 255), Exponent, Code);
+  if (Code <> 0) or (Exponent < -38) or (Exponent > 37) then Exit(False);
+
+  if (Number = 0) or (Exponent <= 0) then Exit(True);
+
+  FRExp(Number, Mantissa, E1);
+  FRExp(IntPower(10.0, Exponent), Mantissa, E2);
+  RealInRange := E1 + E2 <= 127;
 end;
 
 function NativeToPosix(Native: String): String;
@@ -2209,6 +2256,8 @@ begin
             until not IsDecDigit(C);
           end;
 
+          if (Token = toFloat) and not RealInRange(StrValue) then
+            Error('Real constant out of range');
         end
         else if C = '$' then
         begin

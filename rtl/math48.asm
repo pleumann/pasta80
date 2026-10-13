@@ -1889,7 +1889,7 @@ CNV6:   JP   ADD10      ;Hent AC'
 MFACT:  EXX
         LD   A,C
         ADD  A,EXPN
-        CP   -37+EXPN   ;Tiexp.<-37?
+        CP   -38+EXPN   ;Tiexp.<-38?
         RET  C          ;Ja => Retur
         CP   38+EXPN    ;Tiexp.>37?
         CCF

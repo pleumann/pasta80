@@ -1258,6 +1258,13 @@ __fpdiv:        call    FPDIV
                 jp      z,__div_by_zero
                 jr      __matherr
 
+; EXP sets carry when the result leaves the Real range, in either direction:
+; a large negative argument overflows the intermediate 2^Y before the
+; reciprocal is taken. TP3 stops with a run-time error in both cases.
+__exp:          call    EXP
+                ret     nc
+                jr      __matherr
+
 ; TAN computes SIN(X)/COS(X) internally via a plain FPDIV, and nothing in
 ; between there and TAN's own return touches the flags -- so this has the
 ; exact same Carry/Carry+Zero split as __fpdiv above: Cos(X) = 0 exactly
@@ -1410,6 +1417,8 @@ __atof:
 ;        inc     ix
         call    CNVN
         exx
+        ld      c,0             ; keep CNVN's carry (number out of range)
+        rl      c
         push    ix
         pop     hl
         pop     de
@@ -1419,6 +1428,7 @@ __atof:
         sub     l
         ld      b,a
         pop     ix
+        rr      c
         ret
 
 __ftoa:
@@ -1964,7 +1974,14 @@ __conv_real:    call    __conv_prep
                 inc     hl
                 call    __atof          ; leaves the alternate register set
                 pop     hl
-                call    __conv_left
+                jr      nc,__conv_real0
+                ld      a,b             ; CNVN rejected it: leftover characters
+                and     a               ; still give the position, but if all
+                jr      nz,__conv_real0 ; were used up the number is out of
+                ld      a,(hl)          ; range, which TP3 reports as the
+                inc     a               ; position just past the string
+                jr      __conv_real1
+__conv_real0:   call    __conv_left
                 jr      nz,__conv_real1
                 call    __conv_last
 __conv_real1:   pop     hl

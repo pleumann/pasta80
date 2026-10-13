@@ -200,7 +200,7 @@ const
 
 function ArcTan(R: Real): Real; register; external 'ATN';
 function Cos(R: Real): Real; register;    external 'COS';
-function Exp(R: Real): Real; register;    external 'EXP';
+function Exp(R: Real): Real; register;    external '__exp';
 function Frac(R: Real): Real; register;   external 'FRAC';
 function Int(R: Real): Real; register;    external 'INT';
 function Ln(R: Real): Real; register;     external '__ln';
