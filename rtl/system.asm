@@ -1431,16 +1431,22 @@ __atof:
         rr      c
         ret
 
+; FSTRR only fails in fixed-point format, when the integer part needs more
+; than the 15 characters (sign included) math48 has room for. TP3 has no such
+; limit; rather than print an error, fall back to the default exponential
+; format, which cannot fail. FSTRR restores all registers, IX included.
 __ftoa:
         push    ix
         ld      ix,__ftoatmp + 1
+__ftoa_again:
         di
         call    FSTRR
         ei
         jr      nc,__ftoaok
-        ld      hl,__ftoaerr
-        pop     ix
-        ret
+        exx
+        ld      hl,$090d
+        exx
+        jr      __ftoa_again
 __ftoaok:
         ld      ix,__ftoatmp
         ld      b,255
@@ -1457,8 +1463,23 @@ __ftoalp:
         ret
 __ftoatmp:
         db 31,  "                                "
-__ftoaerr:
-        db      5,"ERROR"
+
+; Builds the math48 format for fixed-point output with A decimals, in HL of
+; the current register set. math48 does at most 15 decimals, so more than
+; that are capped. More than 24 or a negative count select the exponential
+; format, as in TP3.
+__fix_format:
+        ld      hl,$090d
+        cp      25
+        ret     nc
+        cp      16
+        jr      c,__fix_format_1
+        ld      a,15
+__fix_format_1:
+        or      $f0
+        ld      h,a
+        ld      l,$0a
+        ret
 
 __putf:
         exx
@@ -1495,13 +1516,7 @@ __putf_fix:
         exx
         push    de
         ld      a,c
-;        cp      $10
-;        jp      c,__putf_fix_1
-;        ld      a,$0f
-__putf_fix_1:
-        or      $f0
-        ld      h,a
-        ld      l,$0a
+        call    __fix_format
         exx
         call    __ftoa
         pop     bc
@@ -2178,13 +2193,7 @@ __strf_fix:
         push    af
         push    hl
         ld      a,e
-;        cp      $10
-;        jp      c,__putf_fix_1
-;        ld      a,$0f
-__strf_fix_1:
-        or      $f0
-        ld      h,a
-        ld      l,$0a
+        call    __fix_format
         exx
         call    __ftoa
         pop     de
