@@ -553,11 +553,10 @@ end;
 {$endif}
 
 (* An I/O error raised while checks are off does not evaporate when they are
-   turned back on: if nobody collected it with IOResult, switching back to
-   i-plus stops the program. Verified against TP 3.0, which does the same.
-   The compiler emits the check at the directive itself, and only on a real
-   transition, so it costs three bytes per directive rather than three per
-   call site. *)
+   turned back on: if nobody collected it with IOResult, the next checked
+   file operation stops the program. Verified against TP 3.0, which does the
+   same. Nothing happens at the directive itself, and console Write carries
+   no check, so it takes a file operation to notice (OPEN-ITEMS B9). *)
 overlay procedure CaseIoPend;
 {$ifdef NOFILES}
 begin
@@ -580,6 +579,8 @@ begin
   {$i-}
   Read(F, I);
   {$i+}
+
+  Close(F);
 
   WriteLn('after: ', I);
 end;
