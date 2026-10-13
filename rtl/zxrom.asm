@@ -510,7 +510,7 @@ scrpos:
 checkadj:
                 sla     c
                 ld      a,d
-                cp      175
+                cp      176
                 ret     nc
         ifdef CPU_Z80N
                 pixelad
