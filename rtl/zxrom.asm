@@ -25,13 +25,7 @@ __init:         di
 ;
                 xor     a
                 ld      (__lasterror),a ; Reset last error
-        ifdef   OPT_OVERLAYS
-                ld      hl,mystack + 64 ; Reset overlay stack
-                ld      (localsp),hl
-
-                ld      a,$ff
-                ld      (curpage),a     ; Reset current overlay number
-        endif
+                                        ; (overlay state: see main)
 
         ifdef   OPT_PRINTER
                 ld      a,3

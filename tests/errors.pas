@@ -66,10 +66,10 @@ program Errors;
 
      overnest    only means anything in an overlay build. Without --ovr the
                  "overlay" markers are inert, the nested calls are ordinary
-                 calls, and there is no limit to run into. OPT_OVERLAYS
-                 (set by the compiler when --ovr is given) decides which of
-                 the two the case is. CP/M has no overlays at all, so it is
-                 skipped there for good.
+                 calls, and there is no limit to run into. The case only
+                 runs on the 128K and the Next, the two targets SelfTest
+                 builds this suite with overlays for. Everywhere else it is
+                 skipped.
 
      rdint..iopend
                  need a file system, which the plain Spectrums do not have.
@@ -828,9 +828,15 @@ end;
 
    The constants between the two overlay procedures are not decoration: they
    end one overlay and start the next. Without them A and B share a segment,
-   no switch happens, and the case proves nothing. *)
+   no switch happens, and the case proves nothing.
 
-{$ifdef OPT_OVERLAYS}
+   Only the 128K and the Next run this suite with overlays (see SelfTest in
+   pasta80.pas), so those two targets decide whether the case is real. *)
+
+{$ifdef SYS_ZX128} {$define OVERNEST} {$endif}
+{$ifdef SYS_ZXNEXT} {$define OVERNEST} {$endif}
+
+{$ifdef OVERNEST}
 
 var
   Depth: Integer;
@@ -863,7 +869,7 @@ end;
 {$endif}
 
 procedure CaseOverNest;
-{$ifdef OPT_OVERLAYS}
+{$ifdef OVERNEST}
 begin
   Announce('Too many nested overlay calls');
 
@@ -874,8 +880,8 @@ begin
 end;
 {$else}
 begin
-  { Built without --ovr, so the markers are inert and there is no nesting
-    limit to reach. Nothing to prove here. }
+  { Not built with overlays, so the markers are inert and there is no
+    nesting limit to reach. Nothing to prove here. }
   Skipped;
 end;
 {$endif}

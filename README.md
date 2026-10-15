@@ -235,12 +235,11 @@ calls" whenever necessary.
   physical address $50000. Overlays are copied to the physical address range
   $4E000-$4FFFF as needed (the upper 8K of the 64K area for non-ADL programs).
 
-To enable overlays, use the `--ovr` command line parameter. For the ZX targets,
-ideally combine this with the `--tap` parameter, as the tape loaders for 128K
+For the ZX targets, ideally combine overlays with the `--tap` parameter, as the tape loaders for 128K
 and Next are fully overlay-aware.
 
 ```bash
-$ pasta80 --zx128 --tap --ovr tests/core.pas # Test suite as 128K tape
+$ pasta80 --zx128 --tap tests/core.pas # Test suite as 128K tape
 ```
 The compiler prints a report of which overlays go into which RAM banks or pages.
 ```
@@ -256,9 +255,9 @@ Overlay  4:  6392 bytes ($C000-$D8F7) in bank  3
 Overlay  5:  6527 bytes ($E000-$F97E) in bank  3
 ```
 
-Without the `--ovr` parameter, overlay markers are simply ignored. This means
-you can use the same source code for platforms that do support overlays and for
-those that don't.
+Overlays are enabled by default and activate automatically when the first `overlay` procedure or function is encountered (assuming the target platform supports them). They are ignored for target platforms that do not support them (currently CP/M, Spectrum 48K and Agon MOSlets). To disable overlays explicitly for any platform, use the `--no-ovr` command line parameter.
+
+Overlays reduce the resident memory available for code, heap and stack: it ends at $BFFF on the 128K and at $DFFF on the Next and Agon, instead of $FFFF. If a program needs a lot of heap and its code fits into resident memory anyway, `--no-ovr` may be the better choice. Programs that don't use `overlay` at all are not affected.
 
 **Caution**: Overlays somewhat break the safety of the Pascal language. Be
 careful when using pointers or `var` parameters for passing data between
@@ -365,7 +364,6 @@ Some symbols are predefined to reflect the compiler itself, the current target p
 | `SYS_ZX48` | For the ZX Spectrum 48K target |
 | `SYS_ZX128`| For the ZX Spectrum 128K target |
 | `SYS_ZXNEXT`| For the ZX Spectrum Next target |
-| `OPT_OVERLAYS`| Reflects `--ovr` switch usage |
 | `OPT_PRINTER`| Reflects `--printer` switch usage |
 | `OPT_RELEASE`| Reflects `--release` switch usage |
 

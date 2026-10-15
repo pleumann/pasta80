@@ -732,7 +732,7 @@ var
 
   StackSize: Integer = 4096;
 
-  Overlays: Boolean = False;
+  Overlays: Boolean = True;
   Release: Boolean = False;
   KeepInt: Boolean = False;
   UsePrinter: Boolean = False;
@@ -3216,20 +3216,14 @@ begin
    * would silently change what the RTL does the moment someone happens to use
    * it for their own purposes. *)
 
-  if Overlays then SetDefine('OPT_OVERLAYS', True);
   if UsePrinter then SetDefine('OPT_PRINTER', True);
   if Release then SetDefine('OPT_RELEASE', True);
 
   EmitI('org $' + IntToHex(AddrOrigin, 4));
   Emit('TEXT', 'jp __init', '');
-  Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
 
   if Binary in [btZX128, btZXN] then
-  begin
     Emit('numpages', 'db 0', 'Number of overlay pages');
-    if Overlays then
-      EmitI('include "' + PosixToNative(HomeDir + '/rtl/overlays.asm"'));
-  end;
 end;
 
 (**
@@ -3299,7 +3293,7 @@ var
   end;
 
 begin
-  if (Binary = btAgon) and Overlays then
+  if (Binary = btAgon) and (CurrentOverlay <> 0) then
     Emit('ovl_name', 'db "' + ChangeExt(NameOnly(BinFile), '.ovr') + '",0', '');
 
   Emit('HEAP', '= $', '');
@@ -3541,8 +3535,19 @@ begin
   begin
     Emit('main', '', '');
     EmitI('ld (display),sp');
-    if Overlays then
+    if CurrentOverlay <> 0 then
     begin
+      (* Overlays are only known to be in use at this point, so the reset of
+       * the overlay state on a ZX (re)start via USR lives here, not in
+       * __init. *)
+      if Binary in [btZX128, btZXN] then
+      begin
+        EmitI('ld hl,mystack+64');
+        EmitI('ld (localsp),hl');
+        EmitI('ld a,$ff');
+        EmitI('ld (curpage),a');
+      end;
+
       if Binary = btZX128 then
       begin
         EmitI('ld a,0');
@@ -3553,7 +3558,7 @@ begin
         EmitI('ld a,32');
         EmitI('call banksel');
       end
-      else if (Binary = btAgon) and (CurrentOverlay <> 0) then
+      else if Binary = btAgon then
       begin
         EmitI('call overload');
         EmitI('ld a,8');
@@ -8064,6 +8069,30 @@ begin
   EmitC('');
 end;
 
+(**
+ * Checks whether the given platform supports overlays.
+ *)
+function SupportsOverlays(Binary: TBinaryType; Format: TTargetFormat): Boolean;
+begin
+  case Binary of
+    btAgon:   SupportsOverlays := Format = tfBinary;
+    btCPM,
+    btZX:     SupportsOverlays := False;
+    btZX128,
+    btZXN:    SupportsOverlays := True;
+  end;
+end;
+
+(**
+ * Checks whether overlay markers take effect in the current build. Overlays
+ * only holds what the user asked for (--no-ovr), so it survives switching
+ * machine or format in interactive mode.
+ *)
+function OverlaysActive: Boolean;
+begin
+  OverlaysActive := Overlays and SupportsOverlays(Binary, Format);
+end;
+
 procedure ParseOverlay(Sym: PSymbol);
 var
   S, T: String;
@@ -8320,11 +8349,11 @@ begin
       if Level <> 0 then
         Error('Overlays only allowed on top level');
 
-      if (Binary = btZX128) and Overlays then
+      if (Binary = btZX128) and OverlaysActive then
         ParseOverlay(Sym)
-      else if (Binary = btZXN) and Overlays then
+      else if (Binary = btZXN) and OverlaysActive then
         ParseNextOverlay(Sym)
-      else if (Binary = btAgon) and Overlays then
+      else if (Binary = btAgon) and OverlaysActive then
         ParseAgonOverlay(Sym)
       else
         NextToken;
@@ -8433,12 +8462,6 @@ begin
   Expect(toPeriod);
   NextToken;
 
-  if (Binary = btAgon) and Overlays then
-  begin
-      EmitI('include "' + PosixToNative(HomeDir + '/rtl/overlays.asm"'));
-      EmitI('include "' + PosixToNative(HomeDir + '/rtl/agonover.asm"'));
-  end;
-
   LastBuiltIn := SymbolTable;
 
   Sym := Lookup('FileRec', LastBuiltIn, nil);
@@ -8470,6 +8493,20 @@ begin
 
   CloseScope(False);
   CloseScope(False);
+
+  if CurrentOverlay <> 0 then
+  begin
+    EmitI('include "' + PosixToNative(HomeDir + '/rtl/overlays.asm"'));
+    if Binary = btAgon then
+      EmitI('include "' + PosixToNative(HomeDir + '/rtl/agonover.asm"'));
+
+    if Binary = btZX128 then
+      AddrLimit := $c000
+    else
+      AddrLimit := $e000;
+  end;
+
+  Emit('LIMIT', '= $' + IntToHex(AddrLimit, 4), '');
 end;
 
 (**
@@ -8565,12 +8602,6 @@ begin
 
   if Binary = btCPM then
     AddrLimit := $f000
-  else if (Binary = btZX128) and Overlays then
-    AddrLimit := $c000
-  else if (Binary = btZXN) and Overlays then
-    AddrLimit := $e000
-  else if (Binary = btAgon) and Overlays then
-    AddrLimit := $e000
   else if (Binary = btAgon) and (Format = tfMOSlet) then
     AddrLimit := $8000
   else
@@ -8719,20 +8750,6 @@ begin
 end;
 
 (**
- * Checks whether the given platform supports overlays.
- *)
-function SupportsOverlays(Binary: TBinaryType; Format: TTargetFormat): Boolean;
-begin
-  case Binary of
-    btAgon:   SupportsOverlays := Format = tfBinary;
-    btCPM,
-    btZX:     SupportsOverlays := False;
-    btZX128,
-    btZXN:    SupportsOverlays := True;
-  end;
-end;
-
-(**
  * Changes the current directory.
  *)
 procedure DoDirectory;
@@ -8859,7 +8876,7 @@ begin
       GetDir(0, S);
       ChDir(FabAgonDir);
       CopyFile(BinFile, 'sdcard/' + NameOnly(BinFile));
-      if Overlays then
+      if CurrentOverlay <> 0 then
         CopyFile(ChangeExt(BinFile, '.ovr'), 'sdcard/' + NameOnly(ChangeExt(BinFile, '.ovr')));
 
       if LoaderFile <> '' then
@@ -9077,7 +9094,6 @@ begin
 
     WriteLn(TermStr('Target ~machine     : '), BinaryStr[Binary]);
     WriteLn(TermStr('Output ~format      : '), FormatStr[Format]);
-    WriteLn(TermStr('Enable ~overlays    : '), YesNoStr[Overlays]);
     WriteLn;
     WriteLn(TermStr('~Peephole optimizer : '), YesNoStr[Optimize]);
     WriteLn(TermStr('~Dependency analysis: '), YesNoStr[SmartLink]);
@@ -9095,7 +9111,6 @@ begin
                Binary := Succ(Binary);
 
             if not SupportsFormat(Binary, Format) then Format := tfBinary;
-            if not SupportsOverlays(Binary, Format) then Overlays := False;
           end;
 
       'f': repeat
@@ -9106,7 +9121,6 @@ begin
             until SupportsFormat(Binary, Format);
       'p': Optimize := not Optimize;
       'd': SmartLink := not SmartLink;
-      'o': if SupportsOverlays(Binary, Format) then Overlays := not Overlays;
       'r': Release := not Release;
     end;
   until C = 'b';
@@ -9441,7 +9455,6 @@ begin
     WriteLn('  --run          generates .run runnable directory');
     WriteLn('  --mos          generates Agon MOSlet');
     WriteLn;
-    WriteLn('  --ovr          enables bank-switched overlays');
     WriteLn('  --loader <fn>  uses <fn> as BASIC loader (ZX, .tap and .run)');
     WriteLn('  --start <addr> sets start address (ZX, default $8000)');
     WriteLn;
@@ -9451,6 +9464,7 @@ begin
     WriteLn;
     WriteLn('  --[no-]opt     controls peephole optimizations (on by default)');
     WriteLn('  --[no-]dep     controls dependency analysis (on by default)');
+    WriteLn('  --[no-]ovr     controls overlays (128K/Next/Agon, on by default)');
     WriteLn;
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --config       shows (and checks) the configuration');
@@ -9477,8 +9491,6 @@ begin
       Binary := btZXN
     else if SrcFile = '--agon' then
       Binary := btAgon
-    else if SrcFile = '--ovr' then
-      Overlays := True
     else if SrcFile = '--bin' then
       Format := tfBinary
     else if SrcFile = '--mos' then
@@ -9491,6 +9503,8 @@ begin
       Format := tfTape
     else if SrcFile = '--sna' then
       Format := tfSnapshot
+    else if (SrcFile = '--ovr') or (SrcFile = '--no-ovr') then
+      Overlays := SrcFile = '--ovr'
     else if (SrcFile = '--opt') or (SrcFile = '--no-opt') then
       Optimize := SrcFile = '--opt'
     else if (SrcFile = '--dep') or (SrcFile = '--no-dep') then
@@ -9548,9 +9562,6 @@ begin
 
   if not SupportsFormat(Binary, Format) then
     Error(FormatStr[Format] + ' format not supported by ' + BinaryStr[Binary] + '.');
-
-  if Overlays and not SupportsOverlays(Binary, Format) then
-    Error('Overlays not supported by ' + BinaryStr[Binary] + ' [' + FormatStr[Format] + '].');
 
   if LoaderFile <> '' then
   begin
