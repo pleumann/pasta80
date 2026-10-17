@@ -352,6 +352,8 @@ The following table shows the supported directives:
 | `{$endif}` | Finishes a conditional block (mandatory). |
 | `{$error <msg>}` | Terminates the compilation with an error message. |
 
+Several switches can be combined in one directive, separated by commas and without repeating the dollar sign, e.g. `{$a-,k+}`.
+
 Some symbols are predefined to reflect the compiler itself, the current target platform, or compiler options:
 
 | Directive | Defined |

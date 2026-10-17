@@ -116,17 +116,17 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Assign(var F; Name: String)` | [All*] | Associates the file variable `F` with the file name `Name`. |
-| `Reset(var F)` | [All*] | Opens file `F` for reading (and for writing in the case of untyped files). |
-| `Rewrite(var F)` | [All*] | Creates or truncates file `F` and opens it for writing. |
-| `Append(var F)` | [All*] | Opens file `F` for appending at the end. |
-| `Close(var F)` | [All*] | Closes file `F` and flushes any pending buffer data. |
-| `Flush(var F)` | [All*] | Writes any pending buffer data of file `F` to the medium. |
-| `Seek(var F; I: Integer)` | [All*] | Sets the current position in typed or untyped file `F` to the record at index `I`. |
-| `Erase(var F)` | [All*] | Deletes the file associated with file variable `F` from the storage medium. |
-| `Rename(var F; NewName: String)` | [All*] | Renames the file associated with file variable `F` to `NewName`. |
-| `BlockRead(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [All*] | Reads `Count` 128-byte blocks from untyped file `F` into `Buf`. The optional `Actual` receives the number actually read. |
-| `BlockWrite(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [All*] | Writes `Count` 128-byte blocks from `Buf` to untyped file `F`. |
+| `Assign(var F; Name: String)` | [CPM*] [ZXNext*] [Agon*] | Associates the file variable `F` with the file name `Name`. |
+| `Reset(var F)` | [CPM*] [ZXNext*] [Agon*] | Opens file `F` for reading (and for writing in the case of untyped files). |
+| `Rewrite(var F)` | [CPM*] [ZXNext*] [Agon*] | Creates or truncates file `F` and opens it for writing. |
+| `Append(var F)` | [CPM*] [ZXNext*] [Agon*] | Opens file `F` for appending at the end. |
+| `Close(var F)` | [CPM*] [ZXNext*] [Agon*] | Closes file `F` and flushes any pending buffer data. |
+| `Flush(var F)` | [CPM*] [ZXNext*] [Agon*] | Writes any pending buffer data of file `F` to the medium. |
+| `Seek(var F; I: Integer)` | [CPM*] [ZXNext*] [Agon*] | Sets the current position in typed or untyped file `F` to the record at index `I`. |
+| `Erase(var F)` | [CPM*] [ZXNext*] [Agon*] | Deletes the file associated with file variable `F` from the storage medium. |
+| `Rename(var F; NewName: String)` | [CPM*] [ZXNext*] [Agon*] | Renames the file associated with file variable `F` to `NewName`. |
+| `BlockRead(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [CPM*] [ZXNext*] [Agon*] | Reads `Count` 128-byte blocks from untyped file `F` into `Buf`. The optional `Actual` receives the number actually read. |
+| `BlockWrite(var F: File; var Buf; Count: Integer [; var Actual: Integer])` | [CPM*] [ZXNext*] [Agon*] | Writes `Count` 128-byte blocks from `Buf` to untyped file `F`. |
 
 ### Screen and Cursor
 
@@ -154,7 +154,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Plot(X, Y: Byte)` | [ZX48] [Agon] | Sets a pixel at coordinates `(X, Y)`. The origin (0, 0) is in the upper-left corner. |
+| `Plot(X, Y: Byte)` | [ZX48] [Agon] | Sets a pixel at coordinates `(X, Y)`. The origin (0, 0) is in the upper-left corner. On Agon, `X` and `Y` are of type `Integer`. |
 | `Draw(DX, DY: Integer)` | [ZX48] [Agon] | Draws a line from the last plot position by the relative offset `(DX, DY)`. |
 | `Circle(CX, CY, Radius: Integer)` | [ZX48] [Agon] | Draws a circle with centre `(CX, CY)` and the given radius. |
 | `FloodFill(X, Y: Integer)` | [ZX48] [Agon] | Performs a recursive flood-fill operation starting at `(X, Y)`. Agon requires VDP 2.16.0+ for this function.|
@@ -165,7 +165,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | Signature | Platform | Description |
 |-----------|----------|-------------|
 | `SoundMs(Frequency, Duration: Integer)` | [ZX48] | Plays a tone at the given frequency (Hz) for the given duration (ms). Synchronous; requires CPU speed 3.5 MHz. |
-| `Sound(Frequency)` | [Agon] | Plays a tone at the given frequency (Hz) continuously in the background until a different Sound frequency specified or until NoSound. Uses a separate channel to Beep. |
+| `Sound(Frequency: Integer)` | [Agon] | Plays a tone at the given frequency (Hz) continuously in the background until a different Sound frequency specified or until NoSound. Uses a separate channel to Beep. |
 | `NoSound` | [Agon] | Stops the current sound. |
 | `Beep(Duration: Real; Pitch: Integer)` | [ZX48] [Agon] | Plays a note. `Duration` is in seconds; `Pitch` is the piano key number relative to middle C (0 = middle C, like MIDI note 60). Synchronous. |
 
@@ -186,7 +186,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `SetNextReg(Number, Value: Integer)` | [ZXNext] | Writes `Value` to ZX Spectrum Next register `Number`. |
+| `SetNextReg(Number, Value: Byte)` | [ZXNext] | Writes `Value` to ZX Spectrum Next register `Number`. |
 | `SetCpuSpeed(Value: Integer)` | [ZXNext] | Sets the CPU speed: 0 = 3.5 MHz, 1 = 7 MHz, 2 = 14 MHz, 3 = 28 MHz. |
 
 ### esxDOS / MOS (Low Level)
@@ -233,8 +233,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `Pi: Real` | [All] | Returns the constant π. |
 | `MaxReal: Real` | [All] | Returns the largest representable floating-point number. |
 | `MinReal: Real` | [All] | Returns the smallest representable floating-point number (largest negative value). |
-| `Random(Range: Integer): Integer` | [All] | Returns a pseudo-random integer in the range 0..`Range` (upper end exclusive). |
-| `Random: Real` | [All] | Returns a uniformly distributed pseudo-random real number in the range 0.0..1.0 (upper end exclusive). |
+| `Random(Range: Integer): Integer` | [All*] | Returns a pseudo-random integer in the range 0..`Range` (upper end exclusive). |
+| `Random: Real` | [All*] | Returns a uniformly distributed pseudo-random real number in the range 0.0..1.0 (upper end exclusive). |
 | `Round(R: Real): Integer` | [All] | Rounds `R` to the nearest integer and returns it as `Integer`. |
 | `Trunc(R: Real): Integer` | [All] | Truncates the fractional part of `R` (towards zero) and returns the result as `Integer`. |
 
@@ -291,12 +291,12 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Eof(var F): Boolean` | [All*] | Returns `True` if the end of file has been reached or an error occurred. |
-| `Eoln(var F: Text): Boolean` | [All*] | Returns `True` if the current character is the end-of-line marker. |
-| `SeekEof(var F: Text): Boolean` | [All*] | Skips spaces and line breaks and returns `True` if end of file follows. |
-| `SeekEoln(var F: Text): Boolean` | [All*] | Skips spaces and tabs and returns `True` if end of line or end of file follows. |
-| `FilePos(var F): Integer` | [All*] | Returns the current file position (record index, 0-based). `F` must be either typed or untyped. |
-| `FileSize(var F: File): Integer` | [All*] | Returns the total number of records in the file. `F` must be either typed or untyped. |
+| `Eof(var F): Boolean` | [CPM*] [ZXNext*] [Agon*] | Returns `True` if the end of file has been reached or an error occurred. |
+| `Eoln(var F: Text): Boolean` | [CPM*] [ZXNext*] [Agon*] | Returns `True` if the current character is the end-of-line marker. |
+| `SeekEof(var F: Text): Boolean` | [CPM*] [ZXNext*] [Agon*] | Skips spaces and line breaks and returns `True` if end of file follows. |
+| `SeekEoln(var F: Text): Boolean` | [CPM*] [ZXNext*] [Agon*] | Skips spaces and tabs and returns `True` if end of line or end of file follows. |
+| `FilePos(var F): Integer` | [CPM*] [ZXNext*] [Agon*] | Returns the current file position (record index, 0-based). `F` must be either typed or untyped. |
+| `FileSize(var F: File): Integer` | [CPM*] [ZXNext*] [Agon*] | Returns the total number of records in the file. `F` must be either typed or untyped. |
 | `IOResult: Byte` | [All] | Returns `LastError` and resets it to `0` so that further file operations can proceed. |
 
 ### Keyboard and Timing
@@ -321,13 +321,13 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `Point(X, Y: Byte): Boolean` | [ZX48] [Agon] | Returns `True` if the pixel at `(X, Y)` is set. |
+| `Point(X, Y: Byte): Boolean` | [ZX48] [Agon] | Returns `True` if the pixel at `(X, Y)` is set. On Agon, `X` and `Y` are of type `Integer`. |
 
 ### Next Register Reads
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
-| `GetNextReg(Number: Integer): Integer` | [ZXNext] | Reads the current value of ZX Spectrum Next register `Number`. |
+| `GetNextReg(Number: Byte): Byte` | [ZXNext] | Reads the current value of ZX Spectrum Next register `Number`. |
 | `GetCpuSpeed: Integer` | [ZXNext] | Returns the current CPU speed: 0 = 3.5 MHz, 1 = 7 MHz, 2 = 14 MHz, 3 = 28 MHz. |
 | `GetMemPage(Slot: Byte): Byte` | [ZXNext] | Returns the 8K memory page currently mapped to slot `Slot` (0..7). |
 
