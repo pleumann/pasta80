@@ -1317,7 +1317,9 @@ begin
       if IsForward then
         Error('Unresolved forward declaration "' + SymbolTable^.Name + '"');
 
-      if SmartLink and (Level = 0) and IsStdCall and not IsExternal then
+      (* Nameless entries are the placeholders left behind when the body of a
+         forward declaration is parsed. They share the tag of the real one. *)
+      if SmartLink and (Level = 0) and not IsExternal and not IsMagic and (Name <> '') then
       begin
         if IsAlive then
         begin
@@ -3089,7 +3091,7 @@ var
   I, J, K: Integer;
 begin
   with Sym^ do
-    if SmartLink and (Level = 0) and IsStdCall and not IsExternal then
+    if SmartLink and (Level = 0) and not IsExternal and not IsMagic then
       AddDependency(CurrentBlock, Sym);
 
   if not Sym^.IsStdCall then
@@ -8043,10 +8045,14 @@ begin
   begin
     if (Scanner.Token = toInline) then
     begin
+      if SmartLink and (NewSym^.Level = 0) then
+        EmitI('if __USE' + NewSym^.Tag);
       Emit(NewSym.Tag, '', '');
       NextToken;
       ParseInline;
       EmitI('ret');
+      if SmartLink and (NewSym^.Level = 0) then
+        EmitI('endif');
       Expect(toSemicolon);
       NextToken;
     end
