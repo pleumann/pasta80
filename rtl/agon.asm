@@ -999,6 +999,14 @@ al_circle:
 ; &88-&8F 136-143 Flood until foreground §§§§§
 ;
 ; 5 (D) Plot absolute in current foreground colour
+;
+; The VDP works through its command stream asynchronously, so we follow up
+; with a general poll (VDU 23, 0, &80, n) and wait for the reply. Since the
+; VDP handles commands in order, the fill is complete once the reply arrives.
+; This makes FloodFill synchronous, like on the Spectrum.
+;
+; sysvar_vpd_pflags:      EQU 04h ; 1: Flags to indicate completion of VDP commands
+; #define PACKET_GP                 0x01    // General poll == bit 0
 
 al_fill:
             ld      a,25
@@ -1013,6 +1021,22 @@ al_fill:
             rst     10h
             ld      a,d
             rst     10h
+            ld      a, 8        ;0x08: mos_sysvars
+            rst 08h         ;IX(U) now has sysvars
+            mklil
+            res     0,(IX+sysvar_vpd_pflags)    ; VDPP_FLAG_GP/PACKET_GP
+            ld      a,23
+            rst     10h
+            xor     a
+            rst     10h
+            ld      a,080h
+            rst     10h
+            xor     a
+            rst     10h
+al_fill_1:
+            mklil
+            bit     0,(ix+sysvar_vpd_pflags)    ;check if VDP packet returned
+            jr      z,al_fill_1
             ret
 
 

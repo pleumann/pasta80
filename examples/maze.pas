@@ -6,6 +6,13 @@ program Maze;
 
 {$a-,k-}
 
+const
+{$ifdef SYS_AGON}
+  MsPerFrame = 17;
+{$else}
+  MsPerFrame = 20;
+{$endif}
+
 procedure Recurse(OldX, OldY, X, Y: Integer);
 var
   Seen: Byte;
@@ -54,7 +61,8 @@ begin
 
   repeat
     ClrScr;
-    Write('Draw: ', TDraw * 20:5:0, ' ms    Fill: ', TFill * 20:5:0, ' ms');
+    (* On the Agon, the VDP fills asynchronously, so there's nothing to measure. *)
+    Write('Draw: ', TDraw * MsPerFrame:5:0, ' ms    Fill: ', TFill * MsPerFrame:5:0, ' ms');
 
     TDraw := Frames;
 
@@ -71,5 +79,7 @@ begin
     TFill := Frames;
     FloodFill(126, 86);
     TFill := Frames - TFill;
+
+    Delay(2000);
   until KeyPressed;
 end.
