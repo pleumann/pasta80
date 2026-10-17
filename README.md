@@ -141,12 +141,12 @@ $ open -a Fuse examples/jacques.tap       # Launch .tap file in FUSE (on Mac)
 When compiling for the Next, another useful format is a runnable directory. It contains exactly the same files that would also be in the .tap file, including a BASIC loader named `run.bas`.
 
 ```bash
-$ pasta80 --zxnext --run examples/pq.pas    # Results in directory named pq.run
+$ pasta80 --zxnext --dir examples/pq.pas    # Results in directory named pq.run
 ```
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
 
-Should you ever want to write your own BASIC loader (for either `--tap` or `--run`) because the provided ones are not fancy enough, use the `--loader` parameter. The file you provide there is expected to contain a BASIC program with a valid +3DOS header.
+Should you ever want to write your own BASIC loader (for either `--tap` or `--dir`) because the provided ones are not fancy enough, use the `--loader` parameter. The file you provide there is expected to contain a BASIC program with a valid +3DOS header.
 
 #### Setting your own start address
 
@@ -158,7 +158,7 @@ The address can be given in decimal or hex, e.g. `--start 24576`, `--start 0x600
 $ pasta80 --zx48 --tap --start 24576 examples/hello.pas
 ```
 
-For `--tap` and `--run`, the compiler then adjusts the loader accordingly: It expects the first line to start with `CLEAR nnnnn` (the start address minus one) and replaces that number. Everything else in the loader should be derived from RAMTOP (`PEEK 23730+256*PEEK 23731`), as the provided loaders do.
+For `--tap` and `--dir`, the compiler then adjusts the loader accordingly: It expects the first line to start with `CLEAR nnnnn` (the start address minus one) and replaces that number. Everything else in the loader should be derived from RAMTOP (`PEEK 23730+256*PEEK 23731`), as the provided loaders do.
 
 If you use your own loader that doesn't follow this convention, you get a warning and the loader is used as it is.
 

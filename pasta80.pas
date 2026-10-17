@@ -9452,7 +9452,7 @@ begin
     WriteLn('  --3dos         generates binary with +3DOS header');
     WriteLn('  --tap          generates .tap file with loader');
     WriteLn('  --sna          generates .sna snapshot file');
-    WriteLn('  --run          generates .run runnable directory');
+    WriteLn('  --dir          generates .run runnable directory');
     WriteLn('  --mos          generates Agon MOSlet');
     WriteLn;
     WriteLn('  --loader <fn>  uses <fn> as BASIC loader (ZX, .tap and .run)');
@@ -9497,7 +9497,7 @@ begin
       Format := tfMosLet
     else if SrcFile = '--3dos' then
       Format := tfPlus3Dos
-    else if SrcFile = '--run' then
+    else if SrcFile = '--dir' then
       Format := tfRunDir
     else if SrcFile = '--tap' then
       Format := tfTape
