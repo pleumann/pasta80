@@ -45,6 +45,7 @@ jobs:
     name: ${{ matrix.name }}
     needs: check
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +53,7 @@ jobs:
           - name: macOS arm64
             artifact: pasta80-Darwin-arm64
             runner: macos-latest
-            fpc: macos
+            fpc: brew
           - name: macOS x86_64
             artifact: pasta80-Darwin-x86_64
             runner: macos-15-intel
@@ -75,8 +76,16 @@ jobs:
         with:
           ref: ${{ env.REF }}
 
-      # The official universal installer contains the native compilers for
-      # both Apple Silicon and Intel.
+      # The official installer refuses to install on current macOS versions,
+      # but Homebrew has Free Pascal for Apple Silicon.
+      - name: Install Free Pascal (Homebrew)
+        if: matrix.fpc == 'brew'
+        run: |
+          brew install fpc
+          fpc -iV
+
+      # Homebrew is phasing out Intel, but the official installer still works
+      # on the Intel runner (macOS 15).
       - name: Install Free Pascal (macOS)
         if: matrix.fpc == 'macos'
         run: |
@@ -143,6 +152,7 @@ jobs:
     name: Linux armv6l (Pi Zero)
     needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -160,8 +170,8 @@ jobs:
             set -e
             test "$(uname -m)" = armv6l
             apt-get update
-            apt-get install -y --no-install-recommends fpc git zip file binutils
-            git config --global --add safe.directory '*'
+            apt-get install -y --no-install-recommends fp-compiler fp-units-rtl fp-units-fcl git zip file binutils
+            git config --system --add safe.directory '*'
             fpc -iV
             misc/release.sh
             file pasta80
