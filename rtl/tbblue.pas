@@ -36,6 +36,7 @@ end;
  *)
 function GetMemPage(Slot: Byte): Byte;
 begin
+  GetMemPage := GetNextReg($50 + (Slot and 7));
 end;
 
 (**
@@ -45,10 +46,7 @@ end;
  *)
 procedure SetMemPage(Slot, Page: Byte);
 begin
+  SetNextReg($50 + (Slot and 7), Page);
 end;
-
-procedure QuitEmulator; register; inline (
-  $dd / $00 / $c9
-);
 
 {$l tbblue.asm}

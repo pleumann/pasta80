@@ -1046,7 +1046,7 @@ begin
   {$endif}
 
   {$ifdef SYS_ZXNEXT}
-    QuitEmulator;
+    inline($dd / $00);
   {$endif}
 
   {$ifdef SYS_ZX128}

@@ -41,7 +41,7 @@ begin
     inline($3e / $00 / $d3 / $00);
   {$endif}
   {$ifdef SYS_ZXNEXT}
-    QuitEmulator;
+    inline($dd / $00);
   {$endif}
   {$ifdef SYS_ZX128}
     inline($3e / $00 / $d3 / $1f);
