@@ -8048,7 +8048,6 @@ begin
       Emit(NewSym.Tag, '', '');
       NextToken;
       ParseInline;
-      EmitI('ret');
       if SmartLink and (NewSym^.Level = 0) then
         EmitI('endif');
       Expect(toSemicolon);
