@@ -10,7 +10,7 @@ uses
   {$ifdef darwin} BaseUnix, {$endif} SysUtils, Keyboard, Dos, Math, Process;
 
 const
-  Version = '0.99';
+  Version = '1.00';
 
 (* -------------------------------------------------------------------------- *)
 (* --- Utility functions ---------------------------------------------------- *)
