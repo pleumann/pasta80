@@ -1997,8 +1997,6 @@ begin
       SetDefine(T, False)
     else if S = '$error' then
       Error(T)
-    else if S = '$a' then
-      EmitI(T)
     else if S = '$i' then
       OpenInput(NativeToPosix(T))
     else if S = '$l' then
