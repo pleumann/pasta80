@@ -400,13 +400,13 @@ There is a folder containing `examples` and a folder containing `tests` for the 
 
 If you want to see the full output of the tests on the console instead of inside an emulator, compile them with `--printer`, which redirects everything from the screen to the printer (LST device on CP/M, "P" channel on Spectrum, and VDU 1 on Agon). Most emulators have a means of showing the printer output on the console or writing it to a file. This also works for your own programs.
 
-The compiler is using that mechanism in its self-testing. To run the full test suite and generate a comprehensive report, start PASTA/80 with the parameter `--tests` and (optionally) a target platform parameter:
+The compiler is using that mechanism in its self-testing. To run the full test suite and generate a comprehensive report, start PASTA/80 with the parameter `--selftest` and (optionally) a target platform parameter:
 
 ```bash
-$ pasta80 --tests           # Runs all tests for CP/M
-$ pasta80 --tests --agon    # Runs all tests for Agon
-$ pasta80 --tests --zx128   # Runs all tests for the Spectrum 128K
-$ pasta80 --tests --zxnext  # Runs all tests for the Spectrum Next
+$ pasta80 --selftest           # Runs all tests for CP/M
+$ pasta80 --selftest --agon    # Runs all tests for Agon
+$ pasta80 --selftest --zx128   # Runs all tests for the Spectrum 128K
+$ pasta80 --selftest --zxnext  # Runs all tests for the Spectrum Next
 ```
 
 This requires the emulators to support capturing printer output, which is not yet the case in every official release:

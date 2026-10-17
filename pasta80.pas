@@ -9469,7 +9469,7 @@ begin
     WriteLn('  --ide          starts interactive mode');
     WriteLn('  --config       shows (and checks) the configuration');
     WriteLn('  --version      shows just the version number');
-    WriteLn('  --tests        runs the compiler''s test suite (for a target)');
+    WriteLn('  --selftest     runs the compiler''s test suite (for a target)');
     WriteLn;
     Halt(1);
   end;
@@ -9540,7 +9540,7 @@ begin
     end
     else if SrcFile = '--ide' then
       Ide := True
-    else if SrcFile = '--tests' then
+    else if SrcFile = '--selftest' then
       Tests := True
     else
       Error('Invalid option: ' + SrcFile);
