@@ -63,7 +63,13 @@ The [run-time library](docs/rtl-reference.md), being partially written in Pascal
 
 ## Building and setting up the compiler
 
-The compiler is itself written in Pascal. You can compile it with [Free Pascal](https://www.freepascal.org) (I use version 3.2.2). Just run
+Ready-made binaries for macOS (Apple Silicon and Intel), Windows (x86_64) and Linux (x86_64, arm64 and armv6l for the Raspberry Pi Zero) are attached to each [release](https://github.com/pleumann/pasta80/releases). On macOS, Gatekeeper will refuse to run the compiler because the binary isn't signed by a registered developer. To fix this, remove the quarantine flag once after unpacking:
+
+```bash
+$ xattr -dr com.apple.quarantine pasta80
+```
+
+Alternatively, you can build the compiler yourself. It is written in Pascal. You can compile it with [Free Pascal](https://www.freepascal.org) (I use version 3.2.2). Just run
 
 ```bash
 $ fpc pasta80
