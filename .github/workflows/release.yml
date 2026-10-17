@@ -177,7 +177,8 @@ jobs:
             file pasta80
             file pasta80 | grep -q 'statically linked'
             readelf -A pasta80
-            readelf -A pasta80 | grep -q 'Tag_CPU_arch: v6'
+            if readelf -A pasta80 | grep -Eq 'Tag_CPU_arch: v(7|8)'; then exit 1; fi
+            ./pasta80 --version
 
       - name: Keep as artifact
         uses: actions/upload-artifact@v4
