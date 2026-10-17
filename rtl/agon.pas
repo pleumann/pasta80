@@ -225,10 +225,6 @@ begin
   AgonBeep(Trunc(Frequency), Trunc(Duration * 1000));
 end;
 
-function sysvar_time_lo: Integer; register; external '__sysver_time_lo';
-function sysvar_time_hi: Integer; register; external '__sysver_time_hi';
-
-
 (**
  * The PC's speaker is accessed through the standard procedure Sound 
  * Sound( I ) ; 
@@ -242,15 +238,42 @@ procedure NoSound; register;                         external '__nosound';
 
 
 (**
- * Returns the value of the 32 bit frame counter that is normally increased by
- * two during the 60 Hz screen refresh. Multiplying this value by 17 results
- * in the machine's uptime in milliseconds (minus the time interrupts where
- * disabled).
+ * Returns the number of 60 Hz screen refreshes since startup. Multiplying this
+ * value by 17 results in the machine's uptime in milliseconds (roughly).
+ *
+ * MOS keeps a 32 bit counter in sysvar_time that is increased by two on each
+ * refresh. It is read with interrupts disabled, so it can't tick in between,
+ * and turned into a Real directly: the four bytes form the upper part of the
+ * Math48 mantissa (BCDEH), and the exponent (L) starts at $80 + 31 instead of
+ * $80 + 32, which divides by two (bit 0 is cleared first, so the result stays
+ * whole). The value is then normalized by shifting left until bit 7 of B is
+ * set. That bit gets replaced by the (positive) sign. A zero counter runs the
+ * exponent down to 0, which is how Math48 represents zero.
  *)
-function Frames: Real;
-begin
-  Frames := 65536.0 * sysvar_time_hi + sysvar_time_lo;
-end;
+function Frames: Real; register; inline
+(
+  $dd / $e5 /           (* push ix              *)
+  $3e / $08 /           (* ld   a,8             *)
+  $cf /                 (* rst  08h (sysvars)   *)
+  $f3 /                 (* di                   *)
+  $5b / $dd / $27 / $00 / (* ld.lil hl,(ix+0)   *)
+  $5b / $dd / $07 / $02 / (* ld.lil bc,(ix+2)   *)
+  $fb /                 (* ei                   *)
+  $dd / $e1 /           (* pop  ix              *)
+  $eb /                 (* ex   de,hl           *)
+  $cb / $83 /           (* res  0,e             *)
+  $21 / >$009f /        (* ld   hl,$009f        *)
+  $cb / $78 /           (* bit  7,b             *)
+  $20 / $0b /           (* jr   nz,+11          *)
+  $cb / $23 /           (* sla  e               *)
+  $cb / $12 /           (* rl   d               *)
+  $cb / $11 /           (* rl   c               *)
+  $cb / $10 /           (* rl   b               *)
+  $2d /                 (* dec  l               *)
+  $20 / $f1 /           (* jr   nz,-15          *)
+  $cb / $b8 /           (* res  7,b             *)
+  $c9                   (* ret                  *)
+);
 
 
 (* -------------------------------------------------------------------------- *)

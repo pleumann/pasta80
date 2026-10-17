@@ -896,28 +896,6 @@ __delay_exit:
             pop ix
             ret
 
-; Return high value of sysvar+00
-; sysvar_time:            EQU 00h ; 4: Clock timer in centiseconds (incremented by 2 every VBLANK)
-; In: -
-; Out: HL has value
-__sysver_time_lo:
-            push    ix
-            ld  a, 8        ;0x08: mos_sysvars
-            rst 08h         ;IX(U) now has sysvars
-            mklil
-    ;ld hl,(IX+0) ->  LD HL,(IX+d) 0/1 5/6 DD, 27, dd
-    db      0ddh, 027h, 00
-            pop ix
-            ret
-__sysver_time_hi:
-            push    ix
-            ld  a, 8        ;0x08: mos_sysvars
-            rst 08h         ;IX(U) now has sysvars
-            mklil
-    ;ld hl,(IX+2) ->  LD HL,(IX+d) 0/1 5/6 DD, 27, dd
-    db      0ddh, 027h, 02
-            pop ix
-            ret
 ;
 ; Plots a point.
 ;

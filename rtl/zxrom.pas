@@ -171,11 +171,33 @@ end;
  * one during the 50 Hz interrupt routine. Multiplying this value by 20 results
  * in the machine's uptime in milliseconds (minus the time interrupts where
  * disabled).
+ *
+ * The counter is read with interrupts disabled, so it can't tick in between,
+ * and turned into a Real directly: the three bytes form the upper part of the
+ * Math48 mantissa (BCDEH), the exponent (L) starts at $80 + 24, and the value
+ * is then normalized by shifting left until bit 7 of B is set. That bit gets
+ * replaced by the (positive) sign. A zero counter runs the exponent down to 0,
+ * which is how Math48 represents zero.
  *)
-function Frames: Real;
-begin
-  Frames := 65536.0 * Mem[23674] + 256.0 * Mem[23673] + Mem[23672];
-end;
+function Frames: Real; register; inline
+(
+  $f3 /                 (* di                   *)
+  $ed / $4b / >23673 /  (* ld   bc,(23673)      *)
+  $3a / >23672 /        (* ld   a,(23672)       *)
+  $fb /                 (* ei                   *)
+  $57 /                 (* ld   d,a             *)
+  $21 / >$0098 /        (* ld   hl,$0098        *)
+  $5c /                 (* ld   e,h             *)
+  $cb / $78 /           (* bit  7,b             *)
+  $20 / $09 /           (* jr   nz,+9           *)
+  $cb / $22 /           (* sla  d               *)
+  $cb / $11 /           (* rl   c               *)
+  $cb / $10 /           (* rl   b               *)
+  $2d /                 (* dec  l               *)
+  $20 / $f3 /           (* jr   nz,-13          *)
+  $cb / $b8 /           (* res  7,b             *)
+  $c9                   (* ret                  *)
+);
 
 (* --------------------------------------------------------------------- *)
 (* --- Simple graphics primitives -------------------------------------- *)

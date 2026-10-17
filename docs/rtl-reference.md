@@ -305,7 +305,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 |-----------|----------|-------------|
 | `KeyPressed: Boolean` | [ZX48] [CPM] [Agon] | Returns `True` if a key has been pressed and `ReadKey` can be called without blocking. |
 | `ReadKey: Char` | [ZX48] [CPM] [Agon] | Reads a key press and returns the corresponding ASCII character. Waits for a key press if none is pending. On the ZX Spectrum, requires interrupts to be enabled. |
-| `Frames: Real` | [ZX48] [Agon] | Returns the current value of the 24-bit frame counter. On the ZX Spectrum it runs at 50 Hz (multiply by 20 to get milliseconds). On the Agon at 60 Hz (multiply by 17 for an approximate millisecond value). |
+| `Frames: Real` | [ZX48] [Agon] | Returns the number of frames since startup. On the ZX Spectrum this is the ROM's 24-bit frame counter, running at 50 Hz (multiply by 20 to get milliseconds). On the Agon it is derived from the MOS system timer and runs at 60 Hz (multiply by 17 for an approximate millisecond value). |
 
 ### Screen and Cursor
 
@@ -385,7 +385,5 @@ These identifiers are part of the run-time infrastructure. They may be visible i
 |-----------|----------|--------------|
 | `MOSAPILength(var R: Registers): Integer` | [Agon] | Returns the length of a file opened via MOS. |
 | `ParamChar(Param, Bytenum: Byte): Char` | [Agon] | Returns a single character of a command-line parameter. `ParamStr` assembles its result from these. |
-| `sysvar_time_lo: Integer` | [Agon] | Low half of the MOS system time variable. `Frames` combines both halves. |
-| `sysvar_time_hi: Integer` | [Agon] | High half of the MOS system time variable. |
 | `RandomInt(Range: Integer): Integer` | [All] | Implementation behind `Random(Range)`. |
 | `RandomReal: Real` | [All] | Implementation behind `Random`. |
