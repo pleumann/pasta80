@@ -82,7 +82,9 @@ jobs:
         run: |
           curl -fsSL -o fpc.dmg "https://sourceforge.net/projects/freepascal/files/Mac%20OS%20X/3.2.2/fpc-3.2.2.intelarm64-macosx.dmg/download"
           hdiutil attach -nobrowse -mountpoint /Volumes/fpc fpc.dmg
-          sudo installer -pkg "$(find /Volumes/fpc -maxdepth 1 -name '*.pkg' | head -1)" -target /
+          ls -la /Volumes/fpc
+          PKG=$(find /Volumes/fpc -maxdepth 2 \( -name '*.pkg' -o -name '*.mpkg' \) | head -1)
+          sudo installer -pkg "$PKG" -target /
           hdiutil detach /Volumes/fpc
           rm fpc.dmg
           fpc -iV
@@ -118,9 +120,9 @@ jobs:
         shell: bash
         run: |
           case "$RUNNER_OS" in
-            Windows) file pasta80.exe | tee /dev/stderr | grep -q 'x86-64' ;;
-            macOS)   file pasta80 | tee /dev/stderr | grep -q "$(uname -m)" ;;
-            Linux)   file pasta80 | tee /dev/stderr | grep -q 'statically linked' ;;
+            Windows) file pasta80.exe; file pasta80.exe | grep -q 'x86-64' ;;
+            macOS)   file pasta80; file pasta80 | grep -q "$(uname -m)" ;;
+            Linux)   file pasta80; file pasta80 | grep -q 'statically linked' ;;
           esac
 
       - name: Keep as artifact
@@ -150,7 +152,7 @@ jobs:
         uses: pguyot/arm-runner-action@v2
         with:
           cpu: arm1176
-          cpu_info: raspberrypi_zero_w
+          cpu_info: cpuinfo/raspberrypi_zero_w
           base_image: raspios_lite:latest
           image_additional_mb: 1024
           copy_artifact_path: pasta80-*.zip
@@ -162,8 +164,10 @@ jobs:
             git config --global --add safe.directory '*'
             fpc -iV
             misc/release.sh
-            file pasta80 | tee /dev/stderr | grep -q 'statically linked'
-            readelf -A pasta80 | tee /dev/stderr | grep -q 'Tag_CPU_arch: v6'
+            file pasta80
+            file pasta80 | grep -q 'statically linked'
+            readelf -A pasta80
+            readelf -A pasta80 | grep -q 'Tag_CPU_arch: v6'
 
       - name: Keep as artifact
         uses: actions/upload-artifact@v4
