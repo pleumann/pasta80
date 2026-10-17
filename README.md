@@ -108,12 +108,12 @@ $ tnylpo -soy,4,0 -t @ hello  # Color full-screen, wait when finished
 
 ### ZX Spectrum targets
 
-To generate binaries for the ZX Spectrum 48K, 128K and Next targets, use the `--zx48`, `--zx128` and `--zxnext` parameters, respectively.
+To generate binaries for the ZX Spectrum 48K, 128K and Next targets, use the `--48`, `--128` and `--next` parameters, respectively. The long forms `--zx48`, `--zx128` and `--zxnext` work as well.
 
 ```bash
-$ pasta80 --zx48 hello.pas    # Compiles for ZX Spectrum 48K
-$ pasta80 --zx128 hello.pas   # Compiles for ZX Spectrum 128K
-$ pasta80 --zxnext hello.pas  # Compiles for ZX Spectrum Next
+$ pasta80 --48 hello.pas      # Compiles for ZX Spectrum 48K
+$ pasta80 --128 hello.pas     # Compiles for ZX Spectrum 128K
+$ pasta80 --next hello.pas    # Compiles for ZX Spectrum Next
 ```
 
 The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In all three cases the binaries are expected to be run from address $8000 (by default, see below).
@@ -123,9 +123,11 @@ The main difference between the three (currently) is that the ZX Spectrum Next t
 The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program. Use `--3dos` if you want a +3DOS header in front of it. In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
 
 ```bash
-$ pasta80 --zx48 --sna examples/hello.pas   # .sna file
-$ pasta80 --zx48 --tap examples/jacques.pas # .tap file with BASIC loader
+$ pasta80 --48 --snapshot examples/hello.pas # .sna file
+$ pasta80 --48 --tape examples/jacques.pas   # .tap file with BASIC loader
 ```
+
+The short forms `--sna` and `--tap` work as well.
 
 Being self-contained, snapshots and tapes are a convenient way to distribute your programs and to launch them an emulator, such as Fuse:
 
@@ -141,12 +143,12 @@ $ open -a Fuse examples/jacques.tap       # Launch .tap file in FUSE (on Mac)
 When compiling for the Next, another useful format is a runnable directory. It contains exactly the same files that would also be in the .tap file, including a BASIC loader named `run.bas`.
 
 ```bash
-$ pasta80 --zxnext --dir examples/pq.pas    # Results in directory named pq.run
+$ pasta80 --next --dir examples/pq.pas      # Results in directory named pq.run
 ```
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
 
-Should you ever want to write your own BASIC loader (for either `--tap` or `--dir`) because the provided ones are not fancy enough, use the `--loader` parameter. The file you provide there is expected to contain a BASIC program with a valid +3DOS header.
+Should you ever want to write your own BASIC loader (for either `--tape` or `--dir`) because the provided ones are not fancy enough, use the `--loader` parameter. The file you provide there is expected to contain a BASIC program with a valid +3DOS header.
 
 #### Setting your own start address
 
@@ -155,10 +157,10 @@ By default, programs on the Spectrum targets start at address $8000. If you need
 The address can be given in decimal or hex, e.g. `--start 24576`, `--start 0x6000` or `--start '$6000'` (the quotes keep the shell from expanding `$6000`).
 
 ```bash
-$ pasta80 --zx48 --tap --start 24576 examples/hello.pas
+$ pasta80 --48 --tape --start 24576 examples/hello.pas
 ```
 
-For `--tap` and `--dir`, the compiler then adjusts the loader accordingly: It expects the first line to start with `CLEAR nnnnn` (the start address minus one) and replaces that number. Everything else in the loader should be derived from RAMTOP (`PEEK 23730+256*PEEK 23731`), as the provided loaders do.
+For `--tape` and `--dir`, the compiler then adjusts the loader accordingly: It expects the first line to start with `CLEAR nnnnn` (the start address minus one) and replaces that number. Everything else in the loader should be derived from RAMTOP (`PEEK 23730+256*PEEK 23731`), as the provided loaders do.
 
 If you use your own loader that doesn't follow this convention, you get a warning and the loader is used as it is.
 
@@ -179,7 +181,7 @@ PASTA/80 nor sjasmplus directly support the flat 24 bit address space yet. You
 can, however, extend this via RAM-based overlays (see below), allowing a single
 program to be up to 440K in size.
 
-PASTA/80 also supports the MOSlet format (`--mos`) for smaller programs that can be run
+PASTA/80 also supports the MOSlet format (`--moslet`, or `--mos` for short) for smaller programs that can be run
 from $B0000 without overwriting a larger main (or BASIC) program running from
 $40000. MOSlets cannot exceed 32K size and are not allowed to use overlays.
 
@@ -235,11 +237,11 @@ calls" whenever necessary.
   physical address $50000. Overlays are copied to the physical address range
   $4E000-$4FFFF as needed (the upper 8K of the 64K area for non-ADL programs).
 
-For the ZX targets, ideally combine overlays with the `--tap` parameter, as the tape loaders for 128K
+For the ZX targets, ideally combine overlays with the `--tape` parameter, as the tape loaders for 128K
 and Next are fully overlay-aware.
 
 ```bash
-$ pasta80 --zx128 --tap tests/core.pas # Test suite as 128K tape
+$ pasta80 --128 --tape tests/core.pas # Test suite as 128K tape
 ```
 The compiler prints a report of which overlays go into which RAM banks or pages.
 ```
@@ -392,7 +394,7 @@ $ pasta80 --no-dep hello.pas          # Disables dependency analysis
 $ pasta80 --no-opt --no-dep hello.pas # Disables both
 ```
 
-Note this makes your programs both larger and slower, so it's not recommended unless you are debugging a problem that looks like it could be caused by either of the two optimizations and you want to compare the assembly outputs. Add `--keepint` to keep the intermediate files (the generated `.z80` source and the `.lst` listing), which are deleted after a successful compilation otherwise.
+Note this makes your programs both larger and slower, so it's not recommended unless you are debugging a problem that looks like it could be caused by either of the two optimizations and you want to compare the assembly outputs. Add `--keep` (or `--keepint`) to keep the intermediate files (the generated `.z80` source and the `.lst` listing), which are deleted after a successful compilation otherwise.
 
 ## Examples and tests
 
@@ -405,8 +407,8 @@ The compiler is using that mechanism in its self-testing. To run the full test s
 ```bash
 $ pasta80 --selftest           # Runs all tests for CP/M
 $ pasta80 --selftest --agon    # Runs all tests for Agon
-$ pasta80 --selftest --zx128   # Runs all tests for the Spectrum 128K
-$ pasta80 --selftest --zxnext  # Runs all tests for the Spectrum Next
+$ pasta80 --selftest --128     # Runs all tests for the Spectrum 128K
+$ pasta80 --selftest --next    # Runs all tests for the Spectrum Next
 ```
 
 This requires the emulators to support capturing printer output, which is not yet the case in every official release:

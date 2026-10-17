@@ -9443,23 +9443,23 @@ begin
     WriteLn;
     WriteLn('Options:');
     WriteLn('  --cpm          sets target to CP/M (default)');
-    WriteLn('  --zx48         sets target to ZX Spectrum 48K');
-    WriteLn('  --zx128        sets target to ZX Spectrum 128K');
-    WriteLn('  --zxnext       sets target to ZX Spectrum Next');
+    WriteLn('  --[zx]48       sets target to ZX Spectrum 48K');
+    WriteLn('  --[zx]128      sets target to ZX Spectrum 128K');
+    WriteLn('  --[zx]next     sets target to ZX Spectrum Next');
     WriteLn('  --agon         sets target to Agon Light/Console8');
     WriteLn;
     WriteLn('  --bin          generates raw binary file (default)');
     WriteLn('  --3dos         generates binary with +3DOS header');
-    WriteLn('  --tap          generates .tap file with loader');
-    WriteLn('  --sna          generates .sna snapshot file');
+    WriteLn('  --tap[e]       generates .tap file with loader');
+    WriteLn('  --sna[pshot]   generates .sna snapshot file');
     WriteLn('  --dir          generates .run runnable directory');
-    WriteLn('  --mos          generates Agon MOSlet');
+    WriteLn('  --mos[let]     generates Agon MOSlet');
     WriteLn;
     WriteLn('  --loader <fn>  uses <fn> as BASIC loader (ZX, .tap and .run)');
     WriteLn('  --start <addr> sets start address (ZX, default $8000)');
     WriteLn;
     WriteLn('  --release      ignores assertions and breakpoints');
-    WriteLn('  --keepint      keeps intermediate assembly files');
+    WriteLn('  --keep[int]    keeps intermediate assembly files');
     WriteLn('  --printer      redirects screen output to printer');
     WriteLn;
     WriteLn('  --[no-]opt     controls peephole optimizations (on by default)');
@@ -9483,25 +9483,25 @@ begin
   begin
     if SrcFile = '--cpm' then
       Binary := btCPM
-    else if SrcFile = '--zx48' then
+    else if (SrcFile = '--zx48') or (SrcFile = '--48') then
       Binary := btZX
-    else if SrcFile = '--zx128' then
+    else if (SrcFile = '--zx128') or (SrcFile = '--128') then
       Binary := btZX128
-    else if SrcFile = '--zxnext' then
+    else if (SrcFile = '--zxnext') or (SrcFile = '--next') then
       Binary := btZXN
     else if SrcFile = '--agon' then
       Binary := btAgon
     else if SrcFile = '--bin' then
       Format := tfBinary
-    else if SrcFile = '--mos' then
+    else if (SrcFile = '--mos') or (SrcFile = '--moslet') then
       Format := tfMosLet
     else if SrcFile = '--3dos' then
       Format := tfPlus3Dos
     else if SrcFile = '--dir' then
       Format := tfRunDir
-    else if SrcFile = '--tap' then
+    else if (SrcFile = '--tap') or (SrcFile = '--tape') then
       Format := tfTape
-    else if SrcFile = '--sna' then
+    else if (SrcFile = '--sna') or (SrcFile = '--snapshot') then
       Format := tfSnapshot
     else if (SrcFile = '--ovr') or (SrcFile = '--no-ovr') then
       Overlays := SrcFile = '--ovr'
@@ -9511,7 +9511,7 @@ begin
       SmartLink := SrcFile = '--dep'
     else if SrcFile = '--release' then
       Release := True
-    else if SrcFile = '--keepint' then
+    else if (SrcFile = '--keepint') or (SrcFile = '--keep') then
       KeepInt := True
     else if SrcFile = '--printer' then
       UsePrinter := True
