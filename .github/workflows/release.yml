@@ -1,0 +1,177 @@
+# Builds the release binaries with misc/release.sh and misc/release.bat for
+# all supported platforms. Run it from the Actions tab ("Build release
+# binaries") or with
+#
+#   gh workflow run release.yml [-f ref=<commit>] [-f release=<tag>]
+#
+# "ref" is the branch, tag or commit to build. Left empty, it is the branch
+# the workflow is run on. "release" is the tag of an existing GitHub release
+# to attach the ZIP files to. Left empty, nothing is uploaded to a release.
+# Either way, the ZIP files are available as artifacts of the workflow run.
+
+name: Build release binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or commit to build (default is the branch the workflow runs on)
+        required: false
+        default: ''
+      release:
+        description: Tag of an existing release to attach the binaries to (leave empty to skip)
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  RELEASE: ${{ inputs.release }}
+  REF: ${{ inputs.ref || github.sha }}
+
+jobs:
+  check:
+    name: Check release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make sure the release exists
+        if: env.RELEASE != ''
+        run: gh release view "$RELEASE" --repo "$GITHUB_REPOSITORY" --json name,isDraft
+
+  # Native builds on GitHub's own runners.
+  build:
+    name: ${{ matrix.name }}
+    needs: check
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            artifact: pasta80-Darwin-arm64
+            runner: macos-latest
+            fpc: macos
+          - name: macOS x86_64
+            artifact: pasta80-Darwin-x86_64
+            runner: macos-15-intel
+            fpc: macos
+          - name: Linux x86_64
+            artifact: pasta80-Linux-x86_64
+            runner: ubuntu-latest
+            fpc: apt
+          - name: Linux arm64
+            artifact: pasta80-Linux-aarch64
+            runner: ubuntu-24.04-arm
+            fpc: apt
+          - name: Windows x86_64
+            artifact: pasta80-Windows-AMD64
+            runner: windows-latest
+            fpc: lazarus
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+
+      # The official universal installer contains the native compilers for
+      # both Apple Silicon and Intel.
+      - name: Install Free Pascal (macOS)
+        if: matrix.fpc == 'macos'
+        run: |
+          curl -fsSL -o fpc.dmg "https://sourceforge.net/projects/freepascal/files/Mac%20OS%20X/3.2.2/fpc-3.2.2.intelarm64-macosx.dmg/download"
+          hdiutil attach -nobrowse -mountpoint /Volumes/fpc fpc.dmg
+          sudo installer -pkg "$(find /Volumes/fpc -maxdepth 1 -name '*.pkg' | head -1)" -target /
+          hdiutil detach /Volumes/fpc
+          rm fpc.dmg
+          fpc -iV
+
+      - name: Install Free Pascal (Linux)
+        if: matrix.fpc == 'apt'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fpc zip
+          fpc -iV
+
+      # The Free Pascal installers for Windows only come with a 32 bit compiler
+      # (plus a cross compiler). Lazarus brings a native 64 bit one.
+      - name: Install Free Pascal (Windows)
+        if: matrix.fpc == 'lazarus'
+        shell: pwsh
+        run: |
+          choco install lazarus -y --no-progress
+          $Bin = (Get-ChildItem C:\lazarus\fpc\*\bin\x86_64-win64\fpc.exe | Select-Object -First 1).DirectoryName
+          Add-Content $env:GITHUB_PATH $Bin
+          & "$Bin\fpc.exe" -iV
+
+      - name: Build (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: misc/release.sh
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: call misc\release.bat
+
+      - name: Check binary
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) file pasta80.exe | tee /dev/stderr | grep -q 'x86-64' ;;
+            macOS)   file pasta80 | tee /dev/stderr | grep -q "$(uname -m)" ;;
+            Linux)   file pasta80 | tee /dev/stderr | grep -q 'statically linked' ;;
+          esac
+
+      - name: Keep as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: pasta80-*.zip
+          if-no-files-found: error
+
+      - name: Upload to release
+        if: env.RELEASE != ''
+        shell: bash
+        run: gh release upload "$RELEASE" pasta80-*.zip --clobber --repo "$GITHUB_REPOSITORY"
+
+  # 32 bit ARMv6 with hard float for the Raspberry Pi Zero (and NextPi). Built
+  # natively in an emulated Raspberry Pi OS, whose fpc generates ARMv6 code.
+  build-armv6:
+    name: Linux armv6l (Pi Zero)
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+
+      - name: Build in emulated Raspberry Pi OS
+        uses: pguyot/arm-runner-action@v2
+        with:
+          cpu: arm1176
+          cpu_info: raspberrypi_zero_w
+          base_image: raspios_lite:latest
+          image_additional_mb: 1024
+          copy_artifact_path: pasta80-*.zip
+          commands: |
+            set -e
+            test "$(uname -m)" = armv6l
+            apt-get update
+            apt-get install -y --no-install-recommends fpc git zip file binutils
+            git config --global --add safe.directory '*'
+            fpc -iV
+            misc/release.sh
+            file pasta80 | tee /dev/stderr | grep -q 'statically linked'
+            readelf -A pasta80 | tee /dev/stderr | grep -q 'Tag_CPU_arch: v6'
+
+      - name: Keep as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pasta80-Linux-armv6l
+          path: pasta80-*.zip
+          if-no-files-found: error
+
+      - name: Upload to release
+        if: env.RELEASE != ''
+        run: gh release upload "$RELEASE" pasta80-*.zip --clobber --repo "$GITHUB_REPOSITORY"
