@@ -8862,7 +8862,7 @@ begin
 
       if Log <> '' then
       begin
-        StrToFile('printer file = "' + PosixToNative(Log) + '"', 'tnylpo.conf');
+        StrToFile('printer file = "' + Log + '"', 'tnylpo.conf');
         Args := Args + ' -f tnylpo.conf';
       end;
 
