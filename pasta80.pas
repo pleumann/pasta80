@@ -8917,7 +8917,7 @@ begin
         Args := Args + ' --debugger-command ''' + StrFromFile(HomeDir + '/misc/fuse.brk') + '''';
 
       if Format = tfTape then
-        Args := Args + ' --tape ' + BinFile
+        Args := Args + ' --phantom-typist-mode auto --tape ' + BinFile
       else if Format = tfSnapshot then
         Args := Args + ' --snapshot ' + BinFile
       else
@@ -8926,7 +8926,7 @@ begin
         Exit;
       end;
 
-      if Log <> '' then Args := Args + ' --textfile ' + Log;
+      if Log <> '' then Args := Args + ' --textfile ' + PosixToNative(Log);
 
       Execute(FuseCmd, Args);
     end
