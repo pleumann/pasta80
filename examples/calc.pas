@@ -11,16 +11,17 @@
  * on the fly while parsing, in typical Pascal fashion. There is no
  * syntax tree.
  *
+ * The ZX Spectrum has no command line, so there the program prompts
+ * for one expression after another instead (spaces are ignored) and
+ * stops at an empty line. Errors don't end the program there, they
+ * just skip the current expression.
+ *
  * Grammar:
  *   Expr   ::= Term { ('+' | '-') Term }
  *   Term   ::= Factor { ('*' | '/') Factor }
  *   Factor ::= ['+' | '-'] (Number | '(' Expr ')' | Ident ['(' Expr ')'])
  *)
 program Calc;
-
-{$ifdef SYS_ZX}
-  {$error Agon or CP/M required.}
-{$endif}
 
 {$a-} { Needed because grammar is recursive }
 
@@ -35,16 +36,51 @@ var
   Expr: String;
   Pos: Integer;
   I: Integer;
-  Result: Real;
+  Arg: String;
+  Value, Result: Real;
+  Error: Boolean;
+
+{$ifdef SYS_ZX}
+(**
+ * Simulates command line arguments by prompting for them. The index is
+ * ignored, each call reads a new line. Spaces are removed, since they
+ * would otherwise end the expression.
+ *)
+function ParamStr(I: Byte): String;
+var
+  S, T: String;
+  J: Integer;
+begin
+  Write('> ');
+  ReadLn(S);
+
+  T := '';
+  for J := 1 to Length(S) do
+    if S[J] <> ' ' then
+      T := T + S[J];
+
+  ParamStr := T;
+end;
+{$endif}
 
 (**
- * Exits with an error message.
+ * Exits with an error message. On the ZX Spectrum, only reports the first
+ * error and moves to the end of the expression, so the parser unwinds
+ * without consuming anything else.
  *)
 procedure Fail(Msg: String);
 begin
+  if Error then
+    Exit;
+
   WriteLn;
   WriteLn('Error: ', Msg, ' at position ', Pos, '.');
+{$ifdef SYS_ZX}
+  Error := True;
+  Pos := Length(Expr);
+{$else}
   Halt(1);
+{$endif}
 end;
 
 (**
@@ -106,7 +142,10 @@ begin
 
   Val(S, Value, ErrPos);
   if ErrPos <> 0 then
+  begin
+    Value := 0;
     Fail('invalid number "' + S + '"');
+  end;
 
   ParseNumber := Value;
 end;
@@ -136,6 +175,9 @@ function ParseCall(Name: String): Real;
 var
   Arg: Real;
 begin
+  ParseCall := 0;
+  Arg := 0;
+
   if Expr[Pos] = '(' then
   begin
     Inc(Pos);
@@ -158,14 +200,16 @@ begin
   else if Name = 'SQRT' then
   begin
     if Arg < 0 then
-      Fail('square root of negative number');
-    ParseCall := Sqrt(Arg);
+      Fail('square root of negative number')
+    else
+      ParseCall := Sqrt(Arg);
   end
   else if Name = 'LN' then
   begin
     if Arg <= 0 then
-      Fail('logarithm of non-positive number');
-    ParseCall := Ln(Arg);
+      Fail('logarithm of non-positive number')
+    else
+      ParseCall := Ln(Arg);
   end
   else if Name = 'EXP' then
     ParseCall := Exp(Arg)
@@ -183,6 +227,7 @@ var
   Negate: Boolean;
   Name: String;
 begin
+  Value := 0;
   Negate := False;
   if Expr[Pos] = '-' then
   begin
@@ -245,8 +290,9 @@ begin
     begin
       Divisor := ParseFactor;
       if Divisor = 0 then
-        Fail('division by zero');
-      Value := Value / Divisor;
+        Fail('division by zero')
+      else
+        Value := Value / Divisor;
     end;
   end;
 
@@ -279,28 +325,40 @@ begin
 end;
 
 begin
-  if ParamCount = 0 then
+  Arg := ParamStr(1);
+{$ifndef SYS_ZX}
+  if Arg = '' then
   begin
     WriteLn('Usage: calc <expression> [<expression> ...]');
     Halt(1);
   end;
+{$endif}
 
   Result := 0;
+  I := 1;
 
-  for I := 1 to ParamCount do
+  while Arg <> '' do
   begin
     { The trailing space can never occur inside an expression (the
       shell already split argument on spaces), so it works as an
       end-of-input sentinel: Expr[Pos] is thus always valid and the
       scanning loops don't need to test Pos against Length(Expr). }
-    Expr := ParamStr(I) + ' ';
+    Expr := Arg + ' ';
 
     Pos := 1;
-    Result := ParseExpr;
+    Error := False;
+    Value := ParseExpr;
 
     if Expr[Pos] <> ' ' then
       Fail('unexpected character');
 
-    WriteLn(ParamStr(I), ' = ', Result:0:6);
+    if not Error then
+    begin
+      Result := Value;
+      WriteLn(Arg, ' = ', Result:0:6);
+    end;
+
+    Inc(I);
+    Arg := ParamStr(I);
   end;
 end.
