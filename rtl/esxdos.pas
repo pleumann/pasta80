@@ -134,6 +134,9 @@ var
 begin
   if LastError <> 0 then Exit;
 
+  (* TP3 silently ignores closing a file that is not open. *)
+  if F.Handle = 0 then Exit;
+
   R.A := F.Handle;
 
   LastError := EsxDos($9b, R);

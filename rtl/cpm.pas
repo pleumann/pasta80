@@ -303,6 +303,7 @@ type
     CR: Byte;                           (* CP/M internal stuff                *)
     RL: Integer; RH: Byte;              (* 24 bit random record number        *)
     SL: Integer; SH: Byte;              (* Record count, not part of CP/M FCB *)
+    IsOpen: Boolean;                    (* File is open, not part of CP/M FCB *)
   end;
 
 procedure BlockAssign(var F: FileControlBlock; S: String);
@@ -322,6 +323,8 @@ begin
       Dec(L, 2);
     end
     else DR := 0;
+
+    IsOpen := False;
 
     P := Pos('.', S);
     if P = 0 then P := L + 1;
@@ -389,6 +392,8 @@ begin
 
     RL := 0;
     RH := 0;
+
+    IsOpen := LastError = 0;
  end;
 end;
 
@@ -415,11 +420,18 @@ begin
 
   A := BDos(*Catch*)(19, Addr(F));
   BDosCatch(22, Addr(F));
+
+  F.IsOpen := LastError = 0;
 end;
 
 procedure BlockClose(var F: FileControlBlock);
 begin
+  (* Closing an unopened FCB could overwrite the directory entry of an
+     existing file with the same name. TP3 silently ignores it, too. *)
+  if not F.IsOpen then Exit;
+
   BDosCatch(16, Addr(F));
+  F.IsOpen := False;
 end;
 
 function BlockFilePos(var F: FileControlBlock): Integer;

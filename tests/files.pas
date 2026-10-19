@@ -1143,6 +1143,34 @@ begin
   Assert(not FileExists('TXT.TMP'));
 end;
 
+overlay procedure TestCloseUnopened;
+var
+  TestFile: Text;
+  OtherFile: File;
+begin
+  WriteLn('--- TestCloseUnopened ---');
+
+  Assign(TestFile, 'CLS.TMP');
+  Rewrite(TestFile);
+  WriteLn(TestFile, 'Still here');
+  Close(TestFile);
+
+  { Closing a file that was never opened does nothing, as in TP3 }
+  Assign(OtherFile, 'CLS.TMP');
+  {$i-}
+  Close(OtherFile);
+  Assert(IOResult = 0);
+  {$i+}
+
+  { An existing file of the same name stays intact }
+  Reset(TestFile);
+  ReadLn(TestFile, S);
+  Close(TestFile);
+  Assert(S = 'Still here');
+
+  Erase(TestFile);
+end;
+
 begin
   {$ifdef SYS_ZXNEXT}
   SetCpuSpeed(3);
@@ -1178,6 +1206,7 @@ begin
   TestLargeFiles;
 
   TestIOResult;
+  TestCloseUnopened;
 
   WriteLn;
   WriteLn('************************');
