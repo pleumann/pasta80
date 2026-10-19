@@ -464,7 +464,9 @@ The following external tools are supported for running compiled programs on the 
 * [CSpect](https://mdf200.itch.io/cspect) for ZX Spectrum Next programs.
   * Please have [hdfmonkey](https://github.com/gasman/hdfmonkey) ready for manipulating the SD card image.
   * If you're on MacOS or Linux, you also need `mono` because CSpect is a .NET application.
+  * Even if you have all tools in your path, you probably need to configure at least the image location (`image`) in `.pasta80.cfg`.
 * [Fab Agon Emulator](https://github.com/tomm/fab-agon-emulator) for Agon Light/Console8 programs.
+  * Please note that in this case you need to configure the emulator location (`fabagon`) in `.pasta80.cfg`, and it needs to point to the *directory, not the binary*.
 
 As mentioned before, everything that is in your `PATH` should be detected automatically. There are some exceptions, though, so it makes sense to copy `misc/.pasta80.cfg` to your home directory and adapt it. Use the `--config` parameter to let PASTA/80 check your setup and get feedback on what is in place and what is missing.
 
