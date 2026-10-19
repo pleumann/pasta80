@@ -517,13 +517,13 @@ procedure Execute(Path, Args: String);
 begin
   {$ifndef windows}
   if EndsWith(Path, '.exe') then
-    Exec('/bin/sh', '-c "mono ' + Path + ' ' + Args + '"')
+    Exec('/bin/sh', '-c "mono ''' + Path + ''' ' + Args + '"')
   {$ifdef darwin}
   else if EndsWith(Path, '.app') then
-    Exec('/bin/sh', '-c "open -n -W -a ' + Path + ' --args ' + Args + '"')
+    Exec('/bin/sh', '-c "open -n -W -a ''' + Path + ''' --args ' + Args + '"')
   {$endif}
   else
-    Exec('/bin/sh', '-c "' + Path + ' ' + Args + '"');
+    Exec('/bin/sh', '-c "''' + Path + ''' ' + Args + '"');
   {$else}
   Args := ReplaceChar(Args, '''', '"');
   Exec(Path, Args);
@@ -8640,9 +8640,9 @@ begin
     WriteLn;
 
     if Binary = btZXN then
-      Execute(SjAsmCmd,  '--zxnext --lst --syntax=abf --nologo --msg=err ' + AsmFile)
+      Execute(SjAsmCmd,  '--zxnext --lst --syntax=abf --nologo --msg=err ''' + AsmFile + '''')
     else
-      Execute(SjAsmCmd, '--lst --syntax=abf --nologo --msg=err ' + AsmFile);
+      Execute(SjAsmCmd, '--lst --syntax=abf --nologo --msg=err ''' + AsmFile + '''');
 
     if DosError <> 0 then
       Error('Error ' + IntToStr(DosError) + ' starting assembler');
@@ -8791,9 +8791,9 @@ begin
   if Error then
   begin
     if AltEditor then
-      Execute(CodeCmd, '-g ' + ErrorFile + ':' + IntToStr(ErrorLine) + ':' + IntToStr(ErrorColumn))
+      Execute(CodeCmd, '-g ''' + ErrorFile + ':' + IntToStr(ErrorLine) + ':' + IntToStr(ErrorColumn) + '''')
     else
-      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(ErrorLine) + ',' + IntToStr(ErrorColumn) + ' ' + ErrorFile)
+      Execute(NanoCmd, '--minibar -Aicl --rcfile ''' + HomeDir + '/misc/pascal.nanorc'' +' + IntToStr(ErrorLine) + ',' + IntToStr(ErrorColumn) + ' ''' + ErrorFile + '''')
   end
   else
   begin
@@ -8807,9 +8807,9 @@ begin
       Exit;
 
     if AltEditor then
-      Execute(CodeCmd, S)
+      Execute(CodeCmd, '''' + S + '''')
     else
-      Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
+      Execute(NanoCmd, '--minibar -Aicl --rcfile ''' + HomeDir + '/misc/pascal.nanorc'' ''' + S + '''');
   end;
 end;
 
@@ -8866,7 +8866,7 @@ begin
         Args := Args + ' -f tnylpo.conf';
       end;
 
-      Args := Args + ' ' + BinFile;
+      Args := Args + ' ''' + BinFile + '''';
       if StartParams <> '' then
         Args := Args + ' ' + StartParams;
 
@@ -8897,7 +8897,7 @@ begin
 
       if Debug then Args := Args + ' -d';
 
-      if Log <> '' then Args := Args + ' --printer-file ' + Log;
+      if Log <> '' then Args := Args + ' --printer-file ''' + Log + '''';
 
       Execute('./fab-agon-emulator', Args);
       ChDir(S);
@@ -8917,16 +8917,16 @@ begin
         Args := Args + ' --debugger-command=''' + StrFromFile(HomeDir + '/misc/fuse.brk') + '''';
 
       if Format = tfTape then
-        Args := Args + ' --phantom-typist-mode=auto --tape=' + BinFile
+        Args := Args + ' --phantom-typist-mode=auto --tape=''' + BinFile + ''''
       else if Format = tfSnapshot then
-        Args := Args + ' --snapshot=' + BinFile
+        Args := Args + ' --snapshot=''' + BinFile + ''''
       else
       begin
         WriteLn('Tape or snapshot needed for Fuse.');
         Exit;
       end;
 
-      if Log <> '' then Args := Args + ' --printer --textfile=' + PosixToNative(Log);
+      if Log <> '' then Args := Args + ' --printer --textfile=''' + PosixToNative(Log) + '''';
 
       Execute(FuseCmd, Args);
     end
@@ -8936,20 +8936,20 @@ begin
       begin
         RunFile := '/pasta80/' + NameOnly(BinFile);
 
-        Execute(MonkeyCmd, 'mkdir ' + ImagePath + ' /pasta80');
-        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + BinFile + ' /pasta80');
+        Execute(MonkeyCmd, 'mkdir ''' + ImagePath + ''' /pasta80');
+        Execute(MonkeyCmd, 'put ''' + ImagePath + ''' ''' + BinFile + ''' /pasta80');
 
         if Format = tfRunDir then
           StrToFile('#autostart'#13'10 cd "' + RunFile + '"'#13'20 load "run.bas"'#13, 'lastrun.txt')
         else
           StrToFile('#autostart'#13'10.tapein "' + RunFile + '"'#13'20 load "t:"'#13'30 load ""'#13, 'lastrun.txt');
 
-        Execute(MonkeyCmd, 'put ' + ImagePath + ' ' + HomeDir + '/misc/autoexec.bas /nextzxos/autoexec.bas');
-        Execute(MonkeyCmd, 'put ' + ImagePath + ' lastrun.txt /pasta80/lastrun.txt');
+        Execute(MonkeyCmd, 'put ''' + ImagePath + ''' ''' + HomeDir + '/misc/autoexec.bas'' /nextzxos/autoexec.bas');
+        Execute(MonkeyCmd, 'put ''' + ImagePath + ''' lastrun.txt /pasta80/lastrun.txt');
 
         Args := '-zxnext -r -nextrom -exit -mouse -printer';
 
-        if Log <> '' then Args := Args + '=' + Log;
+        if Log <> '' then Args := Args + '=''' + Log + '''';
 
         if IsRetinaDisplay then
           Args := Args + ' -w4'
@@ -8958,7 +8958,7 @@ begin
 
         if Debug then Args := Args + ' -brk';
 
-        Args := Args + ' -mmc=' + ImagePath;
+        Args := Args + ' -mmc=''' + ImagePath + '''';
 
         Execute(CSpectCmd, Args);
       end
