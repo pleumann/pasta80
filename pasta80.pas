@@ -510,6 +510,13 @@ begin
   DosExitCode := LastExitCode;
 end;
 
+var
+  (**
+   * Set when Execute could not start a program. Checked by the self test,
+   * which has to fail if a tool is missing.
+   *)
+  ExecuteFailed: Boolean = False;
+
 (**
  * Executes the given program with the given arguments.
  *)
@@ -531,6 +538,7 @@ begin
 
   if DosError <> 0 then
   begin
+    ExecuteFailed := True;
     {$ifdef windows}
     WriteLn('The program "', PosixToNative(Path), '" cannot be executed.');
     {$endif}
@@ -9252,11 +9260,29 @@ const
     1935, 0, 1744, 1936, 1942
   );
 
+  (**
+   * Exit codes of the self test, continuing those of a normal build (1 is a
+   * general error, 2 a compile error, 3 an assembly error). A failed build of
+   * a test suite passes on the build's exit code.
+   *)
+  ExitToolFailed = 4;
+  ExitTestsFailed = 5;
+
 var
   I, J, PassCount, FailCount, PassTotal, FailTotal: Integer;
   S, Log: String;
   StartTime: Int64;
   Duration: Real;
+
+  (**
+   * Aborts the self test with the given message and exit code.
+   *)
+  procedure Fail(const Message: String; Code: Integer);
+  begin
+    WriteLn('*** Error: ', Message);
+    WriteLn;
+    Halt(Code);
+  end;
 
   (**
    * Scans the log file of a normal test suite. Searches for passed and
@@ -9343,8 +9369,9 @@ begin
 
       StartParams := CmdLineArgs[I];
 
-      if Build <> 0 then
-        Error('Build of ' + TestSuites[I] + ' failed for ' + BinaryStr[Binary]);
+      J := Build;
+      if J <> 0 then
+        Fail('Build of ' + TestSuites[I] + ' failed for ' + BinaryStr[Binary], J);
 
       DeleteFile(Log);
       WriteLn;
@@ -9359,8 +9386,11 @@ begin
       else
         DoRun(False, False, Log);
 
+      if ExecuteFailed then
+        Fail('Emulator for ' + TestSuites[I] + ' could not be started', ExitToolFailed);
+
       if FSize(Log) <= 0 then
-        Error('No output from ' + TestSuites[I] + ' on ' + BinaryStr[Binary]);
+        Fail('No output from ' + TestSuites[I] + ' on ' + BinaryStr[Binary], ExitToolFailed);
 
       WriteLn;
     end;
@@ -9426,6 +9456,8 @@ begin
 
   WriteLn('Tests finished (', Duration:0:3, 's).');
   WriteLn;
+
+  if FailTotal <> 0 then Halt(ExitTestsFailed);
 end;
 
 (**

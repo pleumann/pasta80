@@ -419,6 +419,8 @@ $ pasta80 --selftest --128     # Runs all tests for the Spectrum 128K
 $ pasta80 --selftest --next    # Runs all tests for the Spectrum Next
 ```
 
+The exit code tells you how the tests went, so the self test can also be used in scripts: `0` means all tests passed, `4` means the emulator could not be started or a test suite produced no output, and `5` means at least one test failed. If one of the test suites doesn't build, you get the same codes as for an ordinary build: `1` for a general error, `2` for a compile error and `3` for an assembly error. The CP/M tests are run for every release binary built by the GitHub workflow.
+
 This requires the emulators to support capturing printer output, which is not yet the case in every official release:
 
 * **Fab Agon Emulator** needs the `--printer-file` option, which is available since version 1.2.6.

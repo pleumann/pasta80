@@ -8,6 +8,10 @@
 # the workflow is run on. "release" is the tag of an existing GitHub release
 # to attach the ZIP files to. Left empty, nothing is uploaded to a release.
 # Either way, the ZIP files are available as artifacts of the workflow run.
+#
+# Each build also has to pass the CP/M self test before its ZIP file is kept
+# or uploaded. The other targets need graphical emulators, so their
+# self tests remain manual.
 
 name: Build release binaries
 
@@ -30,6 +34,8 @@ env:
   GH_TOKEN: ${{ github.token }}
   RELEASE: ${{ inputs.release }}
   REF: ${{ inputs.ref || github.sha }}
+  SJASMPLUS: 1.24.0
+  TNYLPO: 1.2.2-bin
 
 jobs:
   check:
@@ -54,22 +60,27 @@ jobs:
             artifact: pasta80-Darwin-arm64
             runner: macos-latest
             fpc: brew
+            tnylpo: macos-universal
           - name: macOS x86_64
             artifact: pasta80-Darwin-x86_64
             runner: macos-15-intel
             fpc: macos
+            tnylpo: macos-universal
           - name: Linux x86_64
             artifact: pasta80-Linux-x86_64
             runner: ubuntu-latest
             fpc: apt
+            tnylpo: linux-x86_64
           - name: Linux arm64
             artifact: pasta80-Linux-aarch64
             runner: ubuntu-24.04-arm
             fpc: apt
+            tnylpo: linux-arm64
           - name: Windows x86_64
             artifact: pasta80-Windows-AMD64
             runner: windows-latest
             fpc: lazarus
+            tnylpo: windows-x86_64
 
     steps:
       - uses: actions/checkout@v4
@@ -134,6 +145,35 @@ jobs:
             Linux)   file pasta80; file pasta80 | grep -q 'statically linked' ;;
           esac
 
+      # The self test needs sjasmplus and tnylpo. There are no sjasmplus
+      # binaries for macOS and Linux, so it is built from source there.
+      - name: Install sjasmplus and tnylpo (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL "https://github.com/z00m128/sjasmplus/releases/download/v$SJASMPLUS/sjasmplus-$SJASMPLUS-src.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/sjasmplus-$SJASMPLUS" -j4 > /dev/null
+          echo "$RUNNER_TEMP/sjasmplus-$SJASMPLUS" >> "$GITHUB_PATH"
+          curl -fsSL -o "$RUNNER_TEMP/tnylpo.zip" "https://github.com/pleumann/tnylpo/releases/download/$TNYLPO/tnylpo-${{ matrix.tnylpo }}.zip"
+          unzip -q "$RUNNER_TEMP/tnylpo.zip" -d "$RUNNER_TEMP/tnylpo"
+          echo "$RUNNER_TEMP/tnylpo" >> "$GITHUB_PATH"
+
+      - name: Install sjasmplus and tnylpo (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -OutFile "$env:RUNNER_TEMP\sjasmplus.zip" "https://github.com/z00m128/sjasmplus/releases/download/v$env:SJASMPLUS/sjasmplus-$env:SJASMPLUS.win.zip"
+          Expand-Archive "$env:RUNNER_TEMP\sjasmplus.zip" "$env:RUNNER_TEMP\sjasmplus"
+          Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\sjasmplus\sjasmplus-$env:SJASMPLUS.win"
+          Invoke-WebRequest -OutFile "$env:RUNNER_TEMP\tnylpo.zip" "https://github.com/pleumann/tnylpo/releases/download/$env:TNYLPO/tnylpo-${{ matrix.tnylpo }}.zip"
+          Expand-Archive "$env:RUNNER_TEMP\tnylpo.zip" "$env:RUNNER_TEMP\tnylpo"
+          Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\tnylpo"
+
+      # Runs after the ZIP file has been made, so the test output doesn't end
+      # up in it. Fails the job (and skips the upload) unless all tests pass.
+      - name: Self test (CP/M)
+        shell: bash
+        run: ./pasta80 --selftest
+
       - name: Keep as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -148,6 +188,8 @@ jobs:
 
   # 32 bit ARMv6 with hard float for the Raspberry Pi Zero (and NextPi). Built
   # natively in an emulated Raspberry Pi OS, whose fpc generates ARMv6 code.
+  # There is no tnylpo for ARMv6, so the self test runs the binary under
+  # qemu-arm on the runner instead, with x86_64 builds of the tools.
   build-armv6:
     name: Linux armv6l (Pi Zero)
     needs: check
@@ -179,6 +221,25 @@ jobs:
             readelf -A pasta80
             if readelf -A pasta80 | grep -Eq 'Tag_CPU_arch: v(7|8)'; then exit 1; fi
             ./pasta80 --version
+
+      - name: Install qemu, sjasmplus and tnylpo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-user
+          curl -fsSL "https://github.com/z00m128/sjasmplus/releases/download/v$SJASMPLUS/sjasmplus-$SJASMPLUS-src.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/sjasmplus-$SJASMPLUS" -j4 > /dev/null
+          echo "$RUNNER_TEMP/sjasmplus-$SJASMPLUS" >> "$GITHUB_PATH"
+          curl -fsSL -o "$RUNNER_TEMP/tnylpo.zip" "https://github.com/pleumann/tnylpo/releases/download/$TNYLPO/tnylpo-linux-x86_64.zip"
+          unzip -q "$RUNNER_TEMP/tnylpo.zip" -d "$RUNNER_TEMP/tnylpo"
+          echo "$RUNNER_TEMP/tnylpo" >> "$GITHUB_PATH"
+
+      # Unpacks the ZIP file elsewhere, so the test output doesn't end up in
+      # it. -cpu arm1176 also makes sure the binary contains only ARMv6 code.
+      - name: Self test (CP/M)
+        run: |
+          unzip -q pasta80-*.zip -d "$RUNNER_TEMP/selftest"
+          cd "$RUNNER_TEMP/selftest"
+          qemu-arm -cpu arm1176 ./pasta80 --selftest
 
       - name: Keep as artifact
         uses: actions/upload-artifact@v4
