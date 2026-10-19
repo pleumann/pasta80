@@ -8907,26 +8907,26 @@ begin
       Args := '';
 
       if Binary = btZX then
-        Args := Args + '--machine 48'
+        Args := Args + '--machine=48'
       else
-        Args := Args + '--machine 128';
+        Args := Args + '--machine=128';
 
       if Debug then
-        Args := Args + ' --debugger-command ''' + StrFromFile(HomeDir + '/misc/fuse.brk') + #10 + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
+        Args := Args + ' --debugger-command=''' + StrFromFile(HomeDir + '/misc/fuse.brk') + #10 + StrFromFile(ChangeExt(BinFile, '.brk')) + ''''
       else
-        Args := Args + ' --debugger-command ''' + StrFromFile(HomeDir + '/misc/fuse.brk') + '''';
+        Args := Args + ' --debugger-command=''' + StrFromFile(HomeDir + '/misc/fuse.brk') + '''';
 
       if Format = tfTape then
-        Args := Args + ' --phantom-typist-mode auto --tape ' + BinFile
+        Args := Args + ' --phantom-typist-mode=auto --tape=' + BinFile
       else if Format = tfSnapshot then
-        Args := Args + ' --snapshot ' + BinFile
+        Args := Args + ' --snapshot=' + BinFile
       else
       begin
         WriteLn('Tape or snapshot needed for Fuse.');
         Exit;
       end;
 
-      if Log <> '' then Args := Args + ' --printer --textfile ' + PosixToNative(Log);
+      if Log <> '' then Args := Args + ' --printer --textfile=' + PosixToNative(Log);
 
       Execute(FuseCmd, Args);
     end
