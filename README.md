@@ -419,19 +419,28 @@ $ pasta80 --selftest --128     # Runs all tests for the Spectrum 128K
 $ pasta80 --selftest --next    # Runs all tests for the Spectrum Next
 ```
 
-The exit code tells you how the tests went, so the self test can also be used in scripts: `0` means all tests passed, `4` means the emulator could not be started or a test suite produced no output, and `5` means at least one test failed. If one of the test suites doesn't build, you get the same codes as for an ordinary build: `1` for a general error, `2` for a compile error and `3` for an assembly error. The CP/M tests are run for every release binary built by the GitHub workflow.
-
 This requires the emulators to support capturing printer output, which is not yet the case in every official release:
 
 * **Fab Agon Emulator** needs the `--printer-file` option, which is available since version 1.2.6.
 * **CSpect** needs the printer plugin, which ships with version 3.4.0.0 (currently a beta for Patreon supporters). For older versions, copy `misc/Printer.dll` into CSpect's folder (next to CSpect.exe).
-* **Fuse** works out of the box. A version newer than 1.10.0 is recommended to have all features working flawlessly on all platforms. For platforms other than MacOS, version 1.9.x is fine, too.
+* For **Fuse**, a release newer than 1.10.0 is recommended to have all features working flawlessly on all platforms. Older releases have some issues on MacOS and Windows. For Linux, version 1.9.x is fine.
 
 Assuming everything works correctly you should see a report like the following in the end:
 
 | CP/M | Spectrum 128K | Spectrum Next | Agon |
 | :---: | :---: | :---: | :---: |
 | ![Screenshot](docs/images/report1.png) | ![Screenshot](docs/images/report2.png) |  ![Screenshot](docs/images/report3.png) | ![Screenshot](docs/images/report4.png) |
+
+The exit code tells you how the tests went, too, so the self test can also be used in scripts. If one of the test suites doesn't build, you get the same codes as for an ordinary build:
+
+| Exit code | Meaning |
+| :---: | --- |
+| `0` | All tests passed |
+| `1` | General error |
+| `2` | Compile error |
+| `3` | Assembly error |
+| `4` | Emulator could not be started, or a test suite produced no output |
+| `5` | At least one test failed |
 
 ## Minimalistic IDE
 
