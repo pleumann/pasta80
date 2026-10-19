@@ -8926,7 +8926,7 @@ begin
         Exit;
       end;
 
-      if Log <> '' then Args := Args + ' --textfile ' + PosixToNative(Log);
+      if Log <> '' then Args := Args + ' --printer --textfile ' + PosixToNative(Log);
 
       Execute(FuseCmd, Args);
     end
