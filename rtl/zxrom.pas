@@ -19,8 +19,7 @@ const
  *)
 function ScreenWidth: Integer; register; inline
 (
-  $21 / >32 / (* ld   hl,32   *)
-  $c9         (* ret          *)
+  $21 / >32   (* ld   hl,32   *)
 );
 
 (**
@@ -30,8 +29,7 @@ function ScreenWidth: Integer; register; inline
  *)
 function ScreenHeight: Integer; register; inline
 (
-  $21 / >22 / (* ld   hl,22   *)
-  $c9         (* ret          *)
+  $21 / >22   (* ld   hl,22   *)
 );
 
 (**
@@ -90,12 +88,12 @@ function ReadKey: Char; register;                   external 'zx_readkey';
 (**
  * Dummy declaration to ease portable code.
  *)
-procedure CursorOn; register; inline ($c9);
+procedure CursorOn; register; inline ();
 
 (**
  * Dummy declaration to ease portable code.
  *)
-procedure CursorOff; register; inline ($c9);
+procedure CursorOff; register; inline ();
 
 (* --------------------------------------------------------------------- *)
 (* --- Misc. standard functions ---------------------------------------- *)
@@ -195,8 +193,7 @@ function Frames: Real; register; inline
   $cb / $10 /           (* rl   b               *)
   $2d /                 (* dec  l               *)
   $20 / $f3 /           (* jr   nz,-13          *)
-  $cb / $b8 /           (* res  7,b             *)
-  $c9                   (* ret                  *)
+  $cb / $b8             (* res  7,b             *)
 );
 
 (* --------------------------------------------------------------------- *)

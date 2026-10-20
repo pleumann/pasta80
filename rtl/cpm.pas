@@ -15,8 +15,7 @@
  *)
 function ScreenWidth: Integer; register; inline
 (
-  $21 / >80 / (* ld   hl,80   *)
-  $c9         (* ret          *)
+  $21 / >80   (* ld   hl,80   *)
 );
 
 (**
@@ -24,8 +23,7 @@ function ScreenWidth: Integer; register; inline
  *)
 function ScreenHeight: Integer; register; inline
 (
-  $21 / >24 / (* ld   hl,24   *)
-  $c9         (* ret          *)
+  $21 / >24   (* ld   hl,24   *)
 );
 
 const
@@ -68,8 +66,7 @@ procedure ClrEol; register; inline
   $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
   $3e / 'K' /                 (* ld   a,'K'     *)
-  $cd / ConOut /              (* call ConOut    *)
-  $c9                         (* ret            *)
+  $cd / ConOut                (* call ConOut    *)
 );
 
 (**
@@ -81,8 +78,7 @@ procedure ClrEos; register; inline
   $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
   $3e / 'J' /                 (* ld   a,'J'     *)
-  $cd / ConOut /              (* call ConOut    *)
-  $c9                         (* ret            *)
+  $cd / ConOut                (* call ConOut    *)
 );
 
 (**
@@ -94,8 +90,7 @@ procedure InsLine; register; inline
   $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
   $3e / 'L' /                 (* ld   a,'L'     *)
-  $cd / ConOut /              (* call ConOut    *)
-  $c9                         (* ret            *)
+  $cd / ConOut                (* call ConOut    *)
 );
 
 (**
@@ -107,8 +102,7 @@ procedure DelLine; register; inline
   $3e / 27 /                  (* ld   a,27      *)
   $cd / ConOut /              (* call ConOut    *)
   $3e / 'M' /                 (* ld   a,'M'     *)
-  $cd / ConOut /              (* call ConOut    *)
-  $c9                         (* ret            *)
+  $cd / ConOut                (* call ConOut    *)
 );
 
 (**
@@ -127,7 +121,7 @@ procedure TextBackground(I: Integer); register; external '__textbg';
  *)
 procedure HighVideo; register; inline
 (
-  $c9 (* TODO implement me! *)
+  (* TODO implement me! *)
 );
 
 (**
@@ -136,7 +130,7 @@ procedure HighVideo; register; inline
  *)
 procedure LowVideo; register; inline
 (
-  $c9 (* TODO implement me! *)
+  (* TODO implement me! *)
 );
 
 (**
@@ -145,7 +139,7 @@ procedure LowVideo; register; inline
  *)
 procedure NormVideo; register; inline
 (
-  $c9 (* TODO implement me! *)
+  (* TODO implement me! *)
 );
 
 (**

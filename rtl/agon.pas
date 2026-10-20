@@ -271,8 +271,7 @@ function Frames: Real; register; inline
   $cb / $10 /           (* rl   b               *)
   $2d /                 (* dec  l               *)
   $20 / $f1 /           (* jr   nz,-15          *)
-  $cb / $b8 /           (* res  7,b             *)
-  $c9                   (* ret                  *)
+  $cb / $b8             (* res  7,b             *)
 );
 
 

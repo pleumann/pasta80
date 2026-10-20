@@ -216,16 +216,14 @@ function MaxReal: Real; register; inline
 (
   $01 / $7FFF /
   $11 / $FFFF /
-  $21 / $FFFF /
-  $c9
+  $21 / $FFFF
 );
 
 function MinReal: Real; register; inline
 (
   $01 / $FFFF /
   $11 / $FFFF /
-  $21 / $FFFF /
-  $c9
+  $21 / $FFFF
 );
 
 (* -------------------------------------------------------------------------- *)
@@ -248,7 +246,6 @@ function Trunc(R: Real): Integer; register; external '__intfix';
 
 function Chr(B: Byte): Char; register; inline
 (
-  $c9         (* ret          *)
 );
 
 (* -------------------------------------------------------------------------- *)
@@ -263,22 +260,19 @@ function Chr(B: Byte): Char; register; inline
 function Hi(I: Integer): Byte; register; inline
 (
   $6c /       (* ld   l,h     *)
-  $26 / $00 / (* ld   h,0     *)
-  $c9         (* ret          *)
+  $26 / $00   (* ld   h,0     *)
 );
 
 function Lo(I: Integer): Byte; register; inline
 (
-  $26 / $00 / (* ld   h,0     *)
-  $c9         (* ret          *)
+  $26 / $00   (* ld   h,0     *)
 );
 
 function Swap(I: Integer): Integer; register; inline
 (
   $7c /       (* ld   a,h     *)
   $65 /       (* ld   h,l     *)
-  $6f /       (* ld   l,a     *)
-  $c9         (* ret          *)
+  $6f         (* ld   l,a     *)
 );
 
 function UpCase(C: Char): Char; register; inline
@@ -288,8 +282,7 @@ function UpCase(C: Char): Char; register; inline
   $d8 /       (* ret  c       *)
   $fe / $7b / (* cp   'z' + 1 *)
   $d0 /       (* ret  nc      *)
-  $cb / $ad / (* res  4,l     *)
-  $c9         (* ret          *)
+  $cb / $ad   (* res  4,l     *)
 );
 
 function LoCase(C: Char): Char; register; inline
@@ -299,8 +292,7 @@ function LoCase(C: Char): Char; register; inline
   $d8 /       (* ret  c       *)
   $fe / $5b / (* cp   'Z' + 1 *)
   $d0 /       (* ret  nc      *)
-  $cb / $ed / (* set  4,l     *)
-  $c9         (* ret          *)
+  $cb / $ed   (* set  4,l     *)
 );
 
 
@@ -356,8 +348,7 @@ procedure Randomize; register; inline
   $65 /                   (* ld   h,l             *)
   $6f /                   (* ld   l,a             *)
   $22 / RandSeed1 /       (* ld   (RandSeed1),hl  *)
-  $ed / $53 / RandSeed2 / (* ld   (RandSeed2),de  *)
-  $c9                     (* ret                  *)
+  $ed / $53 / RandSeed2   (* ld   (RandSeed2),de  *)
 );
 
 procedure CheckBreak; register; external '__checkbreak';
