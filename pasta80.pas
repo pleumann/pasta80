@@ -3941,7 +3941,6 @@ begin
     toSub: EmitI('call __fpsub');
     toMul: EmitI('call __fpmul');
     toDiv: EmitI('call __fpdiv');
-    toMod: EmitI('call MOD');
 
     toEq, toNeq: EmitI('call __flteq');
     toLt, toGeq: EmitI('call __fltlt');
@@ -3950,7 +3949,7 @@ begin
     Error(TokenStr[Op] + ' not allowed for Real');
   end;
 
-  if Op in [toAdd, toSub, toMul, toDiv, toMod] then
+  if Op in [toAdd, toSub, toMul, toDiv] then
   begin
     EmitI('pushfp');
   end
