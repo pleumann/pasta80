@@ -3176,7 +3176,9 @@ begin
 
   EmitI('if __SJASMPLUS__ < 0x011600');
   EmitI('LUA');
-  EmitI('print("Warning: sjasmplus too old. Please upgrade to version 1.22.0 or newer.\n")');
+  EmitI('local ok, v = pcall(sj.get_define, "__VERSION__")');
+  EmitI('v = ok and v and v:gsub("\"", "") or "unknown"');
+  EmitI('print("Warning: sjasmplus 1.22.0 recommended, you have " .. v .. ".\n")');
   EmitI('ENDLUA');
   EmitI('endif');
 
