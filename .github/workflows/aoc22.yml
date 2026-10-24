@@ -89,6 +89,12 @@ jobs:
             qemu: true
 
     steps:
+      # Windows would convert the input files to CR/LF, which day 13 can't
+      # handle. All platforms should run on the very same files anyway.
+      - name: Keep line endings
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v4
         with:
           repository: pleumann/aoc22
