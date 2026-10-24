@@ -1,18 +1,18 @@
-# Attaches the ZIP files of a "Build release binaries" run to an existing
-# GitHub release. Run it from the Actions tab ("Publish release") or with
+# Attaches the ZIP files of a "Build binaries" run to an existing
+# GitHub release. Run it from the Actions tab ("Upload release") or with
 #
 #   gh workflow run publish.yml -f release=<tag> [-f run=<run id>] [-f aoc22=false]
 #
-# "release" is the tag of the release. "run" is the ID of the release
-# workflow run whose ZIP files are published. Left empty, it is the latest
+# "release" is the tag of the release. "run" is the ID of the "Build
+# binaries" run whose ZIP files are uploaded. Left empty, it is the latest
 # successful one. Existing files of the same name are replaced.
 #
 # Before uploading, it makes sure that all six ZIP files were built from the
-# commit the tag points to, and, unless "aoc22" is turned off, that "Advent
-# of Code 2022" passed for exactly this build. Artifacts expire after 90
-# days, so older builds can't be published anymore.
+# commit the tag points to, and, unless "aoc22" is turned off, that "Run
+# AoC 2022" passed for exactly this build. Artifacts expire after 90
+# days, so older builds can't be uploaded anymore.
 
-name: Publish release
+name: Upload release
 
 on:
   workflow_dispatch:
@@ -21,11 +21,11 @@ on:
         description: Tag of an existing release to attach the binaries to
         required: true
       run:
-        description: ID of the release workflow run to publish (default is the latest successful one)
+        description: ID of the "Build binaries" run to upload (default is the latest successful one)
         required: false
         default: ''
       aoc22:
-        description: Require a successful "Advent of Code 2022" run for this build
+        description: Require a successful "Run AoC 2022" run for this build
         type: boolean
         default: true
 
@@ -39,7 +39,7 @@ env:
 
 jobs:
   publish:
-    name: Publish release
+    name: Upload release
     runs-on: ubuntu-latest
     steps:
       - name: Find release run
@@ -49,26 +49,28 @@ jobs:
           if [ -z "$RUN" ]; then
             RUN=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           fi
-          CONCLUSION=$(gh run view "$RUN" --repo "$GITHUB_REPOSITORY" --json workflowName,conclusion --jq 'select(.workflowName == "Build release binaries") | .conclusion')
+          # Compared by workflow ID, since a run keeps the name its workflow had
+          WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml" --jq .id)
+          CONCLUSION=$(gh run view "$RUN" --repo "$GITHUB_REPOSITORY" --json workflowDatabaseId,conclusion --jq "select(.workflowDatabaseId == $WORKFLOW) | .conclusion")
           if [ "$CONCLUSION" != success ]; then
-            echo "::error::Run $RUN is not a successful run of \"Build release binaries\"."
+            echo "::error::Run $RUN is not a successful run of \"Build binaries\"."
             exit 1
           fi
-          echo "Publishing release workflow run $RUN."
+          echo "Uploading the ZIP files of build run $RUN."
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
 
-      # A passed "Advent of Code 2022" run leaves an artifact with the ID of
+      # A passed "Run AoC 2022" run leaves an artifact with the ID of
       # the build it tested.
-      - name: Check Advent of Code 2022
+      - name: Check AoC 2022
         if: inputs.aoc22
         run: |
           RUN="${{ steps.find.outputs.run }}"
           PASSED=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=aoc22-passed-$RUN" --jq '[.artifacts[] | select(.expired | not)] | length')
           if [ "$PASSED" = 0 ]; then
-            echo "::error::No successful \"Advent of Code 2022\" run for build $RUN. Run it with -f run=$RUN, or turn off the check."
+            echo "::error::No successful \"Run AoC 2022\" run for build $RUN. Run it with -f run=$RUN, or turn off the check."
             exit 1
           fi
-          echo "Advent of Code 2022 passed for build $RUN."
+          echo "AoC 2022 passed for build $RUN."
 
       - uses: actions/download-artifact@v4
         with:

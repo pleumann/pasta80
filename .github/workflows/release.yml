@@ -1,6 +1,6 @@
 # Builds the release binaries with misc/release.sh and misc/release.bat for
-# all supported platforms. Run it from the Actions tab ("Build release
-# binaries") or with
+# all supported platforms. Run it from the Actions tab ("Build binaries")
+# or with
 #
 #   gh workflow run release.yml [-f ref=<commit>]
 #
@@ -10,10 +10,10 @@
 # The other targets need graphical emulators, so their self tests remain
 # manual.
 #
-# "Advent of Code 2022" (aoc22.yml) tests the ZIP files of a run, and
-# "Publish release" (publish.yml) attaches them to a GitHub release.
+# "Run AoC 2022" (aoc22.yml) tests the ZIP files of a run, and
+# "Upload release" (publish.yml) attaches them to a GitHub release.
 
-name: Build release binaries
+name: Build binaries
 
 on:
   workflow_dispatch:

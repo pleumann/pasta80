@@ -1,25 +1,25 @@
 # Runs Advent of Code 2022 (https://github.com/pleumann/aoc22) on CP/M with
-# the binaries of a "Build release binaries" run, on all six platforms. Run
-# it from the Actions tab ("Advent of Code 2022") or with
+# the binaries of a "Build binaries" run, on all six platforms. Run
+# it from the Actions tab ("Run AoC 2022") or with
 #
 #   gh workflow run aoc22.yml [-f run=<run id>] [-f aoc22=<ref>]
 #
-# "run" is the ID of the release workflow run whose ZIP files are tested.
+# "run" is the ID of the "Build binaries" run whose ZIP files are tested.
 # Left empty, it is the latest successful one. "aoc22" is the branch, tag or
 # commit of the aoc22 repository to use. Left empty, it is main.
 #
 # All 25 days are built for CP/M and run in tnylpo. The log they write has to
 # match aoc22's golden log byte for byte. If all six platforms pass, the run
-# leaves an artifact "aoc22-passed-<run id>", which "Publish release"
+# leaves an artifact "aoc22-passed-<run id>", which "Upload release"
 # (publish.yml) looks for.
 
-name: Advent of Code 2022
+name: Run AoC 2022
 
 on:
   workflow_dispatch:
     inputs:
       run:
-        description: ID of the release workflow run to test (default is the latest successful one)
+        description: ID of the "Build binaries" run to test (default is the latest successful one)
         required: false
         default: ''
       aoc22:
@@ -49,7 +49,7 @@ jobs:
           if [ -z "$RUN" ]; then
             RUN=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           fi
-          echo "Testing release workflow run $RUN:"
+          echo "Testing build run $RUN:"
           gh run view "$RUN" --repo "$GITHUB_REPOSITORY" --json headSha,createdAt,conclusion --jq '"\(.headSha[0:7]), \(.createdAt), \(.conclusion)"'
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
 
@@ -83,7 +83,7 @@ jobs:
             runner: windows-latest
             tnylpo: windows-x86_64
           # The ARMv6 binary runs under qemu-arm, with x86_64 builds of the
-          # tools, just like its self test in the release workflow.
+          # tools, just like its self test in "Build binaries".
           - name: Linux armv6l (Pi Zero)
             artifact: pasta80-Linux-armv6l
             runner: ubuntu-latest
@@ -196,7 +196,7 @@ jobs:
             aoc22/src/cpm/aoc22.log
           if-no-files-found: ignore
 
-  # Only runs if all six platforms passed. Tells "Publish release" which
+  # Only runs if all six platforms passed. Tells "Upload release" which
   # build was tested, even if "run" was left empty.
   passed:
     name: Record result
