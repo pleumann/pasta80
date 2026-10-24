@@ -1,0 +1,189 @@
+# Runs Advent of Code 2022 (https://github.com/pleumann/aoc22) on CP/M with
+# the binaries of a "Build release binaries" run, on all six platforms. Run
+# it from the Actions tab ("Advent of Code 2022") or with
+#
+#   gh workflow run aoc22.yml [-f run=<run id>] [-f aoc22=<ref>]
+#
+# "run" is the ID of the release workflow run whose ZIP files are tested.
+# Left empty, it is the latest successful one. "aoc22" is the branch, tag or
+# commit of the aoc22 repository to use. Left empty, it is main.
+#
+# All 25 days are built for CP/M and run in tnylpo. The log they write has to
+# match aoc22's golden log byte for byte.
+
+name: Advent of Code 2022
+
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: ID of the release workflow run to test (default is the latest successful one)
+        required: false
+        default: ''
+      aoc22:
+        description: Branch, tag or commit of pleumann/aoc22 (default is main)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  SJASMPLUS: 1.24.0
+  TNYLPO: 1.2.2-bin
+
+jobs:
+  resolve:
+    name: Find release run
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.find.outputs.run }}
+    steps:
+      - id: find
+        run: |
+          RUN="${{ inputs.run }}"
+          if [ -z "$RUN" ]; then
+            RUN=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          echo "Testing release workflow run $RUN:"
+          gh run view "$RUN" --repo "$GITHUB_REPOSITORY" --json headSha,createdAt,conclusion --jq '"\(.headSha[0:7]), \(.createdAt), \(.conclusion)"'
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+
+  aoc22:
+    name: ${{ matrix.name }}
+    needs: resolve
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            artifact: pasta80-Darwin-arm64
+            runner: macos-latest
+            tnylpo: macos-universal
+          - name: macOS x86_64
+            artifact: pasta80-Darwin-x86_64
+            runner: macos-15-intel
+            tnylpo: macos-universal
+          - name: Linux x86_64
+            artifact: pasta80-Linux-x86_64
+            runner: ubuntu-latest
+            tnylpo: linux-x86_64
+          - name: Linux arm64
+            artifact: pasta80-Linux-aarch64
+            runner: ubuntu-24.04-arm
+            tnylpo: linux-arm64
+          - name: Windows x86_64
+            artifact: pasta80-Windows-AMD64
+            runner: windows-latest
+            tnylpo: windows-x86_64
+          # The ARMv6 binary runs under qemu-arm, with x86_64 builds of the
+          # tools, just like its self test in the release workflow.
+          - name: Linux armv6l (Pi Zero)
+            artifact: pasta80-Linux-armv6l
+            runner: ubuntu-latest
+            tnylpo: linux-x86_64
+            qemu: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: pleumann/aoc22
+          ref: ${{ inputs.aoc22 || 'main' }}
+          path: aoc22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/zip
+          run-id: ${{ needs.resolve.outputs.run }}
+          github-token: ${{ github.token }}
+
+      - name: Unpack PASTA/80
+        shell: bash
+        run: |
+          DIR="$RUNNER_TEMP/pasta80"
+          if [ "$RUNNER_OS" = Windows ]; then
+            7z x -y -o"$DIR" "$RUNNER_TEMP"/zip/*.zip > /dev/null
+            cygpath -w "$DIR" >> "$GITHUB_PATH"
+          elif [ "${{ matrix.qemu }}" = true ]; then
+            unzip -q "$RUNNER_TEMP"/zip/*.zip -d "$DIR"
+            mkdir "$RUNNER_TEMP/wrapper"
+            printf '#!/bin/sh\nexec qemu-arm -cpu arm1176 "%s/pasta80" "$@"\n' "$DIR" > "$RUNNER_TEMP/wrapper/pasta80"
+            chmod +x "$RUNNER_TEMP/wrapper/pasta80"
+            echo "$RUNNER_TEMP/wrapper" >> "$GITHUB_PATH"
+          else
+            unzip -q "$RUNNER_TEMP"/zip/*.zip -d "$DIR"
+            echo "$DIR" >> "$GITHUB_PATH"
+          fi
+
+      - name: Install qemu
+        if: matrix.qemu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-user
+
+      # There are no sjasmplus binaries for macOS and Linux, so it is built
+      # from source there.
+      - name: Install sjasmplus and tnylpo (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL "https://github.com/z00m128/sjasmplus/releases/download/v$SJASMPLUS/sjasmplus-$SJASMPLUS-src.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/sjasmplus-$SJASMPLUS" -j4 > /dev/null
+          echo "$RUNNER_TEMP/sjasmplus-$SJASMPLUS" >> "$GITHUB_PATH"
+          curl -fsSL -o "$RUNNER_TEMP/tnylpo.zip" "https://github.com/pleumann/tnylpo/releases/download/$TNYLPO/tnylpo-${{ matrix.tnylpo }}.zip"
+          unzip -q "$RUNNER_TEMP/tnylpo.zip" -d "$RUNNER_TEMP/tnylpo"
+          echo "$RUNNER_TEMP/tnylpo" >> "$GITHUB_PATH"
+
+      - name: Install sjasmplus and tnylpo (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -OutFile "$env:RUNNER_TEMP\sjasmplus.zip" "https://github.com/z00m128/sjasmplus/releases/download/v$env:SJASMPLUS/sjasmplus-$env:SJASMPLUS.win.zip"
+          Expand-Archive "$env:RUNNER_TEMP\sjasmplus.zip" "$env:RUNNER_TEMP\sjasmplus"
+          Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\sjasmplus\sjasmplus-$env:SJASMPLUS.win"
+          Invoke-WebRequest -OutFile "$env:RUNNER_TEMP\tnylpo.zip" "https://github.com/pleumann/tnylpo/releases/download/$env:TNYLPO/tnylpo-${{ matrix.tnylpo }}.zip"
+          Expand-Archive "$env:RUNNER_TEMP\tnylpo.zip" "$env:RUNNER_TEMP\tnylpo"
+          Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\tnylpo"
+
+      - name: Build for CP/M
+        shell: bash
+        working-directory: aoc22/src
+        run: ./build.sh
+
+      # Runs the days in the order of the SUBMIT file, in line mode, since
+      # there is no terminal for tnylpo's full screen mode.
+      - name: Run all days
+        shell: bash
+        working-directory: aoc22/src/cpm
+        run: |
+          for DAY in $(tr -d '\r' < aoc22.sub | awk 'NF == 2 && $2 == $1 ".txt" { print $1 }'); do
+            echo "=== $DAY"
+            tnylpo -b $DAY $DAY.txt > $DAY.out 2>&1 || echo "tnylpo exited with $?"
+          done
+          tnylpo -b check > check.out 2>&1 || true
+          cat check.out
+
+      - name: Compare with golden log
+        shell: bash
+        working-directory: aoc22/src/cpm
+        run: |
+          if cmp aoc22.log golden.log; then
+            echo "Log matches golden.log."
+          else
+            diff <(tr -d '\r\032' < golden.log) <(tr -d '\r\032' < aoc22.log) || true
+            exit 1
+          fi
+
+      - name: Keep output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aoc22-${{ matrix.artifact }}
+          path: |
+            aoc22/src/cpm/*.out
+            aoc22/src/cpm/aoc22.log
+          if-no-files-found: ignore
