@@ -1,6 +1,6 @@
 <p align="center">Compiler Manual | <a href="docs/rtl-reference.md">Library Reference</a></p>
 
-![Logo](docs/images/logo.png)
+![Logo](docs/images/logo.jpg)
 
 # PASTA/80 Compiler Manual
 

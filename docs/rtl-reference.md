@@ -1,6 +1,6 @@
 <p align="center"><a href="../README.md">Compiler Manual</a> | Library Reference</p>
 
-![Logo](images/logo.png)
+![Logo](images/logo.jpg)
 
 # PASTA/80 Library Reference
 
