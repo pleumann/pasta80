@@ -1,0 +1,107 @@
+# Attaches the ZIP files of a "Build release binaries" run to an existing
+# GitHub release. Run it from the Actions tab ("Publish release") or with
+#
+#   gh workflow run publish.yml -f release=<tag> [-f run=<run id>] [-f aoc22=false]
+#
+# "release" is the tag of the release. "run" is the ID of the release
+# workflow run whose ZIP files are published. Left empty, it is the latest
+# successful one. Existing files of the same name are replaced.
+#
+# Before uploading, it makes sure that all six ZIP files were built from the
+# commit the tag points to, and, unless "aoc22" is turned off, that "Advent
+# of Code 2022" passed for exactly this build. Artifacts expire after 90
+# days, so older builds can't be published anymore.
+
+name: Publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Tag of an existing release to attach the binaries to
+        required: true
+      run:
+        description: ID of the release workflow run to publish (default is the latest successful one)
+        required: false
+        default: ''
+      aoc22:
+        description: Require a successful "Advent of Code 2022" run for this build
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  RELEASE: ${{ inputs.release }}
+
+jobs:
+  publish:
+    name: Publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find release run
+        id: find
+        run: |
+          RUN="${{ inputs.run }}"
+          if [ -z "$RUN" ]; then
+            RUN=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          CONCLUSION=$(gh run view "$RUN" --repo "$GITHUB_REPOSITORY" --json workflowName,conclusion --jq 'select(.workflowName == "Build release binaries") | .conclusion')
+          if [ "$CONCLUSION" != success ]; then
+            echo "::error::Run $RUN is not a successful run of \"Build release binaries\"."
+            exit 1
+          fi
+          echo "Publishing release workflow run $RUN."
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+
+      # A passed "Advent of Code 2022" run leaves an artifact with the ID of
+      # the build it tested.
+      - name: Check Advent of Code 2022
+        if: inputs.aoc22
+        run: |
+          RUN="${{ steps.find.outputs.run }}"
+          PASSED=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=aoc22-passed-$RUN" --jq '[.artifacts[] | select(.expired | not)] | length')
+          if [ "$PASSED" = 0 ]; then
+            echo "::error::No successful \"Advent of Code 2022\" run for build $RUN. Run it with -f run=$RUN, or turn off the check."
+            exit 1
+          fi
+          echo "Advent of Code 2022 passed for build $RUN."
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pasta80-*
+          merge-multiple: true
+          path: zip
+          run-id: ${{ steps.find.outputs.run }}
+          github-token: ${{ github.token }}
+
+      # The ZIP file names contain the short hash of the commit they were
+      # built from: pasta80-<version>-<commit>-<system>-<arch>.zip
+      - name: Check commit
+        run: |
+          ls -l zip
+          COUNT=$(ls zip/pasta80-*.zip | wc -l)
+          if [ "$COUNT" -ne 6 ]; then
+            echo "::error::Expected 6 ZIP files, found $COUNT."
+            exit 1
+          fi
+          gh release view "$RELEASE" --repo "$GITHUB_REPOSITORY" --json name,isDraft --jq '"Release \(.name), draft: \(.isDraft)"'
+          # A draft release has no tag yet, so its target commit counts then
+          if ! TAG=$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE" --jq .sha 2> /dev/null); then
+            TARGET=$(gh release view "$RELEASE" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish)
+            TAG=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TARGET" --jq .sha)
+          fi
+          for ZIP in zip/pasta80-*.zip; do
+            HASH=$(basename "$ZIP" | sed -E 's/^pasta80-[^-]+-([0-9a-f]+)-.*$/\1/')
+            case "$TAG" in
+              "$HASH"*) ;;
+              *) echo "::error::$(basename "$ZIP") was built from $HASH, but $RELEASE is ${TAG:0:7}."; exit 1 ;;
+            esac
+          done
+          echo "All ZIP files were built from ${TAG:0:7}, which is what $RELEASE points to."
+
+      - name: Upload to release
+        run: gh release upload "$RELEASE" zip/pasta80-*.zip --clobber --repo "$GITHUB_REPOSITORY"

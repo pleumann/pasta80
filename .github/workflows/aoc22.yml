@@ -9,7 +9,9 @@
 # commit of the aoc22 repository to use. Left empty, it is main.
 #
 # All 25 days are built for CP/M and run in tnylpo. The log they write has to
-# match aoc22's golden log byte for byte.
+# match aoc22's golden log byte for byte. If all six platforms pass, the run
+# leaves an artifact "aoc22-passed-<run id>", which "Publish release"
+# (publish.yml) looks for.
 
 name: Advent of Code 2022
 
@@ -193,3 +195,17 @@ jobs:
             aoc22/src/cpm/*.out
             aoc22/src/cpm/aoc22.log
           if-no-files-found: ignore
+
+  # Only runs if all six platforms passed. Tells "Publish release" which
+  # build was tested, even if "run" was left empty.
+  passed:
+    name: Record result
+    needs: [resolve, aoc22]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ needs.resolve.outputs.run }}" > passed.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aoc22-passed-${{ needs.resolve.outputs.run }}
+          path: passed.txt

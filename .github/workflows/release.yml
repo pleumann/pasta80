@@ -2,16 +2,16 @@
 # all supported platforms. Run it from the Actions tab ("Build release
 # binaries") or with
 #
-#   gh workflow run release.yml [-f ref=<commit>] [-f release=<tag>]
+#   gh workflow run release.yml [-f ref=<commit>]
 #
 # "ref" is the branch, tag or commit to build. Left empty, it is the branch
-# the workflow is run on. "release" is the tag of an existing GitHub release
-# to attach the ZIP files to. Left empty, nothing is uploaded to a release.
-# Either way, the ZIP files are available as artifacts of the workflow run.
+# the workflow is run on. The ZIP files are kept as artifacts of the workflow
+# run. Each build has to pass the CP/M self test before its ZIP file is kept.
+# The other targets need graphical emulators, so their self tests remain
+# manual.
 #
-# Each build also has to pass the CP/M self test before its ZIP file is kept
-# or uploaded. The other targets need graphical emulators, so their
-# self tests remain manual.
+# "Advent of Code 2022" (aoc22.yml) tests the ZIP files of a run, and
+# "Publish release" (publish.yml) attaches them to a GitHub release.
 
 name: Build release binaries
 
@@ -22,34 +22,19 @@ on:
         description: Branch, tag or commit to build (default is the branch the workflow runs on)
         required: false
         default: ''
-      release:
-        description: Tag of an existing release to attach the binaries to (leave empty to skip)
-        required: false
-        default: ''
 
 permissions:
-  contents: write
+  contents: read
 
 env:
-  GH_TOKEN: ${{ github.token }}
-  RELEASE: ${{ inputs.release }}
   REF: ${{ inputs.ref || github.sha }}
   SJASMPLUS: 1.24.0
   TNYLPO: 1.2.2-bin
 
 jobs:
-  check:
-    name: Check release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Make sure the release exists
-        if: env.RELEASE != ''
-        run: gh release view "$RELEASE" --repo "$GITHUB_REPOSITORY" --json name,isDraft
-
   # Native builds on GitHub's own runners.
   build:
     name: ${{ matrix.name }}
-    needs: check
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
@@ -181,18 +166,12 @@ jobs:
           path: pasta80-*.zip
           if-no-files-found: error
 
-      - name: Upload to release
-        if: env.RELEASE != ''
-        shell: bash
-        run: gh release upload "$RELEASE" pasta80-*.zip --clobber --repo "$GITHUB_REPOSITORY"
-
   # 32 bit ARMv6 with hard float for the Raspberry Pi Zero (and NextPi). Built
   # natively in an emulated Raspberry Pi OS, whose fpc generates ARMv6 code.
   # There is no tnylpo for ARMv6, so the self test runs the binary under
   # qemu-arm on the runner instead, with x86_64 builds of the tools.
   build-armv6:
     name: Linux armv6l (Pi Zero)
-    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -247,7 +226,3 @@ jobs:
           name: pasta80-Linux-armv6l
           path: pasta80-*.zip
           if-no-files-found: error
-
-      - name: Upload to release
-        if: env.RELEASE != ''
-        run: gh release upload "$RELEASE" pasta80-*.zip --clobber --repo "$GITHUB_REPOSITORY"
