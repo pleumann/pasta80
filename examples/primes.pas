@@ -35,7 +35,7 @@ begin
       Write(N:8);
       Primes[Count] := N;
       Inc(Count);
-      if Count mod (ScreenWidth / 8) = 0 then WriteLn;
+      if Count mod (ScreenWidth div 8) = 0 then WriteLn;
     end;
     Inc(N);
   end;
