@@ -8896,12 +8896,15 @@ begin
         CopyFile(LoaderFile, 'sdcard/autoexec.txt')
       else if Format = tfMosLet then
         StrToFile('load ' + NameOnly(BinFile) + ' 0xb0000'#13#10'run 0xb0000', 'sdcard/autoexec.txt')
-      else if StartParams <> '' then
-      begin
-        StrToFile(NameOnly(BinFile) + ' ' + StartParams, 'sdcard/autoexec.txt')
-      end
       else
-        StrToFile(NameOnly(BinFile) + #13#10'emulator_exit_success', 'sdcard/autoexec.txt');
+      begin
+        Args := NameOnly(BinFile);
+        if StartParams <> '' then
+          Args := Args + ' ' + StartParams;
+        if Log <> '' then
+          Args := Args + #13#10'emulator_exit_success';
+        StrToFile(Args, 'sdcard/autoexec.txt');
+      end;
 
       Args := '';
 
