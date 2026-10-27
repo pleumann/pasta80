@@ -17,8 +17,8 @@
  *)
 program Towers;
 
-{$ifndef SYS_ZX48}
-  {$error ZX Spectrum required.}
+{$ifndef SYS_ZX}
+  {$error ZX Spectrum 48K/128K/Next required.}
 {$endif}
 
 {$a-} { Needed because Hanoi is recursive }

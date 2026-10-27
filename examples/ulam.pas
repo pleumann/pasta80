@@ -15,8 +15,8 @@
  *)
 program Ulam;
 
-{$ifndef SYS_ZX48}
-  {$error ZX Spectrum required.}
+{$ifndef SYS_ZX}
+  {$error ZX Spectrum 48K/128K/Next required.}
 {$endif}
 
 const
@@ -67,7 +67,18 @@ begin
   Border(Black);
   ClrScr;
 
+  GotoXY(11, 12);
+  Write(#18#1' Sieving... '#18#0);
+
+  {$ifdef SYS_ZXNEXT}
+  SetCpuSpeed(3);
   Sieve;
+  SetCpuSpeed(0);
+  {$else}
+  Sieve;
+  {$endif}
+
+  ClrScr;
 
   R := 80;                       { Where 1 goes, so the square sits in the }
   C := 127;                      { middle of the top 20 rows }
