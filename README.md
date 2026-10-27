@@ -423,7 +423,7 @@ This requires the emulators to support capturing printer output, which is not ye
 
 * **Fab Agon Emulator** needs the `--printer-file` option, which is available since version 1.2.6.
 * **CSpect** needs the printer plugin, which ships with version 3.4.0.0 (currently a beta for Patreon supporters). For older versions, copy `misc/Printer.dll` into CSpect's folder (next to CSpect.exe).
-* For **Fuse**, a release newer than 1.10.0 is recommended to have all features working flawlessly on all platforms. Older releases have some issues on MacOS and Windows. For Linux, version 1.9.x is fine.
+* For **Fuse**, version 1.10.1 or newer is recommended to have all features working flawlessly on all platforms. Older releases have some issues on MacOS and Windows. For Linux, version 1.9.x is fine.
 
 Assuming everything works correctly you should see a report like the following in the end:
 
