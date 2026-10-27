@@ -8872,8 +8872,9 @@ begin
 
       if Log <> '' then
       begin
-        StrToFile('printer file = "' + Log + '"', 'tnylpo.conf');
-        Args := Args + ' -f tnylpo.conf';
+        S := ChangeExt(Log, '.tny');
+        StrToFile('printer file = "' + Log + '"', S);
+        Args := Args + ' -f ''' + S + '''';
       end;
 
       Args := Args + ' ''' + BinFile + '''';
@@ -8883,6 +8884,8 @@ begin
       if AltEditor then Write(#27'[40m');
       Execute(TnylpoCmd, Args);
       if AltEditor then Write(#27'[0m');
+
+      if (Log <> '') and not KeepInt then DeleteFile(S);
     end
     else if Binary = btAgon then
     begin

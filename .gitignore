@@ -8,7 +8,6 @@ VERSION.md
 RELEASE.md
 CLAUDE.md
 local
-/tnylpo.conf
 /lastrun.txt
 /cspect_win.dat
 
@@ -20,6 +19,7 @@ local
 /tests/*.log
 /tests/*.lst
 /tests/*.ovr
+/tests/*.tny
 /tests/*.sna
 /tests/*.sym
 /tests/*.tap
