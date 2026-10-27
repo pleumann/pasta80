@@ -3,6 +3,10 @@
  *)
 program BeepFX;
 
+{$ifndef SYS_ZX}
+  {$error ZX Spectrum 48K/128K/Next required.}
+{$endif}
+
 {$l beepfx.asm}
 
 (**
