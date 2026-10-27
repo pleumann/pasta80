@@ -40,14 +40,16 @@ begin
 
   Delay(1000);
 
-  {$ifdef SYS_AGON}
-    inline($3e / $00 / $d3 / $00);
-  {$endif}
-  {$ifdef SYS_ZXNEXT}
-    inline($dd / $00);
-  {$endif}
-  {$ifdef SYS_ZX128}
-    inline($3e / $00 / $d3 / $1f);
+  {$ifdef OPT_PRINTER}
+    {$ifdef SYS_AGON}
+      inline($3e / $00 / $d3 / $00);
+    {$endif}
+    {$ifdef SYS_ZXNEXT}
+      inline($dd / $00);
+    {$endif}
+    {$ifdef SYS_ZX128}
+      inline($3e / $00 / $d3 / $1f);
+    {$endif}
   {$endif}
 
 end.
