@@ -41,7 +41,7 @@ Failed assertions: 0
 `errors.pas` works differently, because every case there ends the program. Only one case runs per start, and the number of the case is passed in:
 
 - **CP/M**: as a command line parameter. The compiler starts tnylpo once per case.
-- **Agon**: as a command line parameter, too. The commands come from `misc/agonerrs.txt`, which becomes the `autoexec.txt`.
+- **Agon**: as a command line parameter, too. The commands come from `misc/agonerrs.txt`, which goes into the `autoexec.txt`.
 - **128K and Next**: There is no command line, so the program counts for itself. A BASIC loader (`misc/errors128.bas`, `misc/errorsnext.bas`) calls it again until it reports that no cases are left.
 
 Each case first prints the output it expects, e.g. `Expected output: Division by zero`. The last line of the case must match it. The comment at the top of `errors.pas` has the details.

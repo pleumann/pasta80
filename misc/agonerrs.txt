@@ -1,40 +1,41 @@
-try errors 1
-try errors 2
-try errors 3
-try errors 4
-try errors 5
-try errors 6
-try errors 7
-try errors 8
-try errors 9
-try errors 10
-try errors 11
-try errors 12
-try errors 13
-try errors 14
-try errors 15
-try errors 16
-try errors 17
-try errors 18
-try errors 19
-try errors 20
-try errors 21
-try errors 22
-try errors 23
-try errors 24
-try errors 25
-try errors 26
-try errors 27
-try errors 28
-try errors 29
-try errors 30
-try errors 31
-try errors 32
-try errors 33
-try errors 34
-try errors 35
-try errors 36
-try errors 37
-try errors 38
-try errors 39
-try errors 40
+load errors.bin 0x40000
+try run 0x40000 1
+try run 0x40000 2
+try run 0x40000 3
+try run 0x40000 4
+try run 0x40000 5
+try run 0x40000 6
+try run 0x40000 7
+try run 0x40000 8
+try run 0x40000 9
+try run 0x40000 10
+try run 0x40000 11
+try run 0x40000 12
+try run 0x40000 13
+try run 0x40000 14
+try run 0x40000 15
+try run 0x40000 16
+try run 0x40000 17
+try run 0x40000 18
+try run 0x40000 19
+try run 0x40000 20
+try run 0x40000 21
+try run 0x40000 22
+try run 0x40000 23
+try run 0x40000 24
+try run 0x40000 25
+try run 0x40000 26
+try run 0x40000 27
+try run 0x40000 28
+try run 0x40000 29
+try run 0x40000 30
+try run 0x40000 31
+try run 0x40000 32
+try run 0x40000 33
+try run 0x40000 34
+try run 0x40000 35
+try run 0x40000 36
+try run 0x40000 37
+try run 0x40000 38
+try run 0x40000 39
+try run 0x40000 40

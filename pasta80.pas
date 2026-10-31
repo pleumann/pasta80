@@ -8858,8 +8858,11 @@ end;
 procedure DoRun(Debug, Shift: Boolean; Log: String);
 const
   NullDev = {$ifdef windows} 'NUL' {$else} '/dev/null' {$endif};
+  (* Silences hdfmonkey, which reports errors on stdout, for expected ones.
+     Execute has no shell on Windows. *)
+  Quiet = {$ifdef windows} '' {$else} ' >' + NullDev {$endif};
 var
-  Args, RunFile, S: String;
+  Addr, Args, RunFile, S: String;
 begin
   if Length(BinFile) <> 0 then
   begin
@@ -8891,23 +8894,34 @@ begin
     begin
       GetDir(0, S);
       ChDir(FabAgonDir);
-      CopyFile(BinFile, 'sdcard/' + NameOnly(BinFile));
+      {$i-}
+      MkDir('sdcard/pasta80.tmp');
+      IOResult;
+      {$i+}
+
+      CopyFile(BinFile, 'sdcard/pasta80.tmp/' + NameOnly(BinFile));
       if CurrentOverlay <> 0 then
-        CopyFile(ChangeExt(BinFile, '.ovr'), 'sdcard/' + NameOnly(ChangeExt(BinFile, '.ovr')));
+        CopyFile(ChangeExt(BinFile, '.ovr'), 'sdcard/pasta80.tmp/' + NameOnly(ChangeExt(BinFile, '.ovr')));
+
+      (* Back up the user's autoexec.txt, unless an aborted run left one. *)
+      if (FSize('sdcard/pasta80.tmp/autoexec.bak') = -1) and (FSize('sdcard/autoexec.txt') <> -1) then
+        CopyFile('sdcard/autoexec.txt', 'sdcard/pasta80.tmp/autoexec.bak');
 
       if LoaderFile <> '' then
-        CopyFile(LoaderFile, 'sdcard/autoexec.txt')
-      else if Format = tfMosLet then
-        StrToFile('load ' + NameOnly(BinFile) + ' 0xb0000'#13#10'run 0xb0000', 'sdcard/autoexec.txt')
+        Args := StrFromFile(LoaderFile)
       else
       begin
-        Args := NameOnly(BinFile);
+        (* Running "x" or "x.bin" by name would prefer /mos/x.bin, and MOS 2
+           and 3 disagree on how to run from a subdirectory. *)
+        if Format = tfMosLet then Addr := '0xb0000' else Addr := '0x40000';
+        Args := 'load ' + NameOnly(BinFile) + ' ' + Addr + #13#10'run ' + Addr;
         if StartParams <> '' then
           Args := Args + ' ' + StartParams;
         if Log <> '' then
           Args := Args + #13#10'emulator_exit_success';
-        StrToFile(Args, 'sdcard/autoexec.txt');
       end;
+
+      StrToFile('cd /pasta80.tmp'#13#10 + Args, 'sdcard/autoexec.txt');
 
       Args := '';
 
@@ -8916,6 +8930,15 @@ begin
       if Log <> '' then Args := Args + ' --printer-file ''' + Log + '''';
 
       Execute('./fab-agon-emulator', Args);
+
+      if FSize('sdcard/pasta80.tmp/autoexec.bak') <> -1 then
+      begin
+        CopyFile('sdcard/pasta80.tmp/autoexec.bak', 'sdcard/autoexec.txt');
+        DeleteFile('sdcard/pasta80.tmp/autoexec.bak');
+      end
+      else
+        DeleteFile('sdcard/autoexec.txt');
+
       ChDir(S);
     end
     else if Binary in [btZX, btZX128] then
@@ -8950,10 +8973,19 @@ begin
     begin
       if (Format = tfTape) or (Format = tfRunDir) then
       begin
-        RunFile := '/pasta80/' + NameOnly(BinFile);
+        RunFile := '/pasta80.tmp/' + NameOnly(BinFile);
 
-        Execute(MonkeyCmd, 'mkdir ''' + ImagePath + ''' /pasta80');
-        Execute(MonkeyCmd, 'put ''' + ImagePath + ''' ''' + BinFile + ''' /pasta80');
+        Execute(MonkeyCmd, 'mkdir ''' + ImagePath + ''' /pasta80.tmp' + Quiet);
+        Execute(MonkeyCmd, 'put ''' + ImagePath + ''' ''' + BinFile + ''' /pasta80.tmp');
+
+        (* Back up the user's autoexec.bas, unless an aborted run left one. *)
+        Execute(MonkeyCmd, 'get ''' + ImagePath + ''' /pasta80.tmp/autoexec.bak autoexec.bak' + Quiet);
+        if FSize('autoexec.bak') <= 0 then
+        begin
+          Execute(MonkeyCmd, 'get ''' + ImagePath + ''' /nextzxos/autoexec.bas autoexec.bak' + Quiet);
+          if FSize('autoexec.bak') > 0 then
+            Execute(MonkeyCmd, 'put ''' + ImagePath + ''' autoexec.bak /pasta80.tmp/autoexec.bak');
+        end;
 
         if Format = tfRunDir then
           StrToFile('#autostart'#13'10 cd "' + RunFile + '"'#13'20 load "run.bas"'#13, 'lastrun.txt')
@@ -8961,7 +8993,7 @@ begin
           StrToFile('#autostart'#13'10.tapein "' + RunFile + '"'#13'20 load "t:"'#13'30 load ""'#13, 'lastrun.txt');
 
         Execute(MonkeyCmd, 'put ''' + ImagePath + ''' ''' + HomeDir + '/misc/autoexec.bas'' /nextzxos/autoexec.bas');
-        Execute(MonkeyCmd, 'put ''' + ImagePath + ''' lastrun.txt /pasta80/lastrun.txt');
+        Execute(MonkeyCmd, 'put ''' + ImagePath + ''' lastrun.txt /pasta80.tmp/lastrun.txt');
 
         Args := '-zxnext -r -nextrom -exit -mouse -printer';
 
@@ -8977,6 +9009,16 @@ begin
         Args := Args + ' -mmc=''' + ImagePath + '''';
 
         Execute(CSpectCmd, Args);
+
+        if FSize('autoexec.bak') > 0 then
+        begin
+          Execute(MonkeyCmd, 'put ''' + ImagePath + ''' autoexec.bak /nextzxos/autoexec.bas');
+          Execute(MonkeyCmd, 'rm ''' + ImagePath + ''' /pasta80.tmp/autoexec.bak');
+        end
+        else
+          Execute(MonkeyCmd, 'rm ''' + ImagePath + ''' /nextzxos/autoexec.bas' + Quiet);
+
+        DeleteFile('autoexec.bak');
       end
       else
         WriteLn('Tape or runnable dir needed for CSpect.');
