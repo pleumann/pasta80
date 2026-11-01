@@ -219,7 +219,7 @@ end;
 
 (**
  * Parses a factor, which can basically be be a number, a function call, or
- * another expression enclosed in paretheses.
+ * another expression enclosed in parentheses.
  *)
 function ParseFactor: Real;
 var

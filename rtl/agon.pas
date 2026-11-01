@@ -371,7 +371,7 @@ end;
 
 type
   (**
-   * Internally represents an untyped file. Is also used inside the interal
+   * Internally represents an untyped file. Is also used inside the internal
    * representations of typed files and text files. The name is the same as
    * for the CP/M implementation because higher-level file functions depend
    * on it.

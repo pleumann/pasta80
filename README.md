@@ -135,14 +135,14 @@ $ pasta80 --48 --tape examples/jacques.pas   # .tap file with BASIC loader
 
 The short forms `--sna` and `--tap` work as well.
 
-Being self-contained, snapshots and tapes are a convenient way to distribute your programs and to launch them an emulator, such as Fuse:
+Being self-contained, snapshots and tapes are a convenient way to distribute your programs and to launch them in an emulator, such as Fuse:
 
 ```bash
-$ open -a Fuse examples/hello.sna         # Launch .sna file in FUSE (on Mac)
-$ open -a Fuse examples/jacques.tap       # Launch .tap file in FUSE (on Mac)
+$ open -a Fuse examples/hello.sna         # Launch .sna file in Fuse (on Mac)
+$ open -a Fuse examples/jacques.tap       # Launch .tap file in Fuse (on Mac)
 ```
 
-| Hello world in FUSE | Frere Jacques in FUSE (yes, with sound!) |
+| Hello world in Fuse | Frere Jacques in Fuse (yes, with sound!) |
 | :-------: | :----: |
 | ![Screenshot](docs/images/hello3.png) | ![Screenshot](docs/images/jacques.png) |
 
@@ -174,11 +174,11 @@ If you use your own loader that doesn't follow this convention, you get a warnin
 
 To generate a MOS binary for the Agon target(s), use the `--agon` parameter.
 
-The Agon target is more or less en par with the CP/M target, supporting all the
+The Agon target is more or less on par with the CP/M target, supporting all the
 core features plus files (all three types of) and command line parameters. There
 are also a few graphics primitives that would allow you to run or port some of
 the graphics examples (like the 3D hat or the Mandelbrot set). It is fully
-integrated into mini IDE and supports emulation and debugging (see below).
+integrated into the mini IDE and supports emulation and debugging (see below).
 
 Note that the Agon's eZ80 processor extends the Z80 address space out to 24 bit.
 The code generated for the Agon target (currently) uses a 64K block of memory in
@@ -423,7 +423,7 @@ This requires the emulators to support capturing printer output, which is not ye
 
 * **Fab Agon Emulator** needs the `--printer-file` option, which is available since version 1.2.6.
 * **CSpect** needs the printer plugin, which ships with version 3.4.0.0 (currently a beta for Patreon supporters). For older versions, copy `misc/Printer.dll` into CSpect's folder (next to CSpect.exe).
-* For **Fuse**, version 1.10.1 or newer is recommended to have all features working flawlessly on all platforms. Older releases have some issues on MacOS and Windows. For Linux, version 1.9.x is fine.
+* For **Fuse**, version 1.10.1 or newer is recommended to have all features working flawlessly on all platforms. Older releases have some issues on macOS and Windows. For Linux, version 1.9.x is fine.
 
 Assuming everything works correctly you should see a report like the following in the end:
 
@@ -450,15 +450,15 @@ As a fun little gimmick the compiler can be started like this
 $ pasta80 --ide
 ```
 
-to run it in an interactive mode that has an interface reminiscient of Turbo Pascal 3.0.
+to run it in an interactive mode that has an interface reminiscent of Turbo Pascal 3.0.
 
 | Main menu | Editor |
 | :-------: | :----: |
 | ![Screenshot](docs/images/idemenu.png) | ![Screenshot](docs/images/ideedit.png) |
 
-When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on MacOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`).
+When started in an ordinary terminal, this mode relies on the editor `nano` being present on your system (on macOS you might want to install the real `nano` via a package manager because Apple sells you the much more limited `pico` editor as `nano`).
 
-You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VCS's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)) and act a bit like a plugin.
+You can also run it in a shell within Visual Studio Code, in which case it would automatically use VSC's editor (via the `code` command, which, on a Mac, you might [have to make available from VSC's settings](https://code.visualstudio.com/docs/setup/mac#_configure-the-path-with-vs-code)) and act a bit like a plugin.
 
 ![Screenshot](docs/images/vsc.png)
 
@@ -469,10 +469,10 @@ The following external tools are supported for running compiled programs on the 
   * If yours doesn't or the version is outdated, try one of the binaries I provide [here](https://github.com/pleumann/tnylpo/releases).
   * I also provide a Windows binary there.
 * [Fuse](https://fuse-emulator.sourceforge.net) for programs targeting the ZX Spectrum 48K and 128K machines.
-  * For MacOS you can use [this fork](https://github.com/fmeunier/fuse-for-macos).
+  * For macOS you can use [this fork](https://github.com/fmeunier/fuse-for-macos).
 * [CSpect](https://mdf200.itch.io/cspect) for ZX Spectrum Next programs.
   * Please have [hdfmonkey](https://github.com/gasman/hdfmonkey) ready for manipulating the SD card image.
-  * If you're on MacOS or Linux, you also need `mono` because CSpect is a .NET application.
+  * If you're on macOS or Linux, you also need `mono` because CSpect is a .NET application.
   * Even if you have all tools in your path, you probably need to configure at least the image location (`image`) in `.pasta80.cfg`.
   * PASTA/80 will write files to a folder `pasta80.tmp` and create a custom `autoexec.bas` to manage the automatic start (backing up and restoring your original file, if needed).
 * [Fab Agon Emulator](https://github.com/tomm/fab-agon-emulator) for Agon Light/Console8 programs.
@@ -493,7 +493,7 @@ The following screenshots show some applications compiled for the CP/M target an
 | :-------: | :----: |
 | ![Screenshot](docs/images/microcalc.png) | ![Screenshot](docs/images/empire.png) |
 
-These screenshots show some applications compiled for the ZX Spectrum 48K target and running in the FUSE emulator.
+These screenshots show some applications compiled for the ZX Spectrum 48K target and running in the Fuse emulator.
 
 | 2048 | Game of Life |
 | :-------: | :----: |
@@ -538,7 +538,7 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 What does this mean for you?
 
-* You can **use the compiler**, free of charge, to build any application, open-source or prioprietary, free or paid, and distribute the generated binary without restriction. You can **distribute binaries** created with PASTA/80 under a **license of your choosing**.
+* You can **use the compiler**, free of charge, to build any application, open-source or proprietary, free or paid, and distribute the generated binary without restriction. You can **distribute binaries** created with PASTA/80 under a **license of your choosing**.
 
 * You can **modify the compiler** according to your needs. If you **distribute the compiler** or parts of it, binary or source, modified or not, you have to **comply with the rules laid out in the GPL** (copyright info, source code, ...) unless the linking exception applies.
 

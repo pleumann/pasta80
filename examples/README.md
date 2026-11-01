@@ -13,21 +13,21 @@ The `examples` folder contains programs that show what PASTA/80 can do, from the
 | [animals](animals.pas) | Animal guessing game that learns new animals, similar to "Pangolins" from the ZX Spectrum manual. | ✓ | | | ✓ | ✓ |
 | [barnsley](barnsley.pas) | Draws the Barnsley fern fractal. | | ✓ | ✓ | ✓ | ✓ |
 | [barnsley256](barnsley256.pas) | Barnsley fern in different shades of green. | | | | ✓ | |
-| [barnsleyagon](barnsleyagon.pas) | Multi-coloured Barnsley fern for the Agon. | | | | | ✓ |
+| [barnsleyagon](barnsleyagon.pas) | Multi-colored Barnsley fern for the Agon. | | | | | ✓ |
 | [beepfx](beepfx.pas) | Plays sound effects with Shiru's BeepFX player, linked in as assembly. | | ✓ | ✓ | ✓ | |
 | [breakpoints](breakpoints.pas) | Shows breakpoints set with `Debug`. Start it in the debugger to see how it works. | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [bubble](bubble.pas) | Sorts random numbers with bubble sort. | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [calc](calc.pas) | Calculator for real-valued expressions with parentheses, E-notation and functions like `Sin` and `Cos`. | ✓ | ✓ | ✓ | ✓ | ✓ |
-| [colors](colors.pas) | Shows all combinations of text and background colours. | ✓ | ✓ | ✓ | ✓ | ✓ |
-| [crt](crt.pas) | Prints coloured text at random places on the screen. | ✓ | ✓ | ✓ | ✓ | ✓ |
+| [colors](colors.pas) | Shows all combinations of text and background colors. | ✓ | ✓ | ✓ | ✓ | ✓ |
+| [crt](crt.pas) | Prints colored text at random places on the screen. | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [dicer](dicer.pas) | Rolls six-sided dice for you (recognizing 6 times 3D6 as D&D stats). | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [divmod](divmod.pas) | Adds an assembly function and makes it available to Pascal with the `register` calling convention. | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [fact](fact.pas) | Calculates factorials, the iterative way. | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [fibo](fibo.pas) | Calculates the first 25 Fibonacci numbers. | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [gfx](gfx.pas) | Shows some of the available graphics primitives. | | ✓ | ✓ | ✓ | ✓ |
 | [hat](hat.pas) | Draws the classic 3D "hat" from the 1980s computer magazines. | | ✓ | ✓ | ✓ | ✓ |
-| [hat256](hat256.pas) | The 3D hat in 256 colours. | | | | ✓ | |
-| [hatagon](hatagon.pas) | The 3D hat in colour for the Agon. | | | | | ✓ |
+| [hat256](hat256.pas) | The 3D hat in 256 colors. | | | | ✓ | |
+| [hatagon](hatagon.pas) | The 3D hat in color for the Agon. | | | | | ✓ |
 | [hello](hello.pas) | A simple "Hello, world". | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [hexdump](hexdump.pas) | Prints a hex dump of a file named on the command line. | ✓ | | | | ✓ |
 | [hilbert](hilbert.pas) | Draws a Hilbert curve with recursive turtle graphics. | | ✓ | ✓ | ✓ | ✓ |
@@ -36,7 +36,7 @@ The `examples` folder contains programs that show what PASTA/80 can do, from the
 | [knight8](knight8.pas) | Draws a knight's tour of the 8x8 board by Warnsdorff's rule, with sound, and maps where the rule succeeds.¹ | | ✓ | ✓ | ✓ | |
 | [life](life.pas) | Conway's Game of Life. | ✓ | ✓ | ✓ | ✓ | ✓ |
 | [mandelbrot](mandelbrot.pas) | Draws the Mandelbrot set in black and white. | | ✓ | ✓ | ✓ | ✓ |
-| [mandelbrot256](mandelbrot256.pas) | Draws the Mandelbrot set in 256 colours on Layer 2. | | | | ✓ | |
+| [mandelbrot256](mandelbrot256.pas) | Draws the Mandelbrot set in 256 colors on Layer 2. | | | | ✓ | |
 | [maze](maze.pas) | Draws a random maze by recursive backtracking. | | ✓ | ✓ | ✓ | ✓ |
 | [mc](mc/mc.pas) | MicroCalc, the small spreadsheet that came with Turbo Pascal 3.² | ✓ | | | | ✓ |
 | [pq](pq.pas) | Solves quadratic equations with the pq formula. | ✓ | ✓ | ✓ | ✓ | ✓ |

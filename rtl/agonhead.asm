@@ -287,7 +287,7 @@ _set_abc24:
 			mklil
 			LD		(HL), A			; Store A in it
 			mklil
-			POP		BC			; Fetch ammended BC
+			POP		BC			; Fetch amended BC
 			mklil
 			POP		HL			; Restore HL
 			RET
@@ -311,7 +311,7 @@ _set_aix24:
 			mklil
 			LD		(IX), A			; Store A in it
 			mklil
-			POP		IX			; Fetch ammended IX
+			POP		IX			; Fetch amended IX
 			RET
 
 ; Storage for the argv array pointers

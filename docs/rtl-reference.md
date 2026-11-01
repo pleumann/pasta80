@@ -27,14 +27,14 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `True` | `Boolean` | `1` | [All*] | Boolean value "true". |
 | `MaxInt` | `Integer` | `32767` | [All] | Largest representable `Integer` value. |
 | `MinInt` | `Integer` | `-32768` | [All] | Smallest representable `Integer` value. |
-| `Black` | `Integer` | `0` | [All] | Colour constant black. |
-| `Blue` | `Integer` | Depends | [All] | Colour constant blue. CP/M and ZX: `1`; Agon: `4`. |
-| `Red` | `Integer` | Depends | [All] | Colour constant red. CP/M and ZX: `2`; Agon: `1`. |
-| `Magenta` | `Integer` | Depends | [All] | Colour constant magenta. CP/M and ZX: `3`; Agon: `5`. |
-| `Green` | `Integer` | Depends | [All] | Colour constant green. CP/M and ZX: `4`; Agon: `2`. |
-| `Cyan` | `Integer` | Depends | [All] | Colour constant cyan. CP/M and ZX: `5`; Agon: `6`. |
-| `Yellow` | `Integer` | Depends | [All] | Colour constant yellow. CP/M and ZX: `6`; Agon: `3`. |
-| `White` | `Integer` | `7` | [All] | Colour constant white. |
+| `Black` | `Integer` | `0` | [All] | Color constant black. |
+| `Blue` | `Integer` | Depends | [All] | Color constant blue. CP/M and ZX: `1`; Agon: `4`. |
+| `Red` | `Integer` | Depends | [All] | Color constant red. CP/M and ZX: `2`; Agon: `1`. |
+| `Magenta` | `Integer` | Depends | [All] | Color constant magenta. CP/M and ZX: `3`; Agon: `5`. |
+| `Green` | `Integer` | Depends | [All] | Color constant green. CP/M and ZX: `4`; Agon: `2`. |
+| `Cyan` | `Integer` | Depends | [All] | Color constant cyan. CP/M and ZX: `5`; Agon: `6`. |
+| `Yellow` | `Integer` | Depends | [All] | Color constant yellow. CP/M and ZX: `6`; Agon: `3`. |
+| `White` | `Integer` | `7` | [All] | Color constant white. |
 | `LineBreak` | `String` | Depends | [All] | Line-break convention. ZX: `#13`; CP/M and Agon: `#13#10`. |
 
 ---
@@ -105,7 +105,7 @@ Note that * indicates "magic" symbols built into the compiler that are not defin
 | `WriteLn(...)` | [All*] | Like `Write`, but appends a line break afterwards. |
 
 Note that `Read` and `ReadLn` will trigger I/O errors if the textual
-input cannot be converted to the desired data type (i.e. "xyz" for an
+input cannot be converted to the desired data type (e.g. "xyz" for an
 `Integer` variable). This is also the case for empty lines, which would
 simply be ignored and leave the variable untouched in Turbo Pascal 3.
 Use the {$i} compiler directive to handle these error cases gracefully.
@@ -134,8 +134,8 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 |-----------|----------|-------------|
 | `ClrScr` | [All] | Clears the screen using the most recently set foreground and background attributes. |
 | `GotoXY(X, Y: Integer)` | [All] | Moves the cursor to column `X` (1-based) and row `Y` (1-based). |
-| `TextColor(Color: Integer)` | [All] | Sets the foreground colour. Possible values depend on target and screen mode. Symbolic constants exist. |
-| `TextBackground(Color: Integer)` | [All] | Sets the background colour. Possible values depend on target and screen mode. Symbolic constants exist. |
+| `TextColor(Color: Integer)` | [All] | Sets the foreground color. Possible values depend on target and screen mode. Symbolic constants exist. |
+| `TextBackground(Color: Integer)` | [All] | Sets the background color. Possible values depend on target and screen mode. Symbolic constants exist. |
 | `CursorOn` | [All] | Shows the cursor. No-op on ZX. |
 | `CursorOff` | [All] | Hides the cursor. No-op on ZX. |
 | `ClrEol` | [CPM] [Agon] | Clears from the cursor to the end of the current line. |
@@ -147,7 +147,7 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 | `NormVideo` | [CPM] [Agon] | Restores normal video intensity. |
 | `InverseOn` | [CPM] [Agon] | Activates inverse (reverse) video display. |
 | `InverseOff` | [CPM] [Agon] | Deactivates inverse video display. |
-| `Border(Color: Integer)` | [ZX48] | Sets the border colour (0..7). |
+| `Border(Color: Integer)` | [ZX48] | Sets the border color (0..7). |
 | `SetGraphMode(Mode: Integer)` | [Agon] | Sets the graphics and text screen mode for Agon. |
 
 ### Graphics
@@ -156,16 +156,16 @@ Note: Unless noted otherwise, `F` can be either an untyped `File`, a typed `file
 |-----------|----------|-------------|
 | `Plot(X, Y: Byte)` | [ZX48] [Agon] | Sets a pixel at coordinates `(X, Y)`. The origin (0, 0) is in the upper-left corner. On Agon, `X` and `Y` are of type `Integer`. |
 | `Draw(DX, DY: Integer)` | [ZX48] [Agon] | Draws a line from the last plot position by the relative offset `(DX, DY)`. |
-| `Circle(CX, CY, Radius: Integer)` | [ZX48] [Agon] | Draws a circle with centre `(CX, CY)` and the given radius. |
+| `Circle(CX, CY, Radius: Integer)` | [ZX48] [Agon] | Draws a circle with center `(CX, CY)` and the given radius. |
 | `FloodFill(X, Y: Integer)` | [ZX48] [Agon] | Performs a recursive flood-fill operation starting at `(X, Y)`. Agon requires VDP 2.16.0+ for this function.|
-| `SetColor(Color: Integer)` | [Agon] | Sets the graphics plot colour (range depends on screen mode). |
+| `SetColor(Color: Integer)` | [Agon] | Sets the graphics plot color (range depends on screen mode). |
 
 ### Sound
 
 | Signature | Platform | Description |
 |-----------|----------|-------------|
 | `SoundMs(Frequency, Duration: Integer)` | [ZX48] | Plays a tone at the given frequency (Hz) for the given duration (ms). Synchronous; requires CPU speed 3.5 MHz. |
-| `Sound(Frequency: Integer)` | [Agon] | Plays a tone at the given frequency (Hz) continuously in the background until a different Sound frequency specified or until NoSound. Uses a separate channel to Beep. |
+| `Sound(Frequency: Integer)` | [Agon] | Plays a tone at the given frequency (Hz) continuously in the background until a different Sound frequency is specified or until NoSound. Uses a separate channel to Beep. |
 | `NoSound` | [Agon] | Stops the current sound. |
 | `Beep(Duration: Real; Pitch: Integer)` | [ZX48] [Agon] | Plays a note. `Duration` is in seconds; `Pitch` is the piano key number relative to middle C (0 = middle C, like MIDI note 60). Synchronous. |
 

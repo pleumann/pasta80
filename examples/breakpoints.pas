@@ -15,6 +15,6 @@ begin
   begin
     WriteLn(I);
     Delay(100);
-    Debug(I mod 6 = 0);   (* Conditional beakpoint.    *)
+    Debug(I mod 6 = 0);   (* Conditional breakpoint.   *)
   end;
 end.

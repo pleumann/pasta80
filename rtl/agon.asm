@@ -146,7 +146,7 @@ mos_file_len_divlp:
     ret
 
 
-; Return Paramter Count
+; Return Parameter Count
 __getargc:
     ld  hl,(__parmcount)    ;done during load
     ret

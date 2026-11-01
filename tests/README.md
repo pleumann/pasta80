@@ -64,7 +64,7 @@ $ pasta80 --128 --tape tests/core.pas               # Spectrum 128K, then load c
 If you are adding/removing tests or otherwise changing the test suite, keep these things in mind:
 
 - **Size matters.** `core.pas` barely fits into the 64K of CP/M, and on the 128K and the Next only with overlays. That is why `more.pas` exists. Tests that don't fit into `core` go there, and every new test should be weighed against its size.
-- **Assertions embed full filenames.** That means, the actual size of a compiled test suite depends on where the source code is located. With `core.pas` that close to the limit, the checkout location can decide whether the tests compile **for you**.
+- **Assertions embed full filenames.** That means the actual size of a compiled test suite depends on where the source code is located. With `core.pas` that close to the limit, the checkout location can decide whether the tests compile **for you**.
 - **Never remove the `overlay` markers or the `{$m ...}` directives.** They are what makes `core` and `files` build on the Spectrum targets. Code inside an `overlay` procedure costs overlay space, not resident space.
 - **A new suite** needs one entry in each of the tables in `SelfTest`. At its end, it must print the two totals and close the emulator in a `--printer` build. See the end of any existing suite for how.
 - **Adjust `TotalTests`** in `SelfTest` whenever the number of assertions changes, or the report will say FAIL.

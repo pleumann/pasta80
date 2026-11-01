@@ -1417,14 +1417,6 @@ begin
     if UpperStr(Sym^.Name) = Name then
     begin
       Lookup := Sym;
-
-      (*
-      Wenn lookup in main block stattfindet, nimm Symbol als Wurzel in irgendeine
-      Liste auf. Noch nicht aktivieren. Beim Schließen des main blocks rekursive
-      Durchläufe bei allen Wurzeln starten.
-      *)
-
-
       Exit;
     end;
     Sym := Sym^.Prev;
@@ -4562,7 +4554,7 @@ function ParseExpression: PSymbol; forward;
 (**
  * Parses a (potentially empty) chain of Pascal selectors, that is, array
  * indexing ([]), field selection (.), and pointer dereference (^). Used by
- * ParseVariableAccess (coming from a vairable) and ParseVariabeChain (coming
+ * ParseVariableAccess (coming from a variable) and ParseVariableChain (coming
  * from an expression). Variable and Offset implement deferred global-address
  * optimisation:
  * - When Offset >= 0 the base address has not been emitted yet
@@ -9360,7 +9352,7 @@ var
   end;
 
   (**
-   * Scans the log file or the errors test suite. Searches for expecations
+   * Scans the log file of the errors test suite. Searches for expectations
    * and the line immediately following them.
    *)
   procedure ScanErrors(FileName: String; var PassCount, FailCount: Integer);

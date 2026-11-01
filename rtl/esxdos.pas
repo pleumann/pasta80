@@ -36,7 +36,7 @@ function EsxDos(I: Integer; var R: Registers): Byte; register; external 'esx_cal
 
 type
   (**
-   * Internally represents an untyped file. Is also used inside the interal
+   * Internally represents an untyped file. Is also used inside the internal
    * representations of typed files and text files. The name is the same as
    * for the CP/M implementation because higher-level file functions depend
    * on it. The size is 36 bytes, just like for CP/M, but that is more of a

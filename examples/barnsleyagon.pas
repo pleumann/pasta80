@@ -20,13 +20,13 @@ var
 
 (**
  * Queries a point at the given coordinates, returning the
- * specific colour instead of true/false, using the Agon RTL
+ * specific color instead of true/false, using the Agon RTL
  *)
 function ColPoint(X1, Y1: Integer): Integer; register;      external 'al_point';
 
   procedure ColPlot(X2, Y2: Integer);
   begin
-    (* Increases the colour value when the same point is plotted repeatedly *)
+    (* Increases the color value when the same point is plotted repeatedly *)
     V := ColPoint(PX, PY);
     if V < 3 then begin
       SetColor(V+1);
@@ -37,13 +37,13 @@ function ColPoint(X1, Y1: Integer): Integer; register;      external 'al_point';
 begin
 
     SetGraphMode(19);
-(* this uses VDU 19, l, p, r, g, b: Define logical colour 
- * below colours are set using the value in p,
+(* this uses VDU 19, l, p, r, g, b: Define logical color 
+ * below colors are set using the value in p,
  * ignoring r,g,b\
  *)
 
 (*
- * The below colour scheme gives a more
+ * The below color scheme gives a more
  * "spring" seasonal feel compared to the default
  * below which is more "autumn/fall"
  *    Write(#19,#1,#12,#0,#0,#0);
