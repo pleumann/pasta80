@@ -66,13 +66,13 @@ The [run-time library](docs/rtl-reference.md), being partially written in Pascal
 Ready-made binaries for macOS (Apple Silicon and Intel), Windows (x86_64) and Linux (x86_64, arm64 and armv6l for the Raspberry Pi Zero) are attached to each [release](https://github.com/pleumann/pasta80/releases). On macOS, Gatekeeper will refuse to run the compiler because the binary isn't signed by a registered developer. To fix this, remove the quarantine flag once after unpacking:
 
 ```bash
-$ xattr -dr com.apple.quarantine pasta80
+xattr -dr com.apple.quarantine pasta80
 ```
 
 Alternatively, you can build the compiler yourself. It is written in Pascal. You can compile it with [Free Pascal](https://www.freepascal.org) (I use version 3.2.2). Just run
 
 ```bash
-$ fpc pasta80
+fpc pasta80
 ```
 
 The Pascal compiler generates Z80 assembler code and relies on [sjasmplus](https://z00m128.github.io/sjasmplus) as a backend for the final translation step to binary. It can also, in `--ide` mode (see below), make use of various other external tools. The compiler tries to detect these external tools automatically (from your system's `PATH`), but sometimes it's best to create a file `.pasta80.cfg` in your home directory specifying necessary paths (there is a sample in `misc` that you can adapt).
@@ -96,16 +96,16 @@ To run the compiler just invoke the executable with the desired target and the n
 The `--cpm` parameter compiles for CP/M. It's also the implicit default target, so the following two are synonymous:
 
 ```bash
-$ pasta80 --cpm hello.pas     # Compiles hello.pas to hello.com
-$ pasta80 hello.pas           # Does exactly the same
+pasta80 --cpm hello.pas     # Compiles hello.pas to hello.com
+pasta80 hello.pas           # Does exactly the same
 ```
 
 You can run the resulting `.com` files on a real CP/M machine or in a CP/M emulator. I recommend the excellent [tnylpo](https://gitlab.com/gbrein/tnylpo) (for which I provide binaries [here](https://github.com/pleumann/tnylpo/releases)). For programs that use VT52 control codes you have to start tnylpo in full-screen mode:
 
 ```bash
-$ tnylpo hello                # Run in line-mode
-$ tnylpo -s -t @ hello        # Monochrome full-screen, wait when finished
-$ tnylpo -soy,4,0 -t @ hello  # Color full-screen, wait when finished
+tnylpo hello                # Run in line-mode
+tnylpo -s -t @ hello        # Monochrome full-screen, wait when finished
+tnylpo -soy,4,0 -t @ hello  # Color full-screen, wait when finished
 ```
 
 | "Hello, World" in line mode  | "Hello, World" in full-screen |
@@ -117,9 +117,9 @@ $ tnylpo -soy,4,0 -t @ hello  # Color full-screen, wait when finished
 To generate binaries for the ZX Spectrum 48K, 128K and Next targets, use the `--48`, `--128` and `--next` parameters, respectively. The long forms `--zx48`, `--zx128` and `--zxnext` work as well.
 
 ```bash
-$ pasta80 --48 hello.pas      # Compiles for ZX Spectrum 48K
-$ pasta80 --128 hello.pas     # Compiles for ZX Spectrum 128K
-$ pasta80 --next hello.pas    # Compiles for ZX Spectrum Next
+pasta80 --48 hello.pas      # Compiles for ZX Spectrum 48K
+pasta80 --128 hello.pas     # Compiles for ZX Spectrum 128K
+pasta80 --next hello.pas    # Compiles for ZX Spectrum Next
 ```
 
 The main difference between the three (currently) is that the ZX Spectrum Next target supports file IO (on the SD card), while the other two do not. The remaining routines are mostly the same. Screen output is handled via `rst $10` in the ROM. In all three cases the binaries are expected to be run from address $8000 (by default, see below).
@@ -129,8 +129,8 @@ The main difference between the three (currently) is that the ZX Spectrum Next t
 The default output format for the ZX Spectrum targets is a simple binary file that contains exactly the bytes of the compiled program. Use `--3dos` if you want a +3DOS header in front of it. In addition to that (and for more complex cases involving overlays), the compiler can also generate snapshot files or tape files, the latter including a suitable BASIC loader:
 
 ```bash
-$ pasta80 --48 --snapshot examples/hello.pas # .sna file
-$ pasta80 --48 --tape examples/jacques.pas   # .tap file with BASIC loader
+pasta80 --48 --snapshot examples/hello.pas # .sna file
+pasta80 --48 --tape examples/jacques.pas   # .tap file with BASIC loader
 ```
 
 The short forms `--sna` and `--tap` work as well.
@@ -138,8 +138,8 @@ The short forms `--sna` and `--tap` work as well.
 Being self-contained, snapshots and tapes are a convenient way to distribute your programs and to launch them in an emulator, such as Fuse:
 
 ```bash
-$ open -a Fuse examples/hello.sna         # Launch .sna file in Fuse (on Mac)
-$ open -a Fuse examples/jacques.tap       # Launch .tap file in Fuse (on Mac)
+open -a Fuse examples/hello.sna         # Launch .sna file in Fuse (on Mac)
+open -a Fuse examples/jacques.tap       # Launch .tap file in Fuse (on Mac)
 ```
 
 | Hello world in Fuse | Frere Jacques in Fuse (yes, with sound!) |
@@ -149,7 +149,7 @@ $ open -a Fuse examples/jacques.tap       # Launch .tap file in Fuse (on Mac)
 When compiling for the Next, another useful format is a runnable directory. It contains exactly the same files that would also be in the .tap file, including a BASIC loader named `run.bas`.
 
 ```bash
-$ pasta80 --next --dir examples/pq.pas      # Results in directory named pq.run
+pasta80 --next --dir examples/pq.pas      # Results in directory named pq.run
 ```
 
 The directory has the suffix `.run`. When attempting to enter such a directory in the Next's file browser, the loader is started automatically (press Symbol Shift + Enter to really see the contents). If you are a Mac user: Yes, it's a bit like an `.app` bundle.
@@ -163,7 +163,7 @@ By default, programs on the Spectrum targets start at address $8000. If you need
 The address can be given in decimal or hex, e.g. `--start 24576`, `--start 0x6000` or `--start '$6000'` (the quotes keep the shell from expanding `$6000`).
 
 ```bash
-$ pasta80 --48 --tape --start 24576 examples/hello.pas
+pasta80 --48 --tape --start 24576 examples/hello.pas
 ```
 
 For `--tape` and `--dir`, the compiler then adjusts the loader accordingly: It expects the first line to start with `CLEAR nnnnn` (the start address minus one) and replaces that number. Everything else in the loader should be derived from RAMTOP (`PEEK 23730+256*PEEK 23731`), as the provided loaders do.
@@ -247,7 +247,7 @@ For the ZX targets, ideally combine overlays with the `--tape` parameter, as the
 and Next are fully overlay-aware.
 
 ```bash
-$ pasta80 --128 --tape tests/core.pas # Test suite as 128K tape
+pasta80 --128 --tape tests/core.pas # Test suite as 128K tape
 ```
 The compiler prints a report of which overlays go into which RAM banks or pages.
 ```
@@ -397,9 +397,9 @@ conditional compilation. Notice how conditional blocks can be nested.
 The compiler automatically uses simple Z80 peephole optimizations. It also applies dependency analysis to eliminate unused Pascal procedures and functions from both the run-time library and your code. Should you, for any reason, want to disable these optimizations, the following will do it:
 
 ```bash
-$ pasta80 --no-opt hello.pas          # Disables peephole optimizations
-$ pasta80 --no-dep hello.pas          # Disables dependency analysis
-$ pasta80 --no-opt --no-dep hello.pas # Disables both
+pasta80 --no-opt hello.pas          # Disables peephole optimizations
+pasta80 --no-dep hello.pas          # Disables dependency analysis
+pasta80 --no-opt --no-dep hello.pas # Disables both
 ```
 
 Note this makes your programs both larger and slower, so it's not recommended unless you are debugging a problem that looks like it could be caused by either of the two optimizations and you want to compare the assembly outputs. Add `--keep` (or `--keepint`) to keep the intermediate files (the generated `.z80` source and the `.lst` listing), which are deleted after a successful compilation otherwise.
@@ -413,10 +413,10 @@ If you want to see the full output of the tests on the console instead of inside
 The compiler is using that mechanism in its self-testing. To run the full test suite and generate a comprehensive report, start PASTA/80 with the parameter `--selftest` and (optionally) a target platform parameter:
 
 ```bash
-$ pasta80 --selftest           # Runs all tests for CP/M
-$ pasta80 --selftest --agon    # Runs all tests for Agon
-$ pasta80 --selftest --128     # Runs all tests for the Spectrum 128K
-$ pasta80 --selftest --next    # Runs all tests for the Spectrum Next
+pasta80 --selftest           # Runs all tests for CP/M
+pasta80 --selftest --agon    # Runs all tests for Agon
+pasta80 --selftest --128     # Runs all tests for the Spectrum 128K
+pasta80 --selftest --next    # Runs all tests for the Spectrum Next
 ```
 
 This requires the emulators to support capturing printer output, which is not yet the case in every official release:
@@ -447,7 +447,7 @@ The exit code tells you how the tests went, too, so the self test can also be us
 As a fun little gimmick the compiler can be started like this
 
 ```bash
-$ pasta80 --ide
+pasta80 --ide
 ```
 
 to run it in an interactive mode that has an interface reminiscent of Turbo Pascal 3.0.
