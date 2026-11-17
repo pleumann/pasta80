@@ -155,9 +155,45 @@ needs are not covered:
 
 - **Large values on the stack.** PASTA/80 pushes strings (up to 256 bytes),
   sets (32 bytes) and records onto the stack. IR4th only has word, address
-  and float slots, so the compiler would have to allocate temporaries and
-  work with addresses. This is the biggest change in the parser.
-  (`lib/pascal.ir4` in IR4th already uses this style.)
+  and float slots on its data stack. Part of this is covered by a feature
+  that `spec.md` does not document (pointed out by Stefan): `:bytes` input
+  parameters.
+
+  ```forth
+  fn mutate_copy ( b :bytes 16 -> :i )
+    99 b !i8
+    b @u8
+  end
+  ```
+
+  The caller pushes an `:a`. On entry, the callee copies 16 bytes into a
+  buffer of its own, and in the body `b` is the address of that copy.
+  Changes to it don't reach the caller (see `tests/rtl.ir4`). The buffer
+  is static in non-recursive functions and lives in the stack frame in
+  recursive ones, like any local. This is exactly the semantics of
+  Pascal's value parameters, so strings, records, arrays and sets passed
+  by value map directly to `s :bytes 256`, `r :bytes 12` and so on.
+
+  Some things remain open:
+
+  - **Expressions.** `s1 + s2`, set operations and functions returning a
+    string or record still need temporaries managed by the compiler
+    (`| tmp1 :bytes 256`). Results can only be `:i`, `:a` or `:f`, so a
+    function returning a large value gets a hidden destination-address
+    parameter, as in TP5. (`lib/pascal.ir4` in IR4th already uses this
+    style.)
+  - **Locals are declared before the body.** IR4th wants every local in
+    the `fn` header, but a single-pass compiler only knows which
+    temporaries a body needs after parsing it. The fix is the same trick
+    as the decl/body split in this experiment, one level down: buffer
+    each function's body and write its header afterwards.
+  - **Copy cost.** The copy is a byte loop generated as IR, not `LDIR`,
+    and it runs on every call. For 256-byte strings this adds up. Hidden
+    copies also count against the limits of 8 parameters and 16 locals,
+    and so does an internal counter local.
+
+  So the biggest parser change shrinks to "temporaries for expressions,
+  plus buffering per function".
 - **The RTL.** See finding 3.
 - **Overlays and banking.** IR4th has one code buffer of up to 64K with a
   single base address. It has no sections and no far calls.
@@ -184,3 +220,9 @@ These are small papercuts found along the way:
 - Errors refer to lines in the `.ir4` file. A `#line`-style directive
   would let a front end report errors in its own source.
 - The 6502 data stack could live in zero page (see finding 6).
+- `:bytes` input parameters (copy-in value parameters) are not in
+  `spec.md` yet.
+- For a Pascal front end, it would help to declare locals inside the body
+  instead of only in the `fn` header. Temporaries could then be added
+  while the body is being parsed. A block copy (`LDIR` on the Z80) for
+  `:bytes` parameters would also help.
