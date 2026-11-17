@@ -1478,6 +1478,7 @@ end;
 
 var
   SrcFile, AsmFile, BinFile, HomeDir, AsmTool, IrTool, BodyFile, Line: String;
+  IrTarget, IrFlags: String;
   I: Integer;
   Body: Text;
 
@@ -1492,6 +1493,7 @@ begin
 
   AsmTool := GetEnv('PL0_ASM');
   IrTool := GetEnv('PL0_IR4C');
+  IrTarget := 'cpm';
 
   I := 1;  
   SrcFile := ParamStr(I);
@@ -1508,6 +1510,12 @@ begin
       Binary := btDot
     else if SrcFile = '--ir4' then
       Ir4 := True
+    else if SrcFile = '--ir4-target' then
+    begin
+      Ir4 := True;
+      IrTarget := ParamStr(I + 1);
+      I := I + 1;
+    end
     else if SrcFile = '--ir4c' then
     begin
       IrTool := ParamStr(I + 1);
@@ -1530,7 +1538,8 @@ begin
     WriteLn('  --com          target is CP/M .com file');
     WriteLn('  --dot          target is Next .dot file');
     WriteLn('  --ir4          generate IR4th instead of Z80 assembly');
-    WriteLn('  --ir4c <path>  calls IR4th compiler (CP/M only)');
+    WriteLn('  --ir4c <path>  calls IR4th compiler');
+    WriteLn('  --ir4-target cpm|sim65|c64   IR4th target (default cpm)');
     WriteLn;
     Halt(1);
   end;
@@ -1539,17 +1548,35 @@ begin
 
   if Ir4 then
   begin
-    if Binary <> btCom then Error('IR4th backend supports CP/M only');
+    if IrTarget = 'cpm' then
+    begin
+      IrFlags := '-t z80 --cpm';
+      BinFile := ChangeExt(SrcFile, '.com');
+    end
+    else if IrTarget = 'sim65' then
+    begin
+      IrFlags := '-t 6502 --sim65';
+      BinFile := ChangeExt(SrcFile, '.sim');
+    end
+    else if IrTarget = 'c64' then
+    begin
+      IrFlags := '-t 6502 --c64';
+      BinFile := ChangeExt(SrcFile, '.prg');
+    end
+    else
+      Error('Invalid IR4th target: ' + IrTarget);
     AsmFile := ChangeExt(SrcFile, '.ir4');
     BodyFile := ChangeExt(SrcFile, '.ir4b');
   end
   else
+  begin
     AsmFile := ChangeExt(SrcFile, '.z80');
 
-  if Binary = btCom then
-    BinFile := ChangeExt(SrcFile, '.com')
-  else if Binary = btDot then
-    BinFile := ChangeExt(SrcFile, '.dot');
+    if Binary = btCom then
+      BinFile := ChangeExt(SrcFile, '.com')
+    else if Binary = btDot then
+      BinFile := ChangeExt(SrcFile, '.dot');
+  end;
 
   WriteLn('Compiling...');
 
@@ -1596,7 +1623,7 @@ begin
       AsmFile := FExpand(AsmFile);
       IrTool := FExpand(IrTool);
       ChDir(ParentDir(ParentDir(IrTool)));
-      Exec(IrTool, '-t z80 --cpm -o ' + BinFile + ' ' + AsmFile);
+      Exec(IrTool, IrFlags + ' -o ' + BinFile + ' ' + AsmFile);
       ChDir(Line);
       if DosError <> 0 then
         Error('Error ' + Int2Str(DosError) + ' starting ' + IrTool);

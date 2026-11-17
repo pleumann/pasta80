@@ -1,0 +1,35 @@
+// sim65/pl0io.ir4 - PL/0 console I/O for the cc65 sim65 simulator
+
+var pl0_ch :bytes 1
+var pl0_cs :bytes 4
+extern sim_read 0xFFF6 ( A :i X :i -> A :i )
+
+fn pl0_crlf ( )
+  13 emit
+  10 emit
+end
+
+// read(0, &pl0_ch, 1) via sim65 paravirtualization; -1 on EOF
+fn pl0_getc ( -> :i )
+  pl0_ch pl0_cs !a
+  0 pl0_cs 2 + !i
+  pl0_cs 0x10 :a !a
+  1 0 sim_read 0 == if -1 return then
+  pl0_ch @u8
+end
+
+// Read a line into a BDOS-10 style buffer; echoes like the CP/M console
+fn pl0_readln ( buf :a | n :i c :i )
+  begin
+    pl0_getc -> c
+    c 10 != c -1 != and
+  while
+    n 6 < if
+      c emit
+      c buf 2 + n + !i8
+      n 1 + -> n
+    then
+  repeat
+  13 emit
+  n buf 1 + !i8
+end

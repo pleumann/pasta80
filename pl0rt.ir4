@@ -2,13 +2,9 @@
 
 require stdio.ir4
 require mem.ir4
+require pl0io.ir4
 
 var pl0_buf :bytes 8
-
-fn pl0_crlf ( )
-  13 emit
-  10 emit
-end
 
 // Print counted string followed by CR/LF
 fn pl0_puts ( s :a )
@@ -23,11 +19,10 @@ fn pl0_putn ( n :i )
   pl0_crlf
 end
 
-// Read number via BDOS 10, echo it like __getn in pl0.z80
+// Read number, echo it like __getn in pl0.z80
 fn pl0_getn ( | p :a n :i neg :i v :i -> :i )
   62 emit
-  6 pl0_buf !i8
-  10 pl0_buf :i bdos drop
+  pl0_buf pl0_readln
   62 emit
   pl0_buf 1 + pl0_puts
   pl0_buf 2 + -> p
