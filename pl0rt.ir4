@@ -1,0 +1,51 @@
+// pl0rt.ir4 - PL/0 runtime for the IR4th backend (counterpart of pl0.z80)
+
+require stdio.ir4
+require mem.ir4
+
+var pl0_buf :bytes 8
+
+fn pl0_crlf ( )
+  13 emit
+  10 emit
+end
+
+// Print counted string followed by CR/LF
+fn pl0_puts ( s :a )
+  s 1 + s @u8 type
+  pl0_crlf
+end
+
+// Print number followed by CR/LF (leading space like __itoa in pl0.z80)
+fn pl0_putn ( n :i )
+  n 0 >= if 32 emit then
+  n puti
+  pl0_crlf
+end
+
+// Read number via BDOS 10, echo it like __getn in pl0.z80
+fn pl0_getn ( | p :a n :i neg :i v :i -> :i )
+  62 emit
+  6 pl0_buf !i8
+  10 pl0_buf :i bdos drop
+  62 emit
+  pl0_buf 1 + pl0_puts
+  pl0_buf 2 + -> p
+  pl0_buf 1 + @u8 -> n
+  n 0 > if
+    p @u8 45 == if
+      -1 -> neg
+      p 1 + -> p
+      n 1 - -> n
+    then
+  then
+  begin
+    n 0 >
+  while
+    v 10 * p @u8 48 - + -> v
+    p 1 + -> p
+    n 1 - -> n
+  repeat
+  neg if 0 v - -> v then
+  v
+end

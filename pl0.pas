@@ -193,6 +193,7 @@ type
     Value: Integer;
     StrVal: String;
     Tag: String;
+    Shared: Boolean;  (* IR4: local accessed from a nested procedure *)
     Next: PSymbol;
   end;
 
@@ -283,6 +284,8 @@ begin
   Sym^.Kind := Kind;
   Sym^.Name := Name;
   Sym^.Level := Level;
+  Sym^.Shared := False;
+  Sym^.Tag := '';
   Sym^.Next := SymbolTable;
   SymbolTable := Sym;
 
@@ -576,6 +579,34 @@ var
   Target: Text;
   NextLabel: Integer;
 
+  (* IR4th backend: declarations (var, fwd, data) go to Decl, function
+     bodies to Target. IR4th needs everything declared before use, so the
+     two are concatenated at the end. *)
+  Ir4: Boolean;
+  Decl: Text;
+  CurShared: Boolean;
+
+procedure IrDecl(S: String);
+begin
+  WriteLn(Decl, S);
+end;
+
+procedure IrCode(S: String);
+begin
+  WriteLn(Target, '  ', S);
+end;
+
+function IrEscape(S: String): String;
+var
+  I: Integer;
+  T: String;
+begin
+  T := '';
+  for I := 1 to Length(S) do
+    if (S[I] = '"') or (S[I] = '\') then T := T + '\' + S[I] else T := T + S[I];
+  IrEscape := T;
+end;
+
 procedure OpenTarget(Filename: String);
 begin
   Assign(Target, Filename);
@@ -597,7 +628,7 @@ var
 begin
   if (Tag = '') and (Instruction = '') and (Comment <> '') then
   begin
-    WriteLn(Target, '; ', Comment);
+    if Ir4 then WriteLn(Target, '// ', Comment) else WriteLn(Target, '; ', Comment);
     Exit;
   end;
 
@@ -627,7 +658,7 @@ end;
 
 procedure EmitC(S: String);
 begin
-  WriteLn(Target, '; ', S);
+  if Ir4 then WriteLn(Target, '// ', S) else WriteLn(Target, '; ', S);
 end;
 
 procedure EmitInclude(S: String);
@@ -637,21 +668,35 @@ end;
 
 procedure EmitCall(Sym: PSymbol);
 begin
-  EmitI('call ' + Sym^.Tag);
+  if Ir4 then
+    IrCode(Sym^.Tag)
+  else
+    EmitI('call ' + Sym^.Tag);
 end;
 
 procedure EmitHeader(Home: String; SrcFile: String);
 begin
+  if Ir4 then
+  begin
+    IrDecl('// program ' + SrcFile);
+    IrDecl('');
+    IrDecl('require ' + Home + '/pl0rt.ir4');
+    IrDecl('');
+    IrDecl('var display :bytes 32');
+    IrDecl('');
+    Exit;
+  end;
+
   EmitC('');
   EmitC('program ' + SrcFile);
   EmitC('');
   if Binary = btCom then
   begin
-    Emit('CPM', 'equ 1', 'Target is CP/M .com file');
+    Emit('', 'DEFINE CPM', 'Target is CP/M .com file');
   end
   else if Binary = btDot then
   begin
-    Emit('NXT', 'equ 1', 'Target is Next .dot file');
+    Emit('', 'DEFINE NXT', 'Target is Next .dot file');
   end;
 
   EmitC('');
@@ -688,11 +733,97 @@ begin
   end;
 end;
 
+(* Collects IR4th locals of the current scope (in declaration order). Locals
+   accessed from nested procedures live in a frame instead (see below). *)
+procedure IrLocals(Sym: PSymbol; var S: String; var AnyShared: Boolean);
+begin
+  if Sym^.Kind = scScope then Exit;
+  IrLocals(Sym^.Next, S, AnyShared);
+  if Sym^.Kind = scVar then
+  begin
+    if Sym^.Shared then
+      AnyShared := True
+    else
+      S := S + ' ' + Sym^.Tag + ' :i';
+  end;
+end;
+
+function IrOffset(Value: Integer): String;
+begin
+  if Value = 0 then IrOffset := '' else IrOffset := ' ' + Int2Str(Value) + ' +';
+end;
+
+function DisplaySlot(L: Integer): String;
+begin
+  DisplaySlot := 'display ' + Int2Str(L * 2) + ' +';
+end;
+
+procedure IrPrologue(Sym: PSymbol);
+var
+  S: String;
+  I: Integer;
+begin
+  if Sym = nil then
+  begin
+    EmitC('main entry point');
+    WriteLn(Target, 'fn main ( )');
+    CurShared := False;
+    Exit;
+  end;
+
+  EmitC('procedure ' + Sym^.Name);
+
+  S := '';
+  CurShared := False;
+  IrLocals(SymbolTable, S, CurShared);
+
+  (* Shared locals: a frame whose address goes into the display, so nested
+     procedures find the current activation like in the Z80 backend. *)
+  if CurShared then
+    S := S + ' frame :bytes ' + Int2Str(Offset) + ' saved :a';
+
+  if S = '' then
+    WriteLn(Target, 'fn ', Sym^.Tag, ' ( )')
+  else
+    WriteLn(Target, 'fn ', Sym^.Tag, ' ( |', S, ' )');
+
+  if CurShared then
+  begin
+    IrCode(DisplaySlot(Level) + ' @a -> saved');
+    if Offset <= 8 then
+    begin
+      I := 0;
+      while I < Offset do
+      begin
+        IrCode('0 frame' + IrOffset(I) + ' !i');
+        I := I + 2;
+      end;
+    end
+    else
+      IrCode('frame ' + Int2Str(Offset) + ' 0 fillchar');
+    IrCode('frame ' + DisplaySlot(Level) + ' !a');
+  end;
+end;
+
+procedure IrEpilogue;
+begin
+  if CurShared then
+    IrCode('saved ' + DisplaySlot(Level) + ' !a');
+  WriteLn(Target, 'end');
+  WriteLn(Target);
+end;
+
 procedure EmitPrologue(Sym: PSymbol);
 var
   I: Integer;
   V: String;
 begin
+  if Ir4 then
+  begin
+    IrPrologue(Sym);
+    Exit;
+  end;
+
   if Sym = Nil then
     EmitC('main entry point')
   else
@@ -730,6 +861,12 @@ end;
 
 procedure EmitEpilogue(Sym: PSymbol);
 begin
+  if Ir4 then
+  begin
+    IrEpilogue;
+    Exit;
+  end;
+
   if Sym = nil then
     Emit('', 'call __done', '')
   else
@@ -747,10 +884,51 @@ begin
   CollectString(SymbolTable);
 end;
 
+(* IR4th: pushes the address of a frame-resident (shared) local. *)
+procedure IrSharedAddr(Sym: PSymbol);
+begin
+  if Level = Sym^.Level then
+    IrCode('frame' + IrOffset(Sym^.Value))
+  else
+    IrCode(DisplaySlot(Sym^.Level) + ' @a' + IrOffset(Sym^.Value));
+end;
+
+procedure IrGetVar(Sym: PSymbol);
+begin
+  if (Sym^.Level > 1) and (Level > Sym^.Level) then Sym^.Shared := True;
+
+  if Sym^.Shared then
+  begin
+    IrSharedAddr(Sym);
+    IrCode('@i');
+  end
+  else
+    IrCode(Sym^.Tag);
+end;
+
+procedure IrSetVar(Sym: PSymbol);
+begin
+  if (Sym^.Level > 1) and (Level > Sym^.Level) then Sym^.Shared := True;
+
+  if Sym^.Shared then
+  begin
+    IrSharedAddr(Sym);
+    IrCode('!i');
+  end
+  else
+    IrCode('-> ' + Sym^.Tag);
+end;
+
 procedure EmitGetVar(Sym: PSymbol);
 var
   L: Integer;
 begin
+  if Ir4 then
+  begin
+    IrGetVar(Sym);
+    Exit;
+  end;
+
   L := Level - Sym^.Level;
 
   if Sym^.Level = 1 then
@@ -777,6 +955,12 @@ procedure EmitSetVar(Sym: PSymbol);
 var
   L: Integer;
 begin
+  if Ir4 then
+  begin
+    IrSetVar(Sym);
+    Exit;
+  end;
+
   L := Level - Sym^.Level;
 
   if Sym^.Level = 1 then
@@ -801,6 +985,7 @@ end;
 
 procedure EmitLiteral(Value: Integer);
 begin
+  if Ir4 then begin IrCode(Int2Str(Value)); Exit; end;
   Emit('', 'ld de,' + Int2Str(Value), 'Literal ' + Int2Str(Value));
   EmitI('push de');
 end;
@@ -809,6 +994,7 @@ procedure EmitOdd();
 var
   S: String;
 begin
+  if Ir4 then begin IrCode('1 and 0 !='); Exit; end;
   Emit('', 'pop hl', 'Odd');
   EmitI('bit 0,l');
   EmitI('ld de,0');
@@ -847,6 +1033,19 @@ procedure EmitComp(Op: TToken);
 var
   S, T: String;
 begin
+  if Ir4 then
+  begin
+    case Op of
+      toEq:  IrCode('==');
+      toNeq: IrCode('!=');
+      toLt:  IrCode('<');
+      toGt:  IrCode('>');
+      toLeq: IrCode('<=');
+      toGeq: IrCode('>=');
+    end;
+    Exit;
+  end;
+
   Emit('','pop de', 'RelOp ' + Int2Str(Ord(Op)));
   EmitI('pop hl');
 
@@ -875,6 +1074,7 @@ end;
 
 procedure EmitMul();
 begin
+  if Ir4 then begin IrCode('*'); Exit; end;
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
   Emit('', 'call __mul16', 'Mul');
@@ -883,6 +1083,7 @@ end;
 
 procedure EmitDiv();
 begin
+  if Ir4 then begin IrCode('/'); Exit; end;
   Emit('', 'pop de', '');
   Emit('', 'pop hl', '');
   Emit('', 'call __sdiv16', 'Div');
@@ -891,6 +1092,7 @@ end;
 
 procedure EmitAdd();
 begin
+  if Ir4 then begin IrCode('+'); Exit; end;
   Emit('', 'pop de', 'Add');
   EmitI('pop hl');
   EmitI('add hl,de');
@@ -899,6 +1101,7 @@ end;
 
 procedure EmitSub();
 begin
+  if Ir4 then begin IrCode('-'); Exit; end;
   Emit('', 'pop de', 'Sub');
   EmitI('pop hl');
   EmitI('xor a');
@@ -908,12 +1111,14 @@ end;
 
 procedure EmitInputNum(S: String);
 begin
+  if Ir4 then begin IrCode('pl0_getn'); Exit; end;
   Emit('', 'call __getn', 'Get ' + S);
   EmitI('push de');
 end;
 
 procedure EmitPrintNum(S: String);
 begin
+  if Ir4 then begin IrCode('pl0_putn'); Exit; end;
   Emit('', 'pop hl', '');
   Emit('', 'call __putn', '');
 end;
@@ -924,8 +1129,54 @@ var
 begin
   Sym := CreateSymbol(scString, S);
   Sym^.Tag := GetLabel('string');
+
+  if Ir4 then
+  begin
+    IrDecl('data ' + Sym^.Tag);
+    IrDecl('  ' + Int2Str(Length(S)) + ' :i8 "' + IrEscape(S) + '"');
+    IrDecl('end');
+    IrDecl('');
+    IrCode(Sym^.Tag + ' pl0_puts');
+    Exit;
+  end;
+
   Emit('', 'ld hl,' + Sym^.Tag, '');
   Emit('', 'call __puts', '');
+end;
+
+procedure EmitIfThen(Tag: String);
+begin
+  if Ir4 then begin IrCode('if'); Exit; end;
+  EmitI('pop af');
+  EmitI('and a');
+  EmitI('jp z,' + Tag);
+end;
+
+procedure EmitIfEnd(Tag: String);
+begin
+  if Ir4 then begin IrCode('then'); Exit; end;
+  Emit(Tag, '', '');
+end;
+
+procedure EmitWhileHead(Tag: String);
+begin
+  if Ir4 then begin IrCode('begin'); Exit; end;
+  Emit(Tag, '', '');
+end;
+
+procedure EmitWhileDo(Tag2: String);
+begin
+  if Ir4 then begin IrCode('while'); Exit; end;
+  EmitI('pop af');
+  EmitI('and a');
+  EmitI('jp z,' + Tag2);
+end;
+
+procedure EmitWhileEnd(Tag, Tag2: String);
+begin
+  if Ir4 then begin IrCode('repeat'); Exit; end;
+  EmitI('jp ' + Tag);
+  Emit(Tag2, '', '');
 end;
 
 procedure CloseTarget();
@@ -1103,31 +1354,26 @@ begin
     
     Tag := GetLabel('false');
 
-    EmitI('pop af');            (* TODO Move this elsewhere. *)
-    EmitI('and a');
-    EmitI('jp z,' + Tag);    
+    EmitIfThen(Tag);
 
     ParseStatement;
 
-    Emit(Tag, '', '');
+    EmitIfEnd(Tag);
   end
   else if Scanner.Token = toWhile then
   begin
     Tag := GetLabel('while');
     Tag2 := GetLabel('false');
 
-    Emit(Tag, '', '');
+    EmitWhileHead(Tag);
 
     NextToken; ParseCondition; Expect(toDo); NextToken;
 
-    EmitI('pop af');            (* TODO Move this elsewhere. *)
-    EmitI('and a');
-    EmitI('jp z,' + Tag2);    
+    EmitWhileDo(Tag2);
 
     ParseStatement;
 
-    EmitI('jp ' + Tag);         (* TODO Move this elsewhere. *)
-    Emit(Tag2, '', '');
+    EmitWhileEnd(Tag, Tag2);
   end
 end;
 
@@ -1148,9 +1394,18 @@ begin
 end;
 
 procedure ParseVar;
+var
+  Sym: PSymbol;
 begin
   Expect(toIdent);
-  CreateSymbol(scVar, Scanner.StrValue);
+  Sym := CreateSymbol(scVar, Scanner.StrValue);
+  if Level = 1 then
+  begin
+    Sym^.Tag := 'g_' + UpperStr(Sym^.Name);
+    if Ir4 then IrDecl('var ' + Sym^.Tag + ' :i');
+  end
+  else
+    Sym^.Tag := 'l_' + UpperStr(Sym^.Name);
   NextToken;
 end;
 
@@ -1185,6 +1440,7 @@ begin
     NextToken; Expect(toIdent);
     NewSym := CreateSymbol(scProc, Scanner.StrValue);
     NewSym^.Tag := GetLabel('proc');
+    if Ir4 then IrDecl('fwd ' + NewSym^.Tag + ' ( )');
 
     OpenScope;
     NextToken; Expect(toSemicolon);
@@ -1206,10 +1462,13 @@ begin
   OpenScope;
   parseBlock(Nil);
   Expect(toPeriod);
-  EmitC('');
-  Emit('globals', 'ds ' + Int2Str(Offset), 'Globals');
-  EmitC('');
-  Emit('display', 'ds 32', 'Display');
+  if not Ir4 then
+  begin
+    EmitC('');
+    Emit('globals', 'ds ' + Int2Str(Offset), 'Globals');
+    EmitC('');
+    Emit('display', 'ds 32', 'Display');
+  end;
   CloseScope;
 end;
 
@@ -1218,8 +1477,9 @@ end;
 (* -------------------------------------------------------------------------- *)
 
 var
-  SrcFile, AsmFile, BinFile, HomeDir, AsmTool: String; 
+  SrcFile, AsmFile, BinFile, HomeDir, AsmTool, IrTool, BodyFile, Line: String;
   I: Integer;
+  Body: Text;
 
 begin
   WriteLn('PL/0 Compiler for Z80 Version 1.0');
@@ -1231,6 +1491,7 @@ begin
     HomeDir := ParentDir(FExpand(ParamStr(0)));
 
   AsmTool := GetEnv('PL0_ASM');
+  IrTool := GetEnv('PL0_IR4C');
 
   I := 1;  
   SrcFile := ParamStr(I);
@@ -1245,6 +1506,13 @@ begin
       Binary := btCom
     else if SrcFile = '--dot' then
       Binary := btDot
+    else if SrcFile = '--ir4' then
+      Ir4 := True
+    else if SrcFile = '--ir4c' then
+    begin
+      IrTool := ParamStr(I + 1);
+      I := I + 1;
+    end
     else
       Error('Invalid option: ' + SrcFile);
 
@@ -1261,13 +1529,22 @@ begin
     WriteLn('  --asm <path>   calls external assembler');
     WriteLn('  --com          target is CP/M .com file');
     WriteLn('  --dot          target is Next .dot file');
+    WriteLn('  --ir4          generate IR4th instead of Z80 assembly');
+    WriteLn('  --ir4c <path>  calls IR4th compiler (CP/M only)');
     WriteLn;
     Halt(1);
   end;
 
   if Pos('.', SrcFile)=0 then SrcFile := SrcFile + '.pl0';
 
-  AsmFile := ChangeExt(SrcFile, '.z80');
+  if Ir4 then
+  begin
+    if Binary <> btCom then Error('IR4th backend supports CP/M only');
+    AsmFile := ChangeExt(SrcFile, '.ir4');
+    BodyFile := ChangeExt(SrcFile, '.ir4b');
+  end
+  else
+    AsmFile := ChangeExt(SrcFile, '.z80');
 
   if Binary = btCom then
     BinFile := ChangeExt(SrcFile, '.com')
@@ -1279,19 +1556,59 @@ begin
   RegisterAllKeywords();
 
   OpenInput(SrcFile);
-  OpenTarget(AsmFile);
+  if Ir4 then
+  begin
+    Assign(Decl, AsmFile);
+    Rewrite(Decl);
+    OpenTarget(BodyFile);
+  end
+  else
+    OpenTarget(AsmFile);
   EmitHeader(HomeDir, SrcFile);  (* TODO Move this elsewhere. *)
   NextToken;
   ParseProgram;
-  EmitFooter();                  (* TODO Move this elsewhere. *)
+  if not Ir4 then
+    EmitFooter();                (* TODO Move this elsewhere. *)
   CloseTarget();
   CloseInput();
 
-  if AsmTool <> '' then
+  if Ir4 then
+  begin
+    (* Declarations first, then bodies: IR4th needs declare-before-use. *)
+    Assign(Body, BodyFile);
+    Reset(Body);
+    while not Eof(Body) do
+    begin
+      ReadLn(Body, Line);
+      WriteLn(Decl, Line);
+    end;
+    Close(Body);
+    Erase(Body);
+    Close(Decl);
+
+    if IrTool <> '' then
+    begin
+      WriteLn('Compiling IR4th...');
+
+      (* ir4c resolves lib/ relative to the current directory *)
+      GetDir(0, Line);
+      BinFile := FExpand(BinFile);
+      AsmFile := FExpand(AsmFile);
+      IrTool := FExpand(IrTool);
+      ChDir(ParentDir(ParentDir(IrTool)));
+      Exec(IrTool, '-t z80 --cpm -o ' + BinFile + ' ' + AsmFile);
+      ChDir(Line);
+      if DosError <> 0 then
+        Error('Error ' + Int2Str(DosError) + ' starting ' + IrTool);
+      if DosExitCode <> 0 then
+        Error('Failure! :(')
+    end;
+  end
+  else if AsmTool <> '' then
   begin
     WriteLn('Assembling...');
 
-    Exec(AsmTool, AsmFile + ' ' + BinFile);
+    Exec(AsmTool, '--raw=' + BinFile + ' ' + AsmFile);
     if DosError <> 0 then
       Error('Error ' + Int2Str(DosError) + ' starting ' + AsmTool);
     if DosExitCode <> 0 then

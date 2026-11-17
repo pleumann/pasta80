@@ -2,28 +2,28 @@
 ; PL0 built-in assembler functions
 ;
 
-#if defined(CPM)
+                IFDEF   CPM
                 org     $100
-#endif
+                ENDIF
 
-#if defined(NXT)
+                IFDEF   NXT
                 org     $2000
-#endif
+                ENDIF
 
                 jp      main
 
 ;
 ; Some stuff shared between the routines
 ;
-#if defined(CPM)
+                IFDEF   CPM
 __buffer:       ds      32
-#endif
+                ENDIF
 
-#if defined(NXT)
+                IFDEF   NXT
 __saved_iy:     dw      0
 __win_handle:   dw      0
 __buffer:       equ     23698
-#endif
+                ENDIF
 
 ;
 ; Signed 16 bit comparison (taken from Zaks)
@@ -212,20 +212,20 @@ __div10b:       djnz __div10a
 ; Exit:   -
 ; Uses:   C,E,IY
 ;
-#if defined(CPM)
+                IFDEF   CPM
 __putc:
                 ld      e,a
                 ld      c,2
                 call    5
                 ret
-#endif
+                ENDIF
 
-#if defined(NXT)
+                IFDEF   NXT
 __putc:
                 ld      iy,(__saved_iy)
                 rst     16
                 ret
-#endif
+                ENDIF
 
 ;
 ; Print string to screen
@@ -247,10 +247,10 @@ __putschk:      inc     hl
                 djnz    __putsloop
                 ld      a,13
                 call    __putc
-#if defined(CPM)
+                IFDEF   CPM
                 ld      a,10
                 call    __putc
-#endif
+                ENDIF
                 ret
 
 ;
@@ -277,7 +277,7 @@ __putn:         ex      hl,de
 ;
 ; TODO Separate input from string-to-integer functionality
 ;
-#if defined(CPM)
+                IFDEF   CPM
 __getn:         ld      a,'>'
                 call    __putc
                 ld      hl,6
@@ -294,9 +294,9 @@ __getn:         ld      a,'>'
                 inc     hl
                 call    __atoi
                 ret
-#endif
+                ENDIF
 
-#if defined(NXT)
+                IFDEF   NXT
 __getn:
                 push    ix
                 ld      iy, (__saved_iy)
@@ -329,7 +329,7 @@ __getn:
                 ld      hl,__buffer
                 call    __atoi
                 ret
-#endif
+                ENDIF
 
 ;
 ; Signed 16 bits integer to string
@@ -418,11 +418,11 @@ __atoi_done:    ld      a,c             ; Fix sign, if necessary
 ; Exit: -
 ; Uses: *
 ;
-#if defined(CPM)
+                IFDEF   CPM
 __init:         ret
-#endif
+                ENDIF
 
-#if defined(NXT)
+                IFDEF   NXT
 __init:         ld      (__saved_iy),iy
                 ld      de, $01d5
                 ld      a,1
@@ -436,7 +436,7 @@ __init:         ld      (__saved_iy),iy
                 ld   (__win_handle),hl
                 exx
                 ret
-#endif
+                ENDIF
 
 ;
 ; Shutdown
@@ -445,11 +445,11 @@ __init:         ld      (__saved_iy),iy
 ; Exit: -
 ; Uses: *
 ;
-#if defined(CPM)
+                IFDEF   CPM
 __done:         ret
-#endif
+                ENDIF
 
-#if defined(NXT)
+                IFDEF   NXT
 __done:         ld      iy,(__saved_iy)
                 ret
-#endif
+                ENDIF
