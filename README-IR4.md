@@ -26,8 +26,8 @@ locals, and recursive ones get stack frames. This is what Turbo Pascal's
 ## Building and running
 
 ```bash
-# IR4th, from a local copy in ../IR4th. Raise MAX_TOK in src/ir4.h from
-# 32 to 128 first: absolute require paths don't fit into 32 chars.
+# IR4th, from a local copy in ../IR4th (note: when running inside the IR4th
+# repository tree itself, the compiler path is ../build/ir4c).
 (cd ../IR4th && make)
 
 fpc pl0

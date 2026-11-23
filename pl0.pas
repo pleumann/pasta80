@@ -628,7 +628,7 @@ var
 begin
   if (Tag = '') and (Instruction = '') and (Comment <> '') then
   begin
-    if Ir4 then WriteLn(Target, '// ', Comment) else WriteLn(Target, '; ', Comment);
+    if Ir4 then WriteLn(Target, '\ ', Comment) else WriteLn(Target, '; ', Comment);
     Exit;
   end;
 
@@ -658,7 +658,7 @@ end;
 
 procedure EmitC(S: String);
 begin
-  if Ir4 then WriteLn(Target, '// ', S) else WriteLn(Target, '; ', S);
+  if Ir4 then WriteLn(Target, '\ ', S) else WriteLn(Target, '; ', S);
 end;
 
 procedure EmitInclude(S: String);
@@ -678,9 +678,9 @@ procedure EmitHeader(Home: String; SrcFile: String);
 begin
   if Ir4 then
   begin
-    IrDecl('// program ' + SrcFile);
+    IrDecl('\ program ' + SrcFile);
     IrDecl('');
-    IrDecl('require ' + Home + '/pl0rt.ir4');
+    IrDecl('require "pl0rt.ir4"');
     IrDecl('');
     IrDecl('var display :bytes 32');
     IrDecl('');
@@ -735,32 +735,31 @@ end;
 
 (* Collects IR4th locals of the current scope (in declaration order). Locals
    accessed from nested procedures live in a frame instead (see below). *)
-procedure IrLocals(Sym: PSymbol; var S: String; var AnyShared: Boolean);
+procedure IrLocals(Sym: PSymbol; var AnyShared: Boolean);
 begin
   if Sym^.Kind = scScope then Exit;
-  IrLocals(Sym^.Next, S, AnyShared);
+  IrLocals(Sym^.Next, AnyShared);
   if Sym^.Kind = scVar then
   begin
     if Sym^.Shared then
       AnyShared := True
     else
-      S := S + ' ' + Sym^.Tag + ' :i';
+      IrCode('var ' + Sym^.Tag + ' :i');
   end;
 end;
 
 function IrOffset(Value: Integer): String;
 begin
-  if Value = 0 then IrOffset := '' else IrOffset := ' ' + Int2Str(Value) + ' +';
+  if Value = 0 then IrOffset := '' else IrOffset := ' ' + Int2Str(Value) + ' a+';
 end;
 
 function DisplaySlot(L: Integer): String;
 begin
-  DisplaySlot := 'display ' + Int2Str(L * 2) + ' +';
+  DisplaySlot := 'display' + IrOffset(L * 2);
 end;
 
 procedure IrPrologue(Sym: PSymbol);
 var
-  S: String;
   I: Integer;
 begin
   if Sym = nil then
@@ -772,43 +771,37 @@ begin
   end;
 
   EmitC('procedure ' + Sym^.Name);
+  WriteLn(Target, 'fn ', Sym^.Tag, ' ( )');
 
-  S := '';
   CurShared := False;
-  IrLocals(SymbolTable, S, CurShared);
+  IrLocals(SymbolTable, CurShared);
 
   (* Shared locals: a frame whose address goes into the display, so nested
      procedures find the current activation like in the Z80 backend. *)
   if CurShared then
-    S := S + ' frame :bytes ' + Int2Str(Offset) + ' saved :a';
-
-  if S = '' then
-    WriteLn(Target, 'fn ', Sym^.Tag, ' ( )')
-  else
-    WriteLn(Target, 'fn ', Sym^.Tag, ' ( |', S, ' )');
-
-  if CurShared then
   begin
-    IrCode(DisplaySlot(Level) + ' @a -> saved');
+    IrCode('var frame :bytes ' + Int2Str(Offset));
+    IrCode('var saved :a');
+    IrCode(DisplaySlot(Level) + ' a@ -> saved');
     if Offset <= 8 then
     begin
       I := 0;
       while I < Offset do
       begin
-        IrCode('0 frame' + IrOffset(I) + ' !i');
+        IrCode('0 frame' + IrOffset(I) + ' !');
         I := I + 2;
       end;
     end
     else
       IrCode('frame ' + Int2Str(Offset) + ' 0 fillchar');
-    IrCode('frame ' + DisplaySlot(Level) + ' !a');
+    IrCode('frame ' + DisplaySlot(Level) + ' a!');
   end;
 end;
 
 procedure IrEpilogue;
 begin
   if CurShared then
-    IrCode('saved ' + DisplaySlot(Level) + ' !a');
+    IrCode('saved ' + DisplaySlot(Level) + ' a!');
   WriteLn(Target, 'end');
   WriteLn(Target);
 end;
@@ -890,7 +883,7 @@ begin
   if Level = Sym^.Level then
     IrCode('frame' + IrOffset(Sym^.Value))
   else
-    IrCode(DisplaySlot(Sym^.Level) + ' @a' + IrOffset(Sym^.Value));
+    IrCode(DisplaySlot(Sym^.Level) + ' a@' + IrOffset(Sym^.Value));
 end;
 
 procedure IrGetVar(Sym: PSymbol);
@@ -900,7 +893,7 @@ begin
   if Sym^.Shared then
   begin
     IrSharedAddr(Sym);
-    IrCode('@i');
+    IrCode('@');
   end
   else
     IrCode(Sym^.Tag);
@@ -913,7 +906,7 @@ begin
   if Sym^.Shared then
   begin
     IrSharedAddr(Sym);
-    IrCode('!i');
+    IrCode('!');
   end
   else
     IrCode('-> ' + Sym^.Tag);
@@ -994,7 +987,7 @@ procedure EmitOdd();
 var
   S: String;
 begin
-  if Ir4 then begin IrCode('1 and 0 !='); Exit; end;
+  if Ir4 then begin IrCode('1 and 0 <>'); Exit; end;
   Emit('', 'pop hl', 'Odd');
   EmitI('bit 0,l');
   EmitI('ld de,0');
@@ -1036,8 +1029,8 @@ begin
   if Ir4 then
   begin
     case Op of
-      toEq:  IrCode('==');
-      toNeq: IrCode('!=');
+      toEq:  IrCode('=');
+      toNeq: IrCode('<>');
       toLt:  IrCode('<');
       toGt:  IrCode('>');
       toLeq: IrCode('<=');
@@ -1490,6 +1483,8 @@ begin
   HomeDir := GetEnv('PL0_HOME');
   if HomeDir = '' then
     HomeDir := ParentDir(FExpand(ParamStr(0)));
+  if HomeDir = '' then
+    HomeDir := '.';
 
   AsmTool := GetEnv('PL0_ASM');
   IrTool := GetEnv('PL0_IR4C');
@@ -1550,17 +1545,17 @@ begin
   begin
     if IrTarget = 'cpm' then
     begin
-      IrFlags := '-t z80 --cpm';
+      IrFlags := '-t cpm';
       BinFile := ChangeExt(SrcFile, '.com');
     end
     else if IrTarget = 'sim65' then
     begin
-      IrFlags := '-t 6502 --sim65';
+      IrFlags := '-t sim65';
       BinFile := ChangeExt(SrcFile, '.sim');
     end
     else if IrTarget = 'c64' then
     begin
-      IrFlags := '-t 6502 --c64';
+      IrFlags := '-t c64';
       BinFile := ChangeExt(SrcFile, '.prg');
     end
     else
@@ -1616,15 +1611,7 @@ begin
     if IrTool <> '' then
     begin
       WriteLn('Compiling IR4th...');
-
-      (* ir4c resolves lib/ relative to the current directory *)
-      GetDir(0, Line);
-      BinFile := FExpand(BinFile);
-      AsmFile := FExpand(AsmFile);
-      IrTool := FExpand(IrTool);
-      ChDir(ParentDir(ParentDir(IrTool)));
-      Exec(IrTool, IrFlags + ' -o ' + BinFile + ' ' + AsmFile);
-      ChDir(Line);
+      Exec(IrTool, IrFlags + ' -I ' + HomeDir + ' -o ' + BinFile + ' ' + AsmFile);
       if DosError <> 0 then
         Error('Error ' + Int2Str(DosError) + ' starting ' + IrTool);
       if DosExitCode <> 0 then

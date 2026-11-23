@@ -1,22 +1,24 @@
-// c64/pl0io.ir4 - PL/0 console I/O for the Commodore 64 (KERNAL)
+\ c64/pl0io.ir4 - PL/0 console I/O for the Commodore 64 (KERNAL)
 
 extern chrin 0xFFCF ( -> A :i )
 
 fn pl0_crlf ( )
-  13 chrout
+  13 emit
 end
 
-// Read a line via the screen editor (echo is done by the KERNAL)
-fn pl0_readln ( buf :a | n :i c :i )
+\ Read a line via the screen editor (echo is done by the KERNAL)
+fn pl0_readln ( buf :a )
+  var n :i
+  var c :i
   begin
     chrin -> c
-    c 13 !=
+    c 13 <>
   while
     n 6 < if
-      c buf 2 + n + !i8
+      c buf 2 a+ n a+ i8!
       n 1 + -> n
     then
   repeat
-  13 chrout
-  n buf 1 + !i8
+  13 emit
+  n buf 1 a+ i8!
 end

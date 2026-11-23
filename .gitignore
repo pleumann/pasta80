@@ -1,6 +1,7 @@
 .DS_Store
 pl0
 pl0.o
+*.ir4
 examples/*.z80
 examples/*.lst
 examples/*.com
