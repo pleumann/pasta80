@@ -1,44 +1,48 @@
-// pl0rt.ir4 - PL/0 runtime for the IR4th backend (counterpart of pl0.z80)
+\ pl0rt.ir4 - PL/0 runtime for the IR4th backend (counterpart of pl0.z80)
 
-require stdio.ir4
-require mem.ir4
-require pl0io.ir4
+require "stdio.ir4"
+require "mem.ir4"
+require "pl0io.ir4"
 
 var pl0_buf :bytes 8
 
-// Print counted string followed by CR/LF
+\ Print counted string followed by CR/LF
 fn pl0_puts ( s :a )
-  s 1 + s @u8 type
+  s 1 a+ s u8@ type
   pl0_crlf
 end
 
-// Print number followed by CR/LF (leading space like __itoa in pl0.z80)
+\ Print number followed by CR/LF (leading space like __itoa in pl0.z80)
 fn pl0_putn ( n :i )
   n 0 >= if 32 emit then
-  n puti
+  n typei
   pl0_crlf
 end
 
-// Read number, echo it like __getn in pl0.z80
-fn pl0_getn ( | p :a n :i neg :i v :i -> :i )
+\ Read number, echo it like __getn in pl0.z80
+fn pl0_getn ( -> :i )
+  var p :a
+  var n :i
+  var neg :i
+  var v :i
   62 emit
   pl0_buf pl0_readln
   62 emit
-  pl0_buf 1 + pl0_puts
-  pl0_buf 2 + -> p
-  pl0_buf 1 + @u8 -> n
+  pl0_buf 1 a+ pl0_puts
+  pl0_buf 2 a+ -> p
+  pl0_buf 1 a+ u8@ -> n
   n 0 > if
-    p @u8 45 == if
+    p u8@ 45 = if
       -1 -> neg
-      p 1 + -> p
+      p 1 a+ -> p
       n 1 - -> n
     then
   then
   begin
     n 0 >
   while
-    v 10 * p @u8 48 - + -> v
-    p 1 + -> p
+    v 10 * p u8@ 48 - + -> v
+    p 1 a+ -> p
     n 1 - -> n
   repeat
   neg if 0 v - -> v then

@@ -1,12 +1,12 @@
-// cpm/pl0io.ir4 - PL/0 console I/O for CP/M
+\ cpm/pl0io.ir4 - PL/0 console I/O for CP/M
 
 fn pl0_crlf ( )
   13 emit
   10 emit
 end
 
-// Read a line into a BDOS-10 style buffer (max at +0, count at +1, chars at +2)
+\ Read a line into a BDOS-10 style buffer (max at +0, count at +1, chars at +2)
 fn pl0_readln ( buf :a )
-  6 buf !i8
-  10 buf :i bdos drop
+  6 buf i8!
+  10 buf a>i bdos drop
 end
