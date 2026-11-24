@@ -75,17 +75,20 @@ end;
  * Converts the given integer to a hex number of the given length.
  *)
 function IntToHex(Value, Digits: Integer): String;
-const
-  Hex = '0123456789ABCDEF';
 var
   S: String;
+  D: Integer;
 begin
   S := '';
 
   while (Value <> 0) or (Digits > 0) do
   begin
-    S := Hex[1 + Value mod 16] + S;
-    Value := Value div 16;
+    D := Value and 15;
+    if D < 10 then
+      S := Chr(Ord('0') + D) + S
+    else
+      S := Chr(Ord('A') - 10 + D) + S;
+    Value := Value shr 4;
     Digits := Digits - 1;
   end;
 
